@@ -457,13 +457,17 @@
                     } catch(e) {}
 
                     window.STATE.attendanceRecords = {};
+                    window.STATE.attendanceAlerts = [];
                     window.STATE.studentPermissions = [];
                     window.STATE.disciplineReports = [];
+                    window.STATE.gradeEditRequests = [];
+                    window.STATE.announcements = [];
                     window.STATE.academicExonerations = [];
                     window.STATE.exoneraciones = {};
                     window.STATE.calificaciones = {};
                     window.STATE.gradingConfigs = {};
                     window.STATE.dismissedAlerts = {};
+                    window.STATE.allAlertsCleared = {};
                     window.STATE.academicCycle = targetNewCycle;
                     window.STATE.activeCycle = targetNewCycle;
 

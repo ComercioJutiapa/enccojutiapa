@@ -11594,6 +11594,9 @@ function changeAcademicCycle(cycle) {
     if (typeof renderDashboard === 'function') renderDashboard();
     if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
     if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+    if (typeof updatePendingRequestsBadge === 'function') updatePendingRequestsBadge();
     if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(typeof viewName !== 'undefined' ? viewName : STATE.activeView);
 }
 window.changeAcademicCycle = changeAcademicCycle;
@@ -22487,8 +22490,11 @@ function isGradebookEditableForUser(pensumId, unit) {
 
     // Verificar si existe solicitud aprobada y vigente para este docente, curso y bimestre
     const now = Date.now();
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const approvedRequest = requests.find(req => {
+        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
+        if (activeCycle === '2027' && reqCycle === '2026') return false;
         const matchTeacher = (req.teacherId === currentUser?.id || (currentUser?.email && req.teacherEmail === currentUser?.email));
         if (!matchTeacher) return false;
         if (req.pensumId && pensumId && req.pensumId !== pensumId) return false;
@@ -22532,7 +22538,10 @@ window.isGradebookEditableForUser = isGradebookEditableForUser;
 
 function getPendingGradeEditRequest(teacherId, pensumId, unit) {
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
     return requests.find(req => {
+        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
+        if (activeCycle === '2027' && reqCycle === '2026') return false;
         const matchTeacher = (req.teacherId === teacherId || (STATE.currentUser?.email && req.teacherEmail === STATE.currentUser?.email));
         if (!matchTeacher) return false;
         if (req.pensumId && pensumId && req.pensumId !== pensumId) return false;
@@ -22646,6 +22655,7 @@ async function submitGradeEditRequest(event) {
         const nowIso = new Date().toISOString();
         const newRequest = {
             id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            cycle: String(STATE.activeCycle || '2027').trim(),
             teacherId: currentUser?.id || 'DOCENTE_ID',
             teacherName: currentUser?.name || 'Catedrático Titular',
             teacherEmail: currentUser?.email || '',
@@ -22747,8 +22757,14 @@ window.filterGradeEditRequests = filterGradeEditRequests;
 function updatePendingRequestsBadge() {
     const badge = document.getElementById('pendingGradeRequestsBadge');
     if (!badge) return;
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
-    const pendingCount = requests.filter(r => r.status === 'pending').length;
+    const pendingCount = requests.filter(r => {
+        if (r.status !== 'pending') return false;
+        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : '2026')).trim();
+        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        return true;
+    }).length;
     if (pendingCount > 0) {
         badge.style.display = 'inline-block';
         badge.textContent = pendingCount.toString();
@@ -22762,7 +22778,13 @@ function renderGradeEditRequestsTable() {
     const tbody = document.getElementById('gradeEditRequestsTableBody');
     if (!tbody) return;
 
-    const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const rawRequests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
+    const requests = rawRequests.filter(r => {
+        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : '2026')).trim();
+        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        return true;
+    });
     const now = Date.now();
 
     const pendingCount = requests.filter(r => r.status === 'pending').length;
@@ -23375,14 +23397,15 @@ function getUserAlerts() {
     const currentUserId = currentUser ? (currentUser.id || role) : role;
     const activeBimestre = parseInt(STATE.config?.activeBimestre) || 2;
     const isGlobalLocked = !!STATE.config?.globalLocked;
-    const activeCycle = STATE.activeCycle || '2026';
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
 
     if (role === 'docente') {
         // 1. Alerta de Estado del Bimestre
         if (isGlobalLocked) {
             rawAlerts.push({
-                id: `alert_docente_lock_${activeBimestre}_true`,
+                id: `alert_docente_lock_${activeBimestre}_true_${activeCycle}`,
                 type: 'danger',
+                cycle: activeCycle,
                 icon: 'fa-lock',
                 title: 'Ingreso de Calificaciones Bloqueado',
                 message: `El ${activeBimestre}° Bimestre está bloqueado oficialmente por Dirección. No se permite modificación de notas.`,
@@ -23391,8 +23414,9 @@ function getUserAlerts() {
             });
         } else {
             rawAlerts.push({
-                id: `alert_docente_lock_${activeBimestre}_false`,
+                id: `alert_docente_lock_${activeBimestre}_false_${activeCycle}`,
                 type: 'success',
+                cycle: activeCycle,
                 icon: 'fa-lock-open',
                 title: `${activeBimestre}° Bimestre Activo y Habilitado`,
                 message: `El sistema está abierto para el registro de ponderaciones de zona (40 pts) y evaluaciones (60 pts).`,
@@ -23408,6 +23432,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_docente_classes_${myClasses.length}_${activeCycle}`,
                 type: 'info',
+                cycle: activeCycle,
                 icon: 'fa-chalkboard-user',
                 title: 'Cátedras Asignadas en Ciclo Lectivo',
                 message: `Tiene ${myClasses.length} curso(s) asignado(s) a su cargo para el ciclo ${activeCycle}.`,
@@ -23418,6 +23443,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_docente_noclasses_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-circle-exclamation',
                 title: 'Sin Cátedras Asignadas',
                 message: 'No tiene asignaturas asignadas en el pensum actual. Comuníquese con Dirección o consulte la nómina docente.',
@@ -23436,6 +23462,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_docente_inactive_${inactiveInMyGrades.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-user-slash',
                 title: 'Alumnos Inactivos / Bajas en sus Grados',
                 message: `Hay ${inactiveInMyGrades.length} estudiante(s) marcado(s) como Retirado o Ausente por Secretaría (ingreso de notas bloqueado).`,
@@ -23448,6 +23475,7 @@ function getUserAlerts() {
         rawAlerts.push({
             id: `alert_docente_attendance_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-calendar-check',
             title: 'Control de Asistencia Diaria',
             message: 'Recuerde registrar la asistencia mensual de sus estudiantes en la planilla interactiva.',
@@ -23479,8 +23507,9 @@ function getUserAlerts() {
 
             if (lowZoneStudentsCount > 0) {
                 rawAlerts.push({
-                    id: `alert_docente_low_zone_${activeBimestre}_${lowZoneStudentsCount}`,
+                    id: `alert_docente_low_zone_${activeBimestre}_${lowZoneStudentsCount}_${activeCycle}`,
                     type: 'warning',
+                    cycle: activeCycle,
                     icon: 'fa-triangle-exclamation',
                     title: `Zona Crítica (< 24/40 pts): ${lowZoneStudentsCount} Alumnos`,
                     message: `Detectados ${lowZoneStudentsCount} caso(s) en sus cátedras con puntaje de zona menor al 60% institucional (24/40 pts). Requieren reforzamiento antes de evaluaciones.`,
@@ -23496,6 +23525,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_docente_att_risk_${docenteAttRisk.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-user-clock',
                 title: `Inasistencias en sus Secciones (${docenteAttRisk.length} Casos)`,
                 message: `Hay ${docenteAttRisk.length} alumno(s) en sus grados con 3 o más faltas en el mes actual.`,
@@ -23505,12 +23535,18 @@ function getUserAlerts() {
         }
 
     } else if (role === 'director') {
-        // 1. Llamadas de atención graves / muy graves
-        const graveDisc = (STATE.disciplineReports || []).filter(d => d.severity === 'Grave' || d.severity === 'Muy Grave');
+        // 1. Llamadas de atención graves / muy graves del ciclo actual
+        const graveDisc = (STATE.disciplineReports || []).filter(d => {
+            if (!d) return false;
+            const dCycle = String(d.cycle || (d.date ? String(d.date).substring(0, 4) : '2026')).trim();
+            if (activeCycle === '2027' && dCycle === '2026') return false;
+            return d.severity === 'Grave' || d.severity === 'Muy Grave';
+        });
         if (graveDisc.length > 0) {
             rawAlerts.push({
-                id: `alert_director_disc_${graveDisc.length}`,
+                id: `alert_director_disc_${graveDisc.length}_${activeCycle}`,
                 type: 'danger',
+                cycle: activeCycle,
                 icon: 'fa-triangle-exclamation',
                 title: 'Casos Disciplinarios Graves',
                 message: `Existen ${graveDisc.length} reporte(s) de conducta de gravedad alta que requieren citación urgente a padres de familia.`,
@@ -23521,8 +23557,9 @@ function getUserAlerts() {
 
         // 2. Control de Avance de Notas por Docente
         rawAlerts.push({
-            id: `alert_director_grade_progress_${activeBimestre}`,
+            id: `alert_director_grade_progress_${activeBimestre}_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-chart-column',
             title: 'Monitoreo de Calificaciones por Docente',
             message: `Audite en tiempo real el cumplimiento del ingreso de notas por bimestre del claustro de maestros.`,
@@ -23532,8 +23569,9 @@ function getUserAlerts() {
 
         // 3. Estado de Bimestre y Bloqueo
         rawAlerts.push({
-            id: `alert_director_lock_${activeBimestre}_${isGlobalLocked}`,
+            id: `alert_director_lock_${activeBimestre}_${isGlobalLocked}_${activeCycle}`,
             type: isGlobalLocked ? 'warning' : 'success',
+            cycle: activeCycle,
             icon: isGlobalLocked ? 'fa-lock' : 'fa-calendar-days',
             title: `Control de Bimestre (${activeBimestre}° Bimestre)`,
             message: isGlobalLocked ? `El ingreso de notas está bloqueado institucionalmente.` : `El ${activeBimestre}° Bimestre está abierto para todo el claustro docente.`,
@@ -23548,6 +23586,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_director_bajas_${retirados.length}_${ausentes.length}_${activeCycle}`,
                 type: 'info',
+                cycle: activeCycle,
                 icon: 'fa-user-xmark',
                 title: 'Estadística de Bajas y Deserciones',
                 message: `Registrados: ${retirados.length} retiro(s) formal(es) de expediente y ${ausentes.length} caso(s) de deserción/ausencia.`,
@@ -23560,6 +23599,7 @@ function getUserAlerts() {
         rawAlerts.push({
             id: `alert_director_attendance_all_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-crown',
             title: 'Supervisión de Asistencia por Maestro y Grado',
             message: 'Supervise y audite la asistencia diaria de todas las asignaturas por profesor o de forma general por grado.',
@@ -23571,8 +23611,9 @@ function getUserAlerts() {
         const dirAttRisk = getStudentsAtAttendanceRisk();
         if (dirAttRisk.length > 0) {
             rawAlerts.push({
-                id: `alert_director_att_risk_summary_${dirAttRisk.length}`,
+                id: `alert_director_att_risk_summary_${dirAttRisk.length}_${activeCycle}`,
                 type: 'danger',
+                cycle: activeCycle,
                 icon: 'fa-user-clock',
                 title: `Alerta de Inasistencias Críticas (${dirAttRisk.length} Casos)`,
                 message: `${dirAttRisk.length} estudiante(s) registran 3 o más faltas en el mes actual. Alto riesgo de abandono escolar.`,
@@ -23583,8 +23624,9 @@ function getUserAlerts() {
             dirAttRisk.slice(0, 2).forEach(item => {
                 const sName = `${item.student.lastName || ''} ${item.student.firstName || ''}`.trim();
                 rawAlerts.push({
-                    id: `alert_dir_wa_${item.student.id}`,
+                    id: `alert_dir_wa_${item.student.id}_${activeCycle}`,
                     type: 'danger',
+                    cycle: activeCycle,
                     icon: 'fa-comment-sms',
                     title: `Citación por Faltas: ${sName}`,
                     message: `${item.student.grade || ''}: Acumula ${item.totalAbsences} faltas en el mes (${item.maxConsecutive} consecutivas).`,
@@ -23598,14 +23640,18 @@ function getUserAlerts() {
         // 1. Ausencias registradas hoy en el aula
         const today = new Date().toISOString().split('T')[0];
         const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
+            if (!a) return false;
+            const aCycle = String(a.cycle || (a.date ? String(a.date).substring(0, 4) : '2026')).trim();
+            if (activeCycle === '2027' && aCycle === '2026') return false;
             const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
             return isToday && (a.status === 'pendiente' || !a.status);
         });
 
         if (pendingToday.length > 0) {
             rawAlerts.push({
-                id: `alert_aux_pending_${today}_${pendingToday.length}`,
+                id: `alert_aux_pending_${today}_${pendingToday.length}_${activeCycle}`,
                 type: 'danger',
+                cycle: activeCycle,
                 icon: 'fa-bell',
                 title: `${pendingToday.length} Inasistencia(s) Reportada(s) Hoy`,
                 message: `Catedráticos reportaron ${pendingToday.length} alumno(s) ausente(s) en el aula hoy. Requiere verificación y resolución.`,
@@ -23616,8 +23662,9 @@ function getUserAlerts() {
             // Apilar alertas individuales de inasistencia con acción directa para Justificar / Resolver
             pendingToday.forEach(alertItem => {
                 rawAlerts.push({
-                    id: `alert_item_${alertItem.id}`,
+                    id: `alert_item_${alertItem.id}_${activeCycle}`,
                     type: 'danger',
+                    cycle: activeCycle,
                     icon: 'fa-user-xmark',
                     title: `Ausencia: ${alertItem.studentName}`,
                     message: `${alertItem.gradeLabel || ''} - ${alertItem.courseName || ''} (${alertItem.time || ''}). Catedrático: ${alertItem.teacherName || 'Docente'}.`,
@@ -23628,11 +23675,17 @@ function getUserAlerts() {
         }
 
         // 2. Reportes de Conducta / Llamadas de Atención pendientes
-        const pendingDisc = (STATE.disciplineReports || []).filter(d => d.status === 'Pendiente' || !d.status);
+        const pendingDisc = (STATE.disciplineReports || []).filter(d => {
+            if (!d) return false;
+            const dCycle = String(d.cycle || (d.date ? String(d.date).substring(0, 4) : '2026')).trim();
+            if (activeCycle === '2027' && dCycle === '2026') return false;
+            return d.status === 'Pendiente' || !d.status;
+        });
         if (pendingDisc.length > 0) {
             rawAlerts.push({
-                id: `alert_aux_disc_pending_${pendingDisc.length}`,
+                id: `alert_aux_disc_pending_${pendingDisc.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-triangle-exclamation',
                 title: `${pendingDisc.length} Reporte(s) de Conducta Pendiente(s)`,
                 message: `Existen incidencias disciplinarias remitidas por catedráticos pendientes de atención en Auxiliatura.`,
@@ -23644,8 +23697,9 @@ function getUserAlerts() {
             pendingDisc.forEach(rep => {
                 let badgeType = rep.severity === 'Muy Grave' ? 'danger' : (rep.severity === 'Grave' ? 'warning' : 'info');
                 rawAlerts.push({
-                    id: `alert_aux_disc_${rep.id}`,
+                    id: `alert_aux_disc_${rep.id}_${activeCycle}`,
                     type: badgeType,
+                    cycle: activeCycle,
                     icon: 'fa-scale-unbalanced',
                     title: `Incidencia (${rep.severity || 'Leve'}): ${rep.studentName || 'Estudiante'}`,
                     message: `${rep.grade || ''}: ${rep.reason || 'Sin detalles'}. Docente: ${rep.teacher || 'Catedrático'}.`,
@@ -23659,8 +23713,9 @@ function getUserAlerts() {
         const auxRisk = getStudentsAtAttendanceRisk();
         if (auxRisk.length > 0) {
             rawAlerts.push({
-                id: `alert_aux_risk_summary_${auxRisk.length}`,
+                id: `alert_aux_risk_summary_${auxRisk.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-triangle-exclamation',
                 title: `${auxRisk.length} Alumnos con Faltas Reiteradas`,
                 message: `Estudiantes acumulan 3 o más faltas en el mes. Se recomienda citación inmediata a padres de familia.`,
@@ -23671,8 +23726,9 @@ function getUserAlerts() {
             auxRisk.slice(0, 3).forEach(item => {
                 const sName = `${item.student.lastName || ''} ${item.student.firstName || ''}`.trim();
                 rawAlerts.push({
-                    id: `alert_aux_whatsapp_${item.student.id}`,
+                    id: `alert_aux_whatsapp_${item.student.id}_${activeCycle}`,
                     type: 'warning',
+                    cycle: activeCycle,
                     icon: 'fa-comment-sms',
                     title: `Citación: ${sName}`,
                     message: `${item.student.grade || ''}: ${item.totalAbsences} faltas en el mes (${item.maxConsecutive} consecutivas).`,
@@ -23684,8 +23740,9 @@ function getUserAlerts() {
 
         // 3. Atajo a Toma Rápida de Asistencia
         rawAlerts.push({
-            id: `alert_aux_kiosk_shortcut`,
+            id: `alert_aux_kiosk_shortcut_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-qrcode',
             title: 'Control de Puerta y Carnés',
             message: 'Utilice el escáner de código de barras para registrar ingresos y llegadas tardías en recepción.',
@@ -23700,6 +23757,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_sec_incomplete_${incomplete.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-id-card',
                 title: 'Expedientes con Datos Pendientes',
                 message: `Hay ${incomplete.length} estudiante(s) sin CUI o Código Personal MINEDUC registrado.`,
@@ -23713,6 +23771,7 @@ function getUserAlerts() {
         rawAlerts.push({
             id: `alert_sec_matricula_${activos.length}_${activeCycle}`,
             type: 'success',
+            cycle: activeCycle,
             icon: 'fa-user-plus',
             title: 'Matrícula Oficial de Estudiantes',
             message: `${activos.length} estudiante(s) activo(s) matriculado(s) en el ciclo escolar ${activeCycle}.`,
@@ -23722,8 +23781,9 @@ function getUserAlerts() {
 
         // 3. Monitoreo de Notas de Cuadro General
         rawAlerts.push({
-            id: `alert_sec_gradebook_${activeBimestre}`,
+            id: `alert_sec_gradebook_${activeBimestre}_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-clipboard-list',
             title: 'Control de Notas y Expedientes',
             message: `Revise el avance de calificaciones del claustro docente para la emisión de tarjetas y boletines.`,
@@ -23737,6 +23797,7 @@ function getUserAlerts() {
             rawAlerts.push({
                 id: `alert_sec_retiros_entregados_${conRetiro.length}_${activeCycle}`,
                 type: 'info',
+                cycle: activeCycle,
                 icon: 'fa-box-archive',
                 title: 'Expedientes Entregados',
                 message: `${conRetiro.length} expediente(s) entregado(s) formalmente a padres o encargados.`,
@@ -23749,8 +23810,9 @@ function getUserAlerts() {
         const secAttRisk = getStudentsAtAttendanceRisk();
         if (secAttRisk.length > 0) {
             rawAlerts.push({
-                id: `alert_sec_att_risk_${secAttRisk.length}`,
+                id: `alert_sec_att_risk_${secAttRisk.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-user-clock',
                 title: `Inasistencias Relevantes (${secAttRisk.length} Casos)`,
                 message: `${secAttRisk.length} estudiante(s) con faltas acumuladas para seguimiento de secretaría.`,
@@ -23761,8 +23823,9 @@ function getUserAlerts() {
 
     } else { // admin
         rawAlerts.push({
-            id: 'alert_admin_security_status',
+            id: `alert_admin_security_status_${activeCycle}`,
             type: 'success',
+            cycle: activeCycle,
             icon: 'fa-shield-halved',
             title: 'Gestión de Cuentas y Accesos',
             message: 'Super Administrador activo. Control total sobre usuarios, pensum y base de datos.',
@@ -23771,8 +23834,9 @@ function getUserAlerts() {
         });
 
         rawAlerts.push({
-            id: 'alert_admin_pensum_catalog',
+            id: `alert_admin_pensum_catalog_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-book-open-reader',
             title: 'Malla Curricular y Pensum',
             message: 'Administre el catálogo oficial de materias y la asignación de catedráticos.',
@@ -23781,8 +23845,9 @@ function getUserAlerts() {
         });
 
         rawAlerts.push({
-            id: 'alert_admin_backup_reminder',
+            id: `alert_admin_backup_reminder_${activeCycle}`,
             type: 'info',
+            cycle: activeCycle,
             icon: 'fa-database',
             title: 'Copia de Seguridad Recomendada',
             message: 'Descargue periódicamente una copia de seguridad JSON para respaldar toda la información escolar.',
@@ -23790,11 +23855,17 @@ function getUserAlerts() {
             actionLabel: 'Exportar Backup'
         });
 
-        const discCount = (STATE.disciplineReports || []).length;
+        const discCount = (STATE.disciplineReports || []).filter(d => {
+            if (!d) return false;
+            const dCycle = String(d.cycle || (d.date ? String(d.date).substring(0, 4) : '2026')).trim();
+            if (activeCycle === '2027' && dCycle === '2026') return false;
+            return true;
+        }).length;
         if (discCount > 0) {
             rawAlerts.push({
-                id: `alert_admin_disc_count_${discCount}`,
+                id: `alert_admin_disc_count_${discCount}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-triangle-exclamation',
                 title: 'Llamadas de Atención Registradas',
                 message: `Total de ${discCount} reporte(s) disciplinario(s) en el sistema.`,
@@ -23806,8 +23877,9 @@ function getUserAlerts() {
         const adminAttRisk = getStudentsAtAttendanceRisk();
         if (adminAttRisk.length > 0) {
             rawAlerts.push({
-                id: `alert_admin_att_risk_${adminAttRisk.length}`,
+                id: `alert_admin_att_risk_${adminAttRisk.length}_${activeCycle}`,
                 type: 'warning',
+                cycle: activeCycle,
                 icon: 'fa-user-clock',
                 title: `Monitoreo de Asistencia (${adminAttRisk.length} Casos en Riesgo)`,
                 message: `Existen ${adminAttRisk.length} estudiantes con 3 o más faltas en el mes actual.`,
@@ -23817,23 +23889,39 @@ function getUserAlerts() {
         }
     }
 
+    // 🛡️ REGLA INSTITUCIONAL: Invalidar y excluir alertas del ciclo 2026 en ciclo 2027
+    let validAlerts = rawAlerts;
+    if (activeCycle === '2027') {
+        validAlerts = validAlerts.filter(a => {
+            if (!a) return false;
+            if (a.cycle === '2026') return false;
+            if (typeof a.id === 'string' && (a.id.endsWith('_2026') || a.id.includes('_2026_') || a.id.includes('2026-'))) return false;
+            return true;
+        });
+    }
+
     // Filtrar alertas que el usuario actual ya descartó o marcó como resueltas
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
     
-    if (STATE.allAlertsCleared && (STATE.allAlertsCleared[currentUserId] || STATE.allAlertsCleared[role])) {
+    const userCycleKey = `${currentUserId}_${activeCycle}`;
+    const roleCycleKey = `${role}_${activeCycle}`;
+
+    if (STATE.allAlertsCleared && (STATE.allAlertsCleared[userCycleKey] || STATE.allAlertsCleared[roleCycleKey])) {
         return [];
     }
 
-    // Obtener conjunto unificado de alertas descartadas para usuario actual y su rol
+    // Obtener conjunto unificado de alertas descartadas para usuario actual y su rol en este ciclo
     const dismissed = new Set([
-        ...(STATE.dismissedAlerts[currentUserId] || []),
-        ...(STATE.dismissedAlerts[role] || []),
+        ...(STATE.dismissedAlerts[userCycleKey] || []),
+        ...(STATE.dismissedAlerts[roleCycleKey] || []),
+        ...(STATE.dismissedAlerts[currentUserId] || []).filter(id => !id.includes('2026')),
+        ...(STATE.dismissedAlerts[role] || []).filter(id => !id.includes('2026')),
         ...(STATE.dismissedAlerts['admin'] || []),
         ...(STATE.dismissedAlerts['usr-admin-01'] || []),
         ...(STATE.dismissedAlerts['usr-admin-nehemias'] || [])
     ]);
 
-    return rawAlerts.filter(a => !dismissed.has(a.id));
+    return validAlerts.filter(a => !dismissed.has(a.id));
 }
 
 function dismissAlert(alertId, e, showToastNotice = true) {
@@ -23841,10 +23929,19 @@ function dismissAlert(alertId, e, showToastNotice = true) {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
 
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
 
-    const targetKeys = [currentUserId, role, 'admin', 'usr-admin-01', 'usr-admin-nehemias'];
+    const targetKeys = [
+        currentUserId, 
+        role, 
+        `${currentUserId}_${activeCycle}`,
+        `${role}_${activeCycle}`,
+        'admin', 
+        'usr-admin-01', 
+        'usr-admin-nehemias'
+    ];
     targetKeys.forEach(key => {
         if (key) {
             if (!STATE.dismissedAlerts[key]) STATE.dismissedAlerts[key] = [];
@@ -23913,10 +24010,19 @@ function dismissAllAlerts() {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
 
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
 
-    const targetKeys = [currentUserId, role, 'admin', 'usr-admin-01', 'usr-admin-nehemias'];
+    const targetKeys = [
+        currentUserId, 
+        role, 
+        `${currentUserId}_${activeCycle}`,
+        `${role}_${activeCycle}`,
+        'admin', 
+        'usr-admin-01', 
+        'usr-admin-nehemias'
+    ];
     targetKeys.forEach(key => {
         if (key) {
             if (!STATE.dismissedAlerts[key]) STATE.dismissedAlerts[key] = [];
@@ -23932,6 +24038,8 @@ function dismissAllAlerts() {
     if (!STATE.allAlertsCleared) STATE.allAlertsCleared = {};
     STATE.allAlertsCleared[currentUserId] = true;
     STATE.allAlertsCleared[role] = true;
+    STATE.allAlertsCleared[`${currentUserId}_${activeCycle}`] = true;
+    STATE.allAlertsCleared[`${role}_${activeCycle}`] = true;
 
     saveStateToLocalStorage();
     updateUserAlertsUI();
@@ -23954,15 +24062,20 @@ function restoreAllAlerts() {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
 
     if (STATE.dismissedAlerts) {
         STATE.dismissedAlerts[currentUserId] = [];
         STATE.dismissedAlerts[role] = [];
+        STATE.dismissedAlerts[`${currentUserId}_${activeCycle}`] = [];
+        STATE.dismissedAlerts[`${role}_${activeCycle}`] = [];
         STATE.dismissedAlerts['admin'] = [];
     }
     if (STATE.allAlertsCleared) {
         STATE.allAlertsCleared[currentUserId] = false;
         STATE.allAlertsCleared[role] = false;
+        STATE.allAlertsCleared[`${currentUserId}_${activeCycle}`] = false;
+        STATE.allAlertsCleared[`${role}_${activeCycle}`] = false;
     }
 
     saveStateToLocalStorage();
