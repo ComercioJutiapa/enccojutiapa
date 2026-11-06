@@ -7287,14 +7287,14 @@ function renderEnrollmentSectionsDistribution() {
         titleEl.innerHTML = `<i class="fa-solid fa-users-rectangle"></i> Conteo Oficial de Estudiantes Inscritos por Sección (Ciclo ${targetCycle})`;
     }
 
-    // Copiar la lista base de grados
-    let grades = (STATE.gradesList && STATE.gradesList.length > 0) ? [...STATE.gradesList] : [];
+    // Copiar la lista base de grados y deduplicarla
+    let rawGrades = (STATE.gradesList && STATE.gradesList.length > 0) ? [...STATE.gradesList] : [];
 
-    // Garantizar que en 2027 o superior exista la Sección E de 4to
+    // Garantizar que en 2027 o superior exista la Sección E de 4to si no existe aún
     if (targetCycle === '2027' || String(STATE.activeCycle || '').trim() === '2027') {
-        const has4E = grades.some(g => (g.code === '4to E' || ((g.name || '').toLowerCase().includes('4to') && (g.section || '').toUpperCase().includes('E'))));
+        const has4E = rawGrades.some(g => (typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) === '4to_e' : (g.code === '4to E')));
         if (!has4E) {
-            grades.push({
+            rawGrades.push({
                 id: "grd-4e",
                 code: "4to E",
                 name: "4to Perito Contador",
@@ -7315,19 +7315,15 @@ function renderEnrollmentSectionsDistribution() {
     cycleStudents.forEach(s => {
         if (!s) return;
         const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { grade: s.grade || '', section: s.section || '' };
-        const sSec = (s.section || assign.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
-        const sGrade = (s.grade || assign.grade || '').toLowerCase().trim();
-        const sWord = sGrade.split(' ')[0]; // '4to', '5to', '6to'
-        if (!sSec || !sWord) return;
+        const stuKey = (typeof getGradeSectionCanonicalKey === 'function') ? getGradeSectionCanonicalKey(assign) : '';
+        if (!stuKey) return;
 
-        const exists = grades.some(g => {
-            const gWord = (g.name || '').toLowerCase().trim().split(' ')[0];
-            const gSec = (g.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
-            return gWord === sWord && gSec === sSec;
-        });
-
+        const exists = rawGrades.some(g => (typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) === stuKey : false));
         if (!exists) {
-            grades.push({
+            const sSec = (assign.section || s.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
+            const sGrade = (assign.grade || s.grade || '').toLowerCase().trim();
+            const sWord = sGrade.split(' ')[0];
+            rawGrades.push({
                 id: `grd-dyn-${sWord}-${sSec.toLowerCase()}`,
                 code: `${sWord} ${sSec}`,
                 name: `${sWord} Perito Contador`,
@@ -7340,8 +7336,8 @@ function renderEnrollmentSectionsDistribution() {
         }
     });
 
-    // Ordenar con sortGrades (respetará 4to, 5to, 6to y orden correlativo alfabético A, B, C, D, E...)
-    grades = sortGrades(grades);
+    // Deduplicación canónica estricta (elimina cualquier duplicado de grado y sección)
+    let grades = sortGrades(deduplicateGradesCollection(rawGrades));
 
     // Agrupación dinámica por grado escolar
     const groups = {};
@@ -7409,9 +7405,11 @@ function updateGradeSelects() {
         if (gradeSelects && gradeSelects.length > 0) {
             const isDocente = (STATE.currentRole === 'docente');
             const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
-            const allGrades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
+            const allGrades = (STATE.gradesList && STATE.gradesList.length > 0) 
+                ? sortGrades(deduplicateGradesCollection(STATE.gradesList)) 
+                : [];
             const teacherGrades = (isDocente && currentDocenteUser && typeof getTeacherAssignedGradesList === 'function')
-                ? sortGrades(getTeacherAssignedGradesList(currentDocenteUser))
+                ? sortGrades(deduplicateGradesCollection(getTeacherAssignedGradesList(currentDocenteUser)))
                 : allGrades;
 
             gradeSelects.forEach(sel => {
@@ -7424,8 +7422,14 @@ function updateGradeSelects() {
                 const grades = (isDocente && isFilterSel) ? teacherGrades : allGrades;
 
                 let opts = isProfileSel ? '<option value="">-- Seleccione Grado y Sección --</option>' : '<option value="">Todos los Grados / Secciones</option>';
+                const seenVals = new Set();
                 grades.forEach(g => {
                     const val = g.name + ' - ' + g.section;
+                    const cKey = (typeof getGradeSectionCanonicalKey === 'function') ? getGradeSectionCanonicalKey(g) : val;
+                    if (seenVals.has(cKey) || seenVals.has(val)) return;
+                    seenVals.add(cKey);
+                    seenVals.add(val);
+
                     let label = `${g.name} (${g.section})`;
                     if (isEnrollmentForm) {
                         const count = getStudentsCountByGradeAndSection(g.name, g.section, g.code);
@@ -8301,16 +8305,35 @@ function deduplicateStudentsCollection(students) {
 }
 window.deduplicateStudentsCollection = deduplicateStudentsCollection;
 
+function getGradeSectionCanonicalKey(g) {
+    if (!g) return '';
+    const rawGrade = (typeof g === 'string') ? g : (g.name || g.grade || g.grado || '');
+    const rawSec = (typeof g === 'string') ? '' : (g.section || g.seccion || g.code || '');
+    const w = rawGrade.trim().split(' ')[0].toLowerCase(); // '4to', '5to', '6to'
+    let sec = '';
+    if (typeof getCleanSectionLetter === 'function') {
+        sec = getCleanSectionLetter(rawSec || rawGrade);
+    }
+    if (!sec) {
+        const m = (rawSec || rawGrade).match(/(?:Secci[oó]n\s*|\b)([A-Z])\b/i);
+        sec = m ? m[1].toUpperCase() : '';
+    }
+    return (w && sec) ? `${w}_${sec.toLowerCase()}` : (rawGrade + '_' + rawSec).trim().toLowerCase();
+}
+window.getGradeSectionCanonicalKey = getGradeSectionCanonicalKey;
+
 function deduplicateGradesCollection(grades) {
     if (!Array.isArray(grades)) return [];
-    const seen = new Set();
+    const seenKeys = new Set();
+    const seenIds = new Set();
     const result = [];
     grades.forEach(g => {
-        if (!g || !g.name) return;
-        const key = ((g.name || '') + '_' + (g.section || '')).trim().toLowerCase();
-        if (seen.has(key) || (g.id && seen.has(g.id))) return;
-        seen.add(key);
-        if (g.id) seen.add(g.id);
+        if (!g) return;
+        const key = getGradeSectionCanonicalKey(g);
+        if (key && seenKeys.has(key)) return;
+        if (g.id && seenIds.has(g.id)) return;
+        if (key) seenKeys.add(key);
+        if (g.id) seenIds.add(g.id);
         result.push(g);
     });
     return result;
@@ -8337,20 +8360,8 @@ function purifySchoolStructure() {
         "grd-6c": { teacher: "María Jannete Salguero Mellado", id: "usr-doc-16" },
         "grd-6d": { teacher: "Edvin Osvaldo López Recinos", id: "usr-doc-08" }
     };
-    const existingMap = new Map();
-    const customGrades = [];
-    if (Array.isArray(STATE.gradesList)) {
-        STATE.gradesList.forEach(g => {
-            if (g && g.id) {
-                existingMap.set(g.id, { guideTeacher: g.guideTeacher, guideTeacherId: g.guideTeacherId });
-                if (!["grd-4a","grd-4b","grd-4c","grd-4d","grd-4e","grd-5a","grd-5b","grd-5c","grd-5d","grd-6a","grd-6b","grd-6c","grd-6d"].includes(g.id)) {
-                    customGrades.push(g);
-                }
-            }
-        });
-    }
 
-    const officialGrades = [
+    const officialTemplates = [
         { id: "grd-4a", code: "4to A", name: "4to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-4b", code: "4to B", name: "4to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-4c", code: "4to C", name: "4to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
@@ -8364,17 +8375,49 @@ function purifySchoolStructure() {
         { id: "grd-6b", code: "6to B", name: "6to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-6c", code: "6to C", name: "6to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-6d", code: "6to D", name: "6to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" }
-    ].map(g => {
-        const ex = existingMap.get(g.id);
-        const def = defaultGuides[g.id] || {};
-        return {
-            ...g,
-            guideTeacher: (ex && ex.guideTeacher) ? ex.guideTeacher : (def.teacher || ""),
-            guideTeacherId: (ex && ex.guideTeacherId) ? ex.guideTeacherId : (def.id || "")
-        };
+    ];
+
+    const existingList = Array.isArray(STATE.gradesList) ? STATE.gradesList : [];
+    const mergedList = [];
+    const seenKeys = new Set();
+
+    // 1. Respetar y adoptar secciones existentes (por ejemplo las de Firebase como grd-1793888165559-46)
+    existingList.forEach(ex => {
+        if (!ex) return;
+        const key = getGradeSectionCanonicalKey(ex);
+        if (key && !seenKeys.has(key)) {
+            seenKeys.add(key);
+            const tmpl = officialTemplates.find(t => getGradeSectionCanonicalKey(t) === key);
+            const def = (tmpl && defaultGuides[tmpl.id]) ? defaultGuides[tmpl.id] : {};
+            mergedList.push({
+                ...ex,
+                id: ex.id || (tmpl ? tmpl.id : `grd-${Date.now()}`),
+                code: ex.code || (tmpl ? tmpl.code : `${ex.name} ${ex.section}`),
+                name: ex.name || (tmpl ? tmpl.name : 'Perito Contador'),
+                section: ex.section || (tmpl ? tmpl.section : 'Sección A'),
+                career: ex.career || 'Perito Contador',
+                shift: ex.shift || 'Matutina',
+                guideTeacher: ex.guideTeacher || def.teacher || 'Sin asignar',
+                guideTeacherId: ex.guideTeacherId || def.id || null
+            });
+        }
     });
 
-    STATE.gradesList = sortGrades([...officialGrades, ...customGrades]);
+    // 2. Para cualquier plantilla oficial que aún no exista, agregarla
+    officialTemplates.forEach(tmpl => {
+        const key = getGradeSectionCanonicalKey(tmpl);
+        if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            const def = defaultGuides[tmpl.id] || {};
+            mergedList.push({
+                ...tmpl,
+                guideTeacher: def.teacher || 'Sin asignar',
+                guideTeacherId: def.id || null
+            });
+        }
+    });
+
+    STATE.gradesList = sortGrades(deduplicateGradesCollection(mergedList));
 
     if (Array.isArray(STATE.students)) {
         STATE.students = deduplicateStudentsCollection(STATE.students);
@@ -8390,24 +8433,17 @@ function purifySchoolStructure() {
 window.purifySchoolStructure = purifySchoolStructure;
 
 function ensureOfficialGradesList() {
-    const officialIds = ["grd-4a","grd-4b","grd-4c","grd-4d","grd-5a","grd-5b","grd-5c","grd-5d","grd-6a","grd-6b","grd-6c","grd-6d"];
-    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12 || !officialIds.every(id => STATE.gradesList.some(g => g && g.id === id))) {
+    const baseOfficialKeys = ["4to_a","4to_b","4to_c","4to_d","5to_a","5to_b","5to_c","5to_d","6to_a","6to_b","6to_c","6to_d"];
+    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12) {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+    } else {
+        const currentKeys = new Set(STATE.gradesList.map(getGradeSectionCanonicalKey));
+        const missingBase = baseOfficialKeys.some(k => !currentKeys.has(k));
+        if (missingBase) {
+            if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+        }
     }
-    const curCycle = String(STATE.activeCycle || '').trim();
-    if ((curCycle === '2027' || curCycle >= '2027') && !STATE.gradesList.some(g => g && (g.id === 'grd-4e' || g.code === '4to E'))) {
-        STATE.gradesList.push({
-            id: "grd-4e",
-            code: "4to E",
-            name: "4to Perito Contador",
-            section: "Sección E",
-            career: "Perito Contador",
-            shift: "Matutina",
-            guideTeacher: "Sin asignar",
-            guideTeacherId: null
-        });
-        STATE.gradesList = sortGrades(STATE.gradesList);
-    }
+    STATE.gradesList = sortGrades(deduplicateGradesCollection(STATE.gradesList));
     return STATE.gradesList;
 }
 window.ensureOfficialGradesList = ensureOfficialGradesList;
@@ -40965,8 +41001,8 @@ function renderGradesTable(searchQuery = '') {
     const careerFilter = (careerFilterEl && careerFilterEl.value) ? careerFilterEl.value : 'ALL';
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('gradesSearchInput') ? document.getElementById('gradesSearchInput').value : '')).toLowerCase().trim();
 
-    // Ordenar rigurosamente por Grado y Sección
-    let list = sortGrades(STATE.gradesList || []);
+    // Ordenar y deduplicar rigurosamente por Grado y Sección
+    let list = sortGrades(deduplicateGradesCollection(STATE.gradesList || []));
 
     // Actualizar KPIs de Secciones y Estudiantes
     const totalSections = list.length;

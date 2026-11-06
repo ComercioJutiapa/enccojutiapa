@@ -92,6 +92,8 @@ const sandbox = {
 };
 sandbox.window = sandbox;
 
+const fnKey = extractFunction(appJs, 'getGradeSectionCanonicalKey');
+const fnDedupGrades = extractFunction(appJs, 'deduplicateGradesCollection');
 const fnWeight = extractFunction(appJs, 'getGradeWeight');
 const fnSort = extractFunction(appJs, 'sortGrades');
 const fnCleanSec = extractFunction(appJs, 'getCleanSectionLetter');
@@ -102,6 +104,8 @@ const fnRenderDist = extractFunction(appJs, 'renderEnrollmentSectionsDistributio
 
 vm.createContext(sandbox);
 vm.runInContext(`
+    ${fnKey}
+    ${fnDedupGrades}
     ${fnWeight}
     ${fnSort}
     ${fnCleanSec}
@@ -109,6 +113,8 @@ vm.runInContext(`
     ${fnFilterCycle}
     ${fnCount}
     ${fnRenderDist}
+    window.getGradeSectionCanonicalKey = getGradeSectionCanonicalKey;
+    window.deduplicateGradesCollection = deduplicateGradesCollection;
     window.getGradeWeight = getGradeWeight;
     window.sortGrades = sortGrades;
     window.getCleanSectionLetter = getCleanSectionLetter;
@@ -266,6 +272,37 @@ const posF = updatedGrid.indexOf('Sección F');
 
 assert(posA < posB && posB < posC && posC < posD && posD < posE && posE < posF, "El orden alfabético correlativo de secciones debe ser A -> B -> C -> D -> E -> F");
 console.log("  ✅ Test 4 Superado: Nueva sección 4to F agregada dinámicamente y ordenada alfabéticamente (A->B->C->D->E->F).");
+
+// TEST 5: Verificación estricta de NO duplicidad de Sección E
+console.log("\n▶ [TEST 5] Verificando que 4to Sección E aparezca EXACTAMENTE UNA VEZ...");
+
+// Simular caso donde Firebase ya contenía un ID personalizado para 4to E:
+sandbox.STATE.gradesList.push({
+    id: "grd-1793888165559-46",
+    code: '4to E',
+    name: '4to Perito Contador',
+    section: 'Sección E',
+    career: 'Perito Contador'
+});
+
+// Ejecutar deduplicación canónica
+sandbox.STATE.gradesList = sandbox.deduplicateGradesCollection(sandbox.STATE.gradesList);
+
+// Contar en gradesList cuántas secciones 4to E existen
+const count4EInGrades = sandbox.STATE.gradesList.filter(g => {
+    return (g.name || '').includes('4to') && (g.section || '').includes('E');
+}).length;
+assert.strictEqual(count4EInGrades, 1, `4to Sección E debe existir exactamente 1 vez en gradesList (obtenido: ${count4EInGrades})`);
+
+// Renderizar panel de distribución
+sandbox.renderEnrollmentSectionsDistribution();
+const finalGrid = mockDOM.getElementById('enrollmentSectionsDistributionGrid').innerHTML;
+
+// Contar cuántas tarjetas de selección aparecen para 4to Sección E en el panel
+const cardMatches = finalGrid.match(/selectEnrollmentSectionFromSummary\('[^']*4to[^']*Secci[oó]n\s+E[^']*'\)/g);
+assert(cardMatches && cardMatches.length === 1, `4to Sección E debe renderizarse exactamente en 1 tarjeta (obtenido: ${cardMatches ? cardMatches.length : 0})`);
+console.log(`  ✓ Conteo de tarjetas en UI: 4to Sección E aparece exactamente 1 vez.`);
+console.log("  ✅ Test 5 Superado: Cero duplicidad garantizada para 4to Sección E.");
 
 console.log("\n================================================================================");
 console.log("🎉 TODAS LAS VERIFICACIONES DE CICLO Y SECCIONES DINÁMICAS PASARON (100%)");
