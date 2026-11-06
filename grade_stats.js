@@ -1467,8 +1467,10 @@ function renderCuadroEstadisticoOficial() {
                 }
             });
 
-            // REGLA 3: UMBRAL DE PROMOCIÓN MINEDUC (Art. 26 Acuerdo 1171-2010)
-            const maxRecup = totalCursos > 9 ? 4 : 3;
+            // REGLA 3: UMBRAL DE PROMOCIÓN MINEDUC (Art. 26 Acuerdo 1171-2010 y 1770-2020)
+            // 4to y 5to: Hasta 3 materias reprobadas = Con Derecho a Recuperación; 4 o más = Sin Derecho.
+            // 6to: Hasta 4 materias reprobadas = Con Derecho a Recuperación; más de 4 (>=5) = Sin Derecho.
+            const maxRecup = (gKey === 'SEXTO') ? 4 : 3;
             const isPromovido = (reprobadas === 0);
             const isConDerecho = (reprobadas > 0 && reprobadas <= maxRecup);
             const isSinDerecho = (reprobadas > maxRecup);
