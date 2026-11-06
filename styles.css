@@ -5473,13 +5473,14 @@ body.theme-dark .custom-table tbody tr:hover {
     background: #ffffff;
     border-radius: 10px;
     border: 1px solid #cbd5e1;
-    padding: 20px 22px;
+    padding: 22px 24px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-    max-width: 1080px;
+    max-width: 1240px;
     margin: 0 auto 24px auto;
     font-family: 'Segoe UI', Calibri, Arial, sans-serif;
     color: #1e293b;
     box-sizing: border-box;
+    transition: transform 0.2s ease, max-width 0.2s ease;
 }
 
 .cuadro-estadistico-view .cuadro-header {
@@ -5501,8 +5502,8 @@ body.theme-dark .custom-table tbody tr:hover {
     border-radius: 8px;
     padding: 10px 14px;
     margin-bottom: 16px;
-    font-size: 11.5px;
-    line-height: 1.4;
+    font-size: 12.5px;
+    line-height: 1.45;
 }
 
 .cuadro-estadistico-view .cuadro-table-container {
@@ -5520,14 +5521,14 @@ body.theme-dark .custom-table tbody tr:hover {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
-    font-size: 11px;
+    font-size: 13px;
     margin-bottom: 0;
 }
 
 .cuadro-estadistico-view table.cuadro-table th,
 .cuadro-estadistico-view table.cuadro-table td {
     border: 1px solid #cbd5e1;
-    padding: 6px 5px;
+    padding: 7px 6px;
     vertical-align: middle;
 }
 
@@ -5535,7 +5536,7 @@ body.theme-dark .custom-table tbody tr:hover {
     background: #1e3a8a;
     color: #ffffff;
     font-weight: 800;
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.3px;
     border: 1px solid #64748b;
 }
@@ -5543,7 +5544,7 @@ body.theme-dark .custom-table tbody tr:hover {
 .cuadro-estadistico-view table.cuadro-table thead tr:nth-child(2) th {
     background: #e2e8f0;
     color: #1e3a8a;
-    font-size: 9.5px;
+    font-size: 11.5px;
     font-weight: 800;
     border: 1px solid #94a3b8;
     line-height: 1.15;
@@ -5567,10 +5568,10 @@ body.theme-dark .custom-table tbody tr:hover {
     background: #dbeafe;
     color: #0f172a;
     font-weight: 800;
-    font-size: 12px;
+    font-size: 14.5px;
     border-top: 2px solid #1e3a8a;
     border-bottom: 2px double #1e3a8a;
-    padding: 8px 5px;
+    padding: 9px 6px;
 }
 
 .cuadro-estadistico-view .cuadro-docentes-wrapper {
@@ -5585,10 +5586,10 @@ body.theme-dark .custom-table tbody tr:hover {
     background: #334155;
     color: #ffffff;
     font-weight: 700;
-    font-size: 10.5px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 6px 12px;
+    padding: 7px 12px;
     text-align: center;
 }
 
@@ -5596,7 +5597,7 @@ body.theme-dark .custom-table tbody tr:hover {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     background: #ffffff;
-    font-size: 11px;
+    font-size: 12.5px;
     text-align: center;
 }
 
@@ -5765,6 +5766,7 @@ body.theme-dark .custom-table tbody tr:hover {
 
 /* ========================================================================== */
 /* IMPRESIÓN OFICIAL TAMAÑO CARTA HORIZONTAL EN 1 HOJA (CUADRO ESTADÍSTICO)   */
+/* Centrado vertical y horizontal, tipografía ampliada sin saltos de página   */
 /* ========================================================================== */
 @media print {
     body.print-cuadro-mode,
@@ -5772,11 +5774,15 @@ body.theme-dark .custom-table tbody tr:hover {
     body:has(#tabGradeStatsCuadro[style*="background:#0284c7"]) {
         @page {
             size: letter landscape !important;
-            margin: 8mm 10mm !important;
+            margin: 4mm 6mm !important;
         }
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        min-height: 100vh !important;
     }
 
-    /* Regla para forzar que el Cuadro Estadístico ocupe exactamente 1 sola hoja */
+    /* Regla para forzar que el Cuadro Estadístico ocupe exactamente 1 sola hoja centrado y ampliado */
     .cuadro-estadistico-view {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
@@ -5784,43 +5790,67 @@ body.theme-dark .custom-table tbody tr:hover {
         break-after: avoid !important;
         page-break-before: avoid !important;
         break-before: avoid !important;
-        margin: 0 auto !important;
-        max-width: 1020px !important;
+        margin: auto !important;
+        max-width: 268mm !important;
         width: 100% !important;
-        padding: 4px 8px !important;
+        padding: 4mm 6mm !important;
         border: none !important;
         box-shadow: none !important;
         background: #ffffff !important;
+        box-sizing: border-box !important;
     }
 
     .cuadro-estadistico-view .cuadro-header {
-        margin-bottom: 6px !important;
-        padding-bottom: 4px !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 6px !important;
     }
 
     .cuadro-estadistico-view .cuadro-info-grid {
-        margin-bottom: 6px !important;
-        padding: 5px 10px !important;
-        font-size: 9.5px !important;
+        margin-bottom: 8px !important;
+        padding: 6px 12px !important;
+        font-size: 11.5px !important;
     }
 
     .cuadro-estadistico-view table.cuadro-table {
-        margin-bottom: 6px !important;
-        font-size: 9.5px !important;
+        margin-bottom: 8px !important;
+        font-size: 13.5px !important;
     }
 
     .cuadro-estadistico-view table.cuadro-table th,
     .cuadro-estadistico-view table.cuadro-table td {
-        padding: 3.5px 3px !important;
+        padding: 6px 4px !important;
+    }
+
+    .cuadro-estadistico-view table.cuadro-table thead tr.cuadro-hdr-row th {
+        font-size: 13px !important;
+    }
+
+    .cuadro-estadistico-view table.cuadro-table thead tr:nth-child(2) th {
+        font-size: 11px !important;
+    }
+
+    .cuadro-estadistico-view table.cuadro-table tfoot tr.cuadro-totales-row td {
+        font-size: 14.5px !important;
+        padding: 7px 4px !important;
     }
 
     .cuadro-estadistico-view .cuadro-docentes-wrapper {
-        margin-bottom: 8px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-docentes-title {
+        font-size: 11.5px !important;
+        padding: 5px 8px !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-docentes-grid {
+        font-size: 12px !important;
     }
 
     .cuadro-estadistico-view .cuadro-signatures {
-        margin-top: 4px !important;
-        padding-top: 4px !important;
+        margin-top: 8px !important;
+        padding-top: 6px !important;
+        font-size: 12px !important;
     }
 }
 

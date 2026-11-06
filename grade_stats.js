@@ -1,3 +1,22 @@
+
+window.setCuadroZoom = function(scale) {
+    const el = document.querySelector('.cuadro-estadistico-view');
+    if (!el) return;
+    el.style.transformOrigin = 'top center';
+    el.style.transform = (scale === 1) ? 'none' : ('scale(' + scale + ')');
+    el.style.marginBottom = (scale > 1) ? (Math.round((scale - 1) * 350) + 'px') : '24px';
+    const btns = document.querySelectorAll('.cuadro-zoom-btn');
+    btns.forEach(b => {
+        const bScale = parseFloat(b.getAttribute('data-scale') || '1');
+        if (Math.abs(bScale - scale) < 0.05) {
+            b.style.background = '#0284c7';
+            b.style.color = '#ffffff';
+        } else {
+            b.style.background = '#ffffff';
+            b.style.color = '#475569';
+        }
+    });
+};
 /**
  * ENCCO Jutiapa — Plataforma Oficial
  * Módulo: Promedios Finales y Estadísticas Oficiales ENCCO
@@ -1523,7 +1542,26 @@ function renderCuadroEstadisticoOficial() {
 
     // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR (Optimizado para Tablet Blackview Zeno 10 5G y Desktop)
     const html = `
-    <div class="cuadro-estadistico-view encco-doc-page">
+    <div class="no-print" style="max-width:1240px; margin:0 auto 14px auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:10px 16px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-file-circle-check" style="color:#16a34a; font-size:1.15rem;"></i>
+            <div>
+                <span style="font-weight:800; font-size:0.92rem; color:#14532d; display:block;">Cuadro Oficial MINEDUC - Vista Ampliada y Centrada</span>
+                <span style="font-size:0.75rem; color:#15803d;">Ajustado para visualizar con total nitidez y centrado en pantalla, y para imprimirse en 1 sola hoja carta horizontal.</span>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div style="display:inline-flex; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; background:#ffffff;">
+                <button type="button" class="cuadro-zoom-btn" data-scale="1.0" onclick="setCuadroZoom(1.0)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#ffffff; color:#475569; cursor:pointer;" title="Escala Normal 100%">100%</button>
+                <button type="button" class="cuadro-zoom-btn" data-scale="1.1" onclick="setCuadroZoom(1.1)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#0284c7; color:#ffffff; border-left:1px solid #cbd5e1; cursor:pointer;" title="Escala Ampliada Recomendada">110% Ampliado</button>
+                <button type="button" class="cuadro-zoom-btn" data-scale="1.2" onclick="setCuadroZoom(1.2)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#ffffff; color:#475569; border-left:1px solid #cbd5e1; cursor:pointer;" title="Gran Formato / Tablet">120% Máximo</button>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="printCuadroEstadisticoOficial()" style="background:#0284c7; border:none; color:#ffffff; font-weight:800; font-size:0.85rem; padding:8px 16px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.25);">
+                <i class="fa-solid fa-print"></i> Imprimir en 1 Hoja Carta Horizontal
+            </button>
+        </div>
+    </div>
+    <div class="cuadro-estadistico-view encco-doc-page" style="transform-origin:top center; transform:scale(1.1); margin-bottom:50px;">
         <!-- ENCABEZADO INSTITUCIONAL -->
         <div class="cuadro-header">
             <div style="width:75px; text-align:center;">
@@ -1799,166 +1837,193 @@ function printCuadroEstadisticoOficial() {
 <style>
     @page {
         size: letter landscape;
-        margin: 8mm 10mm;
+        margin: 4mm 6mm;
     }
-    * {
+    *, *::before, *::after {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
-        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-family: 'Segoe UI', Calibri, Arial, Helvetica, sans-serif;
     }
     html, body {
         width: 100%;
+        height: 100%;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
         background: #ffffff;
         color: #0f172a;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
     .print-sheet {
         width: 100%;
-        max-width: 1020px;
-        margin: 0 auto;
-        padding: 4px 8px;
+        max-width: 268mm;
+        margin: auto;
+        padding: 4mm 6mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         page-break-after: avoid !important;
         break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-before: avoid !important;
     }
     .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border-bottom: 2px solid #1e3a8a;
+        border-bottom: 2.5px solid #1e3a8a;
         padding-bottom: 6px;
         margin-bottom: 8px;
     }
     .logo-container {
-        width: 65px;
+        width: 75px;
         text-align: center;
     }
     .logo-container img {
-        max-width: 60px;
-        max-height: 60px;
+        max-width: 70px;
+        max-height: 70px;
         object-fit: contain;
     }
     .title-container {
         flex: 1;
         text-align: center;
-        padding: 0 10px;
+        padding: 0 12px;
     }
     .title-main {
-        font-size: 14.5px;
-        font-weight: 800;
+        font-size: 19px;
+        font-weight: 900;
         color: #1e3a8a;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
         text-transform: uppercase;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
+        line-height: 1.2;
     }
     .title-sub {
-        font-size: 11.5px;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 800;
         color: #0f172a;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
     }
     .title-level {
-        font-size: 9.5px;
-        font-weight: 600;
-        color: #64748b;
-        letter-spacing: 0.8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #475569;
+        letter-spacing: 1px;
     }
     .info-grid {
         display: grid;
         grid-template-columns: 1.4fr 1fr;
-        gap: 4px 16px;
+        gap: 5px 20px;
         background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        padding: 6px 12px;
-        margin-bottom: 8px;
-        font-size: 10px;
+        border: 1.5px solid #94a3b8;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin-bottom: 10px;
+        font-size: 11.5px;
         line-height: 1.35;
     }
     .info-row {
         display: flex;
+        align-items: center;
     }
     .info-label {
-        font-weight: 700;
+        font-weight: 800;
         color: #1e3a8a;
-        width: 125px;
+        width: 140px;
         flex-shrink: 0;
+        font-size: 11px;
     }
     .info-val {
         color: #0f172a;
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 11.5px;
     }
     table.stats-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 8px;
-        font-size: 10px;
+        margin-bottom: 10px;
         text-align: center;
+        border: 1.5px solid #475569;
     }
     table.stats-table th, table.stats-table td {
-        border: 1px solid #94a3b8;
-        padding: 4px 3px;
+        border: 1px solid #64748b;
+        padding: 6px 4px;
         vertical-align: middle;
     }
-    table.stats-table thead th {
+    table.stats-table thead tr th {
         background: #1e3a8a;
         color: #ffffff;
         font-weight: 800;
-        font-size: 10px;
+        font-size: 12px;
+        letter-spacing: 0.3px;
+        border: 1px solid #475569;
     }
     table.stats-table thead tr.sub-hdr th {
         background: #e2e8f0;
         color: #1e3a8a;
-        font-size: 8.5px;
+        font-size: 10.5px;
         font-weight: 800;
-        line-height: 1.15;
+        line-height: 1.2;
+        border: 1px solid #94a3b8;
     }
     table.stats-table tbody tr:nth-child(even) {
         background: #f8fafc;
     }
+    table.stats-table tbody td {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #0f172a;
+    }
     table.stats-table tbody td.grade-col {
-        font-weight: 700;
+        font-weight: 800;
         color: #0f172a;
         background: #f1f5f9;
-        font-size: 10px;
+        font-size: 13px;
+        text-align: center;
     }
     table.stats-table tfoot tr td {
         background: #dbeafe;
         color: #0f172a;
         font-weight: 800;
-        font-size: 10.5px;
-        border-top: 2px solid #1e3a8a;
-        border-bottom: 2px double #1e3a8a;
-        padding: 5px 3px;
+        font-size: 14.5px;
+        border-top: 2.5px solid #1e3a8a;
+        border-bottom: 2.5px double #1e3a8a;
+        padding: 7px 4px;
     }
     .docentes-section {
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
+        border: 1.5px solid #94a3b8;
+        border-radius: 6px;
         overflow: hidden;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
+        background: #ffffff;
     }
     .docentes-header {
-        background: #334155;
+        background: #1e293b;
         color: #ffffff;
-        font-weight: 700;
-        font-size: 9px;
+        font-weight: 800;
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: 3px 8px;
+        letter-spacing: 0.8px;
+        padding: 4px 10px;
         text-align: center;
     }
     .docentes-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1.15fr;
         background: #ffffff;
-        font-size: 9.5px;
+        font-size: 11.5px;
         text-align: center;
     }
     .docentes-box {
-        padding: 5px 6px;
+        padding: 6px 10px;
         border-right: 1px solid #cbd5e1;
     }
     .docentes-box:last-child {
@@ -1966,52 +2031,52 @@ function printCuadroEstadisticoOficial() {
         background: #f8fafc;
     }
     .doc-highlight {
-        font-weight: 700;
+        font-weight: 800;
         color: #1e3a8a;
     }
     .signatures-container {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
-        padding-top: 6px;
+        padding-top: 8px;
         margin-top: 4px;
     }
     .sig-date {
         width: 30%;
-        font-size: 9.5px;
-        color: #334155;
-        line-height: 1.35;
+        font-size: 11.5px;
+        color: #1e293b;
+        line-height: 1.4;
     }
     .sig-stamp {
         width: 30%;
         text-align: center;
-        font-size: 10px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 800;
         color: #94a3b8;
-        letter-spacing: 2px;
-        padding-bottom: 10px;
+        letter-spacing: 3px;
+        padding-bottom: 14px;
     }
     .sig-director {
         width: 38%;
         text-align: center;
     }
     .sig-line {
-        border-bottom: 1.5px solid #0f172a;
-        width: 90%;
-        margin: 0 auto 4px auto;
+        border-bottom: 2px solid #0f172a;
+        width: 85%;
+        margin: 0 auto 6px auto;
     }
     .sig-name {
-        font-size: 10px;
-        font-weight: 700;
+        font-size: 12.5px;
+        font-weight: 800;
         color: #0f172a;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
     }
     .sig-role {
-        font-size: 9px;
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 700;
         color: #475569;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
     }
 </style>
 </head>
