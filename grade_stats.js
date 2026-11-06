@@ -1509,11 +1509,11 @@ function renderCuadroEstadisticoOficial() {
 
     window._lastCuadroEstadisticoData = statData;
 
-    // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR
+    // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR (Optimizado para Tablet Blackview Zeno 10 5G y Desktop)
     const html = `
-    <div class="cuadro-estadistico-view encco-doc-page" style="background:#ffffff; border-radius:8px; border:1px solid #cbd5e1; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.06); max-width:1050px; margin:0 auto; font-family:'Segoe UI', Calibri, Arial, sans-serif;">
+    <div class="cuadro-estadistico-view encco-doc-page">
         <!-- ENCABEZADO INSTITUCIONAL -->
-        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e3a8a; padding-bottom:10px; margin-bottom:12px;">
+        <div class="cuadro-header">
             <div style="width:75px; text-align:center;">
                 <img src="logo.png" alt="Logo ENCCO" style="max-width:70px; max-height:70px; object-fit:contain;" onerror="this.style.display='none'">
             </div>
@@ -1527,8 +1527,8 @@ function renderCuadroEstadisticoOficial() {
             </div>
         </div>
 
-        <!-- INFORMACIÓN GENERAL -->
-        <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:6px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+        <!-- INFORMACIÓN GENERAL (RESPONSIVO EN 10.1") -->
+        <div class="cuadro-info-grid">
             <div><strong style="color:#1e3a8a;">ESTABLECIMIENTO:</strong> ${statData.establecimiento}</div>
             <div><strong style="color:#1e3a8a;">CÓDIGO:</strong> ${statData.codigo}</div>
             <div><strong style="color:#1e3a8a;">CARRERA:</strong> ${statData.carrera}</div>
@@ -1537,12 +1537,12 @@ function renderCuadroEstadisticoOficial() {
             <div><strong style="color:#1e3a8a;">MUNICIPIO / DEPTO:</strong> ${statData.municipioDepto}</div>
         </div>
 
-        <!-- TABLA PRINCIPAL DE RENDIMIENTO ESCOLAR -->
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11px; margin-bottom:14px;">
+        <!-- TABLA PRINCIPAL DE RENDIMIENTO ESCOLAR (CON DESPLAZAMIENTO TÁCTIL Y COLUMNA FIJA) -->
+        <div class="cuadro-table-container">
+            <table class="cuadro-table">
                 <thead>
-                    <tr style="background:#1e3a8a; color:#ffffff;">
-                        <th rowspan="2" style="border:1px solid #94a3b8; padding:6px; width:14%;">GRADO</th>
+                    <tr class="cuadro-hdr-row">
+                        <th rowspan="2" class="grade-col" style="width:14%;">GRADO</th>
                         <th colspan="4" style="border:1px solid #94a3b8; padding:6px; width:39%;">HOMBRES</th>
                         <th colspan="4" style="border:1px solid #94a3b8; padding:6px; width:39%;">MUJERES</th>
                         <th rowspan="2" style="border:1px solid #94a3b8; padding:6px; width:8%;">TOTAL<br>EVALUADOS</th>
@@ -1560,8 +1560,8 @@ function renderCuadroEstadisticoOficial() {
                 </thead>
                 <tbody>
                     ${statData.grados.map((g, idx) => `
-                        <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; font-size:11px;">
-                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700; background:#f1f5f9;">${g.nombre}</td>
+                        <tr class="${idx % 2 === 0 ? 'row-even' : 'row-odd'}">
+                            <td class="grade-col">${g.nombre}</td>
                             <td style="border:1px solid #cbd5e1; padding:6px;">${g.hi}</td>
                             <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700; color:#166534;">${g.hp}</td>
                             <td style="border:1px solid #cbd5e1; padding:6px; color:#b45309;">${g.hcd}</td>
@@ -1575,8 +1575,8 @@ function renderCuadroEstadisticoOficial() {
                     `).join('')}
                 </tbody>
                 <tfoot>
-                    <tr style="background:#dbeafe; font-weight:800; font-size:11.5px; border-top:2px solid #1e3a8a; border-bottom:2px double #1e3a8a;">
-                        <td style="border:1px solid #94a3b8; padding:7px;">TOTALES</td>
+                    <tr class="cuadro-totales-row">
+                        <td class="grade-col">TOTALES</td>
                         <td style="border:1px solid #94a3b8; padding:7px;">${statData.totales.hi}</td>
                         <td style="border:1px solid #94a3b8; padding:7px; color:#166534;">${statData.totales.hp}</td>
                         <td style="border:1px solid #94a3b8; padding:7px; color:#b45309;">${statData.totales.hcd}</td>
@@ -1592,11 +1592,11 @@ function renderCuadroEstadisticoOficial() {
         </div>
 
         <!-- SECCIÓN DOCENTES -->
-        <div style="border:1px solid #cbd5e1; border-radius:6px; overflow:hidden; margin-bottom:18px;">
-            <div style="background:#334155; color:#ffffff; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; padding:5px 12px; text-align:center;">
+        <div class="cuadro-docentes-wrapper">
+            <div class="cuadro-docentes-title">
                 Personal Docente en Servicio (${statData.isOfficialHistorical ? 'Nómina Oficial SIRE 2026' : 'Nómina Activa'})
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; background:#ffffff; font-size:10.5px; text-align:center;">
+            <div class="cuadro-docentes-grid">
                 <div style="padding:8px 10px; border-right:1px solid #cbd5e1;">
                     <strong style="color:#1e3a8a;">HOMBRES:</strong> 
                     011 = <strong>${statData.docentes.h011}</strong> &nbsp;|&nbsp; 
@@ -1619,7 +1619,7 @@ function renderCuadroEstadisticoOficial() {
         </div>
 
         <!-- FIRMAS Y SELLO (El nombre de la Directora va exactamente en la parte de abajo de la línea) -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; padding-top:12px; margin-top:8px;">
+        <div class="cuadro-signatures">
             <div style="width:30%; font-size:11px; color:#334155; line-height:1.5;">
                 <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
                 Jutiapa, 31 de octubre de ${statData.cycle}
