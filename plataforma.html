@@ -3658,6 +3658,15 @@
                 <section class="app-view" id="view-grade-stats">
                     <!-- BARRA DE CONTROL Y FILTROS DINÁMICOS (NO VISIBLE AL IMPRIMIR) -->
                     <div class="section-toolbar no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; background:#fff; padding:14px 20px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+                        <!-- PESTAÑAS SUPERIORES: ACTAS POR SECCIÓN vs CUADRO DE RESUMEN ESTADÍSTICO OFICIAL -->
+                        <div class="grade-stats-tab-group no-print" style="display:flex; gap:8px; width:100%; border-bottom:1.5px solid #e2e8f0; padding-bottom:12px; margin-bottom:4px;">
+                            <button type="button" id="tabGradeStatsActas" class="btn btn-sm" onclick="switchGradeStatsTab('actas')" style="background:#0284c7; color:#ffffff; font-weight:700; border-radius:6px; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(2,132,199,0.3);">
+                                <i class="fa-solid fa-table-list"></i> Actas de Calificaciones por Sección
+                            </button>
+                            <button type="button" id="tabGradeStatsCuadro" class="btn btn-sm" onclick="switchGradeStatsTab('cuadro')" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:6px; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd5e1; cursor:pointer;">
+                                <i class="fa-solid fa-chart-pie"></i> Cuadro de Resumen Estadístico Oficial MINEDUC
+                            </button>
+                        </div>
                         <div class="toolbar-filters" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                             <span style="font-weight:800; color:#0369a1; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
                                 <i class="fa-solid fa-chart-column" style="color:#0284c7;"></i> Promedios Finales y Estadísticas

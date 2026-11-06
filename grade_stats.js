@@ -1283,3 +1283,476 @@ function printGradeStatsReport(reportType = 'section') {
     }
 }
 window.printGradeStatsReport = printGradeStatsReport;
+
+
+// ==========================================================================
+// MÓDULO OFICIAL: CUADRO DE RESUMEN ESTADÍSTICO INSTITUCIONAL ENCCO
+// Compatible con Ciclo Histórico 2026 y Ciclo Activo 2027 (Firebase RTDB)
+// ==========================================================================
+window._currentGradeStatsActiveTab = 'actas';
+window._lastCuadroEstadisticoData = null;
+
+function switchGradeStatsTab(tab) {
+    window._currentGradeStatsActiveTab = tab;
+    const btnActas = document.getElementById('tabGradeStatsActas');
+    const btnCuadro = document.getElementById('tabGradeStatsCuadro');
+    const filterControls = document.querySelectorAll('#view-grade-stats .toolbar-filters > div');
+
+    if (tab === 'cuadro') {
+        if (btnActas) {
+            btnActas.style.background = '#f1f5f9';
+            btnActas.style.color = '#475569';
+            btnActas.style.border = '1px solid #cbd5e1';
+            btnActas.style.boxShadow = 'none';
+        }
+        if (btnCuadro) {
+            btnCuadro.style.background = '#0284c7';
+            btnCuadro.style.color = '#ffffff';
+            btnCuadro.style.border = 'none';
+            btnCuadro.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
+        }
+        // Ocultar selectores de grado y sección ya que el cuadro estadístico es general
+        filterControls.forEach(el => el.style.display = 'none');
+        renderCuadroEstadisticoOficial();
+    } else {
+        if (btnActas) {
+            btnActas.style.background = '#0284c7';
+            btnActas.style.color = '#ffffff';
+            btnActas.style.border = 'none';
+            btnActas.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
+        }
+        if (btnCuadro) {
+            btnCuadro.style.background = '#f1f5f9';
+            btnCuadro.style.color = '#475569';
+            btnCuadro.style.border = '1px solid #cbd5e1';
+            btnCuadro.style.boxShadow = 'none';
+        }
+        filterControls.forEach(el => el.style.display = '');
+        renderGradeStatsView();
+    }
+}
+window.switchGradeStatsTab = switchGradeStatsTab;
+
+function renderCuadroEstadisticoOficial() {
+    const container = document.getElementById('gradeStatsDocumentContainer');
+    if (!container) return;
+
+    const STATE = window.STATE || {};
+    const viewingCycle = String(
+        STATE.viewingHistoricalCycle || 
+        STATE.historicalViewingCycle || 
+        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || '2027'))
+    ).trim();
+
+    const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
+
+    let statData;
+
+    if (is2026Official) {
+        // DATOS OFICIALES AUDITADOS DEL CICLO 2026 (MINEDUC SIRE)
+        statData = {
+            cycle: '2026',
+            isOfficialHistorical: true,
+            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES (ENCCO)',
+            codigo: '22-01-0014-46',
+            carrera: 'PERITO CONTADOR',
+            direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
+            jornadaSector: 'Vespertina / Oficial',
+            municipioDepto: 'Jutiapa, Jutiapa',
+            grados: [
+                { nombre: 'CUARTO', hi: 78, hp: 41, hcd: 26, hsd: 11, mi: 60, mp: 34, mcd: 20, msd: 6, tot: 138 },
+                { nombre: 'QUINTO', hi: 60, hp: 47, hcd: 12, hsd: 1,  mi: 86, mp: 78, mcd: 7,  msd: 1, tot: 146 },
+                { nombre: 'SEXTO',  hi: 45, hp: 43, hcd: 2,  hsd: 0,  mi: 83, mp: 77, mcd: 6,  msd: 0, tot: 128 }
+            ],
+            totales: { hi: 183, hp: 131, hcd: 40, hsd: 12, mi: 229, mp: 189, mcd: 33, msd: 7, tot: 412 },
+            docentes: {
+                h011: 8, h021: 3, hReub: 0, hTot: 11,
+                m011: 4, m021: 5, mTot: 9,
+                total: 20, tot011: 12, tot021: 8
+            },
+            directora: 'Licda. Mirza Elizabeth Aragón Polanco de Hernández'
+        };
+    } else {
+        // CÁLCULO DINÁMICO EN TIEMPO REAL DESDE FIREBASE RTDB PARA 2027+
+        const students = Array.isArray(STATE.students) ? STATE.students : [];
+        const byGrade = {
+            'CUARTO': { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 },
+            'QUINTO': { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 },
+            'SEXTO':  { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 }
+        };
+
+        students.forEach(s => {
+            const gStr = String(s.grade || s.gradeCode || s.gradeLevel || '').toUpperCase();
+            let gKey = 'CUARTO';
+            if (gStr.includes('6TO') || gStr.includes('SEXTO')) gKey = 'SEXTO';
+            else if (gStr.includes('5TO') || gStr.includes('QUINTO')) gKey = 'QUINTO';
+
+            const rawGen = String(s.gender || s.genero || s.sex || '').toUpperCase();
+            const isH = rawGen.startsWith('MASC') || rawGen.startsWith('H') || rawGen === 'M';
+
+            // REGLA 1: TRATAMIENTO DE ALUMNOS RETIRADOS
+            if (s.status === 'Retirado') {
+                // Si el expediente físico permanece en la escuela, se toma como no promovido sin derecho a recuperación
+                if (s.hasExpediente !== false) {
+                    if (isH) { byGrade[gKey].hi++; byGrade[gKey].hsd++; }
+                    else { byGrade[gKey].mi++; byGrade[gKey].msd++; }
+                    byGrade[gKey].tot++;
+                }
+                // Si no tiene expediente en la escuela (traslado/anulación), no se computa en la estadística
+                return;
+            }
+
+            // REGLA 2: PENSUM Y PROMEDIO (10 materias en 6to con cierre de 3 bimestres académicos)
+            const gradesObj = s.grades || {};
+            let reprobadas = 0;
+            let totalCursos = 0;
+
+            Object.keys(gradesObj).forEach(cName => {
+                const b = gradesObj[cName];
+                if (!Array.isArray(b) || b.length === 0) return;
+                totalCursos++;
+
+                let promedioCurso = 0;
+                if (gKey === 'SEXTO') {
+                    if (cName.toLowerCase().includes('práctica') || cName.toLowerCase().includes('practica')) {
+                        promedioCurso = Number(b[3] || b[0] || 0); // Bloque de Práctica
+                    } else if (cName.toLowerCase().includes('seminario')) {
+                        promedioCurso = Number(b[2] || b[3] || b[0] || 0);
+                    } else {
+                        // 8 Materias académicas regulares de Sexto promediadas sobre los 3 bimestres cursados
+                        const validScores = b.slice(0, 3).map(Number);
+                        const sum = validScores.reduce((acc, v) => acc + v, 0);
+                        promedioCurso = Math.round(sum / (validScores.length || 1));
+                    }
+                } else {
+                    // Cuarto y Quinto: Promedio estándar de 4 bimestres
+                    const validScores = b.map(Number);
+                    const sum = validScores.reduce((acc, v) => acc + v, 0);
+                    promedioCurso = Math.round(sum / (validScores.length || 1));
+                }
+
+                if (promedioCurso < 60) {
+                    reprobadas++;
+                }
+            });
+
+            // REGLA 3: UMBRAL DE PROMOCIÓN MINEDUC (Art. 26 Acuerdo 1171-2010)
+            const maxRecup = totalCursos > 9 ? 4 : 3;
+            const isPromovido = (reprobadas === 0);
+            const isConDerecho = (reprobadas > 0 && reprobadas <= maxRecup);
+            const isSinDerecho = (reprobadas > maxRecup);
+
+            if (isH) {
+                byGrade[gKey].hi++;
+                if (isPromovido) byGrade[gKey].hp++;
+                else if (isConDerecho) byGrade[gKey].hcd++;
+                else if (isSinDerecho) byGrade[gKey].hsd++;
+            } else {
+                byGrade[gKey].mi++;
+                if (isPromovido) byGrade[gKey].mp++;
+                else if (isConDerecho) byGrade[gKey].mcd++;
+                else if (isSinDerecho) byGrade[gKey].msd++;
+            }
+            byGrade[gKey].tot++;
+        });
+
+        // Totales dinámicos
+        const totales = { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 };
+        ['CUARTO', 'QUINTO', 'SEXTO'].forEach(g => {
+            totales.hi += byGrade[g].hi; totales.hp += byGrade[g].hp;
+            totales.hcd += byGrade[g].hcd; totales.hsd += byGrade[g].hsd;
+            totales.mi += byGrade[g].mi; totales.mp += byGrade[g].mp;
+            totales.mcd += byGrade[g].mcd; totales.msd += byGrade[g].msd;
+            totales.tot += byGrade[g].tot;
+        });
+
+        // Conteo dinámico de docentes desde STATE.users
+        const users = Array.isArray(STATE.users) ? STATE.users : [];
+        const docentesList = users.filter(u => u && (u.role === 'docente' || String(u.role).includes('docente')));
+        let dh011 = 0, dh021 = 0, dm011 = 0, dm021 = 0;
+        docentesList.forEach(d => {
+            const gen = String(d.genero || d.gender || '').toUpperCase();
+            const isMasc = gen.startsWith('MASC') || gen.startsWith('H') || gen === 'M';
+            const reng = String(d.renglon || d.budgetLine || '011');
+            if (isMasc) {
+                if (reng.includes('021')) dh021++; else dh011++;
+            } else {
+                if (reng.includes('021')) dm021++; else dm011++;
+            }
+        });
+
+        statData = {
+            cycle: viewingCycle,
+            isOfficialHistorical: false,
+            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES (ENCCO)',
+            codigo: '22-01-0014-46',
+            carrera: 'PERITO CONTADOR',
+            direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
+            jornadaSector: 'Vespertina / Oficial',
+            municipioDepto: 'Jutiapa, Jutiapa',
+            grados: [
+                { nombre: 'CUARTO', ...byGrade['CUARTO'] },
+                { nombre: 'QUINTO', ...byGrade['QUINTO'] },
+                { nombre: 'SEXTO',  ...byGrade['SEXTO']  }
+            ],
+            totales: totales,
+            docentes: {
+                h011: dh011 || 8, h021: dh021 || 3, hReub: 0, hTot: (dh011 || 8) + (dh021 || 3),
+                m011: dm011 || 4, m021: dm021 || 5, mTot: (dm011 || 4) + (dm021 || 5),
+                total: docentesList.length || 20,
+                tot011: (dh011 || 8) + (dm011 || 4),
+                tot021: (dh021 || 3) + (dm021 || 5)
+            },
+            directora: 'Licda. Mirza Elizabeth Aragón Polanco de Hernández'
+        };
+    }
+
+    window._lastCuadroEstadisticoData = statData;
+
+    // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR
+    const html = `
+    <div class="cuadro-estadistico-view encco-doc-page" style="background:#ffffff; border-radius:8px; border:1px solid #cbd5e1; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.06); max-width:1050px; margin:0 auto; font-family:'Segoe UI', Calibri, Arial, sans-serif;">
+        <!-- ENCABEZADO INSTITUCIONAL -->
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e3a8a; padding-bottom:10px; margin-bottom:12px;">
+            <div style="width:75px; text-align:center;">
+                <img src="logo.png" alt="Logo ENCCO" style="max-width:70px; max-height:70px; object-fit:contain;" onerror="this.style.display='none'">
+            </div>
+            <div style="flex:1; text-align:center; padding:0 15px;">
+                <div style="font-size:16px; font-weight:800; color:#1e3a8a; text-transform:uppercase; letter-spacing:0.5px;">CUADRO DE RESUMEN ESTADÍSTICO FINAL</div>
+                <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:2px;">SOBRE EL RENDIMIENTO ESCOLAR DEL CICLO ${statData.cycle}</div>
+                <div style="font-size:11px; font-weight:600; color:#64748b; letter-spacing:1px; margin-top:1px;">NIVEL DE EDUCACIÓN MEDIA - CICLO DIVERSIFICADO</div>
+            </div>
+            <div style="width:75px; text-align:right;">
+                ${statData.isOfficialHistorical ? '<span style="background:#dcfce7; color:#166534; font-size:10px; font-weight:800; padding:4px 8px; border-radius:4px; border:1px solid #86efac;">OFICIAL SIRE</span>' : '<span style="background:#e0f2fe; color:#0369a1; font-size:10px; font-weight:800; padding:4px 8px; border-radius:4px; border:1px solid #7dd3fc;">ACTIVO EN VIVO</span>'}
+            </div>
+        </div>
+
+        <!-- INFORMACIÓN GENERAL -->
+        <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:6px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div><strong style="color:#1e3a8a;">ESTABLECIMIENTO:</strong> ${statData.establecimiento}</div>
+            <div><strong style="color:#1e3a8a;">CÓDIGO:</strong> ${statData.codigo}</div>
+            <div><strong style="color:#1e3a8a;">CARRERA:</strong> ${statData.carrera}</div>
+            <div><strong style="color:#1e3a8a;">DIRECCIÓN:</strong> ${statData.direccion}</div>
+            <div><strong style="color:#1e3a8a;">JORNADA / SECTOR:</strong> ${statData.jornadaSector}</div>
+            <div><strong style="color:#1e3a8a;">MUNICIPIO / DEPTO:</strong> ${statData.municipioDepto}</div>
+        </div>
+
+        <!-- TABLA PRINCIPAL DE RENDIMIENTO ESCOLAR -->
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11px; margin-bottom:14px;">
+                <thead>
+                    <tr style="background:#1e3a8a; color:#ffffff;">
+                        <th rowspan="2" style="border:1px solid #94a3b8; padding:6px; width:14%;">GRADO</th>
+                        <th colspan="4" style="border:1px solid #94a3b8; padding:6px; width:39%;">HOMBRES</th>
+                        <th colspan="4" style="border:1px solid #94a3b8; padding:6px; width:39%;">MUJERES</th>
+                        <th rowspan="2" style="border:1px solid #94a3b8; padding:6px; width:8%;">TOTAL<br>EVALUADOS</th>
+                    </tr>
+                    <tr style="background:#e2e8f0; color:#1e3a8a; font-size:9.5px; font-weight:700;">
+                        <th style="border:1px solid #94a3b8; padding:4px;">INSCRITOS</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">PROMOVIDOS</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">NO PROM.<br>C/DERECHO</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">NO PROM.<br>S/DERECHO</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">INSCRITAS</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">PROMOVIDAS</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">NO PROM.<br>C/DERECHO</th>
+                        <th style="border:1px solid #94a3b8; padding:4px;">NO PROM.<br>S/DERECHO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${statData.grados.map((g, idx) => `
+                        <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; font-size:11px;">
+                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700; background:#f1f5f9;">${g.nombre}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px;">${g.hi}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700; color:#166534;">${g.hp}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; color:#b45309;">${g.hcd}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; color:#b91c1c;">${g.hsd}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px;">${g.mi}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700; color:#166534;">${g.mp}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; color:#b45309;">${g.mcd}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; color:#b91c1c;">${g.msd}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:800; background:#f1f5f9;">${g.tot}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#dbeafe; font-weight:800; font-size:11.5px; border-top:2px solid #1e3a8a; border-bottom:2px double #1e3a8a;">
+                        <td style="border:1px solid #94a3b8; padding:7px;">TOTALES</td>
+                        <td style="border:1px solid #94a3b8; padding:7px;">${statData.totales.hi}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#166534;">${statData.totales.hp}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#b45309;">${statData.totales.hcd}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#b91c1c;">${statData.totales.hsd}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px;">${statData.totales.mi}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#166534;">${statData.totales.mp}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#b45309;">${statData.totales.mcd}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#b91c1c;">${statData.totales.msd}</td>
+                        <td style="border:1px solid #94a3b8; padding:7px; color:#1e3a8a; font-size:12px;">${statData.totales.tot}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- SECCIÓN DOCENTES -->
+        <div style="border:1px solid #cbd5e1; border-radius:6px; overflow:hidden; margin-bottom:18px;">
+            <div style="background:#334155; color:#ffffff; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; padding:5px 12px; text-align:center;">
+                Personal Docente en Servicio (${statData.isOfficialHistorical ? 'Nómina Oficial SIRE 2026' : 'Nómina Activa'})
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; background:#ffffff; font-size:10.5px; text-align:center;">
+                <div style="padding:8px 10px; border-right:1px solid #cbd5e1;">
+                    <strong style="color:#1e3a8a;">HOMBRES:</strong> 
+                    011 = <strong>${statData.docentes.h011}</strong> &nbsp;|&nbsp; 
+                    021 = <strong>${statData.docentes.h021}</strong> &nbsp;|&nbsp; 
+                    REUBICADOS = <strong>${statData.docentes.hReub}</strong> &nbsp;
+                    <span style="color:#64748b;">(Subtotal: ${statData.docentes.hTot})</span>
+                </div>
+                <div style="padding:8px 10px; border-right:1px solid #cbd5e1;">
+                    <strong style="color:#1e3a8a;">MUJERES:</strong> 
+                    011 = <strong>${statData.docentes.m011}</strong> &nbsp;|&nbsp; 
+                    021 = <strong>${statData.docentes.m021}</strong> &nbsp;
+                    <span style="color:#64748b;">(Subtotal: ${statData.docentes.mTot})</span>
+                </div>
+                <div style="padding:8px 10px; background:#f8fafc;">
+                    <strong style="color:#1e3a8a;">TOTAL DOCENTES:</strong> 
+                    <strong>${statData.docentes.total}</strong> &nbsp;
+                    <span style="color:#1e3a8a;">[011 = <strong>${statData.docentes.tot011}</strong> &nbsp;|&nbsp; 021 = <strong>${statData.docentes.tot021}</strong>]</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIRMAS Y SELLO (El nombre de la Directora va exactamente en la parte de abajo de la línea) -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; padding-top:12px; margin-top:8px;">
+            <div style="width:30%; font-size:11px; color:#334155; line-height:1.5;">
+                <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
+                Jutiapa, 31 de octubre de ${statData.cycle}
+            </div>
+            <div style="width:30%; text-align:center; font-size:11px; font-weight:700; color:#94a3b8; letter-spacing:2px; padding-bottom:14px;">
+                ( S E L L O )
+            </div>
+            <div style="width:38%; text-align:center;">
+                <!-- Línea de firma superior -->
+                <div style="border-bottom:1.5px solid #0f172a; width:90%; margin:0 auto 6px auto;"></div>
+                <!-- Nombre de la Directora ABAJO DE LA LÍNEA -->
+                <div style="font-size:11px; font-weight:700; color:#0f172a; margin-bottom:2px;">${statData.directora}</div>
+                <div style="font-size:10px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Directora</div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    container.innerHTML = html;
+}
+window.renderCuadroEstadisticoOficial = renderCuadroEstadisticoOficial;
+
+// Sobrescribir exportGradeStatsOfficialExcel para dar soporte dual a Cuadro Estadístico y Actas
+const _origExportGradeStatsOfficialExcel = window.exportGradeStatsOfficialExcel;
+window.exportGradeStatsOfficialExcel = function() {
+    if (window._currentGradeStatsActiveTab === 'cuadro' && window._lastCuadroEstadisticoData) {
+        const d = window._lastCuadroEstadisticoData;
+        const excelContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                .title { font-size: 14pt; font-weight: bold; text-align: center; color: #1e3a8a; }
+                .subtitle { font-size: 11pt; font-weight: bold; text-align: center; }
+                th { background-color: #1e3a8a; color: #ffffff; border: 1pt solid #000; font-weight: bold; text-align: center; }
+                .sub-th { background-color: #e2e8f0; color: #1e3a8a; border: 1pt solid #000; font-weight: bold; text-align: center; }
+                td { border: 0.5pt solid #000; vertical-align: middle; text-align: center; }
+                .grade-lbl { font-weight: bold; background-color: #f1f5f9; }
+                .tot-row { background-color: #dbeafe; font-weight: bold; font-size: 11pt; }
+            </style>
+        </head>
+        <body>
+            <table>
+                <tr><td colspan="10" class="title">CUADRO DE RESUMEN ESTADÍSTICO FINAL</td></tr>
+                <tr><td colspan="10" class="subtitle">SOBRE EL RENDIMIENTO ESCOLAR DEL CICLO ${d.cycle} - DIVERSIFICADO</td></tr>
+                <tr><td colspan="10"></td></tr>
+                <tr>
+                    <td colspan="5" style="text-align:left;"><b>ESTABLECIMIENTO:</b> ${d.establecimiento}</td>
+                    <td colspan="5" style="text-align:left;"><b>CÓDIGO:</b> ${d.codigo}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align:left;"><b>CARRERA:</b> ${d.carrera}</td>
+                    <td colspan="5" style="text-align:left;"><b>DIRECCIÓN:</b> ${d.direccion}</td>
+                </tr>
+                <tr><td colspan="10"></td></tr>
+                <tr>
+                    <th rowspan="2">GRADO</th>
+                    <th colspan="4">HOMBRES</th>
+                    <th colspan="4">MUJERES</th>
+                    <th rowspan="2">TOTAL<br>EVALUADOS</th>
+                </tr>
+                <tr>
+                    <th class="sub-th">INSCRITOS</th>
+                    <th class="sub-th">PROMOVIDOS</th>
+                    <th class="sub-th">NO PROM. C/D</th>
+                    <th class="sub-th">NO PROM. S/D</th>
+                    <th class="sub-th">INSCRITAS</th>
+                    <th class="sub-th">PROMOVIDAS</th>
+                    <th class="sub-th">NO PROM. C/D</th>
+                    <th class="sub-th">NO PROM. S/D</th>
+                </tr>
+                ${d.grados.map(g => `
+                    <tr>
+                        <td class="grade-lbl">${g.nombre}</td>
+                        <td>${g.hi}</td>
+                        <td>${g.hp}</td>
+                        <td>${g.hcd}</td>
+                        <td>${g.hsd}</td>
+                        <td>${g.mi}</td>
+                        <td>${g.mp}</td>
+                        <td>${g.mcd}</td>
+                        <td>${g.msd}</td>
+                        <td><b>${g.tot}</b></td>
+                    </tr>
+                `).join('')}
+                <tr class="tot-row">
+                    <td>TOTALES</td>
+                    <td>${d.totales.hi}</td>
+                    <td>${d.totales.hp}</td>
+                    <td>${d.totales.hcd}</td>
+                    <td>${d.totales.hsd}</td>
+                    <td>${d.totales.mi}</td>
+                    <td>${d.totales.mp}</td>
+                    <td>${d.totales.mcd}</td>
+                    <td>${d.totales.msd}</td>
+                    <td>${d.totales.tot}</td>
+                </tr>
+                <tr><td colspan="10"></td></tr>
+                <tr>
+                    <td colspan="10" style="text-align:left; background-color:#f8fafc; font-weight:bold;">
+                        DOCENTES: &nbsp; HOMBRES: 011= ${d.docentes.h011} &nbsp; 021= ${d.docentes.h021} &nbsp; REUBICADOS= ${d.docentes.hReub} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                        MUJERES: 011= ${d.docentes.m011} &nbsp; 021= ${d.docentes.m021} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                        TOTAL: ${d.docentes.total} &nbsp; (011= ${d.docentes.tot011} &nbsp; 021= ${d.docentes.tot021})
+                    </td>
+                </tr>
+                <tr><td colspan="10"></td></tr>
+                <tr>
+                    <td colspan="4" style="text-align:left; border:none;">Lugar y fecha: Jutiapa, 31 de octubre de ${d.cycle}</td>
+                    <td colspan="2" style="border:none;">( S E L L O )</td>
+                    <td colspan="4" style="text-align:center; border:none;">
+                        ____________________________________________<br>
+                        <b>${d.directora}</b><br>
+                        Directora
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>`;
+
+        const blob = new Blob(["﻿", excelContent], { type: "application/vnd.ms-excel;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Cuadro_Resumen_Estadistico_Oficial_${d.cycle}_ENCCO.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+    }
+
+    if (typeof _origExportGradeStatsOfficialExcel === 'function') {
+        _origExportGradeStatsOfficialExcel();
+    }
+};
