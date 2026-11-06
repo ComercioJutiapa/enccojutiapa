@@ -2093,7 +2093,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
         // Construir y sincronizar mapa de secciones oficial
         const seccionesMap = {};
         STATE.gradesList.forEach(g => {
-            const m = (g.code || '').match(/(\d+to)\s*([A-D])/i);
+            const m = (g.code || '').match(/(\d+to)\s*([A-Z])/i);
             if (m) {
                 const docId = `${m[1]}_${m[2].toUpperCase()}`;
                 seccionesMap[docId] = {
@@ -6771,12 +6771,16 @@ window.isStudentAssignedToTeacher = isStudentAssignedToTeacher;
 function getCycleFilteredStudents(studentsList = null, targetCycle = null) {
     const list = studentsList || (typeof window !== 'undefined' && window.STATE?.students) || (typeof STATE !== 'undefined' && STATE?.students) || [];
     const stObj = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : null);
-    const tgt = String(targetCycle || stObj?.historicalViewingCycle || stObj?.viewingHistoricalCycle || stObj?.activeCycle || '2027').trim();
+    const tgt = String(targetCycle || stObj?.historicalViewingCycle || stObj?.viewingHistoricalCycle || stObj?.activeCycle || '').trim();
     if (!tgt) return list;
     return list.filter(s => {
         if (!s) return false;
-        const c = String(s.cycle || s.academicCycle || '').trim();
-        if (!c) return true;
+        let c = String(s.cycle || s.academicCycle || '').trim();
+        if (!c) {
+            if (s.carne && s.carne.includes('2027')) c = '2027';
+            else if (s.carne && s.carne.includes('2026')) c = '2026';
+            else c = '2026'; // Registro base oficial histórico pertenece al ciclo 2026
+        }
         return c === tgt;
     });
 }
@@ -6861,12 +6865,12 @@ window.isStudentActive = isStudentActive;
 
 function getCleanSectionLetter(str) {
     if (!str) return '';
-    const m = str.match(/Secci[oó]n\s*([A-D])/i) || 
-              str.match(/[-_\s]([A-D])(?:\b|$)/i) ||
-              str.match(/(?:4to|5to|6to|grd-?[456]|PC-?[456]|PC|\d)\s*([A-D])/i) ||
-              str.match(/\(([A-D])\)/i) ||
-              str.match(/([A-D])$/i) ||
-              str.match(/\b([A-D])\b/i);
+    const m = str.match(/Secci[oó]n\s*([A-Z])/i) || 
+              str.match(/[-_\s]([A-Z])(?:\b|$)/i) ||
+              str.match(/(?:4to|5to|6to|grd-?[456]|PC-?[456]|PC|\d)\s*([A-Z])/i) ||
+              str.match(/\(([A-Z])\)/i) ||
+              str.match(/([A-Z])$/i) ||
+              str.match(/\b([A-Z])\b/i);
     return m ? m[1].toUpperCase() : '';
 }
 window.getCleanSectionLetter = getCleanSectionLetter;
@@ -6906,8 +6910,8 @@ function getStudentAssignment(s) {
     else if (cleanGrade.includes(' (Seccion')) cleanGrade = cleanGrade.split(' (Seccion')[0].trim();
     else if (cleanGrade.includes(' Sección')) cleanGrade = cleanGrade.split(' Sección')[0].trim();
     else if (cleanGrade.includes(' Seccion')) cleanGrade = cleanGrade.split(' Seccion')[0].trim();
-    else if (cleanGrade.match(/\s*-\s*[A-D]\b/i)) cleanGrade = cleanGrade.replace(/\s*-\s*[A-D]\b/i, '').trim();
-    else if (cleanGrade.match(/\s*\([A-D]\)\s*/i)) cleanGrade = cleanGrade.replace(/\s*\([A-D]\)\s*/i, '').trim();
+    else if (cleanGrade.match(/\s*-\s*[A-Z]\b/i)) cleanGrade = cleanGrade.replace(/\s*-\s*[A-Z]\b/i, '').trim();
+    else if (cleanGrade.match(/\s*\([A-Z]\)\s*/i)) cleanGrade = cleanGrade.replace(/\s*\([A-Z]\)\s*/i, '').trim();
     
     if (!cleanGrade) cleanGrade = '4to Perito Contador';
     if (!section) section = 'Sección A';
@@ -7173,12 +7177,17 @@ function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '
     const cleanGName = (gradeName || '').toLowerCase().trim();
     const gWord = cleanGName.split(' ')[0]; // '4to', '5to', '6to'
     const formCycle = cycleOverride || (typeof document !== 'undefined' ? document.getElementById('studentFormCycle')?.value : null);
-    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '').trim();
+    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '2026').trim();
 
     return window.STATE.students.filter(s => {
         if (!s || s.status === 'Retirado' || s.status === 'Egresado' || s.status === 'Inactivo') return false;
-        const stCycle = String(s.cycle || s.academicCycle || '').trim();
-        if (targetCycle && stCycle && stCycle !== targetCycle) return false;
+        let stCycle = String(s.cycle || s.academicCycle || '').trim();
+        if (!stCycle) {
+            if (s.carne && s.carne.includes('2027')) stCycle = '2027';
+            else if (s.carne && s.carne.includes('2026')) stCycle = '2026';
+            else stCycle = '2026'; // Registro base
+        }
+        if (targetCycle && stCycle !== targetCycle) return false;
         
         if (gradeCode && s.gradeCode && s.gradeCode.trim().toLowerCase() === gradeCode.trim().toLowerCase()) {
             return true;
@@ -7269,30 +7278,100 @@ function renderEnrollmentSectionsDistribution() {
     const container = document.getElementById('enrollmentSectionsDistributionGrid');
     if (!container) return;
 
-    const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
-    const groups = { '4to': [], '5to': [], '6to': [] };
+    const formCycle = typeof document !== 'undefined' ? document.getElementById('studentFormCycle')?.value : null;
+    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '2026').trim();
+
+    // Actualizar encabezado del modal/panel para reflejar dinámicamente el ciclo
+    const titleEl = document.getElementById('enrollmentAllSectionsSummaryTitle');
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-users-rectangle"></i> Conteo Oficial de Estudiantes Inscritos por Sección (Ciclo ${targetCycle})`;
+    }
+
+    // Copiar la lista base de grados
+    let grades = (STATE.gradesList && STATE.gradesList.length > 0) ? [...STATE.gradesList] : [];
+
+    // Garantizar que en 2027 o superior exista la Sección E de 4to
+    if (targetCycle === '2027' || String(STATE.activeCycle || '').trim() === '2027') {
+        const has4E = grades.some(g => (g.code === '4to E' || ((g.name || '').toLowerCase().includes('4to') && (g.section || '').toUpperCase().includes('E'))));
+        if (!has4E) {
+            grades.push({
+                id: "grd-4e",
+                code: "4to E",
+                name: "4to Perito Contador",
+                section: "Sección E",
+                career: "Perito Contador",
+                shift: "Matutina",
+                guideTeacher: "Sin asignar",
+                guideTeacherId: null
+            });
+        }
+    }
+
+    // Si hay estudiantes en el ciclo con secciones adicionales creadas dinámicamente, incluirlas
+    const cycleStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students, targetCycle)
+        : (STATE.students || []);
+
+    cycleStudents.forEach(s => {
+        if (!s) return;
+        const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { grade: s.grade || '', section: s.section || '' };
+        const sSec = (s.section || assign.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
+        const sGrade = (s.grade || assign.grade || '').toLowerCase().trim();
+        const sWord = sGrade.split(' ')[0]; // '4to', '5to', '6to'
+        if (!sSec || !sWord) return;
+
+        const exists = grades.some(g => {
+            const gWord = (g.name || '').toLowerCase().trim().split(' ')[0];
+            const gSec = (g.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
+            return gWord === sWord && gSec === sSec;
+        });
+
+        if (!exists) {
+            grades.push({
+                id: `grd-dyn-${sWord}-${sSec.toLowerCase()}`,
+                code: `${sWord} ${sSec}`,
+                name: `${sWord} Perito Contador`,
+                section: `Sección ${sSec}`,
+                career: s.career || 'Perito Contador',
+                shift: s.shift || 'Matutina',
+                guideTeacher: 'Sin asignar',
+                guideTeacherId: null
+            });
+        }
+    });
+
+    // Ordenar con sortGrades (respetará 4to, 5to, 6to y orden correlativo alfabético A, B, C, D, E...)
+    grades = sortGrades(grades);
+
+    // Agrupación dinámica por grado escolar
+    const groups = {};
+    const groupOrder = [];
+
     grades.forEach(g => {
-        const word = (g.name || '').split(' ')[0].toLowerCase();
-        if (groups[word]) groups[word].push(g);
-        else groups['4to'].push(g);
+        const rawName = g.name || g.grade || '4to Perito Contador';
+        const word = rawName.split(' ')[0].toLowerCase();
+        if (!groups[word]) {
+            let title = rawName;
+            if (word === '4to') title = '4to Perito Contador';
+            else if (word === '5to') title = '5to Perito Contador';
+            else if (word === '6to') title = '6to Perito Contador';
+            groups[word] = { title, list: [] };
+            groupOrder.push(word);
+        }
+        groups[word].list.push(g);
     });
 
     let html = '';
-    const groupTitles = {
-        '4to': '4to Perito Contador',
-        '5to': '5to Perito Contador',
-        '6to': '6to Perito Contador'
-    };
-
     const currentSelectedVal = document.getElementById('studentFormGrade')?.value || '';
 
-    Object.keys(groupTitles).forEach(lvl => {
-        const list = groups[lvl] || [];
+    groupOrder.forEach(lvl => {
+        const groupObj = groups[lvl];
+        const list = groupObj.list || [];
         let totalLvl = 0;
         let itemsHtml = '';
 
         list.forEach(g => {
-            const count = getStudentsCountByGradeAndSection(g.name, g.section, g.code);
+            const count = getStudentsCountByGradeAndSection(g.name, g.section, g.code, targetCycle);
             totalLvl += count;
             const val = g.name + ' - ' + g.section;
             const isSelected = (val === currentSelectedVal);
@@ -7312,7 +7391,7 @@ function renderEnrollmentSectionsDistribution() {
         html += `
             <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:6px;">
-                    <span style="font-weight:800; font-size:0.78rem; color:#0f2b5c;">${groupTitles[lvl]}</span>
+                    <span style="font-weight:800; font-size:0.78rem; color:#0f2b5c;">${groupObj.title}</span>
                     <span style="font-size:0.70rem; font-weight:700; background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:4px;">${totalLvl} total</span>
                 </div>
                 ${itemsHtml}
@@ -8248,6 +8327,7 @@ function purifySchoolStructure() {
         "grd-4b": { teacher: "Roberto Alex Tobar Cermeño", id: "usr-doc-03" },
         "grd-4c": { teacher: "Enma Leticia Macario Xúm de Ruano", id: "usr-doc-15" },
         "grd-4d": { teacher: "Sandra Julissa Arana Lucero", id: "usr-doc-12" },
+        "grd-4e": { teacher: "Sin asignar", id: null },
         "grd-5a": { teacher: "Carlos Augusto Juárez Alvarez", id: "usr-doc-05" },
         "grd-5b": { teacher: "Milvia Aracely Jacobo Escobar", id: "usr-doc-18" },
         "grd-5c": { teacher: "Aleida Maribel Escobar de Palma", id: "usr-doc-02" },
@@ -8258,9 +8338,15 @@ function purifySchoolStructure() {
         "grd-6d": { teacher: "Edvin Osvaldo López Recinos", id: "usr-doc-08" }
     };
     const existingMap = new Map();
+    const customGrades = [];
     if (Array.isArray(STATE.gradesList)) {
         STATE.gradesList.forEach(g => {
-            if (g && g.id) existingMap.set(g.id, { guideTeacher: g.guideTeacher, guideTeacherId: g.guideTeacherId });
+            if (g && g.id) {
+                existingMap.set(g.id, { guideTeacher: g.guideTeacher, guideTeacherId: g.guideTeacherId });
+                if (!["grd-4a","grd-4b","grd-4c","grd-4d","grd-4e","grd-5a","grd-5b","grd-5c","grd-5d","grd-6a","grd-6b","grd-6c","grd-6d"].includes(g.id)) {
+                    customGrades.push(g);
+                }
+            }
         });
     }
 
@@ -8269,6 +8355,7 @@ function purifySchoolStructure() {
         { id: "grd-4b", code: "4to B", name: "4to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-4c", code: "4to C", name: "4to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-4d", code: "4to D", name: "4to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4e", code: "4to E", name: "4to Perito Contador", section: "Sección E", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-5a", code: "5to A", name: "5to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-5b", code: "5to B", name: "5to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
         { id: "grd-5c", code: "5to C", name: "5to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
@@ -8287,7 +8374,7 @@ function purifySchoolStructure() {
         };
     });
 
-    STATE.gradesList = officialGrades;
+    STATE.gradesList = sortGrades([...officialGrades, ...customGrades]);
 
     if (Array.isArray(STATE.students)) {
         STATE.students = deduplicateStudentsCollection(STATE.students);
@@ -8306,6 +8393,20 @@ function ensureOfficialGradesList() {
     const officialIds = ["grd-4a","grd-4b","grd-4c","grd-4d","grd-5a","grd-5b","grd-5c","grd-5d","grd-6a","grd-6b","grd-6c","grd-6d"];
     if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12 || !officialIds.every(id => STATE.gradesList.some(g => g && g.id === id))) {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+    }
+    const curCycle = String(STATE.activeCycle || '').trim();
+    if ((curCycle === '2027' || curCycle >= '2027') && !STATE.gradesList.some(g => g && (g.id === 'grd-4e' || g.code === '4to E'))) {
+        STATE.gradesList.push({
+            id: "grd-4e",
+            code: "4to E",
+            name: "4to Perito Contador",
+            section: "Sección E",
+            career: "Perito Contador",
+            shift: "Matutina",
+            guideTeacher: "Sin asignar",
+            guideTeacherId: null
+        });
+        STATE.gradesList = sortGrades(STATE.gradesList);
     }
     return STATE.gradesList;
 }
@@ -24807,7 +24908,7 @@ function getCanonicalReportGradeName(raw) {
     if (!raw) return '';
     let clean = (typeof getStudentAssignment === 'function') 
         ? getStudentAssignment({ grade: raw }).grade 
-        : String(raw).replace(/\s*[-–(]?\s*Secci[oó]n\s+[A-D]\)?/gi, '').trim();
+        : String(raw).replace(/\s*[-–(]?\s*Secci[oó]n\s+[A-Z]\)?/gi, '').trim();
     const up = clean.toUpperCase();
     if (up.includes('4') || up.includes('CUARTO') || up.includes('4TO')) return '4to Perito Contador';
     if (up.includes('5') || up.includes('QUINTO') || up.includes('5TO')) return '5to Perito Contador';
@@ -24820,7 +24921,7 @@ function getCanonicalReportSectionLetter(raw) {
     if (!raw) return '';
     const letter = (typeof getCleanSectionLetter === 'function') 
         ? getCleanSectionLetter(raw) 
-        : (String(raw).match(/[A-D]/i)?.[0]?.toUpperCase() || '');
+        : (String(raw).match(/[A-Z]/i)?.[0]?.toUpperCase() || '');
     return letter ? `Sección ${letter}` : raw;
 }
 window.getCanonicalReportSectionLetter = getCanonicalReportSectionLetter;
@@ -38484,11 +38585,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     const extractSectionLetter = (val) => {
         if (!val) return '';
         const s = String(val).trim();
-        const mSec = s.match(/(?:secci[oó]n|sec\.?)\s*([A-D])\b/i);
+        const mSec = s.match(/(?:secci[oó]n|sec\.?)\s*([A-Z])\b/i);
         if (mSec) return mSec[1].toUpperCase();
-        const mIso = s.match(/(?:^|[\s\-_"'(])([A-D])(?:$|[\s\-_"')])/i);
+        const mIso = s.match(/(?:^|[\s\-_"'(])([A-Z])(?:$|[\s\-_"')])/i);
         if (mIso) return mIso[1].toUpperCase();
-        const mNumSec = s.match(/\b\d\s*([A-D])\b/i);
+        const mNumSec = s.match(/\b\d\s*([A-Z])\b/i);
         if (mNumSec) return mNumSec[1].toUpperCase();
         return '';
     };
@@ -38599,11 +38700,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         const gradeSecCand = extractMetaField(row, /grado\s*y\s*secci[oó]n\s*:/i);
         if (gradeSecCand) {
-            const secMatch = gradeSecCand.match(/(?:secci[oó]n\s*|["(])([A-D])(?:[")]|\b)/i) || gradeSecCand.match(/\b([A-D])\s*$/i);
+            const secMatch = gradeSecCand.match(/(?:secci[oó]n\s*|["(])([A-Z])(?:[")]|\b)/i) || gradeSecCand.match(/\b([A-Z])\s*$/i);
             if (secMatch && !detectedSection) {
                 detectedSection = secMatch[1].toUpperCase();
             }
-            const cleanGrdPart = gradeSecCand.replace(/\(\s*secci[oó]n\s*[A-D]\s*\)/i, '').replace(/["'][A-D]["']/i, '').trim();
+            const cleanGrdPart = gradeSecCand.replace(/\(\s*secci[oó]n\s*[A-Z]\s*\)/i, '').replace(/["'][A-Z]["']/i, '').trim();
             if (cleanGrdPart && !detectedGrade) {
                 detectedGrade = cleanGrdPart;
             }
@@ -40611,6 +40712,7 @@ async function saveQuickGuideTeacher(e) {
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
 
         // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -43481,6 +43583,7 @@ async function saveGradeForm(e) {
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
 
         // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -43576,6 +43679,7 @@ async function deleteGrade(gradeId) {
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
         showToast(`Grado "${g.name} (${g.section})" eliminado.`, 'info');
     }
 }
@@ -45735,7 +45839,7 @@ window.getNextGradeLevel = getNextGradeLevel;
 function extractCleanPromotionSectionLetter(student) {
     if (!student) return 'A';
     const rawSec = String(student.section || student.gradeLabel || student.gradeCode || student.grade || '').trim();
-    const m = rawSec.match(/(?:Secci[oó]n\s*|\b)([A-D])\b/i);
+    const m = rawSec.match(/(?:Secci[oó]n\s*|\b)([A-Z])\b/i);
     return m ? m[1].toUpperCase() : 'A';
 }
 window.extractCleanPromotionSectionLetter = extractCleanPromotionSectionLetter;

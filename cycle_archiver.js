@@ -75,7 +75,7 @@
          */
         normalizeCanonicalGradeAndSection(rawGrade, rawSection) {
             const secStr = String(rawSection || rawGrade || '').trim();
-            const secMatch = secStr.match(/(?:Secci[oó]n\s*|\b)([A-D])\b/i);
+            const secMatch = secStr.match(/(?:Secci[oó]n\s*|\b)([A-Z])\b/i);
             const secLetter = secMatch ? secMatch[1].toUpperCase() : 'A';
             const canonicalSection = `Sección ${secLetter}`;
 
