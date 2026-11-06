@@ -15,7 +15,7 @@
     'use strict';
 
     // 🌐 DOMAIN LOCK Y UNIFICACIÓN CANÓNICA: Bloquear dominios y apps de terceros no autorizados
-    if (typeof window !== 'undefined' && window.location) {
+    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
         const host = (window.location.hostname || '').toLowerCase();
         const isFileProtocol = (window.location.protocol === 'file:');
         const isAllowedDomain = isFileProtocol || 

@@ -22,6 +22,18 @@ function populateGradeStatsSectionsForGrade(gVal, preferredSec = 'ALL') {
     });
 
     const uniqueSecs = new Set();
+    if (typeof STATE !== 'undefined' && Array.isArray(STATE.gradesList)) {
+        STATE.gradesList.forEach(g => {
+            if (!g) return;
+            const gw = (g.name || g.grade || '').toLowerCase();
+            if (gw.includes(`${gVal}to`) || (gVal === '4' && gw.includes('4to')) || (gVal === '5' && gw.includes('5to')) || (gVal === '6' && gw.includes('6to'))) {
+                const s = (typeof getCleanSectionLetter === 'function') 
+                    ? getCleanSectionLetter(g.section || g.code || '') 
+                    : (g.section || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+                if (s) uniqueSecs.add(s);
+            }
+        });
+    }
     gStudents.forEach(s => {
         const rawSec = (s.section || s.sectionId || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
         if (rawSec) uniqueSecs.add(rawSec);
