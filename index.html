@@ -2,18 +2,32 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Protección Anti-Clickjacking y Seguridad ENCCO -->
+    <!-- Protección de Dominio Institucional, Anti-Clickjacking y Blindaje de Acceso -->
     <script>
-        if (window.location && (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'))) {
-            window.location.replace('https://comerciojutiapa.github.io/enccojutiapa/' + window.location.search + window.location.hash);
-        }
-        if (window.top !== window.self) {
-            try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
-        }
-        if (typeof console !== 'undefined' && console.log) {
-            console.log("%c🛑 PORTAL OFICIAL ENCCO JUTIAPA 1970", "color: #15803d; font-size: 18px; font-weight: 900;");
-            console.log("%cSitio protegido institucionalmente. Acceso seguro verificado.", "color: #334155; font-size: 11px;");
-        }
+        (function() {
+            if (typeof window !== 'undefined' && window.location) {
+                var host = (window.location.hostname || '').toLowerCase();
+                var isFile = (window.location.protocol === 'file:');
+                var isAllowed = isFile || host === 'comerciojutiapa.github.io' || host.endsWith('.github.io') || host === 'localhost' || host === '127.0.0.1';
+                if (!isAllowed || host.includes('web.app') || host.includes('firebaseapp.com')) {
+                    window.location.replace('https://comerciojutiapa.github.io/enccojutiapa/' + window.location.search + window.location.hash);
+                    return;
+                }
+            }
+            if (window.top !== window.self) {
+                try {
+                    window.top.location = window.self.location.href;
+                } catch(e) {
+                    if (document.documentElement) {
+                        document.documentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f172a;color:#fff;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;">⚠️ Acceso de Terceros Bloqueado</h2><p>El Portal Oficial ENCCO no permite incrustaciones externas.</p><a href="https://comerciojutiapa.github.io/enccojutiapa/" target="_blank" style="color:#22c55e;font-weight:bold;">Abrir en Sitio Oficial</a></div></div>';
+                    }
+                }
+            }
+            if (typeof console !== 'undefined' && console.log) {
+                console.log("%c🛑 PORTAL OFICIAL ENCCO JUTIAPA 1970", "color: #15803d; font-size: 18px; font-weight: 900;");
+                console.log("%cSitio protegido institucionalmente. Acceso seguro verificado.", "color: #334155; font-size: 11px;");
+            }
+        })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escuela Nacional de Ciencias Comerciales | ENCCO Jutiapa 1970</title>

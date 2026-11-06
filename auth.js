@@ -14,14 +14,41 @@
 (function(window) {
     'use strict';
 
-    // 🌐 UNIFICACIÓN CANÓNICA: Evitar duplicados y canalizar exclusivamente hacia GitHub Pages
+    // 🌐 DOMAIN LOCK Y UNIFICACIÓN CANÓNICA: Bloquear dominios y apps de terceros no autorizados
     if (typeof window !== 'undefined' && window.location) {
         const host = (window.location.hostname || '').toLowerCase();
-        if (host.includes('web.app') || host.includes('firebaseapp.com')) {
+        const isFileProtocol = (window.location.protocol === 'file:');
+        const isAllowedDomain = isFileProtocol || 
+            host === 'comerciojutiapa.github.io' || 
+            host.endsWith('.github.io') || 
+            host === 'localhost' || 
+            host === '127.0.0.1' || 
+            host === '0.0.0.0';
+
+        // Redirigir si está en un hosting alterno o no autorizado hacia el dominio oficial
+        if (!isAllowedDomain || host.includes('web.app') || host.includes('firebaseapp.com')) {
             const cleanPath = window.location.pathname.replace(/^\/+/, '');
             const targetUrl = 'https://comerciojutiapa.github.io/enccojutiapa/' + (cleanPath || 'index.html') + window.location.search + window.location.hash;
             window.location.replace(targetUrl);
             return;
+        }
+
+        // 🛡️ ANTI-IFRAME & ANTI-CLICKJACKING: Impedir que terceros incrusten la plataforma en apps externas o iframes
+        if (window.top !== window.self) {
+            try {
+                window.top.location = window.self.location.href;
+            } catch (frameErr) {
+                if (document.documentElement) {
+                    document.documentElement.innerHTML = `
+                        <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Segoe UI,sans-serif;background:#0f172a;color:#fff;text-align:center;padding:24px;box-sizing:border-box;">
+                            <div style="max-width:520px;background:#1e293b;padding:32px;border-radius:12px;border:2px solid #ef4444;box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                                <h2 style="color:#ef4444;margin-top:0;font-size:1.3rem;">⚠️ Conexión de Terceros Bloqueada</h2>
+                                <p style="font-size:0.92rem;color:#cbd5e1;line-height:1.6;margin:14px 0 20px 0;">La Plataforma Oficial ENCCO no permite ser incrustada o ejecutada dentro de marcos o aplicaciones externas de terceros para salvaguardar la privacidad de las calificaciones y expedientes.</p>
+                                <a href="https://comerciojutiapa.github.io/enccojutiapa/" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#15803d;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem;">Abrir en Sitio Oficial ENCCO</a>
+                            </div>
+                        </div>`;
+                }
+            }
         }
     }
 
