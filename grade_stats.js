@@ -1240,7 +1240,7 @@ function printGradeStatsReport(reportType = 'section') {
     <table class="header-table">
         <tr>
             <td class="header-logo">
-                <img src="${escapeHtml(logoUrl)}" alt="Logo ENCCO" onerror="this.style.display='none'">
+                <img src="${escapeHtml(logoUrl)}" alt="Escudo Institucional" onerror="this.style.display='none'">
             </td>
             <td class="header-text">
                 <div class="line-mineduc">MINISTERIO DE EDUCACIÓN &bull; DIRECCIÓN DEPARTAMENTAL DE EDUCACIÓN DE JUTIAPA</div>
@@ -1384,7 +1384,7 @@ function renderCuadroEstadisticoOficial() {
         statData = {
             cycle: '2026',
             isOfficialHistorical: true,
-            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES (ENCCO)',
+            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES',
             codigo: '22-01-0014-46',
             carrera: 'PERITO CONTADOR',
             direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
@@ -1515,7 +1515,7 @@ function renderCuadroEstadisticoOficial() {
         statData = {
             cycle: viewingCycle,
             isOfficialHistorical: false,
-            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES (ENCCO)',
+            establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES',
             codigo: '22-01-0014-46',
             carrera: 'PERITO CONTADOR',
             direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
@@ -1565,7 +1565,7 @@ function renderCuadroEstadisticoOficial() {
         <!-- ENCABEZADO INSTITUCIONAL -->
         <div class="cuadro-header">
             <div style="width:75px; text-align:center;">
-                <img src="logo.png" alt="Logo ENCCO" style="max-width:70px; max-height:70px; object-fit:contain;" onerror="this.style.display='none'">
+                <img src="logo.png" alt="Escudo Institucional" style="max-width:70px; max-height:70px; object-fit:contain;" onerror="this.style.display='none'">
             </div>
             <div style="flex:1; text-align:center; padding:0 15px;">
                 <div style="font-size:16px; font-weight:800; color:#1e3a8a; text-transform:uppercase; letter-spacing:0.5px;">CUADRO DE RESUMEN ESTADÍSTICO FINAL</div>
@@ -1668,21 +1668,23 @@ function renderCuadroEstadisticoOficial() {
             </div>
         </div>
 
-        <!-- FIRMAS Y SELLO (El nombre de la Directora va exactamente en la parte de abajo de la línea) -->
-        <div class="cuadro-signatures">
-            <div style="width:30%; font-size:11px; color:#334155; line-height:1.5;">
+        <!-- FIRMAS Y SELLO (Espacio amplio para firma y sello oficial; nombre de la Directora debajo de la línea) -->
+        <div class="cuadro-signatures" style="margin-top:26px; padding-top:12px;">
+            <div style="width:30%; font-size:11.5px; color:#334155; line-height:1.5; padding-bottom:4px;">
                 <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
                 Jutiapa, 31 de octubre de ${statData.cycle}
             </div>
-            <div style="width:30%; text-align:center; font-size:11px; font-weight:700; color:#94a3b8; letter-spacing:2px; padding-bottom:14px;">
+            <div style="width:30%; text-align:center; font-size:11.5px; font-weight:700; color:#94a3b8; letter-spacing:3px; padding-bottom:18px;">
                 ( S E L L O )
             </div>
             <div style="width:38%; text-align:center;">
-                <!-- Línea de firma superior -->
-                <div style="border-bottom:1.5px solid #0f172a; width:90%; margin:0 auto 6px auto;"></div>
+                <!-- Espacio libre vertical generoso para firma manuscrita / rúbrica -->
+                <div style="height:52px;"></div>
+                <!-- Línea de firma -->
+                <div style="border-bottom:2px solid #0f172a; width:85%; margin:0 auto 6px auto;"></div>
                 <!-- Nombre de la Directora ABAJO DE LA LÍNEA -->
-                <div style="font-size:11px; font-weight:700; color:#0f172a; margin-bottom:2px;">${statData.directora}</div>
-                <div style="font-size:10px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Directora</div>
+                <div style="font-size:11.5px; font-weight:700; color:#0f172a; margin-bottom:2px;">${statData.directora}</div>
+                <div style="font-size:10.5px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Directora</div>
             </div>
         </div>
     </div>
@@ -1794,7 +1796,7 @@ window.exportGradeStatsOfficialExcel = function() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Cuadro_Resumen_Estadistico_Oficial_${d.cycle}_ENCCO.xls`;
+        a.download = `Cuadro_Resumen_Estadistico_Oficial_${d.cycle}.xls`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1833,7 +1835,7 @@ function printCuadroEstadisticoOficial() {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cuadro de Resumen Estadístico Final ${d.cycle} - ENCCO Jutiapa</title>
+<title>Cuadro de Resumen Estadístico Final ${d.cycle} - Escuela Nacional de Ciencias Comerciales</title>
 <style>
     @page {
         size: letter landscape;
@@ -2038,14 +2040,15 @@ function printCuadroEstadisticoOficial() {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
-        padding-top: 8px;
-        margin-top: 4px;
+        padding-top: 10px;
+        margin-top: 16px;
     }
     .sig-date {
         width: 30%;
         font-size: 11.5px;
         color: #1e293b;
         line-height: 1.4;
+        padding-bottom: 4px;
     }
     .sig-stamp {
         width: 30%;
@@ -2054,11 +2057,14 @@ function printCuadroEstadisticoOficial() {
         font-weight: 800;
         color: #94a3b8;
         letter-spacing: 3px;
-        padding-bottom: 14px;
+        padding-bottom: 20px;
     }
     .sig-director {
         width: 38%;
         text-align: center;
+    }
+    .sig-space {
+        height: 52px; /* Espacio vertical generoso para la firma física manual de la Directora */
     }
     .sig-line {
         border-bottom: 2px solid #0f172a;
@@ -2207,6 +2213,7 @@ function printCuadroEstadisticoOficial() {
             ( S E L L O )
         </div>
         <div class="sig-director">
+            <div class="sig-space"></div>
             <div class="sig-line"></div>
             <div class="sig-name">${d.directora}</div>
             <div class="sig-role">Directora</div>

@@ -5616,7 +5616,7 @@ body.theme-dark .custom-table tbody tr:hover {
     justify-content: space-between;
     align-items: flex-end;
     padding-top: 14px;
-    margin-top: 10px;
+    margin-top: 24px;
     gap: 16px;
 }
 
@@ -5848,8 +5848,8 @@ body.theme-dark .custom-table tbody tr:hover {
     }
 
     .cuadro-estadistico-view .cuadro-signatures {
-        margin-top: 8px !important;
-        padding-top: 6px !important;
+        margin-top: 18px !important;
+        padding-top: 10px !important;
         font-size: 12px !important;
     }
 }

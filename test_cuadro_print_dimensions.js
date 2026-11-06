@@ -1,7 +1,7 @@
 const fs = require('fs');
 const assert = require('assert');
 
-console.log("=== INICIANDO VALIDACIÓN DE AJUSTE A HOJA CARTA HORIZONTAL Y AMPLIACIÓN ===");
+console.log("=== INICIANDO VALIDACIÓN DE AJUSTE A HOJA CARTA HORIZONTAL, FIRMA Y NOMBRE INSTITUCIONAL ===");
 
 const gradeStats = fs.readFileSync('grade_stats.js', 'utf8');
 const stylesCss = fs.readFileSync('styles.css', 'utf8');
@@ -18,10 +18,18 @@ assert(gradeStats.includes('setCuadroZoom'), "Debe incluir función setCuadroZoo
 assert(gradeStats.includes('printCuadroEstadisticoOficial'), "Debe incluir botón de impresión directa");
 assert(gradeStats.includes('110% Ampliado'), "Debe incluir opción 110% Ampliado por defecto");
 
-// 3. Validar estilos en styles.css
+// 3. Validar espacio para la firma
+assert(gradeStats.includes('sig-space'), "Debe incluir clase sig-space para espacio vertical de firma en impresión");
+assert(gradeStats.includes('height:52px;') || gradeStats.includes('height: 52px;'), "Debe tener altura de al menos 50px para firma física");
+
+// 4. Validar que se quitó la palabra ENCCO del nombre de establecimiento del Cuadro
+assert(!gradeStats.includes("CIENCIAS COMERCIALES (ENCCO)"), "No debe incluir (ENCCO) en el nombre del establecimiento");
+assert(gradeStats.includes("establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'"), "Debe tener el nombre institucional sin la palabra ENCCO");
+
+// 5. Validar estilos en styles.css
 assert(stylesCss.includes('size: letter landscape !important;'), "Debe incluir size: letter landscape !important en styles.css");
 assert(stylesCss.includes('margin: 4mm 6mm !important;'), "Debe incluir margin: 4mm 6mm !important en styles.css");
 assert(stylesCss.includes('max-width: 268mm !important;'), "Debe incluir max-width: 268mm !important en styles.css");
 assert(stylesCss.includes('max-width: 1240px;'), "Debe incluir max-width: 1240px para vista en pantalla ampliada en styles.css");
 
-console.log("✓ Todos los criterios de Hoja Carta Horizontal, Centrado, Ampliación y Zoom interactivo están verificados al 100%.");
+console.log("✓ Todos los criterios de Hoja Carta Horizontal, Espacio de Firma y Nombre Institucional están verificados al 100%.");
