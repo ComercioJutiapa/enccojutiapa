@@ -1756,3 +1756,426 @@ window.exportGradeStatsOfficialExcel = function() {
         _origExportGradeStatsOfficialExcel();
     }
 };
+
+// ==========================================================================
+// IMPRESIÓN OFICIAL DEL CUADRO ESTADÍSTICO MINEDUC (TAMAÑO CARTA HORIZONTAL EN 1 HOJA)
+// ==========================================================================
+function printCuadroEstadisticoOficial() {
+    if (!window._lastCuadroEstadisticoData) {
+        renderCuadroEstadisticoOficial();
+    }
+    const d = window._lastCuadroEstadisticoData;
+    if (!d) {
+        showToast("No se encontraron datos del Cuadro Estadístico para imprimir.", "warning");
+        return;
+    }
+
+    const printWin = window.open('', '_blank', 'width=1150,height=850');
+    if (!printWin) {
+        // En caso de bloqueo de ventanas emergentes, imprimir en la misma ventana con clase dedicada
+        document.body.classList.add('print-cuadro-mode');
+        window.print();
+        setTimeout(() => document.body.classList.remove('print-cuadro-mode'), 2000);
+        return;
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cuadro de Resumen Estadístico Final ${d.cycle} - ENCCO Jutiapa</title>
+<style>
+    @page {
+        size: letter landscape;
+        margin: 8mm 10mm;
+    }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    }
+    html, body {
+        width: 100%;
+        background: #ffffff;
+        color: #0f172a;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .print-sheet {
+        width: 100%;
+        max-width: 1020px;
+        margin: 0 auto;
+        padding: 4px 8px;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #1e3a8a;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+    }
+    .logo-container {
+        width: 65px;
+        text-align: center;
+    }
+    .logo-container img {
+        max-width: 60px;
+        max-height: 60px;
+        object-fit: contain;
+    }
+    .title-container {
+        flex: 1;
+        text-align: center;
+        padding: 0 10px;
+    }
+    .title-main {
+        font-size: 14.5px;
+        font-weight: 800;
+        color: #1e3a8a;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 1px;
+    }
+    .title-sub {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1px;
+    }
+    .title-level {
+        font-size: 9.5px;
+        font-weight: 600;
+        color: #64748b;
+        letter-spacing: 0.8px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 4px 16px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-bottom: 8px;
+        font-size: 10px;
+        line-height: 1.35;
+    }
+    .info-row {
+        display: flex;
+    }
+    .info-label {
+        font-weight: 700;
+        color: #1e3a8a;
+        width: 125px;
+        flex-shrink: 0;
+    }
+    .info-val {
+        color: #0f172a;
+        font-weight: 600;
+    }
+    table.stats-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+        font-size: 10px;
+        text-align: center;
+    }
+    table.stats-table th, table.stats-table td {
+        border: 1px solid #94a3b8;
+        padding: 4px 3px;
+        vertical-align: middle;
+    }
+    table.stats-table thead th {
+        background: #1e3a8a;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 10px;
+    }
+    table.stats-table thead tr.sub-hdr th {
+        background: #e2e8f0;
+        color: #1e3a8a;
+        font-size: 8.5px;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+    table.stats-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+    }
+    table.stats-table tbody td.grade-col {
+        font-weight: 700;
+        color: #0f172a;
+        background: #f1f5f9;
+        font-size: 10px;
+    }
+    table.stats-table tfoot tr td {
+        background: #dbeafe;
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 10.5px;
+        border-top: 2px solid #1e3a8a;
+        border-bottom: 2px double #1e3a8a;
+        padding: 5px 3px;
+    }
+    .docentes-section {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    .docentes-header {
+        background: #334155;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 3px 8px;
+        text-align: center;
+    }
+    .docentes-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        background: #ffffff;
+        font-size: 9.5px;
+        text-align: center;
+    }
+    .docentes-box {
+        padding: 5px 6px;
+        border-right: 1px solid #cbd5e1;
+    }
+    .docentes-box:last-child {
+        border-right: none;
+        background: #f8fafc;
+    }
+    .doc-highlight {
+        font-weight: 700;
+        color: #1e3a8a;
+    }
+    .signatures-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-top: 6px;
+        margin-top: 4px;
+    }
+    .sig-date {
+        width: 30%;
+        font-size: 9.5px;
+        color: #334155;
+        line-height: 1.35;
+    }
+    .sig-stamp {
+        width: 30%;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 2px;
+        padding-bottom: 10px;
+    }
+    .sig-director {
+        width: 38%;
+        text-align: center;
+    }
+    .sig-line {
+        border-bottom: 1.5px solid #0f172a;
+        width: 90%;
+        margin: 0 auto 4px auto;
+    }
+    .sig-name {
+        font-size: 10px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1px;
+    }
+    .sig-role {
+        font-size: 9px;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+</head>
+<body>
+<div class="print-sheet">
+    <div class="header">
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+        </div>
+        <div class="title-container">
+            <div class="title-main">Cuadro de Resumen Estadístico Final</div>
+            <div class="title-sub">Sobre el Rendimiento Escolar del Ciclo ${d.cycle}</div>
+            <div class="title-level">NIVEL DE EDUCACIÓN MEDIA - CICLO DIVERSIFICADO</div>
+        </div>
+        <div class="logo-container" style="visibility:hidden;">
+            <img src="logo.png" alt="Logo">
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-row">
+            <span class="info-label">ESTABLECIMIENTO:</span>
+            <span class="info-val">${d.establecimiento}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">CÓDIGO:</span>
+            <span class="info-val">${d.codigo}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">CARRERA:</span>
+            <span class="info-val">${d.carrera}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">DIRECCIÓN:</span>
+            <span class="info-val">${d.direccion}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">JORNADA / SECTOR:</span>
+            <span class="info-val">${d.jornadaSector}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">MUNICIPIO / DEPTO:</span>
+            <span class="info-val">${d.municipioDepto}</span>
+        </div>
+    </div>
+
+    <table class="stats-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 14%;">GRADO</th>
+                <th colspan="4" style="width: 39%;">HOMBRES</th>
+                <th colspan="4" style="width: 39%;">MUJERES</th>
+                <th rowspan="2" style="width: 8%;">TOTAL<br>EVALUADOS</th>
+            </tr>
+            <tr class="sub-hdr">
+                <th style="width: 9.5%;">INSCRITOS</th>
+                <th style="width: 10%;">PROMOVIDOS</th>
+                <th style="width: 10%;">NO PROM.<br>C/DERECHO</th>
+                <th style="width: 9.5%;">NO PROM.<br>S/DERECHO</th>
+                <th style="width: 9.5%;">INSCRITAS</th>
+                <th style="width: 10%;">PROMOVIDAS</th>
+                <th style="width: 10%;">NO PROM.<br>C/DERECHO</th>
+                <th style="width: 9.5%;">NO PROM.<br>S/DERECHO</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${d.grados.map((g, idx) => `
+                <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                    <td class="grade-col">${g.nombre}</td>
+                    <td>${g.hi}</td>
+                    <td style="font-weight:700; color:#166534;">${g.hp}</td>
+                    <td style="color:#b45309;">${g.hcd}</td>
+                    <td style="color:#b91c1c;">${g.hsd}</td>
+                    <td>${g.mi}</td>
+                    <td style="font-weight:700; color:#166534;">${g.mp}</td>
+                    <td style="color:#b45309;">${g.mcd}</td>
+                    <td style="color:#b91c1c;">${g.msd}</td>
+                    <td style="font-weight:700; background:#f1f5f9;">${g.tot}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTALES</td>
+                <td>${d.totales.hi}</td>
+                <td style="color:#166534;">${d.totales.hp}</td>
+                <td style="color:#b45309;">${d.totales.hcd}</td>
+                <td style="color:#b91c1c;">${d.totales.hsd}</td>
+                <td>${d.totales.mi}</td>
+                <td style="color:#166534;">${d.totales.mp}</td>
+                <td style="color:#b45309;">${d.totales.mcd}</td>
+                <td style="color:#b91c1c;">${d.totales.msd}</td>
+                <td style="font-weight:800; color:#1e3a8a;">${d.totales.tot}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="docentes-section">
+        <div class="docentes-header">Personal Docente en Servicio (${d.isOfficialHistorical ? 'Nómina Oficial SIRE 2026' : 'Nómina Activa'})</div>
+        <div class="docentes-grid">
+            <div class="docentes-box">
+                <span class="doc-highlight">HOMBRES:</span> 
+                011 = <strong>${d.docentes.h011}</strong> &nbsp;|&nbsp; 
+                021 = <strong>${d.docentes.h021}</strong> &nbsp;|&nbsp; 
+                REUBICADOS = <strong>${d.docentes.hReub}</strong> &nbsp;
+                <span style="color:#64748b;">(Subtotal: ${d.docentes.hTot})</span>
+            </div>
+            <div class="docentes-box">
+                <span class="doc-highlight">MUJERES:</span> 
+                011 = <strong>${d.docentes.m011}</strong> &nbsp;|&nbsp; 
+                021 = <strong>${d.docentes.m021}</strong> &nbsp;
+                <span style="color:#64748b;">(Subtotal: ${d.docentes.mTot})</span>
+            </div>
+            <div class="docentes-box">
+                <span class="doc-highlight">TOTAL DOCENTES:</span> 
+                <strong>${d.docentes.total}</strong> &nbsp;
+                <span style="color:#1e3a8a;">[011 = <strong>${d.docentes.tot011}</strong> &nbsp;|&nbsp; 021 = <strong>${d.docentes.tot021}</strong>]</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="signatures-container">
+        <div class="sig-date">
+            <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
+            Jutiapa, 31 de octubre de ${d.cycle}
+        </div>
+        <div class="sig-stamp">
+            ( S E L L O )
+        </div>
+        <div class="sig-director">
+            <div class="sig-line"></div>
+            <div class="sig-name">${d.directora}</div>
+            <div class="sig-role">Directora</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+
+    const triggerPrint = () => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch (e) {
+            console.error("Error al imprimir:", e);
+        }
+    };
+
+    const imgEl = printWin.document.querySelector('img');
+    if (imgEl) {
+        if (imgEl.complete) {
+            setTimeout(triggerPrint, 250);
+        } else {
+            imgEl.onload = () => setTimeout(triggerPrint, 200);
+            imgEl.onerror = () => setTimeout(triggerPrint, 200);
+            setTimeout(triggerPrint, 1000);
+        }
+    } else {
+        setTimeout(triggerPrint, 300);
+    }
+}
+window.printCuadroEstadisticoOficial = printCuadroEstadisticoOficial;
+
+function printGradeStatsCurrentView() {
+    if (window._currentGradeStatsActiveTab === 'cuadro') {
+        printCuadroEstadisticoOficial();
+    } else {
+        if (typeof printGradeStatsReport === 'function') {
+            printGradeStatsReport('section');
+        } else {
+            window.print();
+        }
+    }
+}
+window.printGradeStatsCurrentView = printGradeStatsCurrentView;

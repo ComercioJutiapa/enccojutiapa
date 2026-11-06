@@ -5761,3 +5761,65 @@ body.theme-dark .custom-table tbody tr:hover {
         box-shadow: none !important;
     }
 }
+
+
+/* ========================================================================== */
+/* IMPRESIÓN OFICIAL TAMAÑO CARTA HORIZONTAL EN 1 HOJA (CUADRO ESTADÍSTICO)   */
+/* ========================================================================== */
+@media print {
+    body.print-cuadro-mode,
+    body:has(#tabGradeStatsCuadro[style*="background: rgb(2, 132, 199)"]),
+    body:has(#tabGradeStatsCuadro[style*="background:#0284c7"]) {
+        @page {
+            size: letter landscape !important;
+            margin: 8mm 10mm !important;
+        }
+    }
+
+    /* Regla para forzar que el Cuadro Estadístico ocupe exactamente 1 sola hoja */
+    .cuadro-estadistico-view {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-before: avoid !important;
+        margin: 0 auto !important;
+        max-width: 1020px !important;
+        width: 100% !important;
+        padding: 4px 8px !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-header {
+        margin-bottom: 6px !important;
+        padding-bottom: 4px !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-info-grid {
+        margin-bottom: 6px !important;
+        padding: 5px 10px !important;
+        font-size: 9.5px !important;
+    }
+
+    .cuadro-estadistico-view table.cuadro-table {
+        margin-bottom: 6px !important;
+        font-size: 9.5px !important;
+    }
+
+    .cuadro-estadistico-view table.cuadro-table th,
+    .cuadro-estadistico-view table.cuadro-table td {
+        padding: 3.5px 3px !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-docentes-wrapper {
+        margin-bottom: 8px !important;
+    }
+
+    .cuadro-estadistico-view .cuadro-signatures {
+        margin-top: 4px !important;
+        padding-top: 4px !important;
+    }
+}
