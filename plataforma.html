@@ -1064,27 +1064,7 @@
                     <form id="mainEnrollmentForm" onsubmit="saveStudentForm(event)">
                         <input type="hidden" id="studentFormId">
                         
-                        <!-- BARRA SUPERIOR DE BÚSQUEDA INTELIGENTE SIRE / CÓDIGO PERSONAL -->
-                        <div class="dash-card" style="margin-bottom:10px; border:1.5px solid #38bdf8; background:linear-gradient(90deg, #f0f9ff 0%, #ffffff 100%); border-radius:10px; padding:8px 14px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:270px;">
-                                    <div style="width:32px; height:32px; border-radius:8px; background:#0284c7; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                        <i class="fa-solid fa-bolt" style="font-size:0.95rem;"></i>
-                                    </div>
-                                    <div>
-                                        <span style="font-weight:800; font-size:0.86rem; color:#0369a1; display:block;">Inscripción Exprés por Código Personal (SIRE / MINEDUC)</span>
-                                        <span style="font-size:0.72rem; color:#64748b;">Ingrese Código Personal o CUI para autocompletar la ficha en 0 segundos</span>
-                                    </div>
-                                </div>
-                                <div style="display:flex; gap:8px; flex:1.2; max-width:440px; min-width:240px; align-items:center;">
-                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" oninput="this.value = this.value.toUpperCase();" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
-                                    <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; font-size:0.82rem; min-height:38px; height:38px; padding:0 14px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;">
-                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-llenar
-                                    </button>
-                                </div>
-                                <div id="quickSireSearchResultBanner" style="display:none; width:100%; padding:8px 12px; border-radius:8px; font-size:0.78rem; margin-top:2px;"></div>
-                            </div>
-                        </div>
+
 
                         <div class="enrollment-compact-grid">
                             <!-- TARJETA 1: FOTOGRAFÍA EN VIVO Y DOCUMENTOS DE IDENTIDAD -->
@@ -1131,12 +1111,7 @@
 
                                 <div class="compact-group">
                                     <label>Código Personal (MINEDUC)</label>
-                                    <div style="display:flex; gap:4px;">
-                                        <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="this.value = this.value.toUpperCase(); validateStudentFormLiveDuplicate();" style="text-transform:uppercase; font-weight:700;">
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="searchAndAutoFillByPersonalCode(document.getElementById('studentFormPersonalCode').value)" title="Buscar ficha" style="white-space:nowrap; font-weight:700; background:#0284c7; border-color:#0284c7; padding:2px 8px;">
-                                            <i class="fa-solid fa-magnifying-glass"></i>
-                                        </button>
-                                    </div>
+                                    <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="this.value = this.value.toUpperCase(); validateStudentFormLiveDuplicate();" style="text-transform:uppercase; font-weight:700;">
                                 </div>
 
                                 <div class="compact-group">
@@ -1162,7 +1137,7 @@
                                     </div>
                                 </div>
 
-                                <div style="display:grid; grid-template-columns: 1.3fr 0.8fr 1.1fr 1.1fr; gap:8px;">
+                                <div class="enrollment-personal-grid" style="display:grid; grid-template-columns: 1.3fr 0.8fr 1.1fr 1.1fr; gap:8px;">
                                     <div class="compact-group">
                                         <label>Fecha Nacimiento <span style="color:#ef4444;">*</span></label>
                                         <input type="date" id="studentFormBirthDate" class="form-control" required onchange="calculateStudentAge(); validateStudentFormLiveDuplicate();">
@@ -1199,7 +1174,7 @@
                                     <div class="compact-group">
                                         <label style="color:#166534 !important; display:flex; justify-content:space-between; align-items:center;">
                                             <span>Grado y Sección a Asignar <span style="color:#ef4444;">*</span></span>
-                                            <button type="button" onclick="toggleEnrollmentSectionsSummary()" style="background:none; border:none; color:#0284c7; font-weight:700; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
+                                            <button type="button" id="btnToggleEnrollmentSectionsSummary" onclick="toggleEnrollmentSectionsSummary()" style="background:none; border:none; color:#0284c7; font-weight:700; font-size:0.74rem; cursor:pointer; text-decoration:underline; display:inline-flex; align-items:center; gap:4px;">
                                                 <i class="fa-solid fa-chart-pie"></i> Ver cupos de todas las secciones
                                             </button>
                                         </label>
@@ -1235,7 +1210,7 @@
                                             <i class="fa-solid fa-xmark"></i>
                                         </button>
                                     </div>
-                                    <div id="enrollmentSectionsDistributionGrid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                                    <div id="enrollmentSectionsDistributionGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px;">
                                         <!-- Se llena dinámicamente con conteos de 4to, 5to y 6to -->
                                     </div>
                                 </div>
@@ -5030,13 +5005,20 @@
                                 <input type="text" id="profRetireReason" class="form-control" placeholder="Ej: Cambio de residencia familiar a otro municipio / Deserción escolar">
                             </div>
                             <div class="form-row" id="retireExtraFieldsRow">
-                                <div class="form-group" style="flex:1.5;">
+                                <div class="form-group" style="flex:1.4;">
                                     <label>Persona a quien se entregó el expediente</label>
                                     <input type="text" id="profRetireRecipient" class="form-control" placeholder="Nombre completo del Padre, Madre o Tutor">
                                 </div>
                                 <div class="form-group" style="flex:1;">
                                     <label>Fecha de Notificación / Retiro *</label>
                                     <input type="date" id="profRetireDate" class="form-control">
+                                </div>
+                                <div class="form-group" style="flex:1.2;">
+                                    <label style="font-weight:800; color:#9a3412;">¿Expediente físico en la escuela? *</label>
+                                    <select id="profHasExpediente" class="form-control" style="font-weight:700;">
+                                        <option value="true" selected>Sí (Permanece en archivo ENCCO)</option>
+                                        <option value="false">No (Entregado por traslado o retiro)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

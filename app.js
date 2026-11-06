@@ -7135,15 +7135,48 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
 window.getAttendanceStudents = getAttendanceStudents;
 
 
-function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '') {
+
+// ==========================================================================
+// GENERADOR CANÓNICO DE CARNÉ ESCOLAR SECUENCIAL (CERO COLISIONES)
+// ==========================================================================
+window._lastSelectedEnrollmentGrade = window._lastSelectedEnrollmentGrade || '';
+window._lastSelectedEnrollmentCycle = window._lastSelectedEnrollmentCycle || '';
+window._enrollmentCuposPanelVisible = window._enrollmentCuposPanelVisible || false;
+
+function getNextOfficialStudentCarne(cycleYear = null, targetGradeCode = null) {
+    const cycle = String(cycleYear || (typeof window !== 'undefined' && window.STATE?.activeCycle) || '2027').trim();
+    const students = (typeof window !== 'undefined' && Array.isArray(window.STATE?.students)) ? window.STATE.students : [];
+    let maxNum = 0;
+    const rePrefix = new RegExp('^ENCCO-' + cycle + '-(\\d+)$', 'i');
+    students.forEach(s => {
+        if (!s || !s.carne) return;
+        const m = String(s.carne).trim().match(rePrefix);
+        if (m) {
+            const n = parseInt(m[1], 10);
+            if (!isNaN(n) && n > maxNum) maxNum = n;
+        }
+    });
+    if (maxNum === 0) {
+        const cycleStudents = students.filter(s => s && String(s.cycle || '').includes(cycle));
+        maxNum = cycleStudents.length + 1;
+        if (maxNum < 400 && cycle === '2027') maxNum = 421;
+    } else {
+        maxNum++;
+    }
+    return `ENCCO-${cycle}-${String(maxNum).padStart(3, '0')}`;
+}
+window.getNextOfficialStudentCarne = getNextOfficialStudentCarne;
+
+function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '', cycleOverride = null) {
     if (!window.STATE || !Array.isArray(window.STATE.students)) return 0;
     const cleanSec = (sectionName || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
     const cleanGName = (gradeName || '').toLowerCase().trim();
     const gWord = cleanGName.split(' ')[0]; // '4to', '5to', '6to'
-    const targetCycle = String(window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '').trim();
+    const formCycle = cycleOverride || (typeof document !== 'undefined' ? document.getElementById('studentFormCycle')?.value : null);
+    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '').trim();
 
     return window.STATE.students.filter(s => {
-        if (!s || s.status === 'Retirado') return false;
+        if (!s || s.status === 'Retirado' || s.status === 'Egresado' || s.status === 'Inactivo') return false;
         const stCycle = String(s.cycle || s.academicCycle || '').trim();
         if (targetCycle && stCycle && stCycle !== targetCycle) return false;
         
@@ -7166,9 +7199,13 @@ function updateEnrollmentSectionLiveBadge() {
     const badgeText = document.getElementById('enrollmentSectionLiveBadgeText');
     if (!sel || !badgeText) return;
 
+    if (sel.value) {
+        window._lastSelectedEnrollmentGrade = sel.value;
+    }
+
     const opt = sel.options[sel.selectedIndex];
     if (!opt || !opt.value) {
-        badgeText.textContent = 'Seleccione una sección';
+        badgeText.innerHTML = '<span style="color:#64748b;">Seleccione una sección a asignar</span>';
         return;
     }
 
@@ -7177,21 +7214,51 @@ function updateEnrollmentSectionLiveBadge() {
     const gCode = opt.getAttribute('data-code') || '';
     const count = getStudentsCountByGradeAndSection(gName, gSec, gCode);
 
-    badgeText.innerHTML = `Inscritos en esta sección: <strong style="color:#0f5127; font-size:0.82rem;">${count} estudiantes activos</strong>`;
+    let statusPill = '';
+    if (count < 35) {
+        statusPill = `<i class="fa-solid fa-circle" style="color:#16a34a; font-size:0.65rem;"></i> Inscritos en esta sección: <strong style="color:#15803d; font-size:0.83rem;">${count} estudiantes activos</strong> <span style="color:#16a34a; font-size:0.73rem; font-weight:600;">(Cupo regular disponible: ${Math.max(0, 35 - count)})</span>`;
+    } else if (count >= 35 && count < 40) {
+        statusPill = `<i class="fa-solid fa-circle" style="color:#d97706; font-size:0.65rem;"></i> Inscritos en esta sección: <strong style="color:#b45309; font-size:0.83rem;">${count} estudiantes activos</strong> <span style="color:#d97706; font-size:0.73rem; font-weight:700;">(Alerta de capacidad — 35 a 39 alumnos)</span>`;
+    } else {
+        statusPill = `<i class="fa-solid fa-circle" style="color:#dc2626; font-size:0.65rem;"></i> Inscritos en esta sección: <strong style="color:#b91c1c; font-size:0.83rem;">${count} estudiantes activos</strong> <span style="color:#dc2626; font-size:0.73rem; font-weight:800;">(Capacidad máxima alcanzada: 40+)</span>`;
+    }
+
+    badgeText.innerHTML = statusPill;
     
     const card = document.getElementById('enrollmentAllSectionsSummaryCard');
-    if (card && card.style.display !== 'none') {
-        renderEnrollmentSectionsDistribution();
+    if (card) {
+        card.style.display = window._enrollmentCuposPanelVisible ? 'block' : 'none';
+        if (window._enrollmentCuposPanelVisible) {
+            renderEnrollmentSectionsDistribution();
+        }
     }
 }
 window.updateEnrollmentSectionLiveBadge = updateEnrollmentSectionLiveBadge;
 
+function selectEnrollmentSectionFromSummary(val) {
+    const sel = document.getElementById('studentFormGrade');
+    if (sel && val) {
+        sel.value = val;
+        window._lastSelectedEnrollmentGrade = val;
+        updateEnrollmentSectionLiveBadge();
+        renderEnrollmentSectionsDistribution();
+    }
+}
+window.selectEnrollmentSectionFromSummary = selectEnrollmentSectionFromSummary;
+
 function toggleEnrollmentSectionsSummary(force = null) {
     const card = document.getElementById('enrollmentAllSectionsSummaryCard');
+    const btn = document.getElementById('btnToggleEnrollmentSectionsSummary');
     if (!card) return;
     const isVisible = card.style.display !== 'none';
     const show = (force !== null) ? force : !isVisible;
+    window._enrollmentCuposPanelVisible = show;
     card.style.display = show ? 'block' : 'none';
+    if (btn) {
+        btn.innerHTML = show 
+            ? '<i class="fa-solid fa-chevron-up"></i> Ocultar cupos de todas las secciones' 
+            : '<i class="fa-solid fa-chart-pie"></i> Ver cupos de todas las secciones';
+    }
     if (show) {
         renderEnrollmentSectionsDistribution();
     }
@@ -7233,8 +7300,10 @@ function renderEnrollmentSectionsDistribution() {
             const border = isSelected ? '2px solid #16a34a' : '1px solid #cbd5e1';
 
             itemsHtml += `
-                <div style="background:${bg}; border:${border}; border-radius:6px; padding:4px 8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.75rem;">
-                    <span style="font-weight:${isSelected ? '800' : '600'}; color:${isSelected ? '#15803d' : '#334155'};">${g.section}</span>
+                <div onclick="selectEnrollmentSectionFromSummary('${val}')" title="Haga clic para seleccionar ${g.name} (${g.section}) en el formulario" style="background:${bg}; border:${border}; border-radius:6px; padding:5px 8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.75rem; cursor:pointer; transition:all 0.15s ease;">
+                    <span style="font-weight:${isSelected ? '800' : '600'}; color:${isSelected ? '#15803d' : '#334155'}; display:inline-flex; align-items:center; gap:4px;">
+                        ${isSelected ? '<i class="fa-solid fa-check" style="font-size:0.7rem; color:#16a34a;"></i>' : ''}${g.section}
+                    </span>
                     <strong style="color:${isSelected ? '#15803d' : '#0f172a'}; font-family:monospace; font-size:0.82rem;">${count}</strong>
                 </div>
             `;
@@ -14673,6 +14742,11 @@ function openEnrollmentView() {
 
 function resetStudentEnrollmentForm(showNotification = true) {
     stopWebcam();
+    
+    // 🛡️ REGLA INSTITUCIONAL: Retener la sección y el ciclo previamente elegidos
+    const currentGradeVal = document.getElementById('studentFormGrade')?.value || window._lastSelectedEnrollmentGrade || '';
+    const currentCycleVal = document.getElementById('studentFormCycle')?.value || window._lastSelectedEnrollmentCycle || STATE.activeCycle || '2027';
+
     updateGradeSelects();
     updateCycleSelects();
     
@@ -14687,9 +14761,12 @@ function resetStudentEnrollmentForm(showNotification = true) {
     const btmBtn = document.getElementById('enrollmentSubmitBottomBtn');
     if (btmBtn) btmBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Inscripción';
 
-    const randomCarne = 'ENCCO-' + (STATE.activeCycle || '2026') + '-' + Math.floor(100 + Math.random() * 900);
+    // Generación de carné secuencial canónico sin riesgo de colisión
+    const safeCarne = (typeof getNextOfficialStudentCarne === 'function')
+        ? getNextOfficialStudentCarne(currentCycleVal)
+        : ('ENCCO-' + currentCycleVal + '-' + Date.now().toString().slice(-4));
     const carneEl = document.getElementById('studentFormCarne');
-    if (carneEl) carneEl.value = randomCarne;
+    if (carneEl) carneEl.value = safeCarne;
     
     const fields = [
         'studentFormPersonalCode', 'studentFormCui', 'studentFormFirstName', 'studentFormLastName',
@@ -14703,12 +14780,18 @@ function resetStudentEnrollmentForm(showNotification = true) {
         if (el) el.value = '';
     });
 
-    const firstGrade = (STATE.gradesList && STATE.gradesList[0]) ? STATE.gradesList[0].code : '';
+    // Restaurar fielmente la sección previamente seleccionada
     const gradeEl = document.getElementById('studentFormGrade');
-    if (gradeEl && firstGrade) gradeEl.value = firstGrade;
+    if (gradeEl) {
+        if (currentGradeVal && Array.from(gradeEl.options).some(o => o.value === currentGradeVal)) {
+            gradeEl.value = currentGradeVal;
+        } else if (gradeEl.options.length > 0 && !gradeEl.value) {
+            gradeEl.selectedIndex = 0;
+        }
+    }
 
     const cycleEl = document.getElementById('studentFormCycle');
-    if (cycleEl) cycleEl.value = STATE.activeCycle || '';
+    if (cycleEl && currentCycleVal) cycleEl.value = currentCycleVal;
 
     const shiftEl = document.getElementById('studentFormShift');
     if (shiftEl) shiftEl.value = 'Matutina';
@@ -14719,10 +14802,13 @@ function resetStudentEnrollmentForm(showNotification = true) {
     const warn = document.getElementById('studentDuplicateWarning');
     if (warn) warn.style.display = 'none';
 
-    const qSire = document.getElementById('quickSireSearchCode');
-    if (qSire) qSire.value = '';
-    const qBanner = document.getElementById('quickSireSearchResultBanner');
-    if (qBanner) qBanner.style.display = 'none';
+    // Preservar la visibilidad del panel de cupos si estaba abierto
+    const cuposCard = document.getElementById('enrollmentAllSectionsSummaryCard');
+    if (cuposCard) {
+        cuposCard.style.display = window._enrollmentCuposPanelVisible ? 'block' : 'none';
+    }
+
+    updateEnrollmentSectionLiveBadge();
 
     if (showNotification) {
         showToast("Formulario de inscripción listo para un nuevo estudiante.", "info");
@@ -15039,9 +15125,11 @@ function checkStudentDuplicateEnrollment(data, excludeId = null) {
             return true;
         }
 
-        // 2. Coincidencia por Carné
+        // 2. Coincidencia por Carné (excluye provisionales automáticos ENCCO- para nuevos alumnos)
         if (carne && carne.trim() && s.carne && s.carne.trim().toLowerCase() === carne.trim().toLowerCase()) {
-            return true;
+            if (cleanExcludeId || !carne.startsWith('ENCCO-')) {
+                return true;
+            }
         }
 
         // 3. Coincidencia por CUI (requiere longitud válida y coincidencia de primer nombre para no bloquear hermanos con mismo apellido y CUI compartido/provisional)
@@ -15099,13 +15187,22 @@ function validateStudentFormLiveDuplicate() {
     const warnText = document.getElementById('studentDuplicateWarningText');
     if (!warnBox || !warnText) return;
 
-    if (!personalCode && !cui && !carne && (!firstName || !lastName)) {
+    // 🛡️ REGLA: No validar duplicados si solo se teclean caracteres cortos o iniciales (como "I")
+    const hasValidPCode = personalCode && personalCode.length >= 6;
+    const hasValidCui = cui && cui.replace(/\s+/g, '').length >= 10;
+    const hasValidNames = firstName && lastName && firstName.length >= 2 && lastName.length >= 2;
+    const hasCustomCarne = carne && !carne.startsWith('ENCCO-') && carne.length >= 6;
+
+    if (!hasValidPCode && !hasValidCui && !hasValidNames && !hasCustomCarne) {
         warnBox.style.display = 'none';
         return;
     }
 
     const duplicate = checkStudentDuplicateEnrollment({
-        personalCode, cui, carne, firstName, lastName, birthDate, cycle
+        personalCode: hasValidPCode ? personalCode : '',
+        cui: hasValidCui ? cui : '',
+        carne: hasCustomCarne ? carne : '',
+        firstName, lastName, birthDate, cycle
     }, studentId);
 
     if (duplicate) {
@@ -15365,10 +15462,25 @@ async function saveStudentForm(e) {
             document.dispatchEvent(new CustomEvent('encco:student-enrolled', { detail: studentObj }));
         } catch(evErr) {}
         
-        // 🧼 BLANQUEO Y RESETEO INMEDIATO: Tanto al inscribir nuevo como al editar la ficha de datos,
-        // dejar el formulario completamente limpio en blanco y restablecer botones y títulos.
+        // 🧼 BLANQUEO Y RESETEO INMEDIATO:
+        // Memorizar la sección asignada para mantenerla fija en la siguiente inscripción
+        window._lastSelectedEnrollmentGrade = `${finalGrade} - ${finalSection}`;
+        window._lastSelectedEnrollmentCycle = cycle;
+
+        if (typeof updateGradeSelects === 'function') {
+            updateGradeSelects();
+        }
+
         if (typeof resetStudentEnrollmentForm === 'function') {
             resetStudentEnrollmentForm(false);
+        }
+
+        if (typeof updateEnrollmentSectionLiveBadge === 'function') {
+            updateEnrollmentSectionLiveBadge();
+        }
+
+        if (window._enrollmentCuposPanelVisible && typeof renderEnrollmentSectionsDistribution === 'function') {
+            renderEnrollmentSectionsDistribution();
         }
 
         // 🌟 Persistencia atómica directa y garantizada en Firestore y Realtime Database
@@ -17006,6 +17118,11 @@ function openStudentProfileModal(id) {
         retDate.value = student.retireDate || '';
         retDate.readOnly = !canEdit;
     }
+    const retHasExp = document.getElementById('profHasExpediente');
+    if (retHasExp) {
+        retHasExp.value = (student.hasExpediente === false) ? 'false' : 'true';
+        retHasExp.disabled = !canEdit;
+    }
 
     // 3. Consolidación Dinámica Integral: Asistencia, Inasistencias, Tardanzas, Permisos ("J" y "A" Blindada), Disciplina y Bitácora
     const fullRecord = getStudentFullAttendanceAndDisciplineData(student);
@@ -18311,10 +18428,12 @@ async function saveStudentProfileForm(e) {
         student.retireReason = reason;
         student.retireRecipient = (document.getElementById('profRetireRecipient')?.value || '').trim();
         student.retireDate = document.getElementById('profRetireDate')?.value || new Date().toISOString().slice(0, 10);
+        student.hasExpediente = (document.getElementById('profHasExpediente')?.value !== 'false');
     } else {
         student.retireReason = '';
         student.retireRecipient = '';
         student.retireDate = '';
+        student.hasExpediente = true;
     }
 
     try {

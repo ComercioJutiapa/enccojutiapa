@@ -5823,3 +5823,18 @@ body.theme-dark .custom-table tbody tr:hover {
         padding-top: 4px !important;
     }
 }
+
+
+/* ========================================================================== */
+/* RESPONSIVIDAD DEL MÓDULO DE INSCRIPCIÓN (TABLETS Y MÓVILES)               */
+/* ========================================================================== */
+@media (max-width: 768px) {
+    .enrollment-personal-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+@media (max-width: 480px) {
+    .enrollment-personal-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
