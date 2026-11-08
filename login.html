@@ -623,6 +623,9 @@
                     }
                 }
                 localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+                const loginTs = String(Date.now());
+                sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs);
+                try { localStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs); } catch(e) {}
             } catch(e) {
                 console.error('Error al guardar credenciales en sesión:', e);
             }
@@ -635,6 +638,24 @@
             if (roleBox) roleBox.style.display = 'none';
             if (loginForm) loginForm.style.display = 'block';
         }
+
+        // Escucha de mensaje de revocación masiva de sesiones
+        window.addEventListener('DOMContentLoaded', function() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('msg') === 'session_revoked') {
+                    const alertBox = document.getElementById('loginAlertBox');
+                    const alertText = document.getElementById('loginAlertText');
+                    if (alertBox && alertText) {
+                        alertBox.style.display = 'flex';
+                        alertBox.style.background = '#fef2f2';
+                        alertBox.style.borderColor = '#f87171';
+                        alertBox.style.color = '#991b1b';
+                        alertText.innerHTML = '<strong>Sesión finalizada:</strong> El Super Usuario ha cerrado todas las sesiones activas del sistema por seguridad. Ingrese nuevamente sus credenciales.';
+                    }
+                }
+            } catch(e) {}
+        });
     </script>
 </body>
 </html>

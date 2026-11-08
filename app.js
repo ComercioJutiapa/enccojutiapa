@@ -5196,6 +5196,18 @@ function initFirebaseRealtimeConnection() {
                     const nodeData = parsed.data;
                     const cleanPath = rawPath.replace(/^\/+/, '');
 
+                    // Detección reactiva de revocación masiva de sesiones por Super Usuario
+                    if (cleanPath === 'security/sessionRevocation' || cleanPath === 'security' || cleanPath === '' || cleanPath === '/') {
+                        let revObj = null;
+                        if (cleanPath === 'security/sessionRevocation') revObj = nodeData;
+                        else if (cleanPath === 'security' && nodeData) revObj = nodeData.sessionRevocation;
+                        else if ((cleanPath === '' || cleanPath === '/') && nodeData && nodeData.security) revObj = nodeData.security.sessionRevocation;
+
+                        if (revObj && revObj.revocationTimestamp && typeof handleIncomingSessionRevocation === 'function') {
+                            handleIncomingSessionRevocation(revObj);
+                        }
+                    }
+
                     // [v190] Sincronización continua y reactiva de eventos SSE de Firebase
 
                     if (cleanPath === '' || cleanPath === '/') {
@@ -5749,7 +5761,12 @@ function initFirebaseRealtimeConnection() {
                 try {
                     const data = JSON.parse(e.data);
                     if (data && data.data && typeof data.data === 'object') {
-                        if (data.path === '/' || !data.path) {
+                        if (data.path === '/security/sessionRevocation' || data.path === '/security' || (data.path && data.path.startsWith('/security'))) {
+                            const revObj = data.path === '/security/sessionRevocation' ? data.data : (data.data ? data.data.sessionRevocation : null);
+                            if (revObj && revObj.revocationTimestamp && typeof handleIncomingSessionRevocation === 'function') {
+                                handleIncomingSessionRevocation(revObj);
+                            }
+                        } else if (data.path === '/' || !data.path) {
                             applyIncomingCloudState(data.data, false);
                         } else if (data.path === '/config' || data.path.startsWith('/config')) {
                             if (typeof applyBimestreAndLockConfig === 'function') {
@@ -40632,6 +40649,9 @@ function handleLoginPageSubmit(e) {
     try {
         sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(matchedUser));
         sessionStorage.setItem('ENCCO_AUTH_ROLE', roleToAssign);
+        const loginTs = String(Date.now());
+        sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs);
+        try { localStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs); } catch(e) {}
         localStorage.removeItem('ENCCO_AUTH_USER');
         localStorage.removeItem('ENCCO_AUTH_ROLE');
         localStorage.removeItem('ENCCO_AUTH_REMEMBER');
@@ -53059,3 +53079,203 @@ async function exportDatabaseBackupJSON() {
     }
 }
 window.exportDatabaseBackupJSON = exportDatabaseBackupJSON;
+
+
+// ==========================================================================
+// MÓDULO DE SEGURIDAD: CIERRE MASIVO DE SESIONES (KILL-SWITCH PARA SUPER USUARIO)
+// ==========================================================================
+
+function showGlobalSessionRevokedOverlay(reasonText) {
+    if (window._isLoggingOut) return;
+    window._isLoggingOut = true;
+
+    try {
+        let overlay = document.getElementById('enccoSessionRevokedOverlay');
+        if (!overlay && typeof document !== 'undefined' && document.body) {
+            overlay = document.createElement('div');
+            overlay.id = 'enccoSessionRevokedOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999999;color:#ffffff;font-family:sans-serif;text-align:center;padding:24px;box-sizing:border-box;';
+            overlay.innerHTML = `
+                <div style="background:#1e293b;border:2px solid #ef4444;border-radius:18px;padding:36px;max-width:520px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;gap:18px;">
+                    <div style="width:72px;height:72px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-size:2.2rem;box-shadow:0 0 25px rgba(239,68,68,0.45);">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 style="margin:0;font-size:1.45rem;font-weight:900;color:#f87171;">Sesión Finalizada por Seguridad</h2>
+                    <p style="margin:0;font-size:0.95rem;color:#cbd5e1;line-height:1.6;">${typeof escapeHtml === 'function' ? escapeHtml(reasonText) : reasonText}</p>
+                    <div style="font-size:0.82rem;color:#94a3b8;background:#0f172a;padding:10px 18px;border-radius:8px;border:1px solid #334155;margin-top:6px;">
+                        Redirigiendo a la pantalla de inicio en <strong id="revokeCountdown" style="color:#38bdf8;font-size:1rem;">2</strong> segundos...
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        let count = 2;
+        const interval = setInterval(() => {
+            count--;
+            const cntEl = document.getElementById('revokeCountdown');
+            if (cntEl) cntEl.textContent = String(count);
+            if (count <= 0) {
+                clearInterval(interval);
+                if (typeof performLogout === 'function') {
+                    performLogout();
+                } else {
+                    window.location.replace('login.html?msg=session_revoked');
+                }
+            }
+        }, 1000);
+    } catch(e) {
+        if (typeof performLogout === 'function') performLogout();
+        else window.location.replace('login.html?msg=session_revoked');
+    }
+}
+window.showGlobalSessionRevokedOverlay = showGlobalSessionRevokedOverlay;
+
+function handleIncomingSessionRevocation(revData) {
+    if (!revData || !revData.revocationTimestamp) return;
+    const revTs = Number(revData.revocationTimestamp);
+    try {
+        localStorage.setItem('ENCCO_REVOCATION_TIMESTAMP', String(revTs));
+    } catch(e) {}
+
+    const myRole = String(
+        (typeof STATE !== 'undefined' && STATE.currentRole) || 
+        (typeof STATE !== 'undefined' && STATE.currentUser && STATE.currentUser.role) || 
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_ROLE') : '') || 
+        ''
+    ).toLowerCase();
+
+    const isTargetRole = (myRole === 'docente' || myRole === 'catedratico' || myRole === 'super_usuario' || myRole === 'admin');
+    if (!isTargetRole) return;
+
+    const mySessionTs = Number(
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') : 0) || 
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_TIMESTAMP') : 0) || 
+        0
+    );
+
+    if (mySessionTs > 0 && mySessionTs < revTs) {
+        console.warn("🛑 [Seguridad] Revocación global de sesiones detectada. Cerrando sesión...");
+        showGlobalSessionRevokedOverlay(revData.reason || 'El Super Usuario ha cerrado todas las sesiones activas del sistema por seguridad.');
+    }
+}
+window.handleIncomingSessionRevocation = handleIncomingSessionRevocation;
+
+async function cerrarTodasLasSesionesDocentesYSuper() {
+    const role = (typeof STATE !== 'undefined' && STATE.currentRole) || 
+                 (typeof STATE !== 'undefined' && STATE.currentUser && STATE.currentUser.role);
+    const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) || 
+                    (role === 'admin' || role === 'super_usuario');
+
+    if (!isSuper) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso denegado: Esta acción es exclusiva para el Super Usuario.", "danger");
+        }
+        return;
+    }
+
+    let confirmed = false;
+    if (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function') {
+        confirmed = await window.EnccoDialog.confirm({
+            title: '⚠️ ¿Cerrar Todas las Sesiones Activas?',
+            message: 'Esta acción expulsará inmediatamente a todos los docentes conectados en cualquier dispositivo (computadoras, teléfonos y tablets) y cerrará también su propia sesión actual de Super Usuario.\n\n¿Desea continuar?',
+            confirmText: 'Sí, Cerrar Todas las Sesiones',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+    } else {
+        confirmed = window.confirm("⚠️ ADVERTENCIA DE SEGURIDAD:\n\n¿Está seguro de cerrar de inmediato todas las sesiones de los docentes y la sesión actual del Super Usuario en todos los dispositivos conectados?\n\nPresione ACEPTAR para proceder.");
+    }
+
+    if (!confirmed) return;
+
+    if (typeof showToast === 'function') {
+        showToast("Emitiendo orden de cierre masivo a Firebase...", "info");
+    }
+
+    const revocationTimestamp = Date.now();
+    const payload = {
+        revocationTimestamp: revocationTimestamp,
+        revokedAt: new Date().toISOString(),
+        revokedBy: (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || 'Super Usuario',
+        reason: 'El Super Usuario ha cerrado todas las sesiones activas del sistema por seguridad.',
+        targetRoles: ['docente', 'catedratico', 'super_usuario', 'admin']
+    };
+
+    try {
+        localStorage.setItem('ENCCO_REVOCATION_TIMESTAMP', String(revocationTimestamp));
+    } catch(e) {}
+
+    // Transmisión inmediata en BroadcastChannel local para pestañas hermanas
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('encc_cross_tab_sync');
+            bc.postMessage({ type: 'session_revocation', payload: payload });
+            bc.close();
+        }
+    } catch(e) {}
+
+    // Escritura a Firebase RTDB (/encc_school_state/security/sessionRevocation)
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') 
+        ? getFirebaseDatabaseUrl() 
+        : (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_FIREBASE_URL') : '');
+
+    if (firebaseUrl) {
+        try {
+            await Promise.race([
+                fetch(`${firebaseUrl}/encc_school_state/security/sessionRevocation.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }),
+                new Promise(r => setTimeout(r, 1200))
+            ]);
+        } catch(netErr) {
+            console.warn("Aviso al escribir revocación en Firebase:", netErr);
+        }
+    }
+
+    // Mostrar overlay en el navegador del Super Usuario y cerrar sesión
+    showGlobalSessionRevokedOverlay("Ha ejecutado el cierre masivo de sesiones exitosamente. Su sesión de Super Usuario ha finalizado.");
+}
+window.cerrarTodasLasSesionesDocentesYSuper = cerrarTodasLasSesionesDocentesYSuper;
+
+// Escuchador BroadcastChannel para sincronización entre pestañas
+if (typeof BroadcastChannel !== 'undefined') {
+    try {
+        const bcSync = new BroadcastChannel('encc_cross_tab_sync');
+        bcSync.onmessage = function(ev) {
+            if (ev && ev.data && ev.data.type === 'session_revocation') {
+                if (typeof handleIncomingSessionRevocation === 'function') {
+                    handleIncomingSessionRevocation(ev.data.payload);
+                }
+            }
+        };
+    } catch(e) {}
+}
+
+// Verificación periódica silenciosa cada 25 segundos
+if (typeof window !== 'undefined' && !window._hasSessionRevocationInterval) {
+    window._hasSessionRevocationInterval = true;
+    setInterval(function() {
+        try {
+            const revTs = Number(localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') || 0);
+            const myTs = Number(
+                (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') : 0) || 
+                (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_TIMESTAMP') : 0) || 
+                0
+            );
+            if (revTs > 0 && myTs > 0 && myTs < revTs) {
+                const role = String(
+                    (typeof STATE !== 'undefined' && STATE.currentRole) || 
+                    (typeof STATE !== 'undefined' && STATE.currentUser && STATE.currentUser.role) || 
+                    ''
+                ).toLowerCase();
+                if (role === 'docente' || role === 'catedratico' || role === 'super_usuario' || role === 'admin') {
+                    showGlobalSessionRevokedOverlay('El Super Usuario ha cerrado todas las sesiones activas del sistema.');
+                }
+            }
+        } catch(e) {}
+    }, 25000);
+}
+

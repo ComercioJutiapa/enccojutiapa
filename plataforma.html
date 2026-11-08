@@ -54,6 +54,18 @@
                             return false;
                         }
                     }
+                    // Verificación de Revocación Masiva de Sesiones por Super Usuario
+                    var mySessionTs = Number(sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') || localStorage.getItem('ENCCO_AUTH_TIMESTAMP') || 0);
+                    var globalRevocationTs = Number(localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') || 0);
+                    if (globalRevocationTs > 0 && mySessionTs > 0 && mySessionTs < globalRevocationTs) {
+                        var myRole = (sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || '').toLowerCase();
+                        if (myRole === 'docente' || myRole === 'catedratico' || myRole === 'super_usuario' || myRole === 'admin') {
+                            clearAuthSessionOnly();
+                            window.location.replace('login.html?msg=session_revoked');
+                            return false;
+                        }
+                    }
+
                     var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
                     try {
                         sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
@@ -65,6 +77,12 @@
                         if (authToken) {
                             sessionStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
                             localStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
+                        }
+                        var currentTs = sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') || localStorage.getItem('ENCCO_AUTH_TIMESTAMP');
+                        if (!currentTs) {
+                            var nowInitTs = String(Date.now());
+                            sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowInitTs);
+                            localStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowInitTs);
                         }
                     } catch(storeErr) {}
                     return true;
@@ -726,6 +744,9 @@
                 </a>
                 <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar Tema (Claro / Oscuro)">
                     <i class="fa-solid fa-moon" id="themeIcon"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger role-restricted" id="btnCerrarTodasLasSesionesHeader" data-allowed="super_usuario,admin" onclick="cerrarTodasLasSesionesDocentesYSuper()" title="Cerrar de emergencia todas las sesiones activas de docentes y super usuario" style="display:none; background:#dc2626; color:#ffffff; font-weight:800; font-size:0.75rem; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(220,38,38,0.25);">
+                    <i class="fa-solid fa-shield-halved"></i> <span>Cerrar Todas las Sesiones</span>
                 </button>
                 <button type="button" class="logout-btn" onclick="performLogout()" title="Cerrar Sesión">
                     <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
@@ -3341,6 +3362,9 @@
                                     <i class="fa-solid fa-file-excel"></i> Cargar Excel
                                 </button>
                                 <input type="file" id="globalTeachersPensumFileInput" accept=".xlsx, .xls, .csv, .txt" style="display:none;" onchange="handleGlobalTeachersPensumExcelUpload(event)">
+                                <button type="button" class="btn btn-danger btn-xs role-restricted" data-allowed="super_usuario,admin" onclick="cerrarTodasLasSesionesDocentesYSuper()" title="Cerrar de emergencia todas las sesiones activas de docentes y super usuario" style="display:none; height:26px; font-size:0.72rem; font-weight:800; padding:0 8px; background:#dc2626; color:#ffffff; border:none; align-items:center; gap:5px; margin-right:4px;">
+                                    <i class="fa-solid fa-shield-halved"></i> Cerrar Sesiones
+                                </button>
                                 <button type="button" class="btn btn-primary btn-xs role-restricted" data-allowed="admin,director,secretaria" onclick="openUserModal()" style="height:26px; font-size:0.72rem; font-weight:700; padding:0 8px;">
                                     <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
                                 </button>
