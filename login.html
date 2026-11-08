@@ -532,29 +532,25 @@
                 submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Verificando credenciales...';
             }
 
-            // ⚡ [v189] Cargar usuarios y estudiantes directamente desde Firebase Realtime DB
+            // ⚡ [v189] Cargar usuarios directamente desde Firebase Realtime DB con timeout seguro
             try {
                 const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-                const [uRes, sRes] = await Promise.all([
-                    fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now()),
-                    fetch(fbUrl + '/encc_school_state/students.json?t=' + Date.now())
-                ]);
+                const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+                const uRes = await fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now(), {
+                    signal: controller ? controller.signal : undefined
+                });
+                if (timeoutId) clearTimeout(timeoutId);
                 if (uRes.ok) {
                     const uData = await uRes.json();
                     if (Array.isArray(uData) && uData.length > 0) {
                         window.STATE = window.STATE || {};
                         window.STATE.users = uData;
-                    }
-                }
-                if (sRes.ok) {
-                    const sData = await sRes.json();
-                    if (Array.isArray(sData) && sData.length > 0) {
-                        window.STATE = window.STATE || {};
-                        window.STATE.students = sData;
+                        try { localStorage.setItem('ENCCO_USERS_CACHE', JSON.stringify(uData)); } catch(e) {}
                     }
                 }
             } catch(err) {
-                console.warn('Aviso al consultar credenciales en Firebase:', err);
+                console.warn('Aviso al consultar credenciales en Firebase (usando respaldo):', err);
             }
 
             if (typeof ensureMasterAccount === 'function') {
@@ -562,9 +558,20 @@
             }
             // Autenticación directa contra los datos de la Base de Datos
 
-            const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
+            let usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
                 ? window.STATE.users
                 : [];
+
+            if (usersList.length === 0) {
+                try {
+                    const cachedUsers = JSON.parse(localStorage.getItem('ENCCO_USERS_CACHE') || 'null');
+                    if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
+                        usersList = cachedUsers;
+                        window.STATE = window.STATE || {};
+                        window.STATE.users = cachedUsers;
+                    }
+                } catch(e) {}
+            }
 
             const studentsList = (window.STATE && Array.isArray(window.STATE.students) && window.STATE.students.length > 0)
                 ? window.STATE.students
@@ -608,6 +615,9 @@
             if (!user) return;
             try {
                 const sessionRole = role || user.role || 'admin';
+                const storedRevTs = Number((typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') : 0) || 0);
+                const loginTs = String(Math.max(Date.now(), storedRevTs + 1000));
+
                 if (typeof saveUserSession === 'function') {
                     saveUserSession(user, sessionRole);
                 } else {
@@ -622,8 +632,10 @@
                         try { localStorage.setItem('ENCCO_AUTH_TOKEN', token); } catch(e) {}
                     }
                 }
-                localStorage.removeItem('ENCCO_AUTH_REMEMBER');
-                const loginTs = String(Date.now());
+                try {
+                    localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+                    localStorage.removeItem('ENCCO_REVOCATION_TIMESTAMP');
+                } catch(e) {}
                 sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs);
                 try { localStorage.setItem('ENCCO_AUTH_TIMESTAMP', loginTs); } catch(e) {}
             } catch(e) {

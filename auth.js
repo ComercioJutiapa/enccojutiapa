@@ -546,8 +546,13 @@
             const userStr = JSON.stringify(user);
             const token = generateInstitutionalAuthToken(user, finalRole);
 
+            // Garantizar timestamp de sesión estrictamente vigente y superior a cualquier revocación previa
+            const storedRevTs = Number((typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') : 0) || 0);
+            const nowTs = String(Math.max(Date.now(), storedRevTs + 1000));
+
             sessionStorage.setItem('ENCCO_AUTH_USER', userStr);
             sessionStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+            sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowTs);
             if (token) {
                 sessionStorage.setItem('ENCCO_AUTH_TOKEN', token);
             }
@@ -555,6 +560,8 @@
             try {
                 localStorage.setItem('ENCCO_AUTH_USER', userStr);
                 localStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+                localStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowTs);
+                localStorage.removeItem('ENCCO_REVOCATION_TIMESTAMP'); // Limpiar revocación previa al autenticar nueva sesión
                 if (token) {
                     localStorage.setItem('ENCCO_AUTH_TOKEN', token);
                 }

@@ -54,9 +54,18 @@
                             return false;
                         }
                     }
-                    // Verificación de Revocación Masiva de Sesiones por Super Usuario
-                    var mySessionTs = Number(sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') || localStorage.getItem('ENCCO_AUTH_TIMESTAMP') || 0);
+                    // Asegurar timestamp de sesión activa
+                    var currentTs = sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') || localStorage.getItem('ENCCO_AUTH_TIMESTAMP');
                     var globalRevocationTs = Number(localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') || 0);
+                    if (!currentTs) {
+                        currentTs = String(Math.max(Date.now(), globalRevocationTs + 1000));
+                        sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', currentTs);
+                        try { localStorage.setItem('ENCCO_AUTH_TIMESTAMP', currentTs); } catch(e) {}
+                    }
+                    var mySessionTs = Number(currentTs || 0);
+
+                    // Verificación de Revocación Masiva de Sesiones por Super Usuario
+                    // Solo revoca si la sesión fue creada estrictamente ANTES del evento de revocación
                     if (globalRevocationTs > 0 && mySessionTs > 0 && mySessionTs < globalRevocationTs) {
                         var myRole = (sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || '').toLowerCase();
                         if (myRole === 'docente' || myRole === 'catedratico' || myRole === 'super_usuario' || myRole === 'admin') {
@@ -77,12 +86,6 @@
                         if (authToken) {
                             sessionStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
                             localStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
-                        }
-                        var currentTs = sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') || localStorage.getItem('ENCCO_AUTH_TIMESTAMP');
-                        if (!currentTs) {
-                            var nowInitTs = String(Date.now());
-                            sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowInitTs);
-                            localStorage.setItem('ENCCO_AUTH_TIMESTAMP', nowInitTs);
                         }
                     } catch(storeErr) {}
                     return true;

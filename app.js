@@ -53134,9 +53134,14 @@ window.showGlobalSessionRevokedOverlay = showGlobalSessionRevokedOverlay;
 function handleIncomingSessionRevocation(revData) {
     if (!revData || !revData.revocationTimestamp) return;
     const revTs = Number(revData.revocationTimestamp);
-    try {
-        localStorage.setItem('ENCCO_REVOCATION_TIMESTAMP', String(revTs));
-    } catch(e) {}
+
+    // Si estamos en la página de login o index, no interferir con el inicio de sesión
+    if (typeof window !== 'undefined' && window.location) {
+        const path = (window.location.pathname || '').toLowerCase();
+        if (path.endsWith('login.html') || path.endsWith('index.html') || path.endsWith('/')) {
+            return;
+        }
+    }
 
     const myRole = String(
         (typeof STATE !== 'undefined' && STATE.currentRole) || 
@@ -53154,7 +53159,11 @@ function handleIncomingSessionRevocation(revData) {
         0
     );
 
+    // Solo revoca si la sesión fue iniciada estrictamente antes de la revocación
     if (mySessionTs > 0 && mySessionTs < revTs) {
+        try {
+            localStorage.setItem('ENCCO_REVOCATION_TIMESTAMP', String(revTs));
+        } catch(e) {}
         console.warn("🛑 [Seguridad] Revocación global de sesiones detectada. Cerrando sesión...");
         showGlobalSessionRevokedOverlay(revData.reason || 'El Super Usuario ha cerrado todas las sesiones activas del sistema por seguridad.');
     }
@@ -53259,6 +53268,12 @@ if (typeof window !== 'undefined' && !window._hasSessionRevocationInterval) {
     window._hasSessionRevocationInterval = true;
     setInterval(function() {
         try {
+            if (typeof window !== 'undefined' && window.location) {
+                const path = (window.location.pathname || '').toLowerCase();
+                if (path.endsWith('login.html') || path.endsWith('index.html') || path.endsWith('/')) {
+                    return;
+                }
+            }
             const revTs = Number(localStorage.getItem('ENCCO_REVOCATION_TIMESTAMP') || 0);
             const myTs = Number(
                 (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_TIMESTAMP') : 0) || 
