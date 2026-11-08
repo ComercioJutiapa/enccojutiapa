@@ -963,12 +963,15 @@
         }
     </style>
     <script>
-        // Blindaje contra retorno a páginas autenticadas mediante botón Atrás
-        if (window.history && window.history.pushState) {
-            window.history.pushState(null, '', window.location.href);
-            window.addEventListener('popstate', function() {
+        // Blindaje contra retorno accidental a páginas privadas tras cierre de sesión
+        if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+            var ref = (document.referrer || '').toLowerCase();
+            if (ref.includes('plataforma.html') || ref.includes('bloqueo-notas.html') || window.location.search.includes('logout=true')) {
                 window.history.pushState(null, '', window.location.href);
-            });
+                window.addEventListener('popstate', function() {
+                    window.history.pushState(null, '', window.location.href);
+                });
+            }
         }
     </script>
 </head>
@@ -1013,7 +1016,7 @@
                     <li><a href="login.html" class="nav-cta-btn"><i class="fa-solid fa-right-to-bracket"></i> Plataforma Virtual</a></li>
                 </ul>
 
-                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menú principal de navegación" aria-expanded="false" aria-controls="mobileNavMenu">
                     <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
                 </button>
             </nav>
@@ -1246,12 +1249,15 @@
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileNavMenu');
             const icon = document.getElementById('mobileMenuIcon');
+            const btn = document.querySelector('.mobile-menu-toggle');
             if (menu.classList.contains('active')) {
                 menu.classList.remove('active');
                 icon.className = 'fa-solid fa-bars';
+                if (btn) btn.setAttribute('aria-expanded', 'false');
             } else {
                 menu.classList.add('active');
                 icon.className = 'fa-solid fa-xmark';
+                if (btn) btn.setAttribute('aria-expanded', 'true');
             }
         }
 

@@ -350,6 +350,24 @@
             font-size: 0.76rem;
             color: #94a3b8;
         }
+
+        @media (max-width: 420px) {
+            .login-card-container {
+                padding: 26px 18px;
+                border-radius: 20px;
+            }
+            .login-card-header h2 {
+                font-size: 1.05rem;
+            }
+            .form-control {
+                padding: 10px 12px;
+                font-size: 0.90rem;
+            }
+            .btn-submit {
+                padding: 12px;
+                font-size: 0.98rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -368,21 +386,21 @@
             <input type="text" name="encc_hp_check" id="encc_hp_check" tabindex="-1" autocomplete="off" style="display:none !important; position:absolute !important; left:-9999px !important;" aria-hidden="true">
 
             <div class="form-group">
-                <label><i class="fa-solid fa-envelope"></i> Correo Electrónico o Usuario *</label>
-                <input type="text" id="loginUsername" class="form-control" required placeholder="usuario o correo electrónico" autocomplete="username" autocapitalize="none" spellcheck="false">
+                <label for="loginUsername"><i class="fa-solid fa-envelope"></i> Correo Electrónico o Usuario *</label>
+                <input type="text" id="loginUsername" class="form-control" required placeholder="usuario o correo electrónico" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="hideLoginAlert()">
             </div>
 
             <div class="form-group">
-                <label><i class="fa-solid fa-key"></i> Contraseña *</label>
+                <label for="loginPassword"><i class="fa-solid fa-key"></i> Contraseña *</label>
                 <div class="password-input-group">
-                    <input type="password" id="loginPassword" class="form-control" required placeholder="Ingrese su contraseña" autocomplete="current-password">
-                    <button type="button" class="toggle-password-btn" onclick="togglePassVisibility()" title="Mostrar contraseña">
+                    <input type="password" id="loginPassword" class="form-control" required placeholder="Ingrese su contraseña" autocomplete="current-password" oninput="hideLoginAlert()">
+                    <button type="button" class="toggle-password-btn" onclick="togglePassVisibility()" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
                         <i class="fa-solid fa-eye" id="loginEyeIcon"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="login-alert-box" id="loginAlertBox">
+            <div class="login-alert-box" id="loginAlertBox" role="alert" aria-live="polite">
                 <i class="fa-solid fa-circle-exclamation"></i>
                 <span id="loginAlertText">Correo o contraseña incorrectos.</span>
             </div>
@@ -413,7 +431,6 @@
         </div>
     </div>
 
-    <script src="xlsx.full.min.js" charset="UTF-8"></script>
     <script src="auth.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="db.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="ui.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
@@ -422,12 +439,28 @@
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
             const icon = document.getElementById('loginEyeIcon');
+            const btn = icon ? icon.parentElement : null;
             if (input.type === 'password') {
                 input.type = 'text';
                 icon.className = 'fa-solid fa-eye-slash';
+                if (btn) {
+                    btn.title = 'Ocultar contraseña';
+                    btn.setAttribute('aria-label', 'Ocultar contraseña');
+                }
             } else {
                 input.type = 'password';
                 icon.className = 'fa-solid fa-eye';
+                if (btn) {
+                    btn.title = 'Mostrar contraseña';
+                    btn.setAttribute('aria-label', 'Mostrar contraseña');
+                }
+            }
+        }
+
+        function hideLoginAlert() {
+            const alertBox = document.getElementById('loginAlertBox');
+            if (alertBox && alertBox.style.display !== 'none') {
+                alertBox.style.display = 'none';
             }
         }
 
@@ -442,15 +475,19 @@
 
             try {
                 const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+                const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
                 const [uRes, rRes] = await Promise.all([
-                    fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now()),
-                    fetch(fbUrl + '/encc_school_state/rolesConfig.json?t=' + Date.now())
+                    fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now(), { signal: controller ? controller.signal : undefined }),
+                    fetch(fbUrl + '/encc_school_state/rolesConfig.json?t=' + Date.now(), { signal: controller ? controller.signal : undefined })
                 ]);
+                if (timeoutId) clearTimeout(timeoutId);
                 if (uRes.ok) {
                     const uData = await uRes.json();
                     if (Array.isArray(uData) && uData.length > 0) {
                         window.STATE = window.STATE || {};
                         window.STATE.users = uData;
+                        try { localStorage.setItem('ENCCO_USERS_CACHE', JSON.stringify(uData)); } catch(e) {}
                     }
                 }
                 if (rRes.ok) {
@@ -481,12 +518,6 @@
                     if (!docN.password) docN.password = 'Nehemias12';
                     docN.secondaryEmail = '';
                 }
-            }
-
-            if (typeof pullStateFromFirebaseCloud === 'function') {
-                try {
-                    await pullStateFromFirebaseCloud(false);
-                } catch(e) {}
             }
         });
 
