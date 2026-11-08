@@ -1327,37 +1327,35 @@ function switchGradeStatsTab(tab) {
     window._currentGradeStatsActiveTab = tab;
     const btnActas = document.getElementById('tabGradeStatsActas');
     const btnCuadro = document.getElementById('tabGradeStatsCuadro');
+    const btnReprobados = document.getElementById('tabGradeStatsReprobados');
     const filterControls = document.querySelectorAll('#view-grade-stats .toolbar-filters > div');
 
+    const updateBtn = (btn, isActive, activeBg = '#0284c7') => {
+        if (!btn) return;
+        if (isActive) {
+            btn.style.background = activeBg;
+            btn.style.color = '#ffffff';
+            btn.style.border = 'none';
+            btn.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
+        } else {
+            btn.style.background = '#f1f5f9';
+            btn.style.color = '#475569';
+            btn.style.border = '1px solid #cbd5e1';
+            btn.style.boxShadow = 'none';
+        }
+    };
+
+    updateBtn(btnActas, tab === 'actas');
+    updateBtn(btnCuadro, tab === 'cuadro');
+    updateBtn(btnReprobados, tab === 'reprobados');
+
     if (tab === 'cuadro') {
-        if (btnActas) {
-            btnActas.style.background = '#f1f5f9';
-            btnActas.style.color = '#475569';
-            btnActas.style.border = '1px solid #cbd5e1';
-            btnActas.style.boxShadow = 'none';
-        }
-        if (btnCuadro) {
-            btnCuadro.style.background = '#0284c7';
-            btnCuadro.style.color = '#ffffff';
-            btnCuadro.style.border = 'none';
-            btnCuadro.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
-        }
-        // Ocultar selectores de grado y sección ya que el cuadro estadístico es general
         filterControls.forEach(el => el.style.display = 'none');
         renderCuadroEstadisticoOficial();
+    } else if (tab === 'reprobados') {
+        filterControls.forEach(el => el.style.display = 'none');
+        renderReprobadosRecuperacionView();
     } else {
-        if (btnActas) {
-            btnActas.style.background = '#0284c7';
-            btnActas.style.color = '#ffffff';
-            btnActas.style.border = 'none';
-            btnActas.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
-        }
-        if (btnCuadro) {
-            btnCuadro.style.background = '#f1f5f9';
-            btnCuadro.style.color = '#475569';
-            btnCuadro.style.border = '1px solid #cbd5e1';
-            btnCuadro.style.boxShadow = 'none';
-        }
         filterControls.forEach(el => el.style.display = '');
         renderGradeStatsView();
     }
@@ -2256,6 +2254,8 @@ window.printCuadroEstadisticoOficial = printCuadroEstadisticoOficial;
 function printGradeStatsCurrentView() {
     if (window._currentGradeStatsActiveTab === 'cuadro') {
         printCuadroEstadisticoOficial();
+    } else if (window._currentGradeStatsActiveTab === 'reprobados') {
+        printReprobadosRecuperacionView();
     } else {
         if (typeof printGradeStatsReport === 'function') {
             printGradeStatsReport('section');
@@ -2265,3 +2265,1062 @@ function printGradeStatsCurrentView() {
     }
 }
 window.printGradeStatsCurrentView = printGradeStatsCurrentView;
+
+
+// ==========================================================================
+// MÓDULO OFICIAL: ALUMNOS REPROBADOS, MATERIAS, CATEDRÁTICOS Y RECUPERACIÓN
+// Institución: ESCUELA NACIONAL DE CIENCIAS COMERCIALES, JUTIAPA
+// Aislamiento estricto de Ciclos: 2026 (Auditoría Histórica SIRE) y 2027+ (Firebase RTDB en Vivo)
+// ==========================================================================
+
+if (typeof escapeHtml !== 'function') {
+    function escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+        });
+    }
+    window.escapeHtml = escapeHtml;
+}
+window._reprobadosSubView = 'materias'; // 'materias' | 'con_derecho' | 'sin_derecho'
+window._reprobadosGradeFilter = 'ALL';
+window._reprobadosSectionFilter = 'ALL';
+window._reprobadosTeacherFilter = 'ALL';
+window._reprobadosSearchQuery = '';
+window._lastReprobadosReportData = null;
+
+/**
+ * Resolver de Catedrático Titular para el ciclo activo (2027+)
+ * Función pura de SOLO LECTURA: NO muta STATE.users ni escribe a Firebase.
+ */
+function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
+    if (!courseName) return 'Catedrático Titular';
+    const cNorm = String(courseName).trim().toLowerCase();
+    const gNorm = String(gradeKey || '').trim().toLowerCase();
+    const sNorm = String(section || '').trim().toUpperCase();
+
+    // 1. Buscar en STATE.pensum (Solo lectura)
+    if (typeof STATE !== 'undefined' && Array.isArray(STATE.pensum)) {
+        const match = STATE.pensum.find(p => {
+            if (!p) return false;
+            const pName = String(p.subject || p.name || '').trim().toLowerCase();
+            const pGrade = String(p.grade || p.gradeCode || '').trim().toLowerCase();
+            const pSec = String(p.section || '').trim().toUpperCase();
+            
+            const matchName = (pName === cNorm || pName.includes(cNorm) || cNorm.includes(pName));
+            let matchGrade = true;
+            if (gNorm) {
+                if (gNorm.includes('cuarto') || gNorm.includes('4')) matchGrade = (pGrade.includes('4') || pGrade.includes('cuarto'));
+                else if (gNorm.includes('quinto') || gNorm.includes('5')) matchGrade = (pGrade.includes('5') || pGrade.includes('quinto'));
+                else if (gNorm.includes('sexto') || gNorm.includes('6')) matchGrade = (pGrade.includes('6') || pGrade.includes('sexto'));
+            }
+            const matchSec = (!pSec || !sNorm || pSec === sNorm || pSec === 'ALL');
+            return matchName && matchGrade && matchSec;
+        }) || STATE.pensum.find(p => {
+            if (!p) return false;
+            const pName = String(p.subject || p.name || '').trim().toLowerCase();
+            return pName === cNorm || pName.includes(cNorm) || cNorm.includes(pName);
+        });
+
+        if (match) {
+            if (match.teacherName && String(match.teacherName).trim() && !String(match.teacherName).toLowerCase().includes('por asignar')) {
+                return String(match.teacherName).trim();
+            }
+            if (match.teacherId && Array.isArray(STATE.users)) {
+                const u = STATE.users.find(usr => usr && usr.id === match.teacherId);
+                if (u && (u.name || u.fullName)) return (u.name || u.fullName).trim();
+            }
+        }
+    }
+
+    // 2. Buscar en asignaciones de usuarios en STATE.users (Solo lectura)
+    if (typeof STATE !== 'undefined' && Array.isArray(STATE.users)) {
+        const uMatch = STATE.users.find(u => {
+            if (!u || (u.role !== 'docente' && u.role !== 'catedratico')) return false;
+            const courses = Array.isArray(u.assignedCourses) ? u.assignedCourses : (Array.isArray(u.courses) ? u.courses : []);
+            return courses.some(c => {
+                const cStr = typeof c === 'string' ? c.toLowerCase() : String(c.name || c.subject || '').toLowerCase();
+                return cStr === cNorm || cStr.includes(cNorm) || cNorm.includes(cStr);
+            });
+        });
+        if (uMatch && (uMatch.name || uMatch.fullName)) {
+            return (uMatch.name || uMatch.fullName).trim();
+        }
+    }
+
+    return 'Catedrático Titular';
+}
+window.resolveActiveTeacherForCourse = resolveActiveTeacherForCourse;
+
+/**
+ * Renderiza el módulo analítico de Alumnos Reprobados y Recuperación Académica
+ */
+function renderReprobadosRecuperacionView() {
+    const container = document.getElementById('gradeStatsDocumentContainer');
+    if (!container) return;
+
+    const STATE = window.STATE || {};
+    const viewingCycle = String(
+        STATE.viewingHistoricalCycle || 
+        STATE.historicalViewingCycle || 
+        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || '2027'))
+    ).trim();
+
+    const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
+
+    let rawStudentsList = [];
+
+    if (is2026Official) {
+        // CICLO 2026: DATOS OFICIALES AUDITADOS DEL SIRE MINEDUC (412 estudiantes)
+        const auditSource = (typeof AUDIT_2026_STUDENTS !== 'undefined' && Array.isArray(AUDIT_2026_STUDENTS))
+            ? AUDIT_2026_STUDENTS
+            : (Array.isArray(window.AUDIT_2026_STUDENTS) ? window.AUDIT_2026_STUDENTS : []);
+
+        rawStudentsList = auditSource.map((s, idx) => {
+            const gradeStr = String(s.grade || '').toUpperCase();
+            const maxRecup = (gradeStr === 'SEXTO') ? 4 : 3;
+            const numRep = Number(s.num_rep || (Array.isArray(s.reprobadas) ? s.reprobadas.length : 0));
+            const isProm = (numRep === 0);
+            const isCd = (numRep > 0 && numRep <= maxRecup);
+            const isSd = (numRep > maxRecup);
+
+            return {
+                num: s.num || (idx + 1),
+                code: s.code || 'S/C',
+                name: String(s.name || '').toUpperCase().trim(),
+                sex: String(s.sex || 'H').toUpperCase(),
+                genderLabel: (s.sex === 'H') ? 'Hombre' : 'Mujer',
+                grade: gradeStr,
+                section: String(s.section || 'A').toUpperCase(),
+                num_rep: numRep,
+                maxRecup: maxRecup,
+                reprobadas: Array.isArray(s.reprobadas) ? s.reprobadas.map(r => ({
+                    materia: r.materia,
+                    materiaNum: r.materiaNum,
+                    nota: Number(r.nota || 0),
+                    maestro: r.maestro || 'Catedrático Titular'
+                })) : [],
+                condicion: isProm ? 'PROMOVIDO' : (isCd ? 'CON DERECHO A RECUPERACIÓN' : 'REPROBADO DEFINITIVO (SIN DERECHO)'),
+                isPromovido: isProm,
+                isConDerecho: isCd,
+                isSinDerecho: isSd
+            };
+        });
+    } else {
+        // CICLO 2027+: CÁLCULO DINÁMICO EN TIEMPO REAL DESDE FIREBASE RTDB
+        const allStudents = Array.isArray(STATE.students) ? STATE.students : [];
+        const cycleStudents = allStudents.filter(s => {
+            if (!s) return false;
+            const sCycle = String(s.academicCycle || s.ciclo || '').trim();
+            if (sCycle) return sCycle === viewingCycle;
+            return viewingCycle === (STATE.activeCycle || '2027');
+        });
+
+        cycleStudents.forEach((s, idx) => {
+            const gStr = String(s.grade || s.gradeCode || s.gradeLevel || '').toUpperCase();
+            let gKey = 'CUARTO';
+            if (gStr.includes('6TO') || gStr.includes('SEXTO')) gKey = 'SEXTO';
+            else if (gStr.includes('5TO') || gStr.includes('QUINTO')) gKey = 'QUINTO';
+
+            const rawGen = String(s.gender || s.genero || s.sex || '').toUpperCase();
+            const isH = rawGen.startsWith('MASC') || rawGen.startsWith('H') || rawGen === 'M';
+            const sexLetter = isH ? 'H' : 'M';
+            const cleanSec = (typeof getCleanSectionLetter === 'function')
+                ? getCleanSectionLetter(s.section || s.sectionId || 'A')
+                : String(s.section || 'A').replace(/^sección\s*/i, '').trim().toUpperCase() || 'A';
+
+            // REGLA RETIRADOS
+            if (s.status === 'Retirado') {
+                if (s.hasExpediente !== false) {
+                    rawStudentsList.push({
+                        num: idx + 1,
+                        code: s.code || s.studentCode || s.cui || 'S/C',
+                        name: String(s.name || '').toUpperCase().trim(),
+                        sex: sexLetter,
+                        genderLabel: isH ? 'Hombre' : 'Mujer',
+                        grade: gKey,
+                        section: cleanSec,
+                        num_rep: 9,
+                        maxRecup: (gKey === 'SEXTO') ? 4 : 3,
+                        reprobadas: [{ materia: 'EXPEDIENTE RETIRADO CON CARPETILLA EN ESCUELA', nota: 0, maestro: 'Dirección' }],
+                        condicion: 'REPROBADO DEFINITIVO (SIN DERECHO)',
+                        isPromovido: false,
+                        isConDerecho: false,
+                        isSinDerecho: true
+                    });
+                }
+                return;
+            }
+
+            // PROCESAMIENTO DE CURSOS Y PROMEDIOS
+            const gradesObj = s.grades || {};
+            const reprobadas = [];
+            const courseKeys = Object.keys(gradesObj);
+
+            courseKeys.forEach(cName => {
+                const b = gradesObj[cName];
+                if (!Array.isArray(b) || b.length === 0) return;
+
+                let promedioCurso = 0;
+                if (gKey === 'SEXTO') {
+                    if (cName.toLowerCase().includes('práctica') || cName.toLowerCase().includes('practica')) {
+                        promedioCurso = Number(b[3] || b[0] || 0);
+                    } else if (cName.toLowerCase().includes('seminario')) {
+                        promedioCurso = Number(b[2] || b[3] || b[0] || 0);
+                    } else {
+                        const validScores = b.slice(0, 3).map(Number);
+                        const sum = validScores.reduce((acc, v) => acc + v, 0);
+                        promedioCurso = Math.round(sum / (validScores.length || 1));
+                    }
+                } else {
+                    const validScores = b.map(Number);
+                    const sum = validScores.reduce((acc, v) => acc + v, 0);
+                    promedioCurso = Math.round(sum / (validScores.length || 1));
+                }
+
+                if (promedioCurso < 60) {
+                    const teacher = resolveActiveTeacherForCourse(cName, gKey, cleanSec);
+                    reprobadas.push({
+                        materia: cName,
+                        materiaNum: reprobadas.length + 1,
+                        nota: promedioCurso,
+                        maestro: teacher
+                    });
+                }
+            });
+
+            const maxRecup = (gKey === 'SEXTO') ? 4 : 3;
+            const numRep = reprobadas.length;
+            const isProm = (numRep === 0);
+            const isCd = (numRep > 0 && numRep <= maxRecup);
+            const isSd = (numRep > maxRecup);
+
+            rawStudentsList.push({
+                num: idx + 1,
+                code: s.code || s.studentCode || s.cui || 'S/C',
+                name: String(s.name || '').toUpperCase().trim(),
+                sex: sexLetter,
+                genderLabel: isH ? 'Hombre' : 'Mujer',
+                grade: gKey,
+                section: cleanSec,
+                num_rep: numRep,
+                maxRecup: maxRecup,
+                reprobadas: reprobadas,
+                condicion: isProm ? 'PROMOVIDO' : (isCd ? 'CON DERECHO A RECUPERACIÓN' : 'REPROBADO DEFINITIVO (SIN DERECHO)'),
+                isPromovido: isProm,
+                isConDerecho: isCd,
+                isSinDerecho: isSd
+            });
+        });
+    }
+
+    // Guardar para impresión y exportación Excel
+    window._lastReprobadosReportData = {
+        cycle: viewingCycle,
+        is2026Official: is2026Official,
+        students: rawStudentsList
+    };
+
+    // KPIs Globales (Sin filtros aplicados aún)
+    const totalEvaluados = rawStudentsList.length;
+    const totalPromovidos = rawStudentsList.filter(s => s.isPromovido).length;
+    const totalConDerecho = rawStudentsList.filter(s => s.isConDerecho).length;
+    const totalSinDerecho = rawStudentsList.filter(s => s.isSinDerecho).length;
+
+    // Extraer lista única de Catedráticos que tienen alumnos reprobados
+    const uniqueTeachersSet = new Set();
+    rawStudentsList.forEach(s => {
+        s.reprobadas.forEach(r => {
+            if (r.maestro && r.maestro !== 'Catedrático Titular') {
+                uniqueTeachersSet.add(r.maestro.trim());
+            }
+        });
+    });
+    const teachersList = Array.from(uniqueTeachersSet).sort();
+
+    // APLICAR FILTROS REACTIVOS
+    const currentGrade = window._reprobadosGradeFilter || 'ALL';
+    const currentSec = window._reprobadosSectionFilter || 'ALL';
+    const currentTeacher = window._reprobadosTeacherFilter || 'ALL';
+    const currentQuery = (window._reprobadosSearchQuery || '').toLowerCase().trim();
+
+    const filteredStudents = rawStudentsList.filter(s => {
+        if (currentGrade !== 'ALL' && s.grade !== currentGrade) return false;
+        if (currentSec !== 'ALL' && s.section !== currentSec) return false;
+        if (currentTeacher !== 'ALL') {
+            const hasTeacher = s.reprobadas.some(r => r.maestro && r.maestro.trim() === currentTeacher);
+            if (!hasTeacher) return false;
+        }
+        if (currentQuery) {
+            const matchName = s.name.toLowerCase().includes(currentQuery);
+            const matchCode = s.code.toLowerCase().includes(currentQuery);
+            const matchSubject = s.reprobadas.some(r => r.materia.toLowerCase().includes(currentQuery));
+            if (!matchName && !matchCode && !matchSubject) return false;
+        }
+        return true;
+    });
+
+    // Agrupación por Materia y Catedrático
+    const courseStatsMap = {};
+    rawStudentsList.forEach(s => {
+        // Respetar filtros de grado y sección para la tabla de materias
+        if (currentGrade !== 'ALL' && s.grade !== currentGrade) return;
+        if (currentSec !== 'ALL' && s.section !== currentSec) return;
+        if (currentTeacher !== 'ALL') {
+            const hasT = s.reprobadas.some(r => r.maestro && r.maestro.trim() === currentTeacher);
+            if (!hasT) return;
+        }
+
+        s.reprobadas.forEach(r => {
+            if (currentTeacher !== 'ALL' && r.maestro.trim() !== currentTeacher) return;
+            if (currentQuery && !r.materia.toLowerCase().includes(currentQuery) && !s.name.toLowerCase().includes(currentQuery)) return;
+
+            const key = `${s.grade}|${s.section}|${r.materia}|${r.maestro}`;
+            if (!courseStatsMap[key]) {
+                courseStatsMap[key] = {
+                    key: key,
+                    grade: s.grade,
+                    section: s.section,
+                    materia: r.materia,
+                    maestro: r.maestro,
+                    totalRep: 0,
+                    hombres: 0,
+                    mujeres: 0,
+                    sumNotas: 0,
+                    students: []
+                };
+            }
+            courseStatsMap[key].totalRep++;
+            if (s.sex === 'H') courseStatsMap[key].hombres++;
+            else courseStatsMap[key].mujeres++;
+            courseStatsMap[key].sumNotas += Number(r.nota || 0);
+            courseStatsMap[key].students.push({
+                num: s.num,
+                code: s.code,
+                name: s.name,
+                sex: s.sex,
+                nota: r.nota,
+                condicion: s.condicion,
+                num_rep: s.num_rep
+            });
+        });
+    });
+
+    const courseStatsList = Object.values(courseStatsMap).sort((a, b) => {
+        if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
+        if (a.section !== b.section) return a.section.localeCompare(b.section);
+        return b.totalRep - a.totalRep;
+    });
+
+    const totalMateriasAfectadas = courseStatsList.length;
+
+    // Sub-vistas disponibles
+    const activeSubView = window._reprobadosSubView || 'materias';
+
+    // RENDERIZADO HTML
+    let html = `
+    <div class="reprobados-dashboard-container" style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 4px 16px rgba(0,0,0,0.06); padding:24px; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <!-- ENCABEZADO INSTITUCIONAL OFICIAL (SIN LA PALABRA ENCCO) -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; border-bottom:2px solid #e2e8f0; padding-bottom:18px; margin-bottom:22px;">
+            <div>
+                <div style="font-size:0.75rem; font-weight:800; color:#0284c7; letter-spacing:1px; text-transform:uppercase;">
+                    REPÚBLICA DE GUATEMALA • MINISTERIO DE EDUCACIÓN
+                </div>
+                <h2 style="font-size:1.45rem; font-weight:900; color:#0f172a; margin:4px 0 2px 0;">
+                    ESCUELA NACIONAL DE CIENCIAS COMERCIALES
+                </h2>
+                <div style="font-size:0.88rem; color:#475569; font-weight:600;">
+                    Jornada Vespertina • Código MINEDUC: 22-01-0014-46 • Jutiapa, Jutiapa
+                </div>
+                <div style="font-size:0.92rem; font-weight:700; color:#0369a1; margin-top:6px; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-graduation-cap"></i> Panel Analítico: Alumnos Reprobados, Asignaturas, Catedráticos y Recuperación
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; font-size:0.85rem; font-weight:800; background:${is2026Official ? '#e0f2fe' : '#ecfdf5'}; color:${is2026Official ? '#0369a1' : '#047857'}; border:1px solid ${is2026Official ? '#bae6fd' : '#a7f3d0'};">
+                    <i class="fa-solid fa-${is2026Official ? 'lock' : 'bolt'}"></i> Ciclo Escolar ${viewingCycle} ${is2026Official ? '(Auditoría Oficial SIRE)' : '(Firebase RTDB Activo)'}
+                </span>
+                <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">
+                    Normativa de Evaluación: Art. 26 Acuerdo Ministerial 1171-2010
+                </div>
+            </div>
+        </div>
+
+        <!-- TARJETAS DE KPIS PRINCIPALES -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:24px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #0284c7; border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase;">Alumnos Evaluados</div>
+                <div style="font-size:1.6rem; font-weight:900; color:#0f172a; margin-top:2px;">${totalEvaluados}</div>
+                <div style="font-size:0.72rem; color:#64748b; margin-top:2px;">100% Matrícula Final Registrada</div>
+            </div>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-left:4px solid #16a34a; border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.75rem; font-weight:700; color:#15803d; text-transform:uppercase;">Promovidos Limpios</div>
+                <div style="font-size:1.6rem; font-weight:900; color:#166534; margin-top:2px;">${totalPromovidos}</div>
+                <div style="font-size:0.72rem; color:#15803d; margin-top:2px;">${Math.round((totalPromovidos / (totalEvaluados || 1)) * 100)}% Sin Materias Reprobadas</div>
+            </div>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #d97706; border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.75rem; font-weight:700; color:#b45309; text-transform:uppercase;">Con Derecho a Recuperación</div>
+                <div style="font-size:1.6rem; font-weight:900; color:#92400e; margin-top:2px;">${totalConDerecho}</div>
+                <div style="font-size:0.72rem; color:#b45309; margin-top:2px;">4to/5to: 1-3 Mat. | 6to: 1-4 Mat. (${Math.round((totalConDerecho / (totalEvaluados || 1)) * 100)}%)</div>
+            </div>
+            <div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.75rem; font-weight:700; color:#b91c1c; text-transform:uppercase;">Reprobados Definitivos</div>
+                <div style="font-size:1.6rem; font-weight:900; color:#991b1b; margin-top:2px;">${totalSinDerecho}</div>
+                <div style="font-size:0.72rem; color:#b91c1c; margin-top:2px;">Sin Derecho: 4to/5to: ≥4 | 6to: ≥5 (${Math.round((totalSinDerecho / (totalEvaluados || 1)) * 100)}%)</div>
+            </div>
+            <div style="background:#faf5ff; border:1px solid #e9d5ff; border-left:4px solid #9333ea; border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.75rem; font-weight:700; color:#7e22ce; text-transform:uppercase;">Clases con Reprobación</div>
+                <div style="font-size:1.6rem; font-weight:900; color:#6b21a8; margin-top:2px;">${totalMateriasAfectadas}</div>
+                <div style="font-size:0.72rem; color:#7e22ce; margin-top:2px;">Catedráticos Evaluadores Asignados</div>
+            </div>
+        </div>
+
+        <!-- BARRA DE SUB-PESTAÑAS Y ACCIONES DE EXPORTACIÓN / IMPRESIÓN -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div style="display:inline-flex; background:#f1f5f9; padding:4px; border-radius:8px; border:1px solid #cbd5e1; gap:4px; flex-wrap:wrap;">
+                <button type="button" onclick="switchReprobadosSubView('materias')" style="padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.83rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; ${activeSubView === 'materias' ? 'background:#0284c7; color:#fff; box-shadow:0 1px 3px rgba(2,132,199,0.3);' : 'background:transparent; color:#475569;'}">
+                    <i class="fa-solid fa-chalkboard-user"></i> 1. Por Asignatura y Catedrático (${courseStatsList.length})
+                </button>
+                <button type="button" onclick="switchReprobadosSubView('con_derecho')" style="padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.83rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; ${activeSubView === 'con_derecho' ? 'background:#d97706; color:#fff; box-shadow:0 1px 3px rgba(217,119,6,0.3);' : 'background:transparent; color:#475569;'}">
+                    <i class="fa-solid fa-user-check"></i> 2. Con Derecho a Recuperación (${totalConDerecho})
+                </button>
+                <button type="button" onclick="switchReprobadosSubView('sin_derecho')" style="padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.83rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; ${activeSubView === 'sin_derecho' ? 'background:#dc2626; color:#fff; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:transparent; color:#475569;'}">
+                    <i class="fa-solid fa-user-xmark"></i> 3. Reprobados Definitivos - Sin Derecho (${totalSinDerecho})
+                </button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" onclick="exportReprobadosRecuperacionExcel()" class="btn btn-sm" style="background:#16a34a; color:#ffffff; font-weight:700; border-radius:6px; padding:7px 14px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(22,163,74,0.3);">
+                    <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                </button>
+                <button type="button" onclick="printReprobadosRecuperacionView()" class="btn btn-sm" style="background:#0284c7; color:#ffffff; font-weight:700; border-radius:6px; padding:7px 14px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(2,132,199,0.3);">
+                    <i class="fa-solid fa-print"></i> Imprimir Informe Oficial
+                </button>
+            </div>
+        </div>
+
+        <!-- FILTROS DINÁMICOS Y BUSCADOR EN VIVO -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Grado:</label>
+                    <select onchange="onReprobadosGradeChange(this.value)" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.8rem; background:#fff; min-width:130px;">
+                        <option value="ALL" ${currentGrade === 'ALL' ? 'selected' : ''}>Todos los Grados</option>
+                        <option value="CUARTO" ${currentGrade === 'CUARTO' ? 'selected' : ''}>Cuarto Perito</option>
+                        <option value="QUINTO" ${currentGrade === 'QUINTO' ? 'selected' : ''}>Quinto Perito</option>
+                        <option value="SEXTO" ${currentGrade === 'SEXTO' ? 'selected' : ''}>Sexto Perito</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Sección:</label>
+                    <select onchange="onReprobadosSectionChange(this.value)" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.8rem; background:#fff; min-width:110px;">
+                        <option value="ALL" ${currentSec === 'ALL' ? 'selected' : ''}>Todas (A-D)</option>
+                        <option value="A" ${currentSec === 'A' ? 'selected' : ''}>Sección A</option>
+                        <option value="B" ${currentSec === 'B' ? 'selected' : ''}>Sección B</option>
+                        <option value="C" ${currentSec === 'C' ? 'selected' : ''}>Sección C</option>
+                        <option value="D" ${currentSec === 'D' ? 'selected' : ''}>Sección D</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Catedrático Evaluador:</label>
+                    <select onchange="onReprobadosTeacherChange(this.value)" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.8rem; background:#fff; min-width:210px; max-width:280px;">
+                        <option value="ALL" ${currentTeacher === 'ALL' ? 'selected' : ''}>Todos los Catedráticos</option>
+                        ${teachersList.map(t => `<option value="${escapeHtml(t)}" ${currentTeacher === t ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div style="flex:1; min-width:240px; max-width:360px;">
+                <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Búsqueda Rápida:</label>
+                <div style="position:relative;">
+                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.85rem;"></i>
+                    <input type="text" placeholder="Buscar por alumno, código o materia..." value="${escapeHtml(currentQuery)}" oninput="onReprobadosSearchInput(this.value)" style="width:100%; padding:5px 10px 5px 30px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.82rem; background:#fff;">
+                </div>
+            </div>
+        </div>
+    `;
+
+    // SUB-VISTA 1: POR ASIGNATURA Y CATEDRÁTICO
+    if (activeSubView === 'materias') {
+        html += `
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
+                <thead>
+                    <tr style="background:#0369a1; color:#ffffff;">
+                        <th style="padding:10px 12px; border:1px solid #0284c7; width:110px;">Grado / Secc.</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7;">Asignatura</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7;">Catedrático Titular</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7; text-align:center; width:90px;">Total Rep.</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7; text-align:center; width:80px;">Hombres</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7; text-align:center; width:80px;">Mujeres</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7; text-align:center; width:100px;">Prom. Nota</th>
+                        <th style="padding:10px 12px; border:1px solid #0284c7; text-align:center; width:130px;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        if (courseStatsList.length === 0) {
+            html += `<tr><td colspan="8" style="padding:24px; text-align:center; color:#64748b; font-weight:600;">No se encontraron asignaturas con reprobados para los filtros seleccionados.</td></tr>`;
+        } else {
+            courseStatsList.forEach((cItem, cIdx) => {
+                const rowBg = (cIdx % 2 === 0) ? '#ffffff' : '#f8fafc';
+                const promNota = (cItem.sumNotas / (cItem.totalRep || 1)).toFixed(1);
+                const safeKey = `row_detail_${cIdx}`;
+
+                html += `
+                <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; font-weight:800; color:#0369a1;">
+                        ${cItem.grade.substring(0, 4)} "${cItem.section}"
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; font-weight:700; color:#0f172a;">
+                        <i class="fa-solid fa-book" style="color:#0284c7; margin-right:6px;"></i> ${escapeHtml(cItem.materia)}
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; color:#334155; font-weight:600;">
+                        <i class="fa-solid fa-user-tie" style="color:#64748b; margin-right:6px;"></i> ${escapeHtml(cItem.maestro)}
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; text-align:center; font-weight:900;">
+                        <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#fee2e2; color:#b91c1c; font-size:0.85rem;">
+                            ${cItem.totalRep}
+                        </span>
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1e3a8a;">
+                        ${cItem.hombres}
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#831843;">
+                        ${cItem.mujeres}
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; text-align:center; font-weight:800; color:#b91c1c;">
+                        ${promNota} pts
+                    </td>
+                    <td style="padding:9px 12px; border:1px solid #e2e8f0; text-align:center;">
+                        <button type="button" onclick="toggleReprobadosDetail('${safeKey}')" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:5px; padding:4px 9px; font-size:0.75rem; font-weight:700; cursor:pointer;">
+                            <i class="fa-solid fa-list-ul"></i> Alumnos (${cItem.totalRep})
+                        </button>
+                    </td>
+                </tr>
+                <tr id="${safeKey}" style="display:none; background:#f1f5f9;">
+                    <td colspan="8" style="padding:14px 20px; border:1px solid #cbd5e1;">
+                        <div style="font-weight:800; color:#0369a1; font-size:0.83rem; margin-bottom:8px;">
+                            Alumnos reprobados en <em>${escapeHtml(cItem.materia)}</em> - Catedrático: ${escapeHtml(cItem.maestro)}:
+                        </div>
+                        <table style="width:100%; border-collapse:collapse; background:#ffffff; font-size:0.78rem;">
+                            <thead>
+                                <tr style="background:#e2e8f0; color:#334155;">
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1; width:40px; text-align:center;">No.</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1; width:90px;">Código</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1;">Nombre del Estudiante</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1; width:60px; text-align:center;">Sexo</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1; width:75px; text-align:center;">Calificación</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1; width:100px; text-align:center;">Total Reprobadas</th>
+                                    <th style="padding:6px 8px; border:1px solid #cbd5e1;">Situación Final</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${cItem.students.map((st, sIndex) => `
+                                    <tr style="border-bottom:1px solid #f1f5f9;">
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${sIndex + 1}</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; font-family:monospace; font-weight:700; color:#0369a1;">${st.code}</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; font-weight:700; color:#0f172a;">${escapeHtml(st.name)}</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${st.sex}</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:#b91c1c; background:#fef2f2;">${st.nota} pts</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:800;">${st.num_rep} materias</td>
+                                        <td style="padding:5px 8px; border:1px solid #e2e8f0; font-weight:700; color:${st.condicion.includes('CON DERECHO') ? '#b45309' : '#b91c1c'};">
+                                            ${st.condicion}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                `;
+            });
+        }
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+
+    // SUB-VISTA 2: CON DERECHO A RECUPERACIÓN
+    else if (activeSubView === 'con_derecho') {
+        const conDerechoList = filteredStudents.filter(s => s.isConDerecho);
+
+        html += `
+        <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.9rem; font-weight:800; color:#92400e;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Listado de Alumnos Con Derecho a Exámenes de Recuperación (${conDerechoList.length} alumnos)
+            </div>
+            <div style="font-size:0.75rem; color:#64748b;">
+                Criterio: 4to y 5to (1 a 3 materias reprobadas) • 6to (1 a 4 materias reprobadas)
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
+                <thead>
+                    <tr style="background:#d97706; color:#ffffff;">
+                        <th style="padding:9px 10px; border:1px solid #b45309; width:35px; text-align:center;">No.</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309; width:90px;">Código</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309;">Estudiante</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309; width:45px; text-align:center;">Sexo</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309; width:90px; text-align:center;">Grado / Secc.</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309; width:70px; text-align:center;">Total Rep.</th>
+                        <th style="padding:9px 10px; border:1px solid #b45309;">Materias a Recuperar y Catedrático Asignado</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        if (conDerechoList.length === 0) {
+            html += `<tr><td colspan="7" style="padding:24px; text-align:center; color:#64748b; font-weight:600;">No hay alumnos con derecho a recuperación según los filtros aplicados.</td></tr>`;
+        } else {
+            conDerechoList.forEach((st, idx) => {
+                const rowBg = (idx % 2 === 0) ? '#ffffff' : '#fffbeb';
+                html += `
+                <tr style="background:${rowBg}; border-bottom:1px solid #fde68a;">
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; font-family:monospace; font-weight:800; color:#0369a1;">${st.code}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:800; color:#0f172a;">${escapeHtml(st.name)}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${st.sex}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:800; color:#0369a1;">${st.grade.substring(0, 4)} "${st.section}"</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center;">
+                        <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#fef3c7; color:#92400e; font-weight:900;">
+                            ${st.num_rep} mat.
+                        </span>
+                    </td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            ${st.reprobadas.map(r => `
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #fed7aa; border-radius:4px; padding:3px 8px; font-size:0.77rem;">
+                                    <span style="font-weight:700; color:#0f172a;">${escapeHtml(r.materia)}</span>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="color:#475569; font-weight:600;"><i class="fa-solid fa-user-tie" style="color:#94a3b8;"></i> ${escapeHtml(r.maestro)}</span>
+                                        <span style="font-weight:900; color:#b91c1c; background:#fee2e2; padding:1px 6px; border-radius:4px;">${r.nota} pts</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            });
+        }
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+
+    // SUB-VISTA 3: REPROBADOS DEFINITIVOS (SIN DERECHO)
+    else if (activeSubView === 'sin_derecho') {
+        const sinDerechoList = filteredStudents.filter(s => s.isSinDerecho);
+
+        html += `
+        <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.9rem; font-weight:800; color:#991b1b;">
+                <i class="fa-solid fa-ban"></i> Listado de Alumnos Reprobados Definitivos - Sin Derecho a Recuperación (${sinDerechoList.length} alumnos)
+            </div>
+            <div style="font-size:0.75rem; color:#64748b;">
+                Criterio Ministerial: 4to y 5to (≥4 materias reprobadas) • 6to (≥5 materias reprobadas)
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
+                <thead>
+                    <tr style="background:#dc2626; color:#ffffff;">
+                        <th style="padding:9px 10px; border:1px solid #b91c1c; width:35px; text-align:center;">No.</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c; width:90px;">Código</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c;">Estudiante</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c; width:45px; text-align:center;">Sexo</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c; width:90px; text-align:center;">Grado / Secc.</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c; width:75px; text-align:center;">Reprobadas</th>
+                        <th style="padding:9px 10px; border:1px solid #b91c1c;">Detalle de Materias Perdidas y Catedráticos</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        if (sinDerechoList.length === 0) {
+            html += `<tr><td colspan="7" style="padding:24px; text-align:center; color:#64748b; font-weight:600;">No hay alumnos reprobados definitivos según los filtros aplicados.</td></tr>`;
+        } else {
+            sinDerechoList.forEach((st, idx) => {
+                const rowBg = (idx % 2 === 0) ? '#ffffff' : '#fef2f2';
+                html += `
+                <tr style="background:${rowBg}; border-bottom:1px solid #fecaca;">
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; font-family:monospace; font-weight:800; color:#0369a1;">${st.code}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:800; color:#0f172a;">${escapeHtml(st.name)}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">${st.sex}</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:800; color:#0369a1;">${st.grade.substring(0, 4)} "${st.section}"</td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center;">
+                        <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#fee2e2; color:#b91c1c; font-weight:900;">
+                            ${st.num_rep} mat.
+                        </span>
+                    </td>
+                    <td style="padding:8px 10px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            ${st.reprobadas.map(r => `
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #fca5a5; border-radius:4px; padding:3px 8px; font-size:0.77rem;">
+                                    <span style="font-weight:700; color:#0f172a;">${escapeHtml(r.materia)}</span>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="color:#475569; font-weight:600;"><i class="fa-solid fa-user-tie" style="color:#94a3b8;"></i> ${escapeHtml(r.maestro)}</span>
+                                        <span style="font-weight:900; color:#b91c1c; background:#fee2e2; padding:1px 6px; border-radius:4px;">${r.nota} pts</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            });
+        }
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+
+    html += `
+    </div>
+    `;
+
+    container.innerHTML = html;
+}
+window.renderReprobadosRecuperacionView = renderReprobadosRecuperacionView;
+
+// CONTROLADORES DE EVENTOS DE SUB-VISTAS Y FILTROS
+function switchReprobadosSubView(subView) {
+    window._reprobadosSubView = subView;
+    renderReprobadosRecuperacionView();
+}
+window.switchReprobadosSubView = switchReprobadosSubView;
+
+function onReprobadosGradeChange(val) {
+    window._reprobadosGradeFilter = val;
+    renderReprobadosRecuperacionView();
+}
+window.onReprobadosGradeChange = onReprobadosGradeChange;
+
+function onReprobadosSectionChange(val) {
+    window._reprobadosSectionFilter = val;
+    renderReprobadosRecuperacionView();
+}
+window.onReprobadosSectionChange = onReprobadosSectionChange;
+
+function onReprobadosTeacherChange(val) {
+    window._reprobadosTeacherFilter = val;
+    renderReprobadosRecuperacionView();
+}
+window.onReprobadosTeacherChange = onReprobadosTeacherChange;
+
+function onReprobadosSearchInput(val) {
+    window._reprobadosSearchQuery = val;
+    renderReprobadosRecuperacionView();
+}
+window.onReprobadosSearchInput = onReprobadosSearchInput;
+
+function toggleReprobadosDetail(detailId) {
+    const el = document.getElementById(detailId);
+    if (!el) return;
+    el.style.display = (el.style.display === 'none' || !el.style.display) ? 'table-row' : 'none';
+}
+window.toggleReprobadosDetail = toggleReprobadosDetail;
+
+/**
+ * Impresión Oficial en Hoja Carta Horizontal
+ * Membrete Institucional exacto sin la palabra ENCCO
+ */
+function printReprobadosRecuperacionView() {
+    if (!window._lastReprobadosReportData) {
+        renderReprobadosRecuperacionView();
+    }
+    const d = window._lastReprobadosReportData;
+    if (!d || !Array.isArray(d.students)) {
+        if (typeof showToast === 'function') showToast('No hay datos disponibles para imprimir.', 'warning');
+        return;
+    }
+
+    const currentGrade = window._reprobadosGradeFilter || 'ALL';
+    const currentSec = window._reprobadosSectionFilter || 'ALL';
+    const currentTeacher = window._reprobadosTeacherFilter || 'ALL';
+    const subView = window._reprobadosSubView || 'materias';
+
+    const filtered = d.students.filter(s => {
+        if (currentGrade !== 'ALL' && s.grade !== currentGrade) return false;
+        if (currentSec !== 'ALL' && s.section !== currentSec) return false;
+        if (currentTeacher !== 'ALL') {
+            const hasT = s.reprobadas.some(r => r.maestro && r.maestro.trim() === currentTeacher);
+            if (!hasT) return false;
+        }
+        return true;
+    });
+
+    const printWin = window.open('', '_blank', 'width=1150,height=850');
+    if (!printWin) {
+        window.print();
+        return;
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe Oficial de Alumnos Reprobados y Recuperación - Ciclo ${d.cycle}</title>
+<style>
+    @page {
+        size: letter landscape;
+        margin: 10mm;
+    }
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 8.5pt;
+        color: #000;
+        margin: 0;
+        padding: 0;
+    }
+    .header {
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+    }
+    .header h1 {
+        font-size: 14pt;
+        margin: 0;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+    .header h2 {
+        font-size: 11pt;
+        margin: 2px 0;
+        font-weight: 700;
+    }
+    .header p {
+        font-size: 9pt;
+        margin: 2px 0;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 4px 6px;
+        vertical-align: middle;
+    }
+    th {
+        background-color: #f1f5f9;
+        font-weight: bold;
+        text-align: center;
+    }
+    .badge {
+        font-weight: bold;
+    }
+    .signatures {
+        margin-top: 36px;
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+        page-break-inside: avoid;
+    }
+    .signature-box {
+        width: 40%;
+        border-top: 1px solid #000;
+        padding-top: 6px;
+        font-size: 9pt;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <p style="font-size:8pt; font-weight:bold; letter-spacing:1px; margin-bottom:2px;">REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN</p>
+        <h1>ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h1>
+        <h2>JORNADA VESPERTINA - CÓDIGO MINEDUC: 22-01-0014-46 - JUTIAPA, JUTIAPA</h2>
+        <p><strong>INFORME OFICIAL DE ALUMNOS REPROBADOS, MATERIAS, CATEDRÁTICOS Y DERECHO A RECUPERACIÓN</strong></p>
+        <p>Ciclo Escolar: <strong>${d.cycle}</strong> ${d.is2026Official ? '(Datos Oficiales Auditoría SIRE)' : '(Registro Dinámico RTDB)'} | Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30px;">No.</th>
+                <th style="width:75px;">Código</th>
+                <th>Nombre del Estudiante</th>
+                <th style="width:40px;">Sexo</th>
+                <th style="width:80px;">Grado/Secc</th>
+                <th style="width:60px;">Total Rep.</th>
+                <th>Materias Reprobadas, Calificación y Catedrático Titular</th>
+                <th style="width:140px;">Situación de Promoción</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${filtered.map((st, idx) => `
+                <tr>
+                    <td style="text-align:center;">${idx + 1}</td>
+                    <td style="text-align:center; font-family:monospace; font-weight:bold;">${st.code}</td>
+                    <td style="font-weight:bold;">${escapeHtml(st.name)}</td>
+                    <td style="text-align:center;">${st.sex}</td>
+                    <td style="text-align:center; font-weight:bold;">${st.grade.substring(0, 4)} "${st.section}"</td>
+                    <td style="text-align:center; font-weight:bold;">${st.num_rep}</td>
+                    <td>
+                        ${st.reprobadas.map(r => `<div><strong>${escapeHtml(r.materia)}</strong>: ${r.nota} pts (Catedrático: ${escapeHtml(r.maestro)})</div>`).join('')}
+                    </td>
+                    <td style="font-weight:bold; text-align:center;">
+                        ${st.condicion}
+                    </td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+
+    <div class="signatures">
+        <div class="signature-box">
+            Licda. Mirza Elizabeth Aragón Polanco de Hernández<br>
+            Directora
+        </div>
+        <div class="signature-box">
+            Comisión de Evaluación del Rendimiento Escolar<br>
+            Claustro de Catedráticos
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    </script>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+}
+window.printReprobadosRecuperacionView = printReprobadosRecuperacionView;
+
+/**
+ * Exportación Oficial a Excel
+ */
+function exportReprobadosRecuperacionExcel() {
+    if (!window._lastReprobadosReportData) {
+        renderReprobadosRecuperacionView();
+    }
+    const d = window._lastReprobadosReportData;
+    if (!d || !Array.isArray(d.students)) {
+        if (typeof showToast === 'function') showToast('No hay datos cargados para exportar.', 'warning');
+        return;
+    }
+
+    const currentGrade = window._reprobadosGradeFilter || 'ALL';
+    const currentSec = window._reprobadosSectionFilter || 'ALL';
+    const currentTeacher = window._reprobadosTeacherFilter || 'ALL';
+
+    const filtered = d.students.filter(s => {
+        if (currentGrade !== 'ALL' && s.grade !== currentGrade) return false;
+        if (currentSec !== 'ALL' && s.section !== currentSec) return false;
+        if (currentTeacher !== 'ALL') {
+            const hasT = s.reprobadas.some(r => r.maestro && r.maestro.trim() === currentTeacher);
+            if (!hasT) return false;
+        }
+        return true;
+    });
+
+    let excelContent = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 10pt; }
+            th { background-color: #0284c7; color: #ffffff; font-weight: bold; border: 1pt solid #000; text-align: center; }
+            td { border: 0.5pt solid #000; vertical-align: middle; }
+            .cd { background-color: #fef3c7; color: #92400e; font-weight: bold; }
+            .sd { background-color: #fee2e2; color: #b91c1c; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <table>
+            <tr><td colspan="9" style="font-size:14pt; font-weight:bold; text-align:center;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</td></tr>
+            <tr><td colspan="9" style="font-size:11pt; font-weight:bold; text-align:center;">NÓMINA DE ALUMNOS REPROBADOS Y SITUACIÓN DE RECUPERACIÓN - CICLO ${d.cycle}</td></tr>
+            <tr><td colspan="9"></td></tr>
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Código Personal</th>
+                    <th>Nombre Completo del Estudiante</th>
+                    <th>Género</th>
+                    <th>Grado</th>
+                    <th>Sección</th>
+                    <th>Asignatura Reprobada</th>
+                    <th>Calificación</th>
+                    <th>Catedrático Titular</th>
+                    <th>Situación Final</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let counter = 1;
+    filtered.forEach(st => {
+        if (st.reprobadas.length === 0) {
+            excelContent += `
+                <tr>
+                    <td>${counter++}</td>
+                    <td>${st.code}</td>
+                    <td>${st.name}</td>
+                    <td>${st.genderLabel}</td>
+                    <td>${st.grade}</td>
+                    <td>${st.section}</td>
+                    <td>NINGUNA</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td>${st.condicion}</td>
+                </tr>
+            `;
+        } else {
+            st.reprobadas.forEach(r => {
+                const condClass = st.isConDerecho ? 'cd' : (st.isSinDerecho ? 'sd' : '');
+                excelContent += `
+                    <tr>
+                        <td>${counter++}</td>
+                        <td>${st.code}</td>
+                        <td>${st.name}</td>
+                        <td>${st.genderLabel}</td>
+                        <td>${st.grade}</td>
+                        <td>${st.section}</td>
+                        <td>${r.materia}</td>
+                        <td style="text-align:center; color:#b91c1c; font-weight:bold;">${r.nota}</td>
+                        <td>${r.maestro}</td>
+                        <td class="${condClass}">${st.condicion}</td>
+                    </tr>
+                `;
+            });
+        }
+    });
+
+    excelContent += `
+            </tbody>
+        </table>
+    </body>
+    </html>
+    `;
+
+    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Alumnos_Reprobados_Recuperacion_${d.cycle}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+window.exportReprobadosRecuperacionExcel = exportReprobadosRecuperacionExcel;
+

@@ -3655,6 +3655,9 @@
                             <button type="button" id="tabGradeStatsCuadro" class="btn btn-sm" onclick="switchGradeStatsTab('cuadro')" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:6px; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd5e1; cursor:pointer;">
                                 <i class="fa-solid fa-chart-pie"></i> Cuadro de Resumen Estadístico Oficial MINEDUC
                             </button>
+                            <button type="button" id="tabGradeStatsReprobados" class="btn btn-sm" onclick="switchGradeStatsTab('reprobados')" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:6px; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd5e1; cursor:pointer;">
+                                <i class="fa-solid fa-user-xmark"></i> Alumnos Reprobados y Recuperación
+                            </button>
                         </div>
                         <div class="toolbar-filters" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                             <span style="font-weight:800; color:#0369a1; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
@@ -6518,6 +6521,7 @@
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
     <script src="app.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
+    <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="analytics.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>

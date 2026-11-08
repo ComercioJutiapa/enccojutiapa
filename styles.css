@@ -5868,3 +5868,48 @@ body.theme-dark .custom-table tbody tr:hover {
         grid-template-columns: 1fr !important;
     }
 }
+
+
+/* ========================================================================== */
+/* MÓDULO: ALUMNOS REPROBADOS Y RECUPERACIÓN ACADÉMICA (ESTILOS OFICIALES)    */
+/* ========================================================================== */
+.reprobados-dashboard-container {
+    animation: fadeInReprobados 0.25s ease-out;
+}
+
+@keyframes fadeInReprobados {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.reprobados-dashboard-container table tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+.reprobados-dashboard-container input:focus,
+.reprobados-dashboard-container select:focus {
+    outline: none;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+}
+
+@media (max-width: 900px) {
+    .reprobados-dashboard-container {
+        padding: 16px !important;
+    }
+    .reprobados-dashboard-container select {
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+
+@media print {
+    #view-grade-stats .section-toolbar,
+    .reprobados-dashboard-container .grade-stats-tab-group,
+    .reprobados-dashboard-container button,
+    .reprobados-dashboard-container select,
+    .reprobados-dashboard-container input {
+        display: none !important;
+    }
+}
+
