@@ -2089,6 +2089,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     // 🛡️ Salvaguarda Estricta de Grados y Secciones: el colegio opera con 12 secciones oficiales
     if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
     if (typeof sanitizeResolved2026AttendanceAlerts === 'function') sanitizeResolved2026AttendanceAlerts();
+    if (typeof sanitizeCycle2027PristineState === 'function') sanitizeCycle2027PristineState();
     if (Array.isArray(STATE.gradesList) && STATE.gradesList.length >= 12) {
         cleanPayload.gradesList = STATE.gradesList;
         // Construir y sincronizar mapa de secciones oficial
@@ -11759,6 +11760,7 @@ function changeAcademicCycle(cycle) {
     }
 
     STATE.activeCycle = cycle;
+    if (typeof sanitizeCycle2027PristineState === 'function') sanitizeCycle2027PristineState();
     saveStateToLocalStorage();
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('activeCycle', STATE.activeCycle);
@@ -23573,13 +23575,21 @@ function requestBrowserNotificationPermission() {
 window.requestBrowserNotificationPermission = requestBrowserNotificationPermission;
 
 function getUserAlerts() {
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    // 🛡️ REGLA INSTITUCIONAL ESTRICTA:
+    // En el Ciclo Escolar 2027: no existen notificaciones (inicio en blanco y limpio).
+    // En el Ciclo Escolar 2026: todas las notificaciones ya fueron 100% resueltas.
+    // Por directiva, el Centro de Notificaciones y las insignias se mantienen completamente en cero / limpios.
+    if (activeCycle === '2027' || activeCycle === '2026') {
+        return [];
+    }
+
     const rawAlerts = [];
     const role = STATE.currentRole;
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === role) || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || role) : role;
     const activeBimestre = parseInt(STATE.config?.activeBimestre) || 2;
     const isGlobalLocked = !!STATE.config?.globalLocked;
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
 
     if (role === 'docente') {
         // 1. Alerta de Estado del Bimestre
@@ -48016,14 +48026,14 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
 function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
 
-    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar y Resolución Definitiva 2026:
+    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar y Regla de No Notificaciones (2026 resuelta / 2027 en blanco):
     const activeCycle = String(STATE.activeCycle || '2026').trim();
     const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : '2026'))).trim();
-    if (alertCycle === '2026') {
-        return; // Aislamiento absoluto: todas las alertas de 2026 ya están formalmente resueltas
+    if (alertCycle === '2026' || alertCycle === '2027' || activeCycle === '2027' || activeCycle === '2026') {
+        return; // No existen notificaciones en 2027 ni en 2026
     }
     if (alertCycle !== activeCycle) {
-        return; // Aislamiento absoluto: las alertas de otro ciclo jamás notifican ni suenan
+        return;
     }
 
     // 2. Asegurar que la alerta quede apilada en el estado local de alertas con su ciclo
@@ -48096,12 +48106,17 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
 function updateAuxiliaturaBadge() {
     const badge = document.getElementById('auxiliaturaAlertsBadge');
     if (!badge) return;
-    const today = new Date().toISOString().split('T')[0];
     const activeCycle = String(STATE.activeCycle || '2026').trim();
+    if (activeCycle === '2027' || activeCycle === '2026') {
+        badge.style.display = 'none';
+        badge.textContent = '0';
+        return;
+    }
+    const today = new Date().toISOString().split('T')[0];
     const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
-        if (aCycle === '2026') return false; // 🛡️ Todas las alertas de 2026 están formalmente resueltas
+        if (aCycle === '2026' || aCycle === '2027') return false;
         if (aCycle !== activeCycle) return false;
         const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
         return isToday && a.status === 'pendiente';
@@ -53441,3 +53456,36 @@ function sanitizeResolved2026AttendanceAlerts() {
     }
 }
 window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAlerts;
+
+// 🛡️ [Garantía Institucional de Ciclo 2027: Asistencia en Blanco, Notas en Blanco, Sin Notificaciones]
+function sanitizeCycle2027PristineState() {
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    if (activeCycle === '2027') {
+        // 1. Asistencia 2027 en blanco: eliminar cualquier planilla huérfana de 2027
+        if (STATE.attendanceRecords && typeof STATE.attendanceRecords === 'object') {
+            Object.keys(STATE.attendanceRecords).forEach(k => {
+                if (k.startsWith('2027')) {
+                    delete STATE.attendanceRecords[k];
+                }
+            });
+        }
+
+        // 2. Calificaciones 2027 en blanco: garantizar que todos los estudiantes de 2027 tengan grades y gradebookDetails vacíos
+        if (Array.isArray(STATE.students)) {
+            STATE.students.forEach(s => {
+                if (!s) return;
+                const sCycle = String(s.academicCycle || s.cycle || '2027').trim();
+                if (sCycle === '2027') {
+                    if (s.grades && Object.keys(s.grades).length > 0) s.grades = {};
+                    if (s.gradebookDetails && Object.keys(s.gradebookDetails).length > 0) s.gradebookDetails = {};
+                    if (Array.isArray(s.exoneraciones) && s.exoneraciones.length > 0) s.exoneraciones = [];
+                    if (Array.isArray(s.academicExceptions) && s.academicExceptions.length > 0) s.academicExceptions = [];
+                    delete s.isExonerated;
+                    delete s.exonerado;
+                    delete s.exoneratedBimestre;
+                }
+            });
+        }
+    }
+}
+window.sanitizeCycle2027PristineState = sanitizeCycle2027PristineState;
