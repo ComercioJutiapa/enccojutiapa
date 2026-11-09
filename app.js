@@ -6808,6 +6808,14 @@ function getCycleFilteredStudents(studentsList = null, targetCycle = null) {
     if (!tgt) return list;
     return list.filter(s => {
         if (!s) return false;
+        // 🛡️ REGLA INSTITUCIONAL: En Ciclo 2027 los estudiantes de 6to egresados en 2026 quedan categóricamente excluidos
+        if (tgt === '2027') {
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
+                return false;
+            }
+        }
         let c = String(s.cycle || s.academicCycle || '').trim();
         if (!c) {
             if (s.carne && s.carne.includes('2027')) c = '2027';
@@ -53457,7 +53465,7 @@ function sanitizeResolved2026AttendanceAlerts() {
 }
 window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAlerts;
 
-// 🛡️ [Garantía Institucional de Ciclo 2027: Asistencia en Blanco, Notas en Blanco, Sin Notificaciones]
+// 🛡️ [Garantía Institucional de Ciclo 2027: Asistencia en Blanco, Notas en Blanco, Sin Notificaciones y Sin Egresados 2026]
 function sanitizeCycle2027PristineState() {
     const activeCycle = String(STATE.activeCycle || '2026').trim();
     if (activeCycle === '2027') {
@@ -53470,10 +53478,16 @@ function sanitizeCycle2027PristineState() {
             });
         }
 
-        // 2. Calificaciones 2027 en blanco: garantizar que todos los estudiantes de 2027 tengan grades y gradebookDetails vacíos
+        // 2. Calificaciones 2027 en blanco y 3. Exclusión total de egresados de 6to 2026 de la nómina activa de 2027
         if (Array.isArray(STATE.students)) {
-            STATE.students.forEach(s => {
-                if (!s) return;
+            const initialLen = STATE.students.length;
+            STATE.students = STATE.students.filter(s => {
+                if (!s) return false;
+                const stLower = String(s.status || '').toLowerCase().trim();
+                const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+                if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
+                    return false;
+                }
                 const sCycle = String(s.academicCycle || s.cycle || '2027').trim();
                 if (sCycle === '2027') {
                     if (s.grades && Object.keys(s.grades).length > 0) s.grades = {};
@@ -53484,7 +53498,11 @@ function sanitizeCycle2027PristineState() {
                     delete s.exonerado;
                     delete s.exoneratedBimestre;
                 }
+                return true;
             });
+            if (STATE.students.length !== initialLen && typeof saveStateToLocalStorageQuick === 'function') {
+                saveStateToLocalStorageQuick();
+            }
         }
     }
 }
