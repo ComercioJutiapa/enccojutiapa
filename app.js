@@ -5584,17 +5584,27 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'attendanceAlerts' || cleanPath.startsWith('attendanceAlerts')) {
                         if (nodeData && typeof nodeData === 'object') {
                             if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            const activeCycle = String(STATE.activeCycle || '2026').trim();
                             if (cleanPath === 'attendanceAlerts') {
-                                STATE.attendanceAlerts = Array.isArray(nodeData) ? nodeData : Object.values(nodeData);
+                                const rawList = Array.isArray(nodeData) ? nodeData : Object.values(nodeData);
+                                rawList.forEach(a => {
+                                    if (a && !a.cycle) {
+                                        a.cycle = String(a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026')).trim();
+                                    }
+                                });
+                                STATE.attendanceAlerts = rawList;
                             } else {
                                 const incomingAlert = nodeData;
                                 if (incomingAlert && incomingAlert.id) {
+                                    if (!incomingAlert.cycle) {
+                                        incomingAlert.cycle = String(incomingAlert.date ? incomingAlert.date.substring(0, 4) : (incomingAlert.timestamp ? new Date(incomingAlert.timestamp).getFullYear() : '2026')).trim();
+                                    }
                                     const existingIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
                                     if (existingIdx !== -1) {
                                         STATE.attendanceAlerts[existingIdx] = { ...STATE.attendanceAlerts[existingIdx], ...incomingAlert };
                                     } else {
                                         STATE.attendanceAlerts.unshift(incomingAlert);
-                                        if (typeof notifyAuxiliaturaAlert === 'function') {
+                                        if (incomingAlert.cycle === activeCycle && typeof notifyAuxiliaturaAlert === 'function') {
                                             notifyAuxiliaturaAlert(incomingAlert);
                                         }
                                     }
@@ -5847,17 +5857,21 @@ function initFirebaseRealtimeConnection() {
                                 }
                             }
                         } else if (data.path === '/attendanceAlerts' || data.path.startsWith('/attendanceAlerts')) {
-                            // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch
+                            // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch (con aislamiento de ciclo)
                             if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            const activeCycle = String(STATE.activeCycle || '2026').trim();
                             const subPath = data.path.replace(/^\/attendanceAlerts\/?/, '');
                             const alertId = subPath || (data.data && data.data.id);
                             let incomingAlert = (data.data && typeof data.data === 'object') ? data.data : null;
                             if (incomingAlert) {
                                 if (!incomingAlert.id && alertId) incomingAlert.id = alertId;
+                                if (!incomingAlert.cycle) {
+                                    incomingAlert.cycle = String(incomingAlert.date ? incomingAlert.date.substring(0, 4) : (incomingAlert.timestamp ? new Date(incomingAlert.timestamp).getFullYear() : '2026')).trim();
+                                }
                                 const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
                                 if (exIdx === -1) {
                                     STATE.attendanceAlerts.unshift(incomingAlert);
-                                    if (typeof notifyAuxiliaturaAlert === 'function') {
+                                    if (incomingAlert.cycle === activeCycle && typeof notifyAuxiliaturaAlert === 'function') {
                                         notifyAuxiliaturaAlert(incomingAlert);
                                     }
                                 } else {
@@ -10872,10 +10886,16 @@ try {
                     const incomingAlert = event.data.alert || event.data.data;
                     if (incomingAlert && incomingAlert.id) {
                         if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                        const activeCycle = String(STATE.activeCycle || '2026').trim();
+                        if (!incomingAlert.cycle) {
+                            incomingAlert.cycle = String(incomingAlert.date ? incomingAlert.date.substring(0, 4) : (incomingAlert.timestamp ? new Date(incomingAlert.timestamp).getFullYear() : '2026')).trim();
+                        }
                         const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
                         if (exIdx === -1) {
                             STATE.attendanceAlerts.unshift(incomingAlert);
-                            if (typeof notifyAuxiliaturaAlert === 'function') notifyAuxiliaturaAlert(incomingAlert);
+                            if (incomingAlert.cycle === activeCycle && typeof notifyAuxiliaturaAlert === 'function') {
+                                notifyAuxiliaturaAlert(incomingAlert);
+                            }
                         } else {
                             STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...incomingAlert };
                         }
@@ -11292,6 +11312,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
         cloudAlerts.forEach(cA => {
             if (!cA || !cA.id) return;
+            if (!cA.cycle) {
+                cA.cycle = String(cA.date ? cA.date.substring(0, 4) : (cA.timestamp ? new Date(cA.timestamp).getFullYear() : '2026')).trim();
+            }
             const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === cA.id);
             if (exIdx === -1) STATE.attendanceAlerts.push(cA);
             else STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...cA };
@@ -23791,14 +23814,14 @@ function getUserAlerts() {
         }
 
     } else if (role === 'profesor_auxiliar' || role === 'auxiliar' || role === 'auxiliatura') {
-        // 1. Ausencias registradas hoy en el aula
+        // 1. Ausencias registradas hoy en el aula (con estricto aislamiento por ciclo escolar)
         const today = new Date().toISOString().split('T')[0];
         const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
             if (!a) return false;
-            const aCycle = String(a.cycle || (a.date ? String(a.date).substring(0, 4) : '2026')).trim();
-            if (activeCycle === '2027' && aCycle === '2026') return false;
+            const aCycle = String(a.cycle || (a.date ? String(a.date).substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+            if (aCycle !== activeCycle) return false; // Aislamiento absoluto: las alertas de 2026 jamás aparecen en 2027
             const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
-            return isToday && (a.status === 'pendiente' || !a.status);
+            return isToday && (a.status === 'pendiente');
         });
 
         if (pendingToday.length > 0) {
@@ -47124,15 +47147,21 @@ function initFirestoreModularLiveListeners() {
         try {
             const unsubAlerts = onSnapshot(collection(db, 'attendanceAlerts'), (snap) => {
                 if (!snap || snap.empty) return;
+                const activeCycle = String(STATE.activeCycle || '2026').trim();
                 snap.docChanges().forEach(change => {
                     if (change.type === 'added' || change.type === 'modified') {
                         const alertData = change.doc.data();
                         if (alertData && alertData.id) {
                             if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            if (!alertData.cycle) {
+                                alertData.cycle = String(alertData.date ? alertData.date.substring(0, 4) : (alertData.timestamp ? new Date(alertData.timestamp).getFullYear() : '2026')).trim();
+                            }
                             const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === alertData.id);
                             if (exIdx === -1) {
                                 STATE.attendanceAlerts.unshift(alertData);
-                                if (typeof notifyAuxiliaturaAlert === 'function') notifyAuxiliaturaAlert(alertData);
+                                if (alertData.cycle === activeCycle && typeof notifyAuxiliaturaAlert === 'function') {
+                                    notifyAuxiliaturaAlert(alertData);
+                                }
                             } else {
                                 STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...alertData };
                             }
@@ -47892,6 +47921,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     const alertId = 'alert_' + timestamp + '_' + Math.random().toString(36).substring(2, 7);
     const alertObj = {
         id: alertId,
+        cycle: String(STATE.activeCycle || '2026').trim(),
         studentId: studentId,
         studentName: studentName,
         carne: (student && (student.carne || student.personalCode)) ? (student.carne || student.personalCode) : '---',
@@ -47982,7 +48012,15 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
 function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
 
-    // 1. Asegurar que la alerta quede apilada en el estado local de alertas
+    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar:
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : '2026'))).trim();
+    if (alertCycle !== activeCycle) {
+        return; // Aislamiento absoluto: las alertas de 2026 jamás notifican ni suenan en 2027
+    }
+
+    // 2. Asegurar que la alerta quede apilada en el estado local de alertas con su ciclo
+    if (!alertObj.cycle) alertObj.cycle = alertCycle;
     if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
     const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === alertObj.id);
     if (exIdx === -1) {
@@ -47991,42 +48029,52 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
         STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...alertObj };
     }
 
-    // 2. Mantener siempre actualizadas las insignias y el Centro de Notificaciones y Avisos
+    // 3. Mantener siempre actualizadas las insignias y el Centro de Notificaciones y Avisos
     if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
     if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
 
-    // 3. 🛡️ Modo Silencioso en el Arranque (Silent Boot):
-    // Durante los primeros 3 segundos tras iniciar o recargar la página, no reproducir sonido ni lanzar toasts
-    // para evitar saturación de pantalla con las alertas históricas provenientes de Firebase o almacenamiento local.
-    const isBooting = !window._isAppBootCompleted || (Date.now() - (window._appBootStartTime || 0) < 3000);
-    if (isBooting && !options.forceImmediate) {
+    // 4. Si la alerta no está pendiente (ej: resuelta, justificada, corregida), no disparar avisos
+    if (alertObj.status && alertObj.status !== 'pendiente') {
         return;
     }
 
-    // 4. Filtrar por rol de usuario
+    // 5. 🛡️ Ventana de Frescura Temporal (Freshness Gate - Máximo 120 segundos / 2 minutos):
+    // Las notificaciones en vivo (toasts, chimes y avisos OS) SOLO se emiten si la alerta fue generada
+    // en los últimos 2 minutos. Cualquier alerta histórica o recibida por carga de base de datos
+    // se procesa en modo 100% silencioso para erradicar cualquier ola de avisos.
+    const alertTs = Number(alertObj.timestamp || 0);
+    const alertAgeMs = alertTs > 0 ? (Date.now() - alertTs) : 999999999;
+    const isFresh = alertAgeMs >= 0 && alertAgeMs < 120000;
+
+    const isBooting = !window._isAppBootCompleted || (Date.now() - (window._appBootStartTime || 0) < 5000);
+    if ((!isFresh || isBooting) && !options.forceImmediate) {
+        return; // Alerta histórica o reconexión: registro silencioso
+    }
+
+    // 6. Filtrar por rol de usuario
     const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
     const relevantRoles = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'secretaria', 'director', 'direccion', 'admin', 'super_usuario'];
     if (role && !relevantRoles.includes(role)) {
         return; // Alerta exclusiva para Auxiliatura, Dirección y Secretaría
     }
 
-    // 5. Chime acústico - SIEMPRE suena cuando llegan nuevas notificaciones en vivo
+    // 7. Chime acústico
     playAlertChime();
 
-    // 6. Parpadeo en pestaña del navegador
+    // 8. Parpadeo en pestaña del navegador
     flashTabTitle(`🚨 ¡AUSENCIA! ${alertObj.studentName}`);
 
-    // 7. Notificación emergente visual (anti-apilamiento, máx 2 toasts en pantalla, 4s de duración)
+    // 9. Notificación emergente visual (anti-apilamiento, máx 2 toasts en pantalla, 4s de duración)
     if (typeof showToast === 'function') {
         showToast(`🚨 Inasistencia: ${alertObj.studentName} (${alertObj.gradeLabel || ''}) - ${alertObj.courseName || 'Cátedra'}`, 'warning', 4000);
     }
 
-    // 8. Si la vista actual es la bitácora, actualizarla de inmediato
+    // 10. Si la vista actual es la bitácora, actualizarla de inmediato
     if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
         renderAuxiliaturaLogView();
     }
 
-    // 9. Notificación nativa del sistema operativo (escritorio / móvil en segundo plano)
+    // 11. Notificación nativa del sistema operativo (escritorio / móvil en segundo plano)
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
             new Notification(`🚨 ENCCO: Inasistencia en Aula`, {
@@ -48042,9 +48090,13 @@ function updateAuxiliaturaBadge() {
     const badge = document.getElementById('auxiliaturaAlertsBadge');
     if (!badge) return;
     const today = new Date().toISOString().split('T')[0];
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
     const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
+        if (!a) return false;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+        if (aCycle !== activeCycle) return false;
         const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
-        return isToday && (a.status === 'pendiente' || !a.status);
+        return isToday && a.status === 'pendiente';
     });
 
     if (pendingToday.length > 0) {
@@ -48187,9 +48239,14 @@ function renderAuxiliaturaLogView() {
     const selectedStatus = statusSelect ? statusSelect.value : 'ALL';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-    const allAlerts = STATE.attendanceAlerts || [];
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
+        if (!a) return false;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+        return aCycle === activeCycle;
+    });
 
-    // Calcular KPIs para la fecha seleccionada
+    // Calcular KPIs para la fecha seleccionada dentro del ciclo activo
     const alertsForDate = allAlerts.filter(a => {
         const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
         return aDate === selectedDate;
@@ -48519,7 +48576,12 @@ function printAuxiliaturaLog() {
     const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
     const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
 
-    const allAlerts = STATE.attendanceAlerts || [];
+    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
+        if (!a) return false;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+        return aCycle === activeCycle;
+    });
     let filtered = allAlerts.filter(a => {
         const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
         return aDate === targetDate && a.status !== 'corregida';
@@ -53294,3 +53356,57 @@ if (typeof window !== 'undefined' && !window._hasSessionRevocationInterval) {
     }, 25000);
 }
 
+
+// 🛡️ [Resolución Masiva de Inasistencias y Notificaciones]
+async function marcarTodasLasAlertasComoResueltas(targetCycle = null) {
+    const cycleToResolve = String(targetCycle || STATE.activeCycle || '2026').trim();
+    if (!STATE.attendanceAlerts || !Array.isArray(STATE.attendanceAlerts)) {
+        STATE.attendanceAlerts = [];
+    }
+
+    let resolvedCount = 0;
+    const nowIso = new Date().toISOString();
+    const userName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole || 'Super Usuario');
+
+    STATE.attendanceAlerts.forEach(a => {
+        if (!a) return;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : '2026')).trim();
+        if (aCycle === cycleToResolve && a.status === 'pendiente') {
+            a.status = 'resuelta';
+            a.resolvedBy = userName;
+            a.resolvedAt = nowIso;
+            a.notes = ((a.notes || '') + ' • Resuelta formalmente').trim().replace(/^•\s*/, '');
+            resolvedCount++;
+        }
+    });
+
+    // Guardar en almacenamiento local
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+
+    // Actualizar insignias y UI
+    if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+        renderAuxiliaturaLogView();
+    }
+
+    // Sincronizar en segundo plano con Firebase Realtime Database
+    try {
+        const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+        if (firebaseUrl && Array.isArray(STATE.attendanceAlerts) && STATE.attendanceAlerts.length > 0) {
+            fetch(`${firebaseUrl}/encc_school_state/attendanceAlerts.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(STATE.attendanceAlerts)
+            }).catch(() => {});
+        }
+    } catch(syncErr) {}
+
+    if (typeof showToast === 'function') {
+        showToast(`✅ Se marcaron ${resolvedCount} inasistencia(s) de ${cycleToResolve} como resueltas.`, 'success');
+    }
+    return resolvedCount;
+}
+window.marcarTodasLasAlertasComoResueltas = marcarTodasLasAlertasComoResueltas;
