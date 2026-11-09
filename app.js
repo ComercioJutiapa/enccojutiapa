@@ -2088,6 +2088,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
     // 🛡️ Salvaguarda Estricta de Grados y Secciones: el colegio opera con 12 secciones oficiales
     if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+    if (typeof sanitizeResolved2026AttendanceAlerts === 'function') sanitizeResolved2026AttendanceAlerts();
     if (Array.isArray(STATE.gradesList) && STATE.gradesList.length >= 12) {
         cleanPayload.gradesList = STATE.gradesList;
         // Construir y sincronizar mapa de secciones oficial
@@ -23459,7 +23460,11 @@ function getStudentsAtAttendanceRisk(filterGradeCodes = null) {
 
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
-    const cycleKey = STATE.activeCycle || '2026';
+    const cycleKey = String(STATE.activeCycle || '2026').trim();
+    if (cycleKey === '2026') {
+        // 🛡️ El ciclo 2026 está concluido y todas sus alertas están formalmente resueltas: no generar riesgos activos
+        return [];
+    }
 
     targetStudents.forEach(s => {
         let totalAbsences = 0;
@@ -24066,16 +24071,15 @@ function getUserAlerts() {
         }
     }
 
-    // 🛡️ REGLA INSTITUCIONAL: Invalidar y excluir alertas del ciclo 2026 en ciclo 2027
-    let validAlerts = rawAlerts;
-    if (activeCycle === '2027') {
-        validAlerts = validAlerts.filter(a => {
-            if (!a) return false;
-            if (a.cycle === '2026') return false;
-            if (typeof a.id === 'string' && (a.id.endsWith('_2026') || a.id.includes('_2026_') || a.id.includes('2026-'))) return false;
-            return true;
-        });
-    }
+    // 🛡️ REGLA INSTITUCIONAL ESTRICTA: Todas las notificaciones del ciclo 2026 están 100% resueltas.
+    // Ninguna alerta perteneciente o asociada al ciclo 2026 debe aparecer en el centro de alertas, avisos ni insignias.
+    let validAlerts = rawAlerts.filter(a => {
+        if (!a) return false;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : '')).trim();
+        if (aCycle === '2026') return false;
+        if (typeof a.id === 'string' && (a.id.includes('2026') || a.id.endsWith('_2026'))) return false;
+        return true;
+    });
 
     // Filtrar alertas que el usuario actual ya descartó o marcó como resueltas
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
@@ -24091,8 +24095,8 @@ function getUserAlerts() {
     const dismissed = new Set([
         ...(STATE.dismissedAlerts[userCycleKey] || []),
         ...(STATE.dismissedAlerts[roleCycleKey] || []),
-        ...(STATE.dismissedAlerts[currentUserId] || []).filter(id => !id.includes('2026')),
-        ...(STATE.dismissedAlerts[role] || []).filter(id => !id.includes('2026')),
+        ...(STATE.dismissedAlerts[currentUserId] || []),
+        ...(STATE.dismissedAlerts[role] || []),
         ...(STATE.dismissedAlerts['admin'] || []),
         ...(STATE.dismissedAlerts['usr-admin-01'] || []),
         ...(STATE.dismissedAlerts['usr-admin-nehemias'] || [])
@@ -48012,11 +48016,14 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
 function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
 
-    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar:
+    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar y Resolución Definitiva 2026:
     const activeCycle = String(STATE.activeCycle || '2026').trim();
     const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : '2026'))).trim();
+    if (alertCycle === '2026') {
+        return; // Aislamiento absoluto: todas las alertas de 2026 ya están formalmente resueltas
+    }
     if (alertCycle !== activeCycle) {
-        return; // Aislamiento absoluto: las alertas de 2026 jamás notifican ni suenan en 2027
+        return; // Aislamiento absoluto: las alertas de otro ciclo jamás notifican ni suenan
     }
 
     // 2. Asegurar que la alerta quede apilada en el estado local de alertas con su ciclo
@@ -48094,6 +48101,7 @@ function updateAuxiliaturaBadge() {
     const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+        if (aCycle === '2026') return false; // 🛡️ Todas las alertas de 2026 están formalmente resueltas
         if (aCycle !== activeCycle) return false;
         const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
         return isToday && a.status === 'pendiente';
@@ -53410,3 +53418,26 @@ async function marcarTodasLasAlertasComoResueltas(targetCycle = null) {
     return resolvedCount;
 }
 window.marcarTodasLasAlertasComoResueltas = marcarTodasLasAlertasComoResueltas;
+
+// 🛡️ [Saneamiento de Notificaciones y Alertas Históricas 2026]
+function sanitizeResolved2026AttendanceAlerts() {
+    if (Array.isArray(STATE.attendanceAlerts)) {
+        let changed = false;
+        STATE.attendanceAlerts.forEach(a => {
+            if (!a) return;
+            const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : '2026')).trim();
+            if (aCycle === '2026') {
+                if (a.status !== 'resuelta' && a.status !== 'corregida' && a.status !== 'verificada') {
+                    a.status = 'resuelta';
+                    a.resolvedBy = a.resolvedBy || 'Super Usuario / Cierre de Ciclo 2026';
+                    a.resolvedAt = a.resolvedAt || '2026-11-09T08:15:00.000Z';
+                    changed = true;
+                }
+            }
+        });
+        if (changed && typeof saveStateToLocalStorageQuick === 'function') {
+            saveStateToLocalStorageQuick();
+        }
+    }
+}
+window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAlerts;
