@@ -2120,7 +2120,18 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
     if (Array.isArray(STATE.students) && STATE.students.length >= 350) {
-        cleanPayload.students = STATE.students.filter(s => s && s.id && s.name);
+        const activeCycleNum = parseInt(String(STATE.activeCycle || '2027').trim(), 10);
+        cleanPayload.students = STATE.students.filter(s => {
+            if (!s || !s.id || !s.name) return false;
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+            if (s.graduationCycle && !isNaN(activeCycleNum)) {
+                const gradNum = parseInt(String(s.graduationCycle).trim(), 10);
+                if (!isNaN(gradNum) && activeCycleNum > gradNum) return false;
+            }
+            return true;
+        });
     }
     if (Array.isArray(STATE.deletedStudentIds) && STATE.deletedStudentIds.length > 0) {
         cleanPayload.deletedStudentIds = STATE.deletedStudentIds;
@@ -2378,6 +2389,21 @@ const EnccoCloudSync = {
         if ((nodeName === 'students' || nodeName.startsWith('students')) && (!Array.isArray(data) || data.length < 50)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de estudiantes truncada (${Array.isArray(data) ? data.length : typeof data}). Operación cancelada para proteger integridad.`);
             return false;
+        }
+        if (nodeName === 'students' && Array.isArray(data)) {
+            const activeCycleNum = (typeof STATE !== 'undefined' && STATE) ? parseInt(String(STATE.activeCycle || '2027').trim(), 10) : NaN;
+            data = data.filter(s => {
+                if (!s) return false;
+                const stLower = String(s.status || '').toLowerCase().trim();
+                const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+                if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+                if (s.graduationCycle && !isNaN(activeCycleNum)) {
+                    const gradNum = parseInt(String(s.graduationCycle).trim(), 10);
+                    if (!isNaN(gradNum) && activeCycleNum > gradNum) return false;
+                }
+                return true;
+            });
+            if (data.length < 50) return false;
         }
         if ((nodeName === 'users' || nodeName.startsWith('users')) && (!Array.isArray(data) || data.length === 0)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de usuarios truncada (${data.length} < 20). Operación cancelada para proteger integridad.`);
@@ -6627,15 +6653,23 @@ function extractSectionLetter(str) {
 window.extractSectionLetter = extractSectionLetter;
 
 function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
-    if (!Array.isArray(STATE.students) || STATE.students.length === 0) return 0;
+    const rawList = Array.isArray(STATE.students) ? STATE.students : [];
+    if (rawList.length === 0) return 0;
+    const baseList = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(rawList)
+        : rawList;
     const combined = `${arg1 || ''} ${arg2 || ''} ${arg3 || ''}`.toUpperCase().trim();
-    if (!combined || combined === 'ALL' || combined === 'TODOS') return STATE.students.length;
+    if (!combined || combined === 'ALL' || combined === 'TODOS') return baseList.length;
 
     const targetGrade = extractGradeNumber(combined);
     const targetSec = extractSectionLetter(arg3 || arg1 || combined);
 
-    return STATE.students.filter(s => {
+    return baseList.filter(s => {
         if (!s) return false;
+        const stLower = String(s.status || '').toLowerCase().trim();
+        const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+        if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+
         const sGrade = extractGradeNumber(s.grade || s.gradeCode || s.gradeLabel || '');
         const sSec = extractSectionLetter(s.section || s.gradeCode || s.gradeLabel || '');
 
@@ -6805,21 +6839,28 @@ function getCycleFilteredStudents(studentsList = null, targetCycle = null) {
     const list = studentsList || (typeof window !== 'undefined' && window.STATE?.students) || (typeof STATE !== 'undefined' && STATE?.students) || [];
     const stObj = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : null);
     const tgt = String(targetCycle || stObj?.historicalViewingCycle || stObj?.viewingHistoricalCycle || stObj?.activeCycle || '').trim();
-    if (!tgt) return list;
+    const tgtNum = parseInt(tgt, 10);
     return list.filter(s => {
         if (!s) return false;
-        // 🛡️ REGLA INSTITUCIONAL: En Ciclo 2027 los estudiantes de 6to egresados en 2026 quedan categóricamente excluidos
-        if (tgt === '2027') {
-            const stLower = String(s.status || '').toLowerCase().trim();
-            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
-            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
+        // 🛡️ REGLA PERPETUA MULTI-CICLO (2027, 2028, 2029...):
+        // Los alumnos con estado 'Egresado' o grado 'Graduando / Egresado' NUNCA aparecen en nóminas/listados activos.
+        // En consultas históricas (/historico/{ciclo}), los alumnos aparecen con su grado original (6to Perito Contador) y estado 'Activo'.
+        const stLower = String(s.status || '').toLowerCase().trim();
+        const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+        if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
+            return false;
+        }
+        if (s.graduationCycle && !isNaN(tgtNum)) {
+            const gradNum = parseInt(String(s.graduationCycle).trim(), 10);
+            if (!isNaN(gradNum) && tgtNum > gradNum) {
                 return false;
             }
         }
+        if (!tgt) return true;
         let c = String(s.cycle || s.academicCycle || '').trim();
         if (!c) {
-            if (s.carne && s.carne.includes('2027')) c = '2027';
-            else if (s.carne && s.carne.includes('2026')) c = '2026';
+            const carneMatch = String(s.carne || '').match(/\b(20\d{2})\b/);
+            if (carneMatch) c = carneMatch[1];
             else c = '2026'; // Registro base oficial histórico pertenece al ciclo 2026
         }
         return c === tgt;
@@ -9397,16 +9438,32 @@ async function initApp() {
             const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
             const _t = Date.now();
             
-            const [usersRes, pensumRes, studentsRes, configRes, rolesRes] = await Promise.all([
+            const [usersRes, pensumRes, studentsRes, configRes, rolesRes, activeCycleRes, cyclesRes] = await Promise.all([
                 fetch(`${_fbUrl}/encc_school_state/users.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/pensum.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
-                fetch(`${_fbUrl}/students.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/students.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/config.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
-                fetch(`${_fbUrl}/encc_school_state/rolesConfig.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
+                fetch(`${_fbUrl}/encc_school_state/rolesConfig.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/activeCycle.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/cycles.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
             ]);
             if (_timeoutId) clearTimeout(_timeoutId);
 
             const granularState = {};
+            if (activeCycleRes && activeCycleRes.ok) {
+                const acData = await activeCycleRes.json();
+                if (acData && typeof acData === 'string') {
+                    granularState.activeCycle = acData.trim();
+                    STATE.activeCycle = granularState.activeCycle;
+                }
+            }
+            if (cyclesRes && cyclesRes.ok) {
+                const cyData = await cyclesRes.json();
+                if (Array.isArray(cyData) && cyData.length > 0) {
+                    granularState.cycles = cyData;
+                    STATE.cycles = cyData;
+                }
+            }
             if (usersRes && usersRes.ok) {
                 const uData = await usersRes.json();
                 if (uData) granularState.users = Array.isArray(uData) ? uData : Object.values(uData);
@@ -10983,6 +11040,15 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
 
+    // Sincronizar ciclo activo antes de procesar estudiantes para que los filtros multi-ciclo conozcan el año vigente
+    if (!isHistoryActive) {
+        if (incomingState.activeCycle) STATE.activeCycle = String(incomingState.activeCycle).trim();
+        if (Array.isArray(incomingState.cycles)) {
+            STATE.cycles = incomingState.cycles;
+            ensureOfficialCycles();
+        }
+    }
+
     if (!isHistoryActive && incomingState.calificaciones && typeof incomingState.calificaciones === 'object') {
         STATE.calificaciones = { ...(STATE.calificaciones || {}), ...incomingState.calificaciones };
     }
@@ -11006,7 +11072,14 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (!isHistoryActive && Array.isArray(incomingState.students)) {
         const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
-        incomingState.students = incomingState.students.filter(s => s && s.id && !deletedStus.has(s.id) && !deletedStus.has(s.personalCode) && !deletedStus.has(s.carne));
+        incomingState.students = incomingState.students.filter(s => {
+            if (!s || !s.id || deletedStus.has(s.id) || deletedStus.has(s.personalCode) || deletedStus.has(s.carne)) return false;
+            // 🛡️ REGLA PERPETUA MULTI-CICLO (2027, 2028, 2029...): Excluir egresados de la nómina activa
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+            return true;
+        });
     }
     if (!isHistoryActive && Array.isArray(incomingState.students) && incomingState.students.length > 0) {
         if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
@@ -11499,6 +11572,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         updateCycleSelects();
     }
     if (incomingState.activeCycle) STATE.activeCycle = incomingState.activeCycle;
+    if (!isHistoryActive && typeof sanitizeCycle2027PristineState === 'function') {
+        sanitizeCycle2027PristineState();
+    }
     if (incomingState.config && typeof incomingState.config === 'object') {
         applyBimestreAndLockConfig(incomingState.config);
     }
@@ -19313,7 +19389,14 @@ function generateOfficialPrintList(opts = null) {
     // Obtener estudiantes de la cátedra (incluyendo Retirados, Ausentes y Exonerados del bimestre correspondiente)
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
     if (!students || students.length === 0) {
-        students = (STATE.students || []).filter(s => {
+        const cyclePool = (typeof getCycleFilteredStudents === 'function')
+            ? getCycleFilteredStudents(STATE.students || [], STATE.activeCycle)
+            : (STATE.students || []);
+        students = cyclePool.filter(s => {
+            if (!s) return false;
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
             if (s.active === false && s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') return false;
             if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
             const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
@@ -19371,11 +19454,12 @@ function generateOfficialPrintList(opts = null) {
         const rowHeight = totalStudents > 35 ? '15px' : '17px';
         const rowLineHeight = totalStudents > 35 ? '1.05' : '1.1';
 
+        const cycle = STATE.activeCycle || '2026';
         // Título oficial según modelo
         let headerDocTitle = '';
         let docTitle = '';
         if (modelType === 'NOMINA_OFICIAL') {
-            headerDocTitle = 'NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR 2026';
+            headerDocTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR ${cycle}`;
             docTitle = `Nómina Oficial - ${gradeTitle}`;
         } else if (modelType === 'ASISTENCIA_MENSUAL') {
             headerDocTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (${bimestreDisplay} BIMESTRE)`;
@@ -19398,7 +19482,6 @@ function generateOfficialPrintList(opts = null) {
         }).length;
 
         const guideTeacher = gradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
-        const cycle = STATE.activeCycle || '2026';
         const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
         const bimCheck = (b) => (b === bNum ? '[ <b>X</b> ]' : '[ &nbsp; ]');
@@ -21556,10 +21639,16 @@ function printStudentsOfficialList(targetGrade = null) {
     const cycle = STATE.activeCycle || '2026';
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
-    let list = (STATE.students || []).filter(s => {
-        if (cycle && s.cycle && s.cycle !== cycle) return false;
-        return true;
-    });
+    let list = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], cycle)
+        : (STATE.students || []).filter(s => {
+            if (!s) return false;
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+            if (cycle && s.cycle && s.cycle !== cycle) return false;
+            return true;
+        });
 
     // 2. Filtrado riguroso por Grado y Sección
     const rawQ = `${gradeVal || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''}`.toUpperCase();
@@ -21795,10 +21884,16 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
     const cycle = STATE.activeCycle || '2026';
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
-    let list = (STATE.students || []).filter(s => {
-        if (cycle && s.cycle && s.cycle !== cycle) return false;
-        return true;
-    });
+    let list = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], cycle)
+        : (STATE.students || []).filter(s => {
+            if (!s) return false;
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+            if (cycle && s.cycle && s.cycle !== cycle) return false;
+            return true;
+        });
 
     // 2. Filtrado riguroso por Grado y Sección
     const rawQ = `${gradeVal || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''}`.toUpperCase();
@@ -39939,7 +40034,15 @@ function exportStudentsOfficialExcel() {
         const gradeFilterSel = document.getElementById('gradeFilterSelect');
         const gradeVal = gradeFilterSel ? gradeFilterSel.value : '';
         const cycle = STATE.activeCycle || '2026';
-        let students = (STATE.students || []).filter(s => !s.cycle || s.cycle === cycle);
+        let students = (typeof getCycleFilteredStudents === 'function')
+            ? getCycleFilteredStudents(STATE.students || [], cycle)
+            : (STATE.students || []).filter(s => {
+                if (!s) return false;
+                const stLower = String(s.status || '').toLowerCase().trim();
+                const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+                if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+                return !s.cycle || s.cycle === cycle;
+            });
 
         let reportTitle = "MATRÍCULA GENERAL DE ESTUDIANTES";
         let fileName = `matricula_estudiantes_encc_${cycle}.xlsx`;
@@ -40966,8 +41069,16 @@ function printSectionStudentsList(gradeCode, section) {
         }
     }
 
+    const cycle = STATE.activeCycle || '2026';
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.name === gradeCode) || { name: gradeCode, section: section || 'A', career: 'Ciclo Diversificado' };
-    const students = (STATE.students || []).filter(s => {
+    const baseStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], cycle)
+        : (STATE.students || []);
+    const students = baseStudents.filter(s => {
+        if (!s) return false;
+        const stLower = String(s.status || '').toLowerCase().trim();
+        const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+        if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
         const matchGrade = (s.gradeCode === gradeCode || s.grade === gradeCode || (gradeObj && (s.grade === gradeObj.name || s.gradeCode === gradeObj.code)) || (s.gradeLabel && s.gradeLabel.includes(gradeCode)));
         const matchSec = (!section || s.section === section || (gradeObj && s.section === gradeObj.section));
         return matchGrade && matchSec;
@@ -41021,7 +41132,7 @@ function printSectionStudentsList(gradeCode, section) {
             <div style="text-align:center; margin-bottom:14px; border-bottom:2px solid #0369a1; padding-bottom:8px;">
                 <h3 style="margin:0; color:#0369a1; text-transform:uppercase;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h3>
                 <h4 style="margin:2px 0; color:#475569;">ENCCO JUTIAPA - JORNADA MATUTINA</h4>
-                <p style="margin:0; font-size:0.85rem; font-weight:700;">NÓMINA OFICIAL DE ESTUDIANTES - CICLO 2026</p>
+                <p style="margin:0; font-size:0.85rem; font-weight:700;">NÓMINA OFICIAL DE ESTUDIANTES - CICLO ${cycle}</p>
                 <p style="margin:2px 0 0; font-size:0.82rem; color:#64748b;"><strong>Grado y Sección:</strong> ${gradeObj.name} Sección "${gradeObj.section || section}" | <strong>Carrera:</strong> ${gradeObj.career} | <strong>Docente Guía:</strong> ${(typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Sin asignar'))}</p>
             </div>
             <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -53465,9 +53576,36 @@ function sanitizeResolved2026AttendanceAlerts() {
 }
 window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAlerts;
 
-// 🛡️ [Garantía Institucional de Ciclo 2027: Asistencia en Blanco, Notas en Blanco, Sin Notificaciones y Sin Egresados 2026]
+// 🛡️ [Garantía Institucional Multi-Ciclo (2027, 2028, 2029...): Exclusión Universal de Egresados y Limpieza de Ciclo 2027]
 function sanitizeCycle2027PristineState() {
     const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycleNum = parseInt(activeCycle, 10);
+    const isHist = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+
+    // Regla universal para cualquier ciclo >= 2027 (2027, 2028, 2029...):
+    // Ningún alumno con estado 'Egresado' o grado 'Graduando / Egresado' puede figurar en la nómina activa.
+    if (!isHist && Array.isArray(STATE.students)) {
+        const initialLen = STATE.students.length;
+        STATE.students = STATE.students.filter(s => {
+            if (!s) return false;
+            const stLower = String(s.status || '').toLowerCase().trim();
+            const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
+                return false;
+            }
+            if (s.graduationCycle && !isNaN(activeCycleNum)) {
+                const gradNum = parseInt(String(s.graduationCycle).trim(), 10);
+                if (!isNaN(gradNum) && activeCycleNum > gradNum) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        if (STATE.students.length !== initialLen && typeof saveStateToLocalStorageQuick === 'function') {
+            saveStateToLocalStorageQuick();
+        }
+    }
+
     if (activeCycle === '2027') {
         // 1. Asistencia 2027 en blanco: eliminar cualquier planilla huérfana de 2027
         if (STATE.attendanceRecords && typeof STATE.attendanceRecords === 'object') {
@@ -53478,7 +53616,7 @@ function sanitizeCycle2027PristineState() {
             });
         }
 
-        // 2. Calificaciones 2027 en blanco y 3. Exclusión total de egresados de 6to 2026 de la nómina activa de 2027
+        // 2. Calificaciones 2027 en blanco y exclusión de registros residuales de 2026
         if (Array.isArray(STATE.students)) {
             const initialLen = STATE.students.length;
             STATE.students = STATE.students.filter(s => {
@@ -53489,6 +53627,9 @@ function sanitizeCycle2027PristineState() {
                     return false;
                 }
                 const sCycle = String(s.academicCycle || s.cycle || '2027').trim();
+                if (sCycle === '2026' && s.id === 'stu-sire-H380PHM') {
+                    return false;
+                }
                 if (sCycle === '2027') {
                     if (s.grades && Object.keys(s.grades).length > 0) s.grades = {};
                     if (s.gradebookDetails && Object.keys(s.gradebookDetails).length > 0) s.gradebookDetails = {};

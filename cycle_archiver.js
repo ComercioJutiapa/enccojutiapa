@@ -343,19 +343,25 @@
                 let graduatedCount = 0;
                 let retainedCount = 0;
 
+                const graduatedCohort = [];
+
                 const promotedStudents = currentStudents.map(st => {
-                    if (!st) return st;
+                    if (!st) return null;
                     const cloned = JSON.parse(JSON.stringify(st));
                     const prevGrade = st.grade || '4to Perito Contador';
                     const prevSection = st.section || '';
 
-                    // Preservar estado de alumnos ya retirados en ciclos previos sin promoverlos
-                    const stStatusLower = String(st.status || '').toLowerCase();
-                    if (stStatusLower === 'retirado' || stStatusLower === 'egresado') {
+                    // Excluir de la nómina activa del nuevo ciclo a alumnos ya retirados o egresados en ciclos previos
+                    const stStatusLower = String(st.status || '').toLowerCase().trim();
+                    const grRawLower = String(st.grade || st.gradeCode || st.gradeLabel || '').toLowerCase();
+                    if (stStatusLower === 'egresado' || grRawLower.includes('egresad') || grRawLower.includes('graduand')) {
+                        return null;
+                    }
+                    if (stStatusLower === 'retirado') {
                         cloned.academicCycle = st.academicCycle || st.cycle || currentActiveCycle;
                         cloned.cycle = cloned.academicCycle;
                         cloned.active = false;
-                        return cloned;
+                        return null;
                     }
 
                     // Reseteo total de planillas académicas y exoneraciones para el nuevo ciclo (BASE LIMPIA < 1 MB)
@@ -367,8 +373,6 @@
                     delete cloned.exonerado;
                     delete cloned.exoneratedBimestre;
 
-                    cloned.academicCycle = targetNewCycle;
-                    cloned.cycle = targetNewCycle;
                     cloned.previousCycle = currentActiveCycle;
                     cloned.previousGrade = prevGrade;
                     cloned.previousSection = prevSection;
@@ -399,6 +403,8 @@
                     const normalized = this.normalizeCanonicalGradeAndSection(targetGradeInput, targetSectionInput);
 
                     if (normalized.isEgresado || (override && override.status === 'Egresado')) {
+                        // 🛡️ REGLA PERPETUA MULTI-CICLO (2027, 2028, 2029...):
+                        // Los graduados permanecen en su ciclo de graduación (currentActiveCycle) y NO pasan a los listados del nuevo ciclo.
                         cloned.grade = 'Graduando / Egresado';
                         cloned.section = normalized.section;
                         cloned.gradeCode = 'EGRESADO';
@@ -407,7 +413,11 @@
                         cloned.statusSire = 'EGRESADO';
                         cloned.active = false;
                         cloned.graduationCycle = currentActiveCycle;
+                        cloned.cycle = currentActiveCycle;
+                        cloned.academicCycle = currentActiveCycle;
+                        graduatedCohort.push(cloned);
                         graduatedCount++;
+                        return null;
                     } else {
                         cloned.grade = normalized.grade;
                         cloned.section = normalized.section;
@@ -440,7 +450,21 @@
                     }
 
                     return cloned;
-                });
+                }).filter(Boolean);
+
+                // Resguardar cohorte de egresados del ciclo que cierra en memoria y en /encc_school_state/egresados/{currentActiveCycle}.json
+                if (window.STATE) {
+                    if (!window.STATE.graduatedStudentsByCycle) window.STATE.graduatedStudentsByCycle = {};
+                    window.STATE.graduatedStudentsByCycle[currentActiveCycle] = graduatedCohort;
+                }
+                if (graduatedCohort.length > 0 && typeof fetch === 'function') {
+                    const fbUrl = this.getFirebaseUrl();
+                    fetch(`${fbUrl}/encc_school_state/egresados/${currentActiveCycle}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(graduatedCohort)
+                    }).catch(() => {});
+                }
 
                 // 3. Resetear registros temporales y transaccionales del año anterior preservando la bitácora acumulativa y asignaciones docentes
                 if (window.STATE) {
@@ -605,7 +629,7 @@
                     const stList = (memData && (memData.studentsSnapshot || memData.students));
                     if (Array.isArray(stList) && stList.length > 0) {
                         // Descartar dummy residual corrupto sin nombres válidos o de <= 3 registros en ciclo 2026
-                        if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
+                        if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || (!stList[0].name && !stList[0].firstName))) {
                             delete this._sessionCache[targetCycle];
                         } else {
                             archivedData = memData;
@@ -618,7 +642,7 @@
                             const parsed = JSON.parse(sessCached);
                             const stList = (parsed && (parsed.studentsSnapshot || parsed.students));
                             if (Array.isArray(stList) && stList.length > 0) {
-                                if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
+                                if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || (!stList[0].name && !stList[0].firstName))) {
                                     sessionStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
                                 } else {
                                     archivedData = parsed;

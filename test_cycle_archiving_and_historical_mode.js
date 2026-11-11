@@ -12,14 +12,21 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-// Simular entorno browser (window, document, localStorage)
+// Simular entorno browser (window, document, localStorage, sessionStorage)
 const mockLocalStorageData = {};
+const mockSessionStorageData = {};
 global.window = global;
 global.localStorage = {
     getItem: (key) => mockLocalStorageData[key] || null,
     setItem: (key, val) => { mockLocalStorageData[key] = String(val); },
     removeItem: (key) => { delete mockLocalStorageData[key]; },
     clear: () => { Object.keys(mockLocalStorageData).forEach(k => delete mockLocalStorageData[k]); }
+};
+global.sessionStorage = {
+    getItem: (key) => mockSessionStorageData[key] || null,
+    setItem: (key, val) => { mockSessionStorageData[key] = String(val); },
+    removeItem: (key) => { delete mockSessionStorageData[key]; },
+    clear: () => { Object.keys(mockSessionStorageData).forEach(k => delete mockSessionStorageData[k]); }
 };
 
 global.document = {
@@ -130,9 +137,9 @@ async function runTests() {
     assert(archiveResult.summary.totalDisciplineReports === 1, "Debe registrar 1 reporte disciplinario.");
     assert(archiveResult.summary.totalPermissions === 1, "Debe registrar 1 permiso estudiantil.");
 
-    // Verificar en almacenamiento local / snapshot
-    const localSaved = JSON.parse(mockLocalStorageData['ENCCO_HISTORICO_2026']);
-    assert(localSaved && localSaved.cycle === '2026', "El archivo histórico debe existir en almacenamiento.");
+    // Verificar en almacenamiento de sesión / snapshot
+    const localSaved = JSON.parse(mockSessionStorageData['ENCCO_HISTORICO_2026']);
+    assert(localSaved && localSaved.cycle === '2026', "El archivo histórico debe existir en almacenamiento de sesión.");
     const savedStudents = localSaved.studentsSnapshot || localSaved.students;
     assert(savedStudents && savedStudents.length === 3, "El snapshot histórico debe preservar los 3 estudiantes intactos con sus notas.");
     assert(savedStudents[0].gradebookDetails['Contabilidad General'], "El estudiante archivado debe tener sus gradebookDetails.");
@@ -173,7 +180,8 @@ async function runTests() {
     assert.strictEqual(s1.grade, '5to Perito Contador', "Estudiante 1 promovido a 5to Perito Contador.");
     assert.strictEqual(s1.section, 'Sección A', "Estudiante 1 conserva Sección A.");
     assert.deepStrictEqual(s1.gradebookDetails, {}, "Estudiante 1 debe tener gradebookDetails en blanco {}.");
-    assert.deepStrictEqual(s1.grades, {}, "Estudiante 1 debe tener grades en blanco {}.");
+    const s1HasNonZeroGrade = Object.values(s1.grades || {}).some(arr => Array.isArray(arr) && arr.some(v => v > 0));
+    assert.strictEqual(s1HasNonZeroGrade, false, "Estudiante 1 debe tener todas sus calificaciones en 0 para el nuevo ciclo.");
     assert.strictEqual(s1.academicCycle, '2027', "Estudiante 1 debe pertenecer al ciclo 2027.");
 
     assert.strictEqual(s2.grade, '5to Perito Contador', "Estudiante 2 permanece en su grado (reprobado/pendiente).");
@@ -181,7 +189,10 @@ async function runTests() {
     assert.strictEqual(s2.status, 'Pendiente', "Estudiante 2 debe tener estado Pendiente.");
     assert.deepStrictEqual(s2.gradebookDetails, {}, "Estudiante 2 debe tener casillas de notas en blanco.");
 
-    assert.strictEqual(s3.status, 'Egresado', "Estudiante 3 debe estar marcado como Egresado.");
+    assert.strictEqual(s3, undefined, "Estudiante 3 egresado en 2026 NO debe figurar en la nómina activa de 2027.");
+    assert(STATE.graduatedStudentsByCycle && Array.isArray(STATE.graduatedStudentsByCycle['2026']), "Debe existir registro de egresados del ciclo 2026.");
+    const s3Grad = STATE.graduatedStudentsByCycle['2026'].find(s => s.id === 'st-003');
+    assert(s3Grad && s3Grad.status === 'Egresado' && s3Grad.cycle === '2026', "Estudiante 3 queda resguardado en egresados del ciclo 2026.");
 
     // Calcular tamaño del estado en memoria
     const stateJson = JSON.stringify(STATE);
