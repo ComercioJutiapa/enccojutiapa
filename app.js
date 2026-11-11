@@ -6642,13 +6642,15 @@ window.extractGradeNumber = extractGradeNumber;
 
 function extractSectionLetter(str) {
     if (!str) return '';
-    const s = String(str).toUpperCase();
-    if (s.includes('SECCIÓN A') || s.includes('SECCION A') || s.includes('SECCI?N A') || s.includes('PC A') || s.includes('4TO A') || s.includes('5TO A') || s.includes('6TO A') || s.endsWith(' A')) return 'A';
-    if (s.includes('SECCIÓN B') || s.includes('SECCION B') || s.includes('SECCI?N B') || s.includes('PC B') || s.includes('4TO B') || s.includes('5TO B') || s.includes('6TO B') || s.endsWith(' B')) return 'B';
-    if (s.includes('SECCIÓN C') || s.includes('SECCION C') || s.includes('SECCI?N C') || s.includes('PC C') || s.includes('4TO C') || s.includes('5TO C') || s.includes('6TO C') || s.endsWith(' C')) return 'C';
-    if (s.includes('SECCIÓN D') || s.includes('SECCION D') || s.includes('SECCI?N D') || s.includes('PC D') || s.includes('4TO D') || s.includes('5TO D') || s.includes('6TO D') || s.endsWith(' D')) return 'D';
-    if (s === 'A' || s === 'B' || s === 'C' || s === 'D') return s;
-    return '';
+    if (typeof getCleanSectionLetter === 'function') {
+        const clean = getCleanSectionLetter(String(str));
+        if (clean) return clean;
+    }
+    const s = String(str).trim().toUpperCase();
+    const m = s.match(/SECCI[OÓ?]N\s*([A-Z])/i) ||
+              s.match(/(?:PC|4TO|5TO|6TO|GRD-?[456]|[-_\s])([A-Z])(?:\b|$)/i) ||
+              s.match(/^([A-Z])$/i);
+    return m ? m[1].toUpperCase() : '';
 }
 window.extractSectionLetter = extractSectionLetter;
 
@@ -11303,6 +11305,7 @@ function applyIncomingCloudState(incomingState, force = false) {
     // Blindaje de Grados y Secciones: el colegio opera exclusivamente con las 12 secciones oficiales
     if (Array.isArray(incomingState.gradesList) && incomingState.gradesList.length >= 12) {
         STATE.gradesList = incomingState.gradesList;
+        if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
     } else if (Array.isArray(incomingState.gradesList) && incomingState.gradesList.length > 0) {
         if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
         incomingState.gradesList.forEach(incG => {
@@ -14204,10 +14207,17 @@ function onStudentGradeOnlyChange(gradeName) {
     }
 
     let matchingSections = (STATE.gradesList || []).filter(g => {
+        if (!g) return false;
         const matchesCareer = !careerName || (g.career || '').toLowerCase() === careerName.toLowerCase();
         const matchesGrade = (g.name || '').toLowerCase() === gradeName.toLowerCase();
         return matchesCareer && matchesGrade;
     });
+    if (typeof deduplicateGradesCollection === 'function') {
+        matchingSections = deduplicateGradesCollection(matchingSections);
+    }
+    if (typeof sortGrades === 'function') {
+        matchingSections = sortGrades(matchingSections);
+    }
 
     // Si es docente, limitar a las secciones asignadas donde imparte cátedra
     const isDocente = (STATE.currentRole === 'docente');
@@ -47131,7 +47141,12 @@ function initFirestoreModularLiveListeners() {
                     const data = change.doc.data();
                     const gId = change.doc.id;
                     const fullObj = { id: gId, ...data };
-                    const idx = (STATE.gradesList || []).findIndex(g => g.id === gId || g.code === gId);
+                    const canonNew = (typeof getGradeSectionCanonicalKey === 'function') ? getGradeSectionCanonicalKey(fullObj) : '';
+                    const idx = (STATE.gradesList || []).findIndex(g => g && (
+                        g.id === gId ||
+                        g.code === gId ||
+                        (canonNew && typeof getGradeSectionCanonicalKey === 'function' && getGradeSectionCanonicalKey(g) === canonNew)
+                    ));
                     if (change.type === 'added' || change.type === 'modified') {
                         if (idx !== -1) {
                             STATE.gradesList[idx] = { ...STATE.gradesList[idx], ...fullObj };
@@ -47143,8 +47158,10 @@ function initFirestoreModularLiveListeners() {
                         STATE.gradesList.splice(idx, 1);
                     }
                 });
+                if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
                 if (typeof renderGradesTable === 'function') renderGradesTable();
                 if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+                if (typeof updateGradeSelects === 'function') updateGradeSelects();
             }, err => console.warn('Aviso en onSnapshot grados_secciones:', err));
             if (typeof unsubSections === 'function') _firestoreModularUnsubscribers.push(unsubSections);
         } catch(e) {}
