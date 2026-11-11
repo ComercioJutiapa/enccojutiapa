@@ -2119,7 +2119,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
-    if (Array.isArray(STATE.students) && STATE.students.length >= 350) {
+    if (Array.isArray(STATE.students) && STATE.students.length >= 200) {
         const activeCycleNum = parseInt(String(STATE.activeCycle || '2027').trim(), 10);
         cleanPayload.students = STATE.students.filter(s => {
             if (!s || !s.id || !s.name) return false;
@@ -9507,14 +9507,14 @@ async function initApp() {
         console.error("❌ [v190] Error al descargar cascarón granular de Firebase:", _fbPullErr);
     }
 
-    // 🛡️ Blindaje de Respaldo de Nómina Completa (412 Estudiantes)
-    if (!Array.isArray(STATE.students) || STATE.students.length < 350) {
+    // 🛡️ Blindaje de Respaldo de Nómina Completa
+    if (!Array.isArray(STATE.students) || STATE.students.length < 200) {
         try {
             const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
-            const _stRes = await fetch(_fbUrl + "/students.json?t=" + Date.now());
+            const _stRes = await fetch(_fbUrl + "/encc_school_state/students.json?t=" + Date.now());
             if (_stRes && _stRes.ok) {
                 const _stData = await _stRes.json();
-                if (Array.isArray(_stData) && _stData.length >= 350) {
+                if (Array.isArray(_stData) && _stData.length >= 200) {
                     STATE.students = deduplicateStudentsCollection(_stData);
                     console.log(`✅ [Nómina 412] ${_stData.length} estudiantes cargados exitosamente desde /students.json`);
                 }
@@ -11096,7 +11096,7 @@ function applyIncomingCloudState(incomingState, force = false) {
             }
         });
 
-        if (force && incomingState.students.length >= 350) {
+        if (force && incomingState.students.length >= 200) {
             const localDirty = window._locallyDirtyStudentIds || new Set();
             if (localDirty.size > 0 && Array.isArray(STATE.students)) {
                 const localDirtyMap = new Map();
@@ -11228,7 +11228,7 @@ function applyIncomingCloudState(incomingState, force = false) {
             });
 
             // Si la nube trae la nómina completa autoritativa, remover cualquier estudiante que haya sido eliminado en la nube
-            if (incomingState.students.length >= 350) {
+            if (incomingState.students.length >= 200) {
                 const incKeys = new Set(incomingState.students.map(s => s.id || s.personalCode));
                 for (const [k, st] of studentMap.entries()) {
                     if (!incKeys.has(k) && !st._isNewlyCreatedLocally) {
@@ -25047,10 +25047,10 @@ async function importDataBackupJSON(e) {
                     console.warn("🛡️ [Seguridad] Respaldo JSON contiene catálogo de secciones truncado. Se conservan las 12 secciones oficiales.");
                 }
                 STATE.pensumCatalog = data.pensumCatalog || STATE.pensumCatalog;
-                if (Array.isArray(data.students) && data.students.length >= 350) {
+                if (Array.isArray(data.students) && data.students.length >= 200) {
                     STATE.students = (typeof deduplicateStudentsCollection === 'function') ? deduplicateStudentsCollection(data.students) : data.students;
                 } else if (Array.isArray(data.students) && data.students.length > 0) {
-                    console.warn("🛡️ [Seguridad] Respaldo JSON contiene menos de 350 estudiantes. Se conserva el padrón existente.");
+                    console.warn("🛡️ [Seguridad] Respaldo JSON contiene menos de 200 estudiantes. Se conserva el padrón existente.");
                 }
                 if (Array.isArray(data.pensum) && data.pensum.length >= 28) {
                     STATE.pensum = data.pensum;
