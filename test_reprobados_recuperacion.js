@@ -227,6 +227,56 @@ const renderedHtml = mockDomElements['gradeStatsDocumentContainer'].innerHTML;
 assert(renderedHtml.includes('ESCUELA NACIONAL DE CIENCIAS COMERCIALES'), "Debe incluir el nombre oficial");
 console.log("✓ Encabezados institucionales verificados con nombre oficial completo.");
 
+// 6. Validación del nuevo formato Horizontal (Opción A) y Vertical configurable en Con Derecho a Recuperación, Impresión y Excel
+console.log("\n[TEST 5] Verificando formato configurable Horizontal / Vertical, todas las materias, impresión 100% ancho y Excel institucional...");
+global.window.open = function() {
+    return {
+        document: { open: function() {}, write: function() {}, close: function() {} }
+    };
+};
+global.window.print = function() {};
+global.Blob = function(parts, opts) { this.parts = parts; this.type = opts && opts.type; };
+
+window.switchReprobadosSubView('con_derecho');
+assert.strictEqual(window._reprobadosConDerechoLayout, 'horizontal', "La disposición predeterminada debe ser Horizontal (Opción A)");
+const htmlHoriz = mockDomElements['gradeStatsDocumentContainer'].innerHTML;
+assert(htmlHoriz.includes('CUARTO PERITO CONTADOR'), "En Horizontal debe agrupar por Cuarto Perito Contador");
+assert(htmlHoriz.includes('SEXTO PERITO CONTADOR'), "En Horizontal debe agrupar por Sexto Perito Contador");
+assert(htmlHoriz.includes('78'), "Debe incluir la calificación de materias aprobadas (ej. 78 en Inglés I)");
+assert(htmlHoriz.includes('46'), "Debe incluir la calificación de materias perdidas (ej. 46 en Contabilidad de Sociedades)");
+assert(htmlHoriz.includes('Nota(s) de Recuperación (Papel)'), "Debe mostrar columna final para nota de recuperación en papel");
+
+window.printReprobadosRecuperacionView();
+assert(window._lastReprobadosPrintHtml.includes('size: letter landscape'), "Impresión horizontal debe usar letter landscape");
+assert(window._lastReprobadosPrintHtml.includes('table-layout:fixed'), "Impresión horizontal debe ajustarse al 100% del ancho de página");
+
+window.exportReprobadosRecuperacionExcel();
+assert(window._lastReprobadosExcelHtml.includes('ESCUELA NACIONAL DE CIENCIAS COMERCIALES'), "Excel debe incluir membrete institucional");
+assert(window._lastReprobadosExcelHtml.includes('<x:FitWidth>1</x:FitWidth>'), "Excel horizontal debe incluir FitWidth=1");
+assert(window._lastReprobadosExcelHtml.includes('Landscape'), "Excel horizontal debe configurar orientación Landscape");
+
+// Cambiar a Vertical configurable
+window.switchReprobadosConDerechoLayout('vertical');
+const htmlVert = mockDomElements['gradeStatsDocumentContainer'].innerHTML;
+assert(htmlVert.includes('Aprobada') && htmlVert.includes('PERDIDA'), "Vista vertical debe mostrar tanto materias Aprobadas como PERDIDAS");
+window.printReprobadosRecuperacionView();
+assert(window._lastReprobadosPrintHtml.includes('size: letter portrait'), "Impresión vertical debe usar letter portrait");
+window.exportReprobadosRecuperacionExcel();
+assert(window._lastReprobadosExcelHtml.includes('Portrait'), "Excel vertical debe configurar orientación Portrait");
+console.log("✓ Formatos Horizontal (Opción A) y Vertical configurables validados en pantalla, impresión y Excel institucional.");
+
+// 7. Validación multi-ciclo futuro (2028) con exclusión de egresados
+console.log("\n[TEST 6] Verificando compatibilidad dinámica en ciclo futuro 2028 (excluyendo egresados)...");
+global.STATE.activeCycle = '2028';
+global.STATE.students = [
+    ...global.STATE.students.map(s => ({ ...s, academicCycle: '2028', cycle: '2028' })),
+    { id: 'st_grad', studentCode: 'GRAD27', name: 'EGRESADO 2027', grade: 'Graduando / Egresado', section: 'A', academicCycle: '2028', status: 'Egresado', grades: { 'AUDITORÍA': [40, 40, 40] } }
+];
+window.renderReprobadosRecuperacionView();
+assert.strictEqual(window._lastReprobadosReportData.cycle, '2028');
+assert(!window._lastReprobadosReportData.students.some(s => s.code === 'GRAD27'), "Los egresados nunca deben aparecer en 2028 ni ciclos futuros");
+console.log("✓ Ciclo futuro 2028 validado dinámicamente sin egresados.");
+
 console.log("\n========================================================");
 console.log("✅ TODAS LAS PRUEBAS DEL MÓDULO REPROBADOS PASARON CON ÉXITO");
 console.log("========================================================\n");
