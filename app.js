@@ -25331,7 +25331,7 @@ const OFFICIAL_CNB_PENSUM_ORDER = {
         { order: 5, name: "Redacción y Correspondencia Mercantil", aliases: ["redaccion", "redaccion y correspondencia", "redaccion correspondencia mercantil", "redaccion y correspondencia mercantil"] },
         { order: 6, name: "Introducción a la Economía", aliases: ["economia", "introduccion a la economia", "introduccion economia"] },
         { order: 7, name: "Ortografía y Caligrafía", aliases: ["caligrafia", "ortografia", "caligrafia y ortografia", "ortografia y caligrafia"] },
-        { order: 8, name: "Administración y Organización de Empresas", aliases: ["administracion", "organizacion de oficina", "administracion y organizacion", "administracion y organizacion de empresas"] },
+        { order: 8, name: "Administración y Organización de Empresas", aliases: ["administracion", "organizacion de oficina", "administracion y organizacion", "administracion y organizacion de oficina", "administracion y organizacion de empresas"] },
         { order: 9, name: "Computación I", aliases: ["computacion", "computacion 1", "computacion i"] }
     ],
     "5": [
