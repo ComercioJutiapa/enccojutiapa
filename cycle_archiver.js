@@ -144,6 +144,10 @@
                     showToast(`Iniciando archivado histórico del ciclo lectivo ${targetCycle}...`, 'info');
                 }
 
+                if (typeof window !== 'undefined' && window.STATE && typeof window.normalizeSchoolAcademicData === 'function') {
+                    window.normalizeSchoolAcademicData(window.STATE);
+                }
+
                 const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
                 const attendance = (window.STATE && window.STATE.attendanceRecords) ? window.STATE.attendanceRecords : {};
                 const discipline = (window.STATE && Array.isArray(window.STATE.disciplineReports)) ? window.STATE.disciplineReports : [];
@@ -761,6 +765,9 @@
                 window.STATE.academicExonerations = JSON.parse(JSON.stringify(histExoneraciones));
                 window.STATE.exoneraciones = JSON.parse(JSON.stringify(histExoneracionesMap));
                 if (histPensum.length > 0) window.STATE.pensum = JSON.parse(JSON.stringify(histPensum));
+                if (typeof window.normalizeSchoolAcademicData === 'function') {
+                    window.normalizeSchoolAcademicData(window.STATE);
+                }
 
                 // Renderizar banner informativo de modo histórico
                 this.renderHistoricalBanner(targetCycle, archivedData.archivedBy, archivedData.archivedDateISO);

@@ -2119,6 +2119,11 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
+    const isHistoricalSync = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+    if (!isHistoricalSync && typeof normalizeSchoolAcademicData === 'function') {
+        normalizeSchoolAcademicData(STATE);
+    }
+
     if (Array.isArray(STATE.students) && STATE.students.length >= 200) {
         const activeCycleNum = parseInt(String(STATE.activeCycle || '2027').trim(), 10);
         cleanPayload.students = STATE.students.filter(s => {
@@ -5461,12 +5466,14 @@ function initFirebaseRealtimeConnection() {
                                             grades: mergedGrades,
                                             gradebookDetails: mergedDetails
                                         });
+                                        if (typeof sanitizeStudentSubjectsInPlace === 'function') sanitizeStudentSubjectsInPlace(localSt);
                                     }
                                 });
                                 STATE.students = deduplicateStudentsCollection(Array.from(studentMap.values()));
                             } else {
                                 STATE.students = deduplicateStudentsCollection(incomingList);
                             }
+                            if (typeof normalizeSchoolAcademicData === 'function') normalizeSchoolAcademicData(STATE);
                             const isActivelyEditing = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 10000;
                             if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
                             if (!isActivelyEditing && typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
@@ -5504,28 +5511,43 @@ function initFirebaseRealtimeConnection() {
                             if (subParts.length === 2) {
                                 if (nodeData && typeof nodeData === 'object') {
                                     Object.assign(targetStudent, nodeData);
+                                    if (typeof sanitizeStudentSubjectsInPlace === 'function') sanitizeStudentSubjectsInPlace(targetStudent);
                                 }
                             } else if (subParts[2] === 'grades') {
                                 if (subParts.length === 3) {
                                     targetStudent.grades = { ...(targetStudent.grades || {}), ...(nodeData || {}) };
+                                    if (typeof sanitizeStudentSubjectsInPlace === 'function') sanitizeStudentSubjectsInPlace(targetStudent);
                                 } else if (subParts.length >= 4) {
-                                    const subj = decodeURIComponent(subParts[3]);
-                                    if (!targetStudent.grades) targetStudent.grades = {};
-                                    targetStudent.grades[subj] = nodeData;
+                                    const rawSubj = decodeURIComponent(subParts[3]);
+                                    const gNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(targetStudent) : null;
+                                    const canonSubj = (gNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(rawSubj, gNum) : rawSubj;
+                                    if (canonSubj && !canonSubj.includes('\ufffd')) {
+                                        if (!targetStudent.grades) targetStudent.grades = {};
+                                        targetStudent.grades[canonSubj] = nodeData;
+                                    }
                                 }
                             } else if (subParts[2] === 'gradebookDetails') {
                                 if (subParts.length === 3) {
                                     targetStudent.gradebookDetails = { ...(targetStudent.gradebookDetails || {}), ...(nodeData || {}) };
+                                    if (typeof sanitizeStudentSubjectsInPlace === 'function') sanitizeStudentSubjectsInPlace(targetStudent);
                                 } else if (subParts.length === 4) {
-                                    const subj = decodeURIComponent(subParts[3]);
-                                    if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
-                                    targetStudent.gradebookDetails[subj] = { ...(targetStudent.gradebookDetails[subj] || {}), ...(nodeData || {}) };
+                                    const rawSubj = decodeURIComponent(subParts[3]);
+                                    const gNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(targetStudent) : null;
+                                    const canonSubj = (gNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(rawSubj, gNum) : rawSubj;
+                                    if (canonSubj && !canonSubj.includes('\ufffd')) {
+                                        if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
+                                        targetStudent.gradebookDetails[canonSubj] = { ...(targetStudent.gradebookDetails[canonSubj] || {}), ...(nodeData || {}) };
+                                    }
                                 } else if (subParts.length >= 5) {
-                                    const subj = decodeURIComponent(subParts[3]);
+                                    const rawSubj = decodeURIComponent(subParts[3]);
+                                    const gNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(targetStudent) : null;
+                                    const canonSubj = (gNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(rawSubj, gNum) : rawSubj;
                                     const unitStr = subParts[4];
-                                    if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
-                                    if (!targetStudent.gradebookDetails[subj]) targetStudent.gradebookDetails[subj] = {};
-                                    targetStudent.gradebookDetails[subj][unitStr] = nodeData;
+                                    if (canonSubj && !canonSubj.includes('\ufffd')) {
+                                        if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
+                                        if (!targetStudent.gradebookDetails[canonSubj]) targetStudent.gradebookDetails[canonSubj] = {};
+                                        targetStudent.gradebookDetails[canonSubj][unitStr] = nodeData;
+                                    }
                                 }
                             }
                             const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
@@ -8980,11 +9002,86 @@ const OFFICIAL_CANONICAL_COURSES = {
     ]
 };
 
+function getStudentGradeNum(studentOrGrade) {
+    const raw = (typeof studentOrGrade === 'string' || typeof studentOrGrade === 'number')
+        ? String(studentOrGrade)
+        : (studentOrGrade && typeof studentOrGrade === 'object'
+            ? `${studentOrGrade.grade || ''} ${studentOrGrade.gradeLabel || ''} ${studentOrGrade.gradeCode || ''}`
+            : '');
+    const upper = raw.toUpperCase();
+    if (!upper.trim()) return null;
+    if (upper.includes('6') || upper.includes('SEXTO') || upper.includes('6TO')) return 6;
+    if (upper.includes('5') || upper.includes('QUINTO') || upper.includes('5TO')) return 5;
+    if (upper.includes('4') || upper.includes('CUARTO') || upper.includes('4TO')) return 4;
+    return null;
+}
+
+function sanitizeCorruptSubjectText(rawName) {
+    if (!rawName) return '';
+    return String(rawName)
+        .replace(/computaci[^\w\s]*n/gi, 'Computación')
+        .replace(/catalogaci[^\w\s]*n/gi, 'Catalogación')
+        .replace(/administraci[^\w\s]*n/gi, 'Administración')
+        .replace(/organizaci[^\w\s]*n/gi, 'Organización')
+        .replace(/legislaci[^\w\s]*n/gi, 'Legislación')
+        .replace(/redacci[^\w\s]*n/gi, 'Redacción')
+        .replace(/matem[^\w\s]*tica/gi, 'Matemática')
+        .replace(/\bc[^\w\s]*lculo/gi, 'Cálculo')
+        .replace(/ingl[^\w\s]*s/gi, 'Inglés')
+        .replace(/pr[^\w\s]*ctica/gi, 'Práctica')
+        .replace(/estad[^\w\s]*stica/gi, 'Estadística')
+        .replace(/econom[^\w\s]*a/gi, 'Economía')
+        .replace(/auditor[^\w\s]*a/gi, 'Auditoría')
+        .replace(/caligraf[^\w\s]*a/gi, 'Caligrafía')
+        .replace(/ortograf[^\w\s]*a/gi, 'Ortografía')
+        .replace(/mecanograf[^\w\s]*a/gi, 'Mecanografía')
+        .replace(/geograf[^\w\s]*a/gi, 'Geografía')
+        .replace(/p[^\w\s]*blicas/gi, 'Públicas')
+        .replace(/econ[^\w\s]*mica/gi, 'Económica')
+        .replace(/socioecon[^\w\s]*micos/gi, 'Socioeconómicos')
+        .replace(/t[^\w\s]*cnicas/gi, 'Técnicas')
+        .replace(/(^|\s)[^\w\s]*tica(?=\s|$)/gi, '$1Ética')
+        .replace(/introducci[^\w\s]*n/gi, 'Introducción')
+        .trim();
+}
+
 function resolveOfficialCanonicalSubject(rawName, gradeNum) {
     if (!rawName) return null;
+    const gNum = typeof gradeNum === 'number' ? gradeNum : getStudentGradeNum(gradeNum);
+    const candidates = OFFICIAL_CANONICAL_COURSES[gNum] || [];
+    if (candidates.length === 0) return null;
+
+    const repaired = sanitizeCorruptSubjectText(rawName);
+    if (repaired.includes('\ufffd')) return null;
+
     const cleanStr = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-    const cTarget = cleanStr(rawName);
-    const candidates = OFFICIAL_CANONICAL_COURSES[gradeNum] || [];
+    const extractSuffix = s => {
+        const lower = (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const m = lower.match(/(?:^|\s|\b)(iii|ii|i|3|2|1)$/i);
+        if (!m) return '';
+        const map = { iii: '3', '3': '3', ii: '2', '2': '2', i: '1', '1': '1' };
+        return map[m[1]] || '';
+    };
+
+    const cTarget = cleanStr(repaired);
+    if (!cTarget) return null;
+    const targetSuffix = extractSuffix(repaired);
+
+    const hasDosRamosConflict = (a, b) => {
+        const calA = a.includes('caligrafia') || a.includes('ortografia');
+        const redA = a.includes('redaccion') || a.includes('correspondencia');
+        const catA = a.includes('catalogacion') || a.includes('archivo');
+        const admA = a.includes('administracion') || a.includes('organizacion');
+        const calB = b.includes('caligrafia') || b.includes('ortografia');
+        const redB = b.includes('redaccion') || b.includes('correspondencia');
+        const catB = b.includes('catalogacion') || b.includes('archivo');
+        const admB = b.includes('administracion') || b.includes('organizacion');
+        const orgEmpA = a.includes('organizaciondeempresas') && !a.includes('administracion');
+        const orgEmpB = b.includes('organizaciondeempresas') && !b.includes('administracion');
+        const admOnlyA = a.includes('administracion');
+        const admOnlyB = b.includes('administracion');
+        return (calA && redB) || (redA && calB) || (catA && admB) || (admA && catB) || (orgEmpA && admOnlyB) || (admOnlyA && orgEmpB);
+    };
 
     for (const c of candidates) {
         if (cleanStr(c.name) === cTarget) return c.name;
@@ -8995,11 +9092,21 @@ function resolveOfficialCanonicalSubject(rawName, gradeNum) {
         }
     }
     for (const c of candidates) {
-        if (cTarget.length >= 4 && (cleanStr(c.name).includes(cTarget) || cTarget.includes(cleanStr(c.name)))) {
+        const cNameClean = cleanStr(c.name);
+        const cSuffix = extractSuffix(c.name);
+        if (targetSuffix && cSuffix && targetSuffix !== cSuffix) continue;
+        if (hasDosRamosConflict(cTarget, cNameClean)) continue;
+
+        if (cTarget.length >= 4 && (cNameClean.includes(cTarget) || cTarget.includes(cNameClean))) {
             return c.name;
         }
         for (const al of c.aliases) {
-            if (cTarget.length >= 4 && (cleanStr(al).includes(cTarget) || cTarget.includes(cleanStr(al)))) {
+            const cAl = cleanStr(al);
+            const alSuffix = extractSuffix(al);
+            if (targetSuffix && alSuffix && targetSuffix !== alSuffix) continue;
+            if (targetSuffix && !cSuffix && !alSuffix) continue;
+            if (hasDosRamosConflict(cTarget, cAl)) continue;
+            if (cTarget.length >= 4 && (cAl.includes(cTarget) || cTarget.includes(cAl))) {
                 return c.name;
             }
         }
@@ -9111,6 +9218,194 @@ function sanitizeGradingConfigsInState(st) {
 }
 window.sanitizeGradingConfigsInState = sanitizeGradingConfigsInState;
 
+function sanitizeStudentSubjectsInPlace(s) {
+    if (!s || typeof s !== 'object') return false;
+    const gradeNum = getStudentGradeNum(s);
+    if (!gradeNum) return false;
+    const expectedCourses = OFFICIAL_CANONICAL_COURSES[gradeNum];
+    if (!expectedCourses) return false;
+
+    const oldGrades = (s.grades && typeof s.grades === 'object') ? { ...s.grades } : {};
+    const oldDetails = (s.gradebookDetails && typeof s.gradebookDetails === 'object') ? { ...s.gradebookDetails } : {};
+
+    // Rescatar y limpiar campos planos con notación de punto ('grades.Materia', 'gradebookDetails.Materia.4')
+    Object.keys(s).forEach(topKey => {
+        if (topKey.startsWith('grades.') && topKey.length > 7) {
+            const subKey = topKey.slice(7);
+            const val = s[topKey];
+            if (Array.isArray(val)) {
+                const prev = Array.isArray(oldGrades[subKey]) ? oldGrades[subKey] : [0, 0, 0, 0];
+                oldGrades[subKey] = [0, 1, 2, 3].map(i => Math.max(parseInt(prev[i]) || 0, parseInt(val[i]) || 0));
+            }
+            delete s[topKey];
+        } else if (topKey.startsWith('gradebookDetails.') && topKey.length > 17) {
+            const rest = topKey.slice(17);
+            const lastDot = rest.lastIndexOf('.');
+            if (lastDot > 0) {
+                const subKey = rest.slice(0, lastDot);
+                const unitKey = rest.slice(lastDot + 1);
+                const val = s[topKey];
+                if (val && typeof val === 'object') {
+                    if (!oldDetails[subKey] || typeof oldDetails[subKey] !== 'object' || Array.isArray(oldDetails[subKey])) {
+                        const existingSub = oldDetails[subKey];
+                        oldDetails[subKey] = {};
+                        if (Array.isArray(existingSub)) {
+                            for (let u = 1; u <= 4; u++) {
+                                if (existingSub[u]) oldDetails[subKey][String(u)] = existingSub[u];
+                            }
+                        }
+                    } else {
+                        oldDetails[subKey] = { ...oldDetails[subKey] };
+                    }
+                    const curU = oldDetails[subKey][unitKey];
+                    const curTot = curU ? Math.max(parseInt(curU.total) || 0, (parseInt(curU.zona) || 0) + (parseInt(curU.exam) || 0)) : 0;
+                    const incTot = Math.max(parseInt(val.total) || 0, (parseInt(val.zona) || 0) + (parseInt(val.exam) || 0));
+                    const curEx = curU ? (parseInt(curU.exam) || 0) : 0;
+                    const incEx = parseInt(val.exam) || 0;
+                    if (!curU || incTot > curTot || (incTot === curTot && incEx > curEx)) {
+                        oldDetails[subKey][unitKey] = JSON.parse(JSON.stringify(val));
+                    }
+                }
+            }
+            delete s[topKey];
+        }
+    });
+
+    const cleanGrades = {};
+    const cleanDetails = {};
+
+    expectedCourses.forEach(c => {
+        cleanGrades[c.name] = [0, 0, 0, 0];
+        cleanDetails[c.name] = {};
+    });
+
+    // Migrar notas válidas al nombre oficial del grado (descarta claves fantasma o corruptas no válidas)
+    Object.keys(oldGrades).forEach(oldKey => {
+        const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
+        if (canonical && cleanGrades[canonical]) {
+            const rawBGrades = Array.isArray(oldGrades[oldKey]) ? oldGrades[oldKey] : [0, 0, 0, 0];
+            for (let b = 0; b < 4; b++) {
+                const sc = Math.min(100, Math.max(0, parseInt(rawBGrades[b]) || 0));
+                if (sc > cleanGrades[canonical][b]) {
+                    cleanGrades[canonical][b] = sc;
+                }
+            }
+        }
+    });
+
+    // Migrar gradebookDetails válidos al nombre oficial del grado preservando el mayor total
+    Object.keys(oldDetails).forEach(oldKey => {
+        const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
+        if (canonical && cleanDetails[canonical]) {
+            const bDetails = oldDetails[oldKey];
+            if (bDetails && typeof bDetails === 'object') {
+                for (let b = 1; b <= 4; b++) {
+                    const u = String(b);
+                    const candidate = Array.isArray(bDetails) ? bDetails[b] : (bDetails[u] || bDetails[b]);
+                    if (candidate && typeof candidate === 'object') {
+                        if (!cleanDetails[canonical][u]) {
+                            cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
+                        } else {
+                            const oldTot = Math.max(parseInt(candidate.total) || 0, (parseInt(candidate.zona) || 0) + (parseInt(candidate.exam) || 0));
+                            const curTot = Math.max(parseInt(cleanDetails[canonical][u].total) || 0, (parseInt(cleanDetails[canonical][u].zona) || 0) + (parseInt(cleanDetails[canonical][u].exam) || 0));
+                            if (oldTot > curTot) {
+                                cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Reconciliación bidireccional preservando siempre la calificación más alta
+    expectedCourses.forEach(c => {
+        const subj = c.name;
+        for (let b = 0; b < 4; b++) {
+            const u = String(b + 1);
+            const gScore = Math.min(100, Math.max(0, parseInt(cleanGrades[subj][b]) || 0));
+            const uDet = cleanDetails[subj][u];
+            if (uDet && typeof uDet === 'object') {
+                const acts = Array.isArray(uDet.activities) ? uDet.activities : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+                const zVal = Math.max(0, actsSum > 0 ? actsSum : (parseInt(uDet.zona) || 0));
+                let exVal = Math.max(0, parseInt(uDet.exam) || 0);
+                const dTot = Math.min(100, Math.max(0, parseInt(uDet.total) || 0, zVal + exVal));
+                const bestTot = Math.min(100, Math.max(gScore, dTot));
+                if (exVal === 0 && bestTot > zVal) {
+                    exVal = Math.min(60, bestTot - zVal);
+                }
+                const finalTot = Math.min(100, Math.max(bestTot, zVal + exVal));
+                uDet.zona = zVal;
+                uDet.exam = exVal;
+                uDet.total = finalTot;
+                cleanGrades[subj][b] = finalTot;
+            }
+        }
+    });
+
+    s.grades = cleanGrades;
+    s.gradebookDetails = cleanDetails;
+    return true;
+}
+
+function sanitizeCalificacionesInState(targetState) {
+    const sState = targetState || (typeof STATE !== 'undefined' ? STATE : null);
+    if (!sState || !sState.calificaciones || typeof sState.calificaciones !== 'object') return false;
+    const students = Array.isArray(sState.students) ? sState.students : [];
+    const hasAuthoritativeRoster = students.length >= 50;
+    const byId = new Map();
+    const byCode = new Map();
+    students.forEach(st => {
+        if (!st) return;
+        if (st.id) byId.set(String(st.id).trim(), st);
+        if (st.personalCode) byCode.set(String(st.personalCode).trim().toUpperCase(), st);
+        if (st.carne) byCode.set(String(st.carne).trim().toUpperCase(), st);
+    });
+
+    const cleanStr = v => (v || '').toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const nextCalifs = {};
+    let changed = false;
+
+    for (const [key, rec] of Object.entries(sState.calificaciones)) {
+        if (!rec || typeof rec !== 'object') { changed = true; continue; }
+        const sid = String(rec.studentId || rec.estudianteId || key.split('_')[0] || '').trim();
+        const pCode = String(rec.personalCode || '').trim().toUpperCase();
+        const st = byId.get(sid) || (pCode ? byCode.get(pCode) : null);
+
+        // Eliminar registros demo/prueba huérfanos (st-01, st-02, st1...) o de alumnos inexistentes
+        if (/^st-?\d+$/i.test(sid) && !st) { changed = true; continue; }
+        if (hasAuthoritativeRoster && !st) { changed = true; continue; }
+
+        const rawSubj = rec.subject || rec.claseNombre || rec.materiaNombre || rec.claseClean || (key.split('_')[1] || '');
+        const gradeNum = st ? getStudentGradeNum(st) : getStudentGradeNum(rec.gradeCode || '');
+        let canonSubj = gradeNum ? resolveOfficialCanonicalSubject(rawSubj, gradeNum) : sanitizeCorruptSubjectText(rawSubj);
+        if (gradeNum && !canonSubj) { changed = true; continue; }
+        if (!canonSubj || canonSubj.includes('\ufffd')) { changed = true; continue; }
+
+        const unitMatch = String(key).match(/_b([1-4])$/i);
+        const unit = parseInt(rec.unit || rec.bimestre || (unitMatch ? unitMatch[1] : 1), 10) || 1;
+        const targetId = st ? (st.id || sid) : sid;
+        const cleanKey = `${targetId}_${cleanStr(canonSubj)}_b${unit}`;
+        if (cleanKey !== key) changed = true;
+
+        const normRec = { ...rec };
+        if (normRec.subject) normRec.subject = canonSubj;
+        if (normRec.claseNombre) normRec.claseNombre = canonSubj;
+        if (normRec.materiaNombre) normRec.materiaNombre = canonSubj;
+        if (normRec.claseClean) normRec.claseClean = cleanStr(canonSubj);
+        if (normRec.id && normRec.id !== cleanKey && normRec.id === key) normRec.id = cleanKey;
+
+        const existing = nextCalifs[cleanKey];
+        if (!existing || (Number(normRec.total) || 0) > (Number(existing.total) || 0)) {
+            nextCalifs[cleanKey] = normRec;
+        }
+    }
+
+    sState.calificaciones = nextCalifs;
+    return changed;
+}
+
 function normalizeSchoolAcademicData(targetState) {
     const sState = targetState || (typeof STATE !== 'undefined' ? STATE : null);
     if (!sState) return;
@@ -9118,16 +9413,11 @@ function normalizeSchoolAcademicData(targetState) {
     let modified = false;
 
     // 0. Normalizar ponderaciones por defecto: Eliminar encabezados obsoletos (Folder, Pruebat, Clases, Proyecto, Aniversario)
-    // Encabezados deben ser Act. 1 .. Act. 10 y tener valor 0, preservando al 100% las notas de los alumnos
     sanitizeGradingConfigsInState(sState);
 
     // 1. Normalizar asignaciones de cátedras en pensum
     (sState.pensum || []).forEach(p => {
-        const rawGrade = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
-        let gradeNum = 4;
-        if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) gradeNum = 6;
-        else if (rawGrade.includes('5') || rawGrade.includes('QUINTO')) gradeNum = 5;
-
+        const gradeNum = getStudentGradeNum(`${p.grade || ''} ${p.gradeCode || ''}`) || 4;
         const canonical = resolveOfficialCanonicalSubject(p.subject, gradeNum);
         if (canonical && canonical !== p.subject) {
             p.subject = canonical;
@@ -9135,142 +9425,19 @@ function normalizeSchoolAcademicData(targetState) {
         }
     });
 
-    // 2. Normalizar materias y notas de cada estudiante
+    // 2. Normalizar materias y notas de cada estudiante (eliminando claves fantasma o corruptas)
     (sState.students || []).forEach(s => {
-        if (!s || typeof s !== 'object') return;
-        const rawGrade = (s.grade || s.gradeLabel || s.gradeCode || '').toUpperCase();
-        let gradeNum = 4;
-        if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) gradeNum = 6;
-        else if (rawGrade.includes('5') || rawGrade.includes('QUINTO')) gradeNum = 5;
-
-        const expectedCourses = OFFICIAL_CANONICAL_COURSES[gradeNum];
-        if (!expectedCourses) return;
-
-        const oldGrades = (s.grades && typeof s.grades === 'object') ? { ...s.grades } : {};
-        const oldDetails = (s.gradebookDetails && typeof s.gradebookDetails === 'object') ? { ...s.gradebookDetails } : {};
-
-        // 🛡️ Rescatar y limpiar cualquier campo plano con notación de punto creado por setDoc/batch.set previo
-        Object.keys(s).forEach(topKey => {
-            if (topKey.startsWith('grades.') && topKey.length > 7) {
-                const subKey = topKey.slice(7);
-                const val = s[topKey];
-                if (Array.isArray(val)) {
-                    const prev = Array.isArray(oldGrades[subKey]) ? oldGrades[subKey] : [0, 0, 0, 0];
-                    oldGrades[subKey] = [0, 1, 2, 3].map(i => Math.max(parseInt(prev[i]) || 0, parseInt(val[i]) || 0));
-                }
-                delete s[topKey];
-            } else if (topKey.startsWith('gradebookDetails.') && topKey.length > 17) {
-                const rest = topKey.slice(17);
-                const lastDot = rest.lastIndexOf('.');
-                if (lastDot > 0) {
-                    const subKey = rest.slice(0, lastDot);
-                    const unitKey = rest.slice(lastDot + 1);
-                    const val = s[topKey];
-                    if (val && typeof val === 'object') {
-                        if (!oldDetails[subKey] || typeof oldDetails[subKey] !== 'object' || Array.isArray(oldDetails[subKey])) {
-                            const existingSub = oldDetails[subKey];
-                            oldDetails[subKey] = {};
-                            if (Array.isArray(existingSub)) {
-                                for (let u = 1; u <= 4; u++) {
-                                    if (existingSub[u]) oldDetails[subKey][String(u)] = existingSub[u];
-                                }
-                            }
-                        } else {
-                            oldDetails[subKey] = { ...oldDetails[subKey] };
-                        }
-                        const curU = oldDetails[subKey][unitKey];
-                        const curTot = curU ? Math.max(parseInt(curU.total) || 0, (parseInt(curU.zona) || 0) + (parseInt(curU.exam) || 0)) : 0;
-                        const incTot = Math.max(parseInt(val.total) || 0, (parseInt(val.zona) || 0) + (parseInt(val.exam) || 0));
-                        const curEx = curU ? (parseInt(curU.exam) || 0) : 0;
-                        const incEx = parseInt(val.exam) || 0;
-                        if (!curU || incTot > curTot || (incTot === curTot && incEx > curEx)) {
-                            oldDetails[subKey][unitKey] = JSON.parse(JSON.stringify(val));
-                        }
-                    }
-                }
-                delete s[topKey];
-            }
-        });
-
-        const cleanGrades = {};
-        const cleanDetails = {};
-
-        expectedCourses.forEach(c => {
-            cleanGrades[c.name] = [0, 0, 0, 0];
-            cleanDetails[c.name] = {};
-        });
-
-        // Migrar notas a nombres oficiales
-        Object.keys(oldGrades).forEach(oldKey => {
-            const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
-            if (canonical && cleanGrades[canonical]) {
-                const rawBGrades = Array.isArray(oldGrades[oldKey]) ? oldGrades[oldKey] : [0, 0, 0, 0];
-                for (let b = 0; b < 4; b++) {
-                    const sc = parseInt(rawBGrades[b]) || 0;
-                    if (sc > cleanGrades[canonical][b]) {
-                        cleanGrades[canonical][b] = sc;
-                    }
-                }
-            }
-        });
-
-        // Migrar gradebookDetails a nombres oficiales
-        Object.keys(oldDetails).forEach(oldKey => {
-            const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
-            if (canonical && cleanDetails[canonical]) {
-                const bDetails = oldDetails[oldKey];
-                if (bDetails && typeof bDetails === 'object') {
-                    for (let b = 1; b <= 4; b++) {
-                        const u = String(b);
-                        const candidate = Array.isArray(bDetails) ? bDetails[b] : (bDetails[u] || bDetails[b]);
-                        if (candidate && typeof candidate === 'object') {
-                            if (!cleanDetails[canonical][u]) {
-                                cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
-                            } else {
-                                const oldTot = Math.max(parseInt(candidate.total) || 0, (parseInt(candidate.zona) || 0) + (parseInt(candidate.exam) || 0));
-                                const curTot = Math.max(parseInt(cleanDetails[canonical][u].total) || 0, (parseInt(cleanDetails[canonical][u].zona) || 0) + (parseInt(cleanDetails[canonical][u].exam) || 0));
-                                if (oldTot > curTot) {
-                                    cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // 🛡️ Reconciliación bidireccional Anti-Reversión entre cleanGrades y cleanDetails
-        expectedCourses.forEach(c => {
-            const subj = c.name;
-            for (let b = 0; b < 4; b++) {
-                const u = String(b + 1);
-                const gScore = Math.min(100, Math.max(0, parseInt(cleanGrades[subj][b]) || 0));
-                const uDet = cleanDetails[subj][u];
-                if (uDet && typeof uDet === 'object') {
-                    const acts = Array.isArray(uDet.activities) ? uDet.activities : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-                    const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
-                    const zVal = Math.max(0, actsSum > 0 ? actsSum : (parseInt(uDet.zona) || 0));
-                    let exVal = Math.max(0, parseInt(uDet.exam) || 0);
-                    let dTot = Math.min(100, Math.max(0, parseInt(uDet.total) || 0, zVal + exVal));
-                    const bestTot = Math.min(100, Math.max(gScore, dTot));
-                    if (exVal === 0 && bestTot > zVal) {
-                        exVal = Math.min(60, bestTot - zVal);
-                    }
-                    const finalTot = Math.min(100, (zVal + exVal) > 0 ? (zVal + exVal) : bestTot);
-                    uDet.zona = zVal;
-                    uDet.exam = exVal;
-                    uDet.total = finalTot;
-                    cleanGrades[subj][b] = finalTot;
-                }
-            }
-        });
-
-        s.grades = cleanGrades;
-        s.gradebookDetails = cleanDetails;
+        if (sanitizeStudentSubjectsInPlace(s)) modified = true;
     });
+
+    // 3. Normalizar y depurar mapa de calificaciones contra estudiantes y asignaturas válidas por grado
+    if (sanitizeCalificacionesInState(sState)) modified = true;
 
     return modified;
 }
+window.sanitizeStudentSubjectsInPlace = sanitizeStudentSubjectsInPlace;
+window.sanitizeCalificacionesInState = sanitizeCalificacionesInState;
+window.getStudentGradeNum = getStudentGradeNum;
 window.normalizeSchoolAcademicData = normalizeSchoolAcademicData;
 window.resolveOfficialCanonicalSubject = resolveOfficialCanonicalSubject;
 
@@ -10911,17 +11078,20 @@ try {
                     const { studentId, subjectName, unit, details, grades, total } = event.data;
                     const st = (STATE.students || []).find(s => s && s.id === studentId);
                     if (st) {
+                        const gNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(st) : null;
+                        const canonSubj = (gNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(subjectName, gNum) : subjectName;
+                        if (!canonSubj) return;
                         if (!st.grades) st.grades = {};
-                        if (grades) st.grades[subjectName] = grades;
+                        if (grades) st.grades[canonSubj] = grades;
                         if (!st.gradebookDetails) st.gradebookDetails = {};
-                        if (!st.gradebookDetails[subjectName]) st.gradebookDetails[subjectName] = {};
-                        if (details) st.gradebookDetails[subjectName][unit] = details;
+                        if (!st.gradebookDetails[canonSubj]) st.gradebookDetails[canonSubj] = {};
+                        if (details) st.gradebookDetails[canonSubj][unit] = details;
 
                         const curCourse = window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.id === STATE.selectedGradebookCourseId);
                         const curUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
-                        if (STATE.activeView === 'gradebook' && curCourse && curCourse.subject === subjectName && curUnit === unit) {
+                        if (STATE.activeView === 'gradebook' && curCourse && curCourse.subject === canonSubj && curUnit === unit) {
                             if (typeof updateStudentGradeRowSummaryDOM === 'function') {
-                                updateStudentGradeRowSummaryDOM(studentId, details?.zona || 0, details?.exam || 0, total || details?.total || 0, st, subjectName, unit);
+                                updateStudentGradeRowSummaryDOM(studentId, details?.zona || 0, details?.exam || 0, total || details?.total || 0, st, canonSubj, unit);
                             }
                         }
                         if (typeof updateTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') {
@@ -10934,11 +11104,14 @@ try {
                         records.forEach(rec => {
                             const st = (STATE.students || []).find(s => s && s.id === rec.studentId);
                             if (st) {
+                                const gNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(st) : null;
+                                const canonSubj = (gNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(subject, gNum) : subject;
+                                if (!canonSubj) return;
                                 if (!st.grades) st.grades = {};
-                                if (rec.grades) st.grades[subject] = rec.grades;
+                                if (rec.grades) st.grades[canonSubj] = rec.grades;
                                 if (!st.gradebookDetails) st.gradebookDetails = {};
-                                if (!st.gradebookDetails[subject]) st.gradebookDetails[subject] = {};
-                                if (rec.details) st.gradebookDetails[subject][unit] = rec.details;
+                                if (!st.gradebookDetails[canonSubj]) st.gradebookDetails[canonSubj] = {};
+                                if (rec.details) st.gradebookDetails[canonSubj][unit] = rec.details;
                             }
                         });
                         const curCourse = window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.id === STATE.selectedGradebookCourseId);
@@ -11226,6 +11399,9 @@ function applyIncomingCloudState(incomingState, force = false) {
                             gradebookDetails: mergedDetails
                         });
                     }
+                    if (typeof sanitizeStudentSubjectsInPlace === 'function') {
+                        sanitizeStudentSubjectsInPlace(localSt);
+                    }
                 }
             });
 
@@ -11246,8 +11422,10 @@ function applyIncomingCloudState(incomingState, force = false) {
             const incArr = Array.isArray(rawInc) ? rawInc : (rawInc && typeof rawInc === 'object' ? Object.values(rawInc) : []);
             if (incArr.length >= 50) {
                 STATE.students = deduplicateStudentsCollection(incArr);
+                if (typeof normalizeSchoolAcademicData === 'function') normalizeSchoolAcademicData(STATE);
             }
         }
+        if (typeof sanitizeCalificacionesInState === 'function') sanitizeCalificacionesInState(STATE);
         if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
     }
 
@@ -21394,22 +21572,23 @@ function confirmStudentImport() {
             if (s.tutor && s.tutor !== 'No registrado') existing.tutor = s.tutor;
             if (s.tutorPhone && s.tutorPhone !== 'Sin tel.') existing.tutorPhone = s.tutorPhone;
             
-            ensureStudentGradebookStructure(existing, targetSubject);
-            if (gData && existing.gradebookDetails && existing.gradebookDetails[targetSubject]) {
-                const prevU = existing.gradebookDetails[targetSubject][targetBimestre] || {};
+            const ensuredSubj = ensureStudentGradebookStructure(existing, targetSubject);
+            const safeTargetSubject = (typeof ensuredSubj === 'string' && ensuredSubj) ? ensuredSubj : (ensuredSubj === undefined ? targetSubject : null);
+            if (safeTargetSubject && gData && existing.gradebookDetails && existing.gradebookDetails[safeTargetSubject]) {
+                const prevU = existing.gradebookDetails[safeTargetSubject][targetBimestre] || {};
                 const prevExam = parseInt(prevU.exam) || 0;
                 const finalZona = parseInt(gData.zona) || 0;
                 const finalExam = (parseInt(gData.exam) > 0) ? parseInt(gData.exam) : prevExam;
                 const finalTotal = Math.min(100, Math.max(0, (finalZona + finalExam) > 0 ? (finalZona + finalExam) : (parseInt(gData.total) || 0)));
-                existing.gradebookDetails[targetSubject][targetBimestre] = {
+                existing.gradebookDetails[safeTargetSubject][targetBimestre] = {
                     activities: Array.isArray(gData.activities) ? [...gData.activities] : (prevU.activities || [0,0,0,0,0,0,0,0,0,0]),
                     zona: finalZona,
                     exam: finalExam,
                     total: finalTotal
                 };
                 if (!existing.grades) existing.grades = {};
-                if (!existing.grades[targetSubject]) existing.grades[targetSubject] = [0, 0, 0, 0];
-                existing.grades[targetSubject][targetBimestre - 1] = finalTotal;
+                if (!existing.grades[safeTargetSubject]) existing.grades[safeTargetSubject] = [0, 0, 0, 0];
+                existing.grades[safeTargetSubject][targetBimestre - 1] = finalTotal;
             }
             existing._localModifiedAt = nowTime;
             existing.lastModified = nowTime;
@@ -21422,20 +21601,21 @@ function confirmStudentImport() {
             delete cleanStudent.duplicateReason;
             delete cleanStudent.importedGradeData;
 
-            ensureStudentGradebookStructure(cleanStudent, targetSubject);
-            if (gData && cleanStudent.gradebookDetails && cleanStudent.gradebookDetails[targetSubject]) {
+            const ensuredSubj = ensureStudentGradebookStructure(cleanStudent, targetSubject);
+            const safeTargetSubject = (typeof ensuredSubj === 'string' && ensuredSubj) ? ensuredSubj : (ensuredSubj === undefined ? targetSubject : null);
+            if (safeTargetSubject && gData && cleanStudent.gradebookDetails && cleanStudent.gradebookDetails[safeTargetSubject]) {
                 const finalZona = parseInt(gData.zona) || 0;
                 const finalExam = parseInt(gData.exam) || 0;
                 const finalTotal = Math.min(100, Math.max(0, (finalZona + finalExam) > 0 ? (finalZona + finalExam) : (parseInt(gData.total) || 0)));
-                cleanStudent.gradebookDetails[targetSubject][targetBimestre] = {
+                cleanStudent.gradebookDetails[safeTargetSubject][targetBimestre] = {
                     activities: Array.isArray(gData.activities) ? [...gData.activities] : [0,0,0,0,0,0,0,0,0,0],
                     zona: finalZona,
                     exam: finalExam,
                     total: finalTotal
                 };
                 if (!cleanStudent.grades) cleanStudent.grades = {};
-                if (!cleanStudent.grades[targetSubject]) cleanStudent.grades[targetSubject] = [0, 0, 0, 0];
-                cleanStudent.grades[targetSubject][targetBimestre - 1] = finalTotal;
+                if (!cleanStudent.grades[safeTargetSubject]) cleanStudent.grades[safeTargetSubject] = [0, 0, 0, 0];
+                cleanStudent.grades[safeTargetSubject][targetBimestre - 1] = finalTotal;
             }
             cleanStudent._localModifiedAt = nowTime;
             cleanStudent.lastModified = nowTime;
@@ -27308,48 +27488,70 @@ window.getSortedGradebookStudents = getSortedGradebookStudents;
 
 
 function ensureStudentGradebookStructure(student, subjectName) {
-    if (!student) return;
+    if (!student || !subjectName) return null;
+    const gradeNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(student) : null;
+    let targetSubject = (typeof sanitizeCorruptSubjectText === 'function') ? sanitizeCorruptSubjectText(subjectName) : subjectName;
+    if (gradeNum && typeof resolveOfficialCanonicalSubject === 'function') {
+        const canonical = resolveOfficialCanonicalSubject(subjectName, gradeNum);
+        if (!canonical) {
+            console.warn(`🛡️ [Anti-Clave-Fantasma] Materia "${subjectName}" rechazada para ${student.name || student.id} (${student.grade || gradeNum}).`);
+            return null;
+        }
+        targetSubject = canonical;
+    } else if (!targetSubject || targetSubject.includes('\ufffd')) {
+        return null;
+    }
+
     if (!student.grades) student.grades = {};
     if (!student.gradebookDetails) student.gradebookDetails = {};
 
     const cleanStr = s => (s || '').toString().toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
-    const cleanTarget = cleanStr(subjectName);
+    const cleanTarget = cleanStr(targetSubject);
 
-    // Buscar si ya tiene notas en alguna variante exacta (respetando mayúsculas/minúsculas/acentos)
-    let aliasSubject = subjectName;
-    if (!student.grades[subjectName]) {
+    // Rescatar y migrar cualquier alias o variante con encoding previo hacia targetSubject
+    let aliasSubject = targetSubject;
+    if (!student.grades[targetSubject]) {
         for (const k of Object.keys(student.grades)) {
             const cK = cleanStr(k);
-            if (cK === cleanTarget) {
+            const cKCanon = (gradeNum && typeof resolveOfficialCanonicalSubject === 'function') ? resolveOfficialCanonicalSubject(k, gradeNum) : null;
+            if (cK === cleanTarget || cKCanon === targetSubject) {
                 aliasSubject = k;
                 break;
             }
         }
     }
 
-    if (!student.grades[subjectName]) {
-        student.grades[subjectName] = student.grades[aliasSubject] ? [...student.grades[aliasSubject]] : [0, 0, 0, 0];
+    if (!student.grades[targetSubject]) {
+        student.grades[targetSubject] = student.grades[aliasSubject] ? [...student.grades[aliasSubject]] : [0, 0, 0, 0];
+    } else if (aliasSubject !== targetSubject && Array.isArray(student.grades[aliasSubject])) {
+        for (let b = 0; b < 4; b++) {
+            student.grades[targetSubject][b] = Math.max(parseInt(student.grades[targetSubject][b]) || 0, parseInt(student.grades[aliasSubject][b]) || 0);
+        }
     }
-    if (!student.gradebookDetails[subjectName]) {
-        student.gradebookDetails[subjectName] = student.gradebookDetails[aliasSubject] ? JSON.parse(JSON.stringify(student.gradebookDetails[aliasSubject])) : {};
+    if (aliasSubject !== targetSubject && student.grades[aliasSubject]) delete student.grades[aliasSubject];
+
+    if (!student.gradebookDetails[targetSubject]) {
+        student.gradebookDetails[targetSubject] = student.gradebookDetails[aliasSubject] ? JSON.parse(JSON.stringify(student.gradebookDetails[aliasSubject])) : {};
     }
-    if (Array.isArray(student.gradebookDetails[subjectName])) {
-        const arrSlot = student.gradebookDetails[subjectName];
+    if (aliasSubject !== targetSubject && student.gradebookDetails[aliasSubject]) delete student.gradebookDetails[aliasSubject];
+
+    if (Array.isArray(student.gradebookDetails[targetSubject])) {
+        const arrSlot = student.gradebookDetails[targetSubject];
         const objSlot = {};
         for (let u = 1; u <= 4; u++) {
             if (arrSlot[u]) objSlot[String(u)] = arrSlot[u];
         }
-        student.gradebookDetails[subjectName] = objSlot;
+        student.gradebookDetails[targetSubject] = objSlot;
     }
 
     // 🌟 Inicialización limpia de las 4 unidades (respetando calificaciones existentes sin inyectar datos de prueba o caché)
     for (let u = 1; u <= 4; u++) {
         const uStr = String(u);
-        const existingSlot = student.gradebookDetails[subjectName][uStr] || student.gradebookDetails[subjectName][u];
-        const existingTotal = (Array.isArray(student.grades[subjectName]) && student.grades[subjectName][u - 1]) 
-            ? parseInt(student.grades[subjectName][u - 1]) || 0 
+        const existingSlot = student.gradebookDetails[targetSubject][uStr] || student.gradebookDetails[targetSubject][u];
+        const existingTotal = (Array.isArray(student.grades[targetSubject]) && student.grades[targetSubject][u - 1])
+            ? parseInt(student.grades[targetSubject][u - 1]) || 0
             : 0;
         const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(null, u) : { zonaMax: 40, examMax: 60 };
 
@@ -27357,30 +27559,28 @@ function ensureStudentGradebookStructure(student, subjectName) {
             const defaultZona = Math.min(cfg.zonaMax || 40, existingTotal);
             const defaultExam = Math.max(0, existingTotal - defaultZona);
 
-            const newUnitData = {
+            student.gradebookDetails[targetSubject][uStr] = {
                 activities: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 zona: defaultZona,
                 exam: defaultExam,
                 total: Math.min(100, existingTotal)
             };
-
-            student.gradebookDetails[subjectName][uStr] = newUnitData;
         } else {
             const acts = Array.isArray(existingSlot.activities) ? existingSlot.activities : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
             const curZona = actsSum > 0 ? actsSum : (parseInt(existingSlot.zona) || 0);
             let curExam = parseInt(existingSlot.exam) || 0;
             const curTotal = Math.max(existingTotal, parseInt(existingSlot.total) || 0, curZona + curExam);
-            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
             if (curExam === 0 && curTotal > curZona) {
                 curExam = Math.min(cfg.examMax || 60, curTotal - curZona);
                 existingSlot.exam = curExam;
             }
             existingSlot.zona = curZona;
-            existingSlot.total = Math.min(100, (curZona + curExam) > 0 ? (curZona + curExam) : curTotal);
-            student.gradebookDetails[subjectName][uStr] = existingSlot;
+            existingSlot.total = Math.min(100, Math.max(curTotal, curZona + curExam));
+            student.gradebookDetails[targetSubject][uStr] = existingSlot;
         }
     }
+    return targetSubject;
 }
 window.ensureStudentGradebookStructure = ensureStudentGradebookStructure;
 
@@ -27623,16 +27823,17 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     }
 
     const pensumCourse = (STATE.pensum || []).find(p => p.id === subjectIdentifier || p.code === subjectIdentifier || p.subject === subjectIdentifier);
-    const subjectName = pensumCourse ? pensumCourse.subject : subjectIdentifier;
-    if (!subjectName) {
-        console.warn("Materia no identificada para guardado atómico:", subjectIdentifier);
+    const rawSubjectName = pensumCourse ? pensumCourse.subject : subjectIdentifier;
+    const stGradeNum = (typeof getStudentGradeNum === 'function') ? getStudentGradeNum(student) : null;
+    const subjectName = (stGradeNum && typeof resolveOfficialCanonicalSubject === 'function')
+        ? resolveOfficialCanonicalSubject(rawSubjectName, stGradeNum)
+        : (typeof sanitizeCorruptSubjectText === 'function' ? sanitizeCorruptSubjectText(rawSubjectName) : rawSubjectName);
+    if (!subjectName || subjectName.includes('\ufffd')) {
+        console.warn("🛡️ [Anti-Clave-Fantasma] Guardado atómico rechazado para materia incompatible:", subjectIdentifier, student.grade);
         return false;
     }
 
-    if (!student.grades) student.grades = {};
-    if (!student.gradebookDetails) student.gradebookDetails = {};
-    if (!student.grades[subjectName]) student.grades[subjectName] = [0, 0, 0, 0];
-    if (!student.gradebookDetails[subjectName]) student.gradebookDetails[subjectName] = {};
+    ensureStudentGradebookStructure(student, subjectName);
 
     let currentUnitDetails = student.gradebookDetails[subjectName][uStr] || {
         activities: [0,0,0,0,0,0,0,0,0,0],
@@ -27968,9 +28169,11 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
         if (student.status === 'Retirado' || student.status === 'Inactivo') continue;
 
-        ensureStudentGradebookStructure(student, effectiveSubject, effectiveUnit);
+        const ensuredSafe = ensureStudentGradebookStructure(student, effectiveSubject);
+        if (ensuredSafe === null || ensuredSafe === false) continue;
+        const safeSubject = (typeof ensuredSafe === 'string' && ensuredSafe) ? ensuredSafe : effectiveSubject;
 
-        const currentData = (student.gradebookDetails && student.gradebookDetails[effectiveSubject] && student.gradebookDetails[effectiveSubject][effectiveUnit]) ? student.gradebookDetails[effectiveSubject][effectiveUnit] : {
+        const currentData = (student.gradebookDetails && student.gradebookDetails[safeSubject] && student.gradebookDetails[safeSubject][effectiveUnit]) ? student.gradebookDetails[safeSubject][effectiveUnit] : {
             activities: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             zona: 0,
             exam: 0,
@@ -27988,8 +28191,8 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
             : 0;
         let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0) 
             ? Math.max(0, parseInt(currentData.total) || 0) 
-            : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
-                ? (parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0)
+            : (student.grades && student.grades[safeSubject] && student.grades[safeSubject][effectiveUnit - 1])
+                ? (parseInt(student.grades[safeSubject][effectiveUnit - 1]) || 0)
                 : (calculatedZona + examScore);
 
         // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
@@ -28000,14 +28203,15 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         }
         totalScore = Math.min(100, Math.max(0, (calculatedZona + examScore) > 0 ? (calculatedZona + examScore) : totalScore));
 
-        const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
+        const cleanSafeSubj = cleanStr(safeSubject);
+        const compositeGradeKey = `${student.id}_${cleanSafeSubj}_b${effectiveUnit}`;
 
         const gradePayload = {
             id: compositeGradeKey,
             estudianteId: student.id,
             personalCode: student.personalCode || '',
-            claseNombre: effectiveSubject,
-            claseClean: cleanSubj,
+            claseNombre: safeSubject,
+            claseClean: cleanSafeSubj,
             bimestre: effectiveUnit,
             activities: activitiesArr,
             zona: calculatedZona,
@@ -28021,7 +28225,7 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         STATE.calificaciones[compositeGradeKey] = gradePayload;
 
         // Actualizar en memoria en student
-        student.gradebookDetails[effectiveSubject][effectiveUnit] = {
+        student.gradebookDetails[safeSubject][effectiveUnit] = {
             activities: activitiesArr,
             zona: calculatedZona,
             exam: examScore,
@@ -29984,31 +30188,33 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
         loadTeacherGradebook();
         return;
     }
-    ensureStudentGradebookStructure(student, subjectName);
+    const ensuredAct = ensureStudentGradebookStructure(student, subjectName);
+    if (ensuredAct === null || ensuredAct === false) return;
+    const canonSubj = (typeof ensuredAct === 'string' && ensuredAct) ? ensuredAct : subjectName;
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const valNum = Math.max(0, parseInt(value) || 0);
-    student.gradebookDetails[subjectName][unit].activities[actIndex] = valNum;
+    student.gradebookDetails[canonSubj][unit].activities[actIndex] = valNum;
 
     // Recalcular suma de zona O(1) sin recreación de funciones ni basura en memoria
-    const acts = student.gradebookDetails[subjectName][unit].activities;
+    const acts = student.gradebookDetails[canonSubj][unit].activities;
     let zonaSum = 0;
     for (let i = 0; i < 10; i++) {
         zonaSum += (acts[i] || 0);
     }
-    student.gradebookDetails[subjectName][unit].zona = zonaSum;
+    student.gradebookDetails[canonSubj][unit].zona = zonaSum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
-    let exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
-    const existingGrade = (student.grades && student.grades[subjectName] && student.grades[subjectName][unit - 1]) 
-        ? (parseInt(student.grades[subjectName][unit - 1]) || 0) : 0;
+    let exam = parseInt(student.gradebookDetails[canonSubj][unit].exam) || 0;
+    const existingGrade = (student.grades && student.grades[canonSubj] && student.grades[canonSubj][unit - 1]) 
+        ? (parseInt(student.grades[canonSubj][unit - 1]) || 0) : 0;
     if (exam === 0 && existingGrade > zonaSum) {
         exam = existingGrade - zonaSum;
-        student.gradebookDetails[subjectName][unit].exam = exam;
+        student.gradebookDetails[canonSubj][unit].exam = exam;
     }
     const total = Math.min(100, Math.max(0, zonaSum + exam));
-    student.gradebookDetails[subjectName][unit].total = total;
-    student.grades[subjectName][unit - 1] = total;
+    student.gradebookDetails[canonSubj][unit].total = total;
+    student.grades[canonSubj][unit - 1] = total;
     const nowTs = Date.now();
     student._localModifiedAt = nowTs;
     student.lastModified = nowTs;
@@ -30016,16 +30222,16 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     STATE._lastSavedLocally = nowTs;
 
     // Actualización quirúrgica inmediata en DOM (0ms) sin destruir tabla
-    updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, subjectName, unit);
+    updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, canonSubj, unit);
 
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(false);
         }
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 1000);
     }
 }
 
@@ -30054,40 +30260,42 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
         loadTeacherGradebook();
         return;
     }
-    ensureStudentGradebookStructure(student, subjectName);
+    const ensuredAct = ensureStudentGradebookStructure(student, subjectName);
+    if (ensuredAct === null || ensuredAct === false) return;
+    const canonSubj = (typeof ensuredAct === 'string' && ensuredAct) ? ensuredAct : subjectName;
     const cfg = window._activeGradebookConfigCache || getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const valNum = Math.max(0, Math.min(cfg.zonaMax || 40, parseInt(value) || 0));
-    student.gradebookDetails[subjectName][unit].zona = valNum;
+    student.gradebookDetails[canonSubj][unit].zona = valNum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
-    let exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
-    const existingGrade = (student.grades && student.grades[subjectName] && student.grades[subjectName][unit - 1]) 
-        ? (parseInt(student.grades[subjectName][unit - 1]) || 0) : 0;
+    let exam = parseInt(student.gradebookDetails[canonSubj][unit].exam) || 0;
+    const existingGrade = (student.grades && student.grades[canonSubj] && student.grades[canonSubj][unit - 1]) 
+        ? (parseInt(student.grades[canonSubj][unit - 1]) || 0) : 0;
     if (exam === 0 && existingGrade > valNum) {
         exam = existingGrade - valNum;
-        student.gradebookDetails[subjectName][unit].exam = exam;
+        student.gradebookDetails[canonSubj][unit].exam = exam;
     }
     const total = Math.min(100, Math.max(0, valNum + exam));
-    student.gradebookDetails[subjectName][unit].total = total;
-    student.grades[subjectName][unit - 1] = total;
+    student.gradebookDetails[canonSubj][unit].total = total;
+    student.grades[canonSubj][unit - 1] = total;
     const nowTs = Date.now();
     student._localModifiedAt = nowTs;
     student.lastModified = nowTs;
     STATE.lastModified = nowTs;
     STATE._lastSavedLocally = nowTs;
 
-    updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, subjectName, unit);
+    updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, canonSubj, unit);
 
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(false);
         }
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 1000);
     }
 }
 
@@ -30122,42 +30330,44 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
         loadTeacherGradebook();
         return;
     }
-    ensureStudentGradebookStructure(student, subjectName);
+    const ensuredAct = ensureStudentGradebookStructure(student, subjectName);
+    if (ensuredAct === null || ensuredAct === false) return;
+    const canonSubj = (typeof ensuredAct === 'string' && ensuredAct) ? ensuredAct : subjectName;
     const cfg = window._activeGradebookConfigCache || getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const examVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(value) || 0));
-    student.gradebookDetails[subjectName][unit].exam = examVal;
+    student.gradebookDetails[canonSubj][unit].exam = examVal;
 
     // Obtener la zona sumada exactamente de las actividades O(1) (con preservación si la zona viene directa sin desglose)
-    const acts = student.gradebookDetails[subjectName][unit].activities || [0,0,0,0,0,0,0,0,0,0];
+    const acts = student.gradebookDetails[canonSubj][unit].activities || [0,0,0,0,0,0,0,0,0,0];
     let actsSum = 0;
     for (let i = 0; i < 10; i++) {
         actsSum += (parseInt(acts[i]) || 0);
     }
-    const zonaSum = actsSum > 0 ? actsSum : (parseInt(student.gradebookDetails[subjectName][unit].zona) || 0);
-    student.gradebookDetails[subjectName][unit].zona = zonaSum;
+    const zonaSum = actsSum > 0 ? actsSum : (parseInt(student.gradebookDetails[canonSubj][unit].zona) || 0);
+    student.gradebookDetails[canonSubj][unit].zona = zonaSum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
     const total = Math.min(100, Math.max(0, zonaSum + examVal));
-    student.gradebookDetails[subjectName][unit].total = total;
-    student.grades[subjectName][unit - 1] = total;
+    student.gradebookDetails[canonSubj][unit].total = total;
+    student.grades[canonSubj][unit - 1] = total;
     const nowTs = Date.now();
     student._localModifiedAt = nowTs;
     student.lastModified = nowTs;
     STATE.lastModified = nowTs;
     STATE._lastSavedLocally = nowTs;
 
-    updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, subjectName, unit);
+    updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, canonSubj, unit);
 
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(false);
         }
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
+        debounceStudentGradeSave(studentId, canonSubj, unit, student.gradebookDetails[canonSubj][unit], 1000);
     }
 }
 
@@ -30231,24 +30441,26 @@ async function saveGradebookChanges(e) {
                 const st = (window._fastStudentMap && window._fastStudentMap.get(stId)) || (STATE.students || []).find(s => s && s.id === stId);
                 if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return;
                 if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(st, subjectName, currentUnit)) return;
-                ensureStudentGradebookStructure(st, subjectName);
+                const ensuredActRow = ensureStudentGradebookStructure(st, subjectName);
+                if (ensuredActRow === null || ensuredActRow === false) return;
+                const canonSubj = (typeof ensuredActRow === 'string' && ensuredActRow) ? ensuredActRow : subjectName;
                 const inputs = tr.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly])');
                 if (inputs.length > 0) {
                     let domActSum = 0;
                     inputs.forEach((inp, idx) => {
                         if (idx < 10) {
                             const v = Math.max(0, parseInt(inp.value) || 0);
-                            st.gradebookDetails[subjectName][currentUnit].activities[idx] = v;
+                            st.gradebookDetails[canonSubj][currentUnit].activities[idx] = v;
                             domActSum += v;
                         }
                     });
-                    const prevZona = parseInt(st.gradebookDetails[subjectName][currentUnit].zona) || 0;
+                    const prevZona = parseInt(st.gradebookDetails[canonSubj][currentUnit].zona) || 0;
                     const finalZona = domActSum > 0 ? domActSum : prevZona;
-                    st.gradebookDetails[subjectName][currentUnit].zona = finalZona;
-                    const examVal = parseInt(st.gradebookDetails[subjectName][currentUnit].exam) || 0;
+                    st.gradebookDetails[canonSubj][currentUnit].zona = finalZona;
+                    const examVal = parseInt(st.gradebookDetails[canonSubj][currentUnit].exam) || 0;
                     const tot = Math.min(100, Math.max(0, finalZona + examVal));
-                    st.gradebookDetails[subjectName][currentUnit].total = tot;
-                    st.grades[subjectName][currentUnit - 1] = tot;
+                    st.gradebookDetails[canonSubj][currentUnit].total = tot;
+                    st.grades[canonSubj][currentUnit - 1] = tot;
                 }
             });
 
@@ -30258,18 +30470,20 @@ async function saveGradebookChanges(e) {
                 const st = (window._fastStudentMap && window._fastStudentMap.get(stId)) || (STATE.students || []).find(s => s && s.id === stId);
                 if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return;
                 if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(st, subjectName, currentUnit)) return;
-                ensureStudentGradebookStructure(st, subjectName);
+                const ensuredSumRow = ensureStudentGradebookStructure(st, subjectName);
+                if (ensuredSumRow === null || ensuredSumRow === false) return;
+                const canonSubj = (typeof ensuredSumRow === 'string' && ensuredSumRow) ? ensuredSumRow : subjectName;
                 const examInput = tr.querySelector('input.grade-box-input-exam:not([readonly]):not([disabled])');
                 if (examInput) {
                     const domExamVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(examInput.value) || 0));
-                    st.gradebookDetails[subjectName][currentUnit].exam = domExamVal;
-                    const acts = st.gradebookDetails[subjectName][currentUnit].activities || [0,0,0,0,0,0,0,0,0,0];
+                    st.gradebookDetails[canonSubj][currentUnit].exam = domExamVal;
+                    const acts = st.gradebookDetails[canonSubj][currentUnit].activities || [0,0,0,0,0,0,0,0,0,0];
                     const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
-                    const zonaSum = actsSum > 0 ? actsSum : (parseInt(st.gradebookDetails[subjectName][currentUnit].zona) || 0);
-                    st.gradebookDetails[subjectName][currentUnit].zona = zonaSum;
+                    const zonaSum = actsSum > 0 ? actsSum : (parseInt(st.gradebookDetails[canonSubj][currentUnit].zona) || 0);
+                    st.gradebookDetails[canonSubj][currentUnit].zona = zonaSum;
                     const tot = Math.min(100, Math.max(0, zonaSum + domExamVal));
-                    st.gradebookDetails[subjectName][currentUnit].total = tot;
-                    st.grades[subjectName][currentUnit - 1] = tot;
+                    st.gradebookDetails[canonSubj][currentUnit].total = tot;
+                    st.grades[canonSubj][currentUnit - 1] = tot;
                 }
             });
         }
@@ -39615,8 +39829,13 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             continue;
         }
 
-        ensureStudentGradebookStructure(matched, effectiveSubject);
-        const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
+        const ensuredImport = ensureStudentGradebookStructure(matched, effectiveSubject);
+        if (ensuredImport === null || ensuredImport === false) {
+            omittedCount++;
+            continue;
+        }
+        const canonImportSubj = (typeof ensuredImport === 'string' && ensuredImport) ? ensuredImport : effectiveSubject;
+        const gDetail = matched.gradebookDetails[canonImportSubj][effectiveUnit];
 
         // 🛡️ RE-SUBIDA CON SOBREESCRITURA TOTAL: Las notas del nuevo archivo sobreescriben los valores previos
         const newActs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -39680,8 +39899,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         // 🛡️ Obtener historial de notas previas del alumno para NUNCA borrar el examen final existente
         const prevExam = (gDetail && gDetail.exam !== undefined && gDetail.exam !== null && !isNaN(Number(gDetail.exam))) ? Number(gDetail.exam) : 0;
-        const prevTotal = (matched.grades && matched.grades[effectiveSubject] && matched.grades[effectiveSubject][effectiveUnit - 1] !== undefined) 
-            ? (Number(matched.grades[effectiveSubject][effectiveUnit - 1]) || 0) 
+        const prevTotal = (matched.grades && matched.grades[canonImportSubj] && matched.grades[canonImportSubj][effectiveUnit - 1] !== undefined) 
+            ? (Number(matched.grades[canonImportSubj][effectiveUnit - 1]) || 0) 
             : ((gDetail && gDetail.total !== undefined && gDetail.total !== null) ? (Number(gDetail.total) || 0) : 0);
         const prevZona = (gDetail && gDetail.zona !== undefined && gDetail.zona !== null) ? (Number(gDetail.zona) || 0) : 0;
         const effectivePrevExam = (prevExam > 0) ? prevExam : (prevTotal > prevZona ? (prevTotal - prevZona) : 0);
@@ -39722,10 +39941,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         gDetail.exam = examScore;
         gDetail.total = finalTotal;
 
-        if (!matched.grades[effectiveSubject]) {
-            matched.grades[effectiveSubject] = [0, 0, 0, 0];
+        if (!matched.grades[canonImportSubj]) {
+            matched.grades[canonImportSubj] = [0, 0, 0, 0];
         }
-        matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+        matched.grades[canonImportSubj][effectiveUnit - 1] = finalTotal;
 
         const importTimestamp = Date.now();
         matched._localModifiedAt = importTimestamp;
@@ -39734,15 +39953,17 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // Asegurar actualización en la instancia canónica de STATE.students si matched es un clon
         const canonStudent = (STATE.students || []).find(st => st && st.id === matched.id);
         if (canonStudent && canonStudent !== matched) {
-            ensureStudentGradebookStructure(canonStudent, effectiveSubject);
-            canonStudent.gradebookDetails[effectiveSubject][effectiveUnit] = {
-                activities: [...newActs],
-                zona: finalZona,
-                exam: examScore,
-                total: finalTotal
-            };
-            if (!canonStudent.grades[effectiveSubject]) canonStudent.grades[effectiveSubject] = [0, 0, 0, 0];
-            canonStudent.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+            const safeCanonSubj = ensureStudentGradebookStructure(canonStudent, canonImportSubj);
+            if (safeCanonSubj) {
+                canonStudent.gradebookDetails[safeCanonSubj][effectiveUnit] = {
+                    activities: [...newActs],
+                    zona: finalZona,
+                    exam: examScore,
+                    total: finalTotal
+                };
+                if (!canonStudent.grades[safeCanonSubj]) canonStudent.grades[safeCanonSubj] = [0, 0, 0, 0];
+                canonStudent.grades[safeCanonSubj][effectiveUnit - 1] = finalTotal;
+            }
             canonStudent._localModifiedAt = importTimestamp;
             canonStudent.lastModified = importTimestamp;
         }
