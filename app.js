@@ -38391,19 +38391,10 @@ function printStudentDemographicsReport() {
                 </tbody>
             </table>
 
-            ${typeof window.buildOfficialStatisticalSignaturesHtml === 'function'
-                ? window.buildOfficialStatisticalSignaturesHtml({ mode: 'print', secondarySigner: 'secretaria', includeStamp: true, includeDate: false })
-                : `<div class="signatures" style="page-break-inside:avoid;">
-                    <div class="sig-box">
-                        Secretaría Académica<br>
-                        Vo.Bo. Control de Matrícula
-                    </div>
-                    <div class="sig-box">
-                        Dirección General<br>
-                        Sello Oficial Institucional
-                    </div>
-                </div>`
-            }
+            <div style="margin-top:16px; padding-top:8px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; font-size:8.5pt; color:#475569; font-weight:600;">
+                <span>Documento Estadístico Institucional (Sin Firmas)</span>
+                <span>${(h && h.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} &bull; Ciclo ${STATE.activeCycle || new Date().getFullYear()}</span>
+            </div>
         </body>
         </html>
     `);
@@ -40759,17 +40750,10 @@ function printRenglonGenderReport() {
             </tbody>
         </table>
 
-        ${typeof window.buildOfficialStatisticalSignaturesHtml === 'function'
-            ? window.buildOfficialStatisticalSignaturesHtml({ mode: 'print', secondarySigner: 'secretaria', includeStamp: true, includeDate: true, cycle })
-            : `<div style="margin-top:60px; display:flex; justify-content:space-around; text-align:center; font-size:10pt; page-break-inside:avoid;">
-                <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
-                    <strong>Dirección General</strong><br>${(typeof STATE !== 'undefined' && STATE.schoolHeader && STATE.schoolHeader.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}
-                </div>
-                <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
-                    <strong>Secretaría Académica</strong><br>Control de Personal
-                </div>
-            </div>`
-        }
+        <div style="margin-top:16px; padding-top:8px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; font-size:9pt; color:#475569; font-weight:600;">
+            <span>Documento Estadístico Institucional (Sin Firmas)</span>
+            <span>${(typeof STATE !== 'undefined' && STATE.schoolHeader && STATE.schoolHeader.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} &bull; Ciclo ${cycle}</span>
+        </div>
     `;
 
     renderAndShowPrintDocument("Informe Estadístico de Docentes", htmlContent, 'portrait');

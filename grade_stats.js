@@ -39,75 +39,15 @@ function _safeStatHtmlEscape(val) {
 }
 
 /**
- * Resuelve dinámicamente las autoridades firmantes y metadatos institucionales
- * sin modificar ni eliminar registros de STATE.users o STATE.students.
+ * Resuelve dinámicamente los metadatos institucionales para cuadros estadísticos
+ * (sin firmas, sin hardcodeo fijo y sin modificar STATE.users o STATE.students).
  */
-function resolveOfficialStatisticalSigners(options = {}) {
+function resolveOfficialStatisticalMeta(options = {}) {
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : {});
     const hdr = st.schoolHeader || st.schoolHeaderConfig || {};
     const cfg = st.config || {};
-    const users = Array.isArray(st.users) ? st.users : [];
     const esc = _safeStatHtmlEscape;
-
     const cleanTxt = (v) => String(v || '').trim();
-    const normCmp = (v) => cleanTxt(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-    // 1. Director(a) activo(a) o configurado(a)
-    const dirUser = users.find(u => u && u.active !== false && ['director', 'directora'].includes(String(u.role || '').toLowerCase().trim()));
-    const headerDir = cleanTxt(hdr.directorName || hdr.directora || cfg.directorName || cfg.directora);
-    const userDirName = cleanTxt(dirUser && (dirUser.name || dirUser.fullName));
-    let directorName = 'Licda. Mirza Elizabeth Aragón Polanco de Hernández';
-    if (headerDir && (!userDirName || normCmp(headerDir).includes(normCmp(userDirName)))) {
-        directorName = headerDir;
-    } else if (userDirName) {
-        directorName = userDirName;
-    }
-
-    const explicitDirTitle = cleanTxt(hdr.directorTitle || cfg.directorTitle);
-    const dirGender = String((dirUser && (dirUser.gender || dirUser.genero)) || '').toLowerCase();
-    let directorRole = explicitDirTitle || ((dirGender.startsWith('m') && !normCmp(directorName).includes('licda')) ? 'Director' : 'Directora');
-    if (normCmp(directorName).startsWith('licda') && !explicitDirTitle) directorRole = 'Directora';
-
-    // 2. Secretario(a) Académico(a) activo(a)
-    const secUser = users.find(u => u && u.active !== false && ['secretaria', 'secretario'].includes(String(u.role || '').toLowerCase().trim()));
-    const headerSec = cleanTxt(hdr.secretariaName || hdr.secretarioName || cfg.secretariaName);
-    const userSecName = cleanTxt(secUser && (secUser.name || secUser.fullName));
-    const secretariaName = headerSec || userSecName || 'Secretaría Académica';
-    const secGender = String((secUser && (secUser.gender || secUser.genero)) || '').toLowerCase();
-    const secretariaRole = headerSec || userSecName
-        ? (secGender.startsWith('m') ? 'Secretario Académico' : 'Secretaria Académica')
-        : 'Control y Registro Académico';
-
-    // 3. Comisión de Evaluación
-    const comisionName = cleanTxt(hdr.evaluacionComision || cfg.evaluacionComision) || 'Comisión de Evaluación del Rendimiento Escolar';
-    const comisionRole = 'Claustro de Catedráticos';
-
-    // 4. Catedrático Guía opcional cuando hay grado y sección específica
-    let guideTeacherName = '';
-    const gradeVal = cleanTxt(options.gradeVal);
-    const sectionVal = cleanTxt(options.section).toUpperCase();
-    if (gradeVal && sectionVal && sectionVal !== 'ALL' && Array.isArray(st.gradesList)) {
-        const matchedGrade = st.gradesList.find(g => {
-            if (!g) return false;
-            const gw = normCmp(`${g.name || ''} ${g.grade || ''} ${g.code || ''}`);
-            const hasG = gw.includes(`${gradeVal}to`) || (gradeVal === '4' && gw.includes('cuarto')) || (gradeVal === '5' && gw.includes('quinto')) || (gradeVal === '6' && gw.includes('sexto'));
-            if (!hasG) return false;
-            const gSec = cleanTxt(g.section || g.code || '').replace(/^secci[oó]n\s*/i, '').replace(/^\d+/, '').trim().toUpperCase();
-            return gSec === sectionVal;
-        });
-        if (matchedGrade) {
-            let gTeacher = '';
-            if (typeof getGradeGuideTeacher === 'function') {
-                const res = getGradeGuideTeacher(matchedGrade);
-                gTeacher = cleanTxt(res && (res.name || res));
-            } else {
-                gTeacher = cleanTxt(matchedGrade.guideTeacherName || matchedGrade.guideTeacher);
-            }
-            if (gTeacher && !normCmp(gTeacher).includes('sin asignar')) {
-                guideTeacherName = gTeacher;
-            }
-        }
-    }
 
     const cycle = cleanTxt(
         options.cycle ||
@@ -116,118 +56,31 @@ function resolveOfficialStatisticalSigners(options = {}) {
         (st.isHistoricalReadOnlyMode ? '2026' : (st.activeCycle || st.currentAcademicCycle || new Date().getFullYear()))
     ) || String(new Date().getFullYear());
 
-    const schoolName = cleanTxt(hdr.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
-    const schoolCode = cleanTxt(hdr.mineducCode || hdr.schoolCode) || '22-01-0014-46';
+    const rawSchoolName = cleanTxt(hdr.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
+    const schoolName = rawSchoolName.replace(/\s*\(ENCCO\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    const schoolCode = cleanTxt(hdr.mineducCode || hdr.schoolCode || cfg.mineducCode) || '22-01-0014-46';
     const municipality = cleanTxt(hdr.municipality) || 'Jutiapa';
+    const department = cleanTxt(hdr.department) || 'Jutiapa';
+    const address = cleanTxt(hdr.address) || 'Complejo Educativo, Barrio el Cóndor, Jutiapa';
+    const career = cleanTxt(hdr.career) || 'PERITO CONTADOR';
+    const jornadaSector = cleanTxt(hdr.jornadaSector) || 'Vespertina / Oficial';
     const dateText = cleanTxt(options.dateText) || `${municipality}, ${new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
     return {
-        directorName,
-        directorRole,
-        secretariaName,
-        secretariaRole,
-        comisionName,
-        comisionRole,
-        guideTeacherName,
-        guideTeacherRole: guideTeacherName ? `Catedrático(a) Guía • ${gradeVal}to "${sectionVal}"` : '',
         schoolName,
         schoolCode,
         municipality,
+        department,
+        municipioDepto: `${municipality}, ${department}`,
+        address,
+        career,
+        jornadaSector,
         cycle,
         dateText,
         esc
     };
 }
-window.resolveOfficialStatisticalSigners = resolveOfficialStatisticalSigners;
-
-/**
- * Construye bloque coherente de firmas oficiales para cuadros estadísticos
- * en vistas de pantalla, impresión directa o libros de Excel (.xls/.xlsx).
- */
-function buildOfficialStatisticalSignaturesHtml(options = {}) {
-    const mode = options.mode || 'screen'; // 'screen' | 'print' | 'excel'
-    const compact = Boolean(options.compact);
-    const includeStamp = options.includeStamp !== false;
-    const includeDate = Boolean(options.includeDate);
-    const includeGuideTeacher = Boolean(options.includeGuideTeacher);
-    const secondarySigner = options.secondarySigner || 'comision'; // 'comision' | 'secretaria' | 'both' | 'none'
-    const signers = resolveOfficialStatisticalSigners(options);
-    const esc = signers.esc;
-
-    const slots = [];
-    if (includeGuideTeacher && signers.guideTeacherName) {
-        slots.push({ type: 'sig', name: signers.guideTeacherName, role: signers.guideTeacherRole });
-    }
-    if (secondarySigner === 'secretaria' || secondarySigner === 'both') {
-        slots.push({ type: 'sig', name: signers.secretariaName, role: signers.secretariaRole });
-    }
-    if (secondarySigner === 'comision' || secondarySigner === 'both') {
-        slots.push({ type: 'sig', name: signers.comisionName, role: signers.comisionRole });
-    }
-    if (includeStamp) {
-        slots.push({ type: 'stamp', label: '( S E L L O )' });
-    }
-    slots.push({ type: 'sig', name: signers.directorName, role: signers.directorRole });
-
-    if (mode === 'excel') {
-        const totalCols = Math.max(4, parseInt(options.colspan, 10) || 10);
-        const widths = [];
-        let assigned = 0;
-        slots.forEach((_, idx) => {
-            const w = (idx === slots.length - 1)
-                ? Math.max(1, totalCols - assigned)
-                : Math.max(1, Math.floor(totalCols / slots.length));
-            widths.push(w);
-            assigned += w;
-        });
-
-        const rowSpacer = `<tr><td colspan="${totalCols}" style="border:none; height:32px;"></td></tr>`;
-        const rowDate = includeDate
-            ? `<tr><td colspan="${totalCols}" style="border:none; text-align:left; font-size:9.5pt; color:#334155;">Lugar y fecha: ${esc(signers.dateText)}</td></tr><tr><td colspan="${totalCols}" style="border:none; height:18px;"></td></tr>`
-            : '';
-        const rowCells = slots.map((slot, i) => {
-            if (slot.type === 'stamp') {
-                return `<td colspan="${widths[i]}" style="border:none; text-align:center; vertical-align:middle; font-weight:bold; color:#64748b; font-size:9.5pt; letter-spacing:2px;">${slot.label}</td>`;
-            }
-            return `<td colspan="${widths[i]}" style="border:none; text-align:center; vertical-align:bottom; font-size:9.5pt; padding:4px 8px;">________________________________________<br><b>${esc(slot.name)}</b><br><span style="font-size:8.5pt; color:#334155;">${esc(slot.role)}</span></td>`;
-        }).join('');
-        const innerRows = `${rowSpacer}${rowDate}<tr>${rowCells}</tr>`;
-        if (options.rowsOnly) return innerRows;
-        return `<table style="border-collapse:collapse; width:100%; margin-top:20px;">${innerRows}</table>`;
-    }
-
-    const spaceH = compact ? '34px' : (mode === 'print' ? '48px' : '44px');
-    const marginTop = compact ? '14px' : '26px';
-    const fontName = compact ? '0.74rem' : (mode === 'print' ? '10px' : '0.82rem');
-    const fontRole = compact ? '0.66rem' : (mode === 'print' ? '8.5px' : '0.72rem');
-
-    const dateHeaderHtml = includeDate
-        ? `<div style="font-size:${fontRole}; color:#475569; font-weight:600; margin-bottom:6px; text-align:right;">Lugar y fecha: <strong>${esc(signers.dateText)}</strong></div>`
-        : '';
-
-    const flexItems = slots.map(slot => {
-        if (slot.type === 'stamp') {
-            return `<div style="flex:0 0 auto; min-width:86px; text-align:center; padding-bottom:14px; font-size:${fontRole}; font-weight:800; color:#94a3b8; letter-spacing:2.5px;">${slot.label}</div>`;
-        }
-        return `
-            <div style="flex:1 1 175px; max-width:250px; text-align:center;">
-                <div style="height:${spaceH};"></div>
-                <div style="border-top:1.5px solid #0f172a; padding-top:4px; margin:0 8px;">
-                    <div style="font-size:${fontName}; font-weight:800; color:#0f172a; line-height:1.2;">${esc(slot.name)}</div>
-                    <div style="font-size:${fontRole}; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.3px; margin-top:1px;">${esc(slot.role)}</div>
-                </div>
-            </div>`;
-    }).join('');
-
-    return `
-        <div class="encco-stat-signatures" style="margin-top:${marginTop}; padding-top:8px; border-top:1px dashed #cbd5e1; page-break-inside:avoid; break-inside:avoid;">
-            ${dateHeaderHtml}
-            <div style="display:flex; justify-content:space-around; align-items:flex-end; flex-wrap:wrap; gap:14px;">
-                ${flexItems}
-            </div>
-        </div>`;
-}
-window.buildOfficialStatisticalSignaturesHtml = buildOfficialStatisticalSignaturesHtml;
+window.resolveOfficialStatisticalMeta = resolveOfficialStatisticalMeta;
 
 function populateGradeStatsSectionsForGrade(gVal, preferredSec = 'ALL') {
     const secSelect = document.getElementById('gradeStatsSectionFilter');
@@ -810,17 +663,6 @@ function renderGradeStatsView() {
             </tbody>
         </table>
         </div>
-        ${buildOfficialStatisticalSignaturesHtml({
-            mode: 'screen',
-            compact: true,
-            secondarySigner: 'both',
-            includeGuideTeacher: isFilteredSection,
-            includeStamp: true,
-            includeDate: false,
-            gradeVal,
-            section: selectedSection,
-            dateText: dateFormattedLong
-        })}
     </div>`;
 
     // =========================================================================
@@ -954,18 +796,6 @@ function renderGradeStatsView() {
             </table>
             </div>
 
-            ${buildOfficialStatisticalSignaturesHtml({
-                mode: 'screen',
-                compact: true,
-                secondarySigner: 'comision',
-                includeGuideTeacher: true,
-                includeStamp: true,
-                includeDate: false,
-                gradeVal,
-                section: sec,
-                dateText: dateFormattedLong
-            })}
-
             <!-- PIE DE PÁGINA OFICIAL -->
             <div style="display:flex; justify-content:flex-end; font-size:8px; font-weight:bold; color:#475569; margin-top:4px;">
                 ${gradeVal}${sec} &bull; ${footerTimestamp}
@@ -1078,8 +908,8 @@ function exportGradeStatsOfficialExcel() {
         </head>
         <body>
             <table>
-                <tr><td colspan="${d.officialSubjects.length + 4}" class="title">${_safeStatHtmlEscape(resolveOfficialStatisticalSigners().schoolName)}</td></tr>
-                <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:center; font-size:9.5pt; border:none; font-weight:bold;">JORNADA VESPERTINA &bull; CÓDIGO MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalSigners().schoolCode)} &bull; JUTIAPA, JUTIAPA</td></tr>
+                <tr><td colspan="${d.officialSubjects.length + 4}" class="title">${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().schoolName)}</td></tr>
+                <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:center; font-size:9.5pt; border:none; font-weight:bold;">JORNADA VESPERTINA &bull; CÓDIGO MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().schoolCode)} &bull; JUTIAPA, JUTIAPA</td></tr>
                 <tr><td colspan="${d.officialSubjects.length + 4}" class="subtitle">Resumen de Promedios Finales - ${escapeHtml(d.gradeTitle)}</td></tr>
                 <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:right; border:none;">Emisión: ${escapeHtml(d.dateFormattedLong)}</td></tr>
                 <tr></tr>
@@ -1181,19 +1011,6 @@ function exportGradeStatsOfficialExcel() {
         `;
     });
 
-    excelContent += buildOfficialStatisticalSignaturesHtml({
-        mode: 'excel',
-        rowsOnly: true,
-        colspan: d.officialSubjects.length + 4,
-        secondarySigner: 'both',
-        includeGuideTeacher: d.selectedSection && d.selectedSection !== 'ALL',
-        includeStamp: true,
-        includeDate: true,
-        gradeVal: d.gradeVal,
-        section: d.selectedSection,
-        dateText: d.dateFormattedLong
-    });
-
     excelContent += `
             </table>
         </body>
@@ -1221,11 +1038,12 @@ function printGradeStatsReport(reportType = 'section') {
         return;
     }
 
-    const h = STATE.schoolHeaderConfig || {};
-    const schoolName = h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
-    const schoolCode = h.mineducCode || h.schoolCode || '22-01-0014-46';
+    const h = STATE.schoolHeader || STATE.schoolHeaderConfig || {};
+    const statMeta = resolveOfficialStatisticalMeta();
+    const schoolName = statMeta.schoolName;
+    const schoolCode = statMeta.schoolCode;
     const logoUrl = h.logoUrl || 'logo.png';
-    const cycle = STATE.currentAcademicCycle || h.schoolCycle || '2026';
+    const cycle = statMeta.cycle;
     const capDate = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const isByGrades = reportType === 'grades';
@@ -1519,18 +1337,6 @@ function printGradeStatsReport(reportType = 'section') {
         </div>
     </div>
 
-    ${buildOfficialStatisticalSignaturesHtml({
-        mode: 'print',
-        secondarySigner: 'both',
-        includeGuideTeacher: Boolean(data.selectedSection && data.selectedSection !== 'ALL'),
-        includeStamp: true,
-        includeDate: true,
-        gradeVal: data.gradeVal,
-        section: data.selectedSection,
-        cycle,
-        dateText: `${resolveOfficialStatisticalSigners({ cycle }).municipality}, ${capDate}`
-    })}
-
     <div class="footer-note">
         Documento Estadístico e Informativo Institucional &bull; Fecha de emisión: ${escapeHtml(capDate)} &bull; ${escapeHtml(schoolName)}
     </div>
@@ -1624,11 +1430,11 @@ function renderCuadroEstadisticoOficial() {
     ).trim();
 
     const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
-    const signers = resolveOfficialStatisticalSigners({
+    const meta = resolveOfficialStatisticalMeta({
         cycle: viewingCycle,
         dateText: is2026Official
             ? 'Jutiapa, 31 de octubre de 2026'
-            : `${((STATE.schoolHeader && STATE.schoolHeader.municipality) || 'Jutiapa')}, ${new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' })}`
+            : undefined
     });
 
     let statData;
@@ -1639,11 +1445,11 @@ function renderCuadroEstadisticoOficial() {
             cycle: '2026',
             isOfficialHistorical: true,
             establecimiento: 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES',
-            codigo: signers.schoolCode || '22-01-0014-46',
-            carrera: 'PERITO CONTADOR',
-            direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
-            jornadaSector: 'Vespertina / Oficial',
-            municipioDepto: 'Jutiapa, Jutiapa',
+            codigo: meta.schoolCode || '22-01-0014-46',
+            carrera: meta.career || 'PERITO CONTADOR',
+            direccion: meta.address || 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
+            jornadaSector: meta.jornadaSector || 'Vespertina / Oficial',
+            municipioDepto: meta.municipioDepto || 'Jutiapa, Jutiapa',
             grados: [
                 { nombre: 'CUARTO', hi: 78, hp: 41, hcd: 26, hsd: 11, mi: 60, mp: 34, mcd: 20, msd: 6, tot: 138 },
                 { nombre: 'QUINTO', hi: 60, hp: 47, hcd: 12, hsd: 1,  mi: 86, mp: 78, mcd: 7,  msd: 1, tot: 146 },
@@ -1655,13 +1461,9 @@ function renderCuadroEstadisticoOficial() {
                 m011: 4, m021: 5, mTot: 9,
                 total: 20, tot011: 12, tot021: 8
             },
-            directora: signers.directorName,
-            directoraRole: signers.directorRole,
-            secretaria: signers.secretariaName,
-            secretariaRole: signers.secretariaRole,
-            dateText: signers.dateText
+            dateText: meta.dateText
         };
-        if (signers.schoolName) statData.establecimiento = signers.schoolName;
+        if (meta.schoolName) statData.establecimiento = meta.schoolName;
     } else {
         // CÁLCULO DINÁMICO EN TIEMPO REAL DESDE FIREBASE RTDB PARA 2027+
         const students = Array.isArray(STATE.students) ? STATE.students : [];
@@ -1776,12 +1578,12 @@ function renderCuadroEstadisticoOficial() {
         statData = {
             cycle: viewingCycle,
             isOfficialHistorical: false,
-            establecimiento: signers.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES',
-            codigo: signers.schoolCode || '22-01-0014-46',
-            carrera: 'PERITO CONTADOR',
-            direccion: 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
-            jornadaSector: 'Vespertina / Oficial',
-            municipioDepto: 'Jutiapa, Jutiapa',
+            establecimiento: meta.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES',
+            codigo: meta.schoolCode || '22-01-0014-46',
+            carrera: meta.career || 'PERITO CONTADOR',
+            direccion: meta.address || 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
+            jornadaSector: meta.jornadaSector || 'Vespertina / Oficial',
+            municipioDepto: meta.municipioDepto || 'Jutiapa, Jutiapa',
             grados: [
                 { nombre: 'CUARTO', ...byGrade['CUARTO'] },
                 { nombre: 'QUINTO', ...byGrade['QUINTO'] },
@@ -1795,11 +1597,7 @@ function renderCuadroEstadisticoOficial() {
                 tot011: (dh011 || 8) + (dm011 || 4),
                 tot021: (dh021 || 3) + (dm021 || 5)
             },
-            directora: signers.directorName,
-            directoraRole: signers.directorRole,
-            secretaria: signers.secretariaName,
-            secretariaRole: signers.secretariaRole,
-            dateText: signers.dateText
+            dateText: meta.dateText
         };
     }
 
@@ -1933,29 +1731,13 @@ function renderCuadroEstadisticoOficial() {
             </div>
         </div>
 
-        <!-- FIRMAS Y SELLO (Espacio amplio para firma y sello oficial; autoridades dinámicas debajo de la línea) -->
-        <div class="cuadro-signatures" style="margin-top:26px; padding-top:12px;">
-            <div style="width:20%; font-size:11px; color:#334155; line-height:1.5; padding-bottom:4px;">
-                <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
-                ${_safeStatHtmlEscape(statData.dateText || ('Jutiapa, 31 de octubre de ' + statData.cycle))}
+        <!-- PIE DE PÁGINA INSTITUCIONAL (SIN FIRMAS) -->
+        <div class="cuadro-footer-meta" style="margin-top:18px; padding-top:10px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:11px; color:#334155;">
+            <div>
+                <strong style="color:#1e3a8a;">Lugar y fecha:</strong> ${_safeStatHtmlEscape(statData.dateText || ('Jutiapa, 31 de octubre de ' + statData.cycle))}
             </div>
-            <div style="width:29%; text-align:center;">
-                <div style="height:52px;"></div>
-                <div style="border-bottom:2px solid #0f172a; width:88%; margin:0 auto 6px auto;"></div>
-                <div style="font-size:11px; font-weight:700; color:#0f172a; margin-bottom:2px;">${_safeStatHtmlEscape(statData.secretaria || 'Secretaría Académica')}</div>
-                <div style="font-size:10px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">${_safeStatHtmlEscape(statData.secretariaRole || 'Control y Registro Académico')}</div>
-            </div>
-            <div style="width:18%; text-align:center; font-size:11px; font-weight:700; color:#94a3b8; letter-spacing:3px; padding-bottom:18px;">
-                ( S E L L O )
-            </div>
-            <div style="width:31%; text-align:center;">
-                <!-- Espacio libre vertical generoso para firma manuscrita / rúbrica -->
-                <div style="height:52px;"></div>
-                <!-- Línea de firma -->
-                <div style="border-bottom:2px solid #0f172a; width:88%; margin:0 auto 6px auto;"></div>
-                <!-- Nombre de la Directora ABAJO DE LA LÍNEA -->
-                <div style="font-size:11.5px; font-weight:700; color:#0f172a; margin-bottom:2px;">${_safeStatHtmlEscape(statData.directora)}</div>
-                <div style="font-size:10.5px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">${_safeStatHtmlEscape(statData.directoraRole || 'Directora')}</div>
+            <div style="font-weight:600; color:#475569;">
+                ${_safeStatHtmlEscape(statData.establecimiento)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(statData.codigo)} &bull; Ciclo Escolar ${_safeStatHtmlEscape(statData.cycle)}
             </div>
         </div>
     </div>
@@ -2051,20 +1833,7 @@ window.exportGradeStatsOfficialExcel = function() {
                 </tr>
                 <tr><td colspan="10"></td></tr>
                 <tr><td colspan="10" style="border:none; text-align:left;">Lugar y fecha: ${_safeStatHtmlEscape(d.dateText || ('Jutiapa, 31 de octubre de ' + d.cycle))}</td></tr>
-                <tr><td colspan="10" style="border:none; height:28px;"></td></tr>
-                <tr>
-                    <td colspan="4" style="text-align:center; border:none;">
-                        ____________________________________________<br>
-                        <b>${_safeStatHtmlEscape(d.secretaria || 'Secretaría Académica')}</b><br>
-                        ${_safeStatHtmlEscape(d.secretariaRole || 'Control y Registro Académico')}
-                    </td>
-                    <td colspan="2" style="border:none; text-align:center; vertical-align:middle; font-weight:bold; color:#64748b;">( S E L L O )</td>
-                    <td colspan="4" style="text-align:center; border:none;">
-                        ____________________________________________<br>
-                        <b>${_safeStatHtmlEscape(d.directora)}</b><br>
-                        ${_safeStatHtmlEscape(d.directoraRole || 'Directora')}
-                    </td>
-                </tr>
+                <tr><td colspan="10" style="border:none; text-align:right; font-size:9pt; color:#475569;">${_safeStatHtmlEscape(d.establecimiento)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(d.codigo)}</td></tr>
             </table>
         </body>
         </html>`;
@@ -2313,57 +2082,17 @@ function printCuadroEstadisticoOficial() {
         font-weight: 800;
         color: #1e3a8a;
     }
-    .signatures-container {
+    .cuadro-footer-meta {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        padding-top: 10px;
-        margin-top: 16px;
-        gap: 12px;
+        align-items: center;
+        padding-top: 8px;
+        margin-top: 14px;
+        border-top: 1px solid #cbd5e1;
+        font-size: 11px;
+        color: #334155;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-    }
-    .sig-date {
-        width: 20%;
-        font-size: 11px;
-        color: #1e293b;
-        line-height: 1.4;
-        padding-bottom: 4px;
-    }
-    .sig-stamp {
-        width: 18%;
-        text-align: center;
-        font-size: 11.5px;
-        font-weight: 800;
-        color: #94a3b8;
-        letter-spacing: 3px;
-        padding-bottom: 20px;
-    }
-    .sig-director,
-    .sig-secretary {
-        width: 30%;
-        text-align: center;
-    }
-    .sig-space {
-        height: 52px; /* Espacio vertical generoso para la firma física manual de la Directora */
-    }
-    .sig-line {
-        border-bottom: 2px solid #0f172a;
-        width: 85%;
-        margin: 0 auto 6px auto;
-    }
-    .sig-name {
-        font-size: 12.5px;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 2px;
-    }
-    .sig-role {
-        font-size: 11px;
-        font-weight: 700;
-        color: #475569;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
     }
 </style>
 </head>
@@ -2485,25 +2214,12 @@ function printCuadroEstadisticoOficial() {
         </div>
     </div>
 
-    <div class="signatures-container">
-        <div class="sig-date">
-            <strong style="color:#1e3a8a;">Lugar y fecha:</strong><br>
-            ${_safeStatHtmlEscape(d.dateText || ('Jutiapa, 31 de octubre de ' + d.cycle))}
+    <div class="cuadro-footer-meta">
+        <div>
+            <strong style="color:#1e3a8a;">Lugar y fecha:</strong> ${_safeStatHtmlEscape(d.dateText || ('Jutiapa, 31 de octubre de ' + d.cycle))}
         </div>
-        <div class="sig-secretary">
-            <div class="sig-space"></div>
-            <div class="sig-line"></div>
-            <div class="sig-name">${_safeStatHtmlEscape(d.secretaria || 'Secretaría Académica')}</div>
-            <div class="sig-role">${_safeStatHtmlEscape(d.secretariaRole || 'Control y Registro Académico')}</div>
-        </div>
-        <div class="sig-stamp">
-            ( S E L L O )
-        </div>
-        <div class="sig-director">
-            <div class="sig-space"></div>
-            <div class="sig-line"></div>
-            <div class="sig-name">${_safeStatHtmlEscape(d.directora)}</div>
-            <div class="sig-role">${_safeStatHtmlEscape(d.directoraRole || 'Directora')}</div>
+        <div style="font-weight:600; color:#475569;">
+            ${_safeStatHtmlEscape(d.establecimiento)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(d.codigo)} &bull; Ciclo Escolar ${_safeStatHtmlEscape(d.cycle)}
         </div>
     </div>
 </div>
@@ -3504,16 +3220,11 @@ function renderReprobadosRecuperacionView() {
         `;
     }
 
-    html += buildOfficialStatisticalSignaturesHtml({
-        mode: 'screen',
-        compact: true,
-        secondarySigner: 'both',
-        includeStamp: true,
-        includeDate: true,
-        cycle: viewingCycle
-    });
-
     html += `
+        <div style="margin-top:14px; padding-top:8px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:0.82rem; color:#475569; font-weight:600;">
+            <span>${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: viewingCycle }).schoolName)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: viewingCycle }).schoolCode)}</span>
+            <span>Ciclo Escolar ${_safeStatHtmlEscape(viewingCycle)}</span>
+        </div>
     </div>
     `;
 
@@ -3911,38 +3622,32 @@ function printReprobadosRecuperacionView() {
         font-weight: bold;
         text-align: center;
     }
-    .signatures {
-        margin-top: 26px;
-        display: flex;
-        justify-content: space-around;
-        text-align: center;
-        page-break-inside: avoid;
-    }
-    .signature-box {
-        width: 40%;
-        border-top: 1px solid #000;
+    .doc-footer-meta {
+        margin-top: 14px;
         padding-top: 6px;
-        font-size: 9.5pt;
-        font-weight: bold;
+        border-top: 1px solid #cbd5e1;
+        display: flex;
+        justify-content: space-between;
+        font-size: 9pt;
+        color: #475569;
+        font-weight: 600;
+        page-break-inside: avoid;
     }
 </style>
 </head>
 <body>
     <div class="header">
-        <h1>ESCUELA NACIONAL DE CIENCIAS COMERCIALES — JUTIAPA (CÓD. 22-01-0014-46)</h1>
+        <h1>${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolName)} — ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).municipality.toUpperCase())} (CÓD. ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolCode)})</h1>
         <p><strong>${docSubtitle}</strong></p>
         <p>Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
     </div>
 
     ${bodyTableHtml}
 
-    ${buildOfficialStatisticalSignaturesHtml({
-        mode: 'print',
-        secondarySigner: 'both',
-        includeStamp: true,
-        includeDate: true,
-        cycle: d.cycle
-    })}
+    <div class="doc-footer-meta">
+        <span>Documento Estadístico Institucional</span>
+        <span>${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolName)} &bull; Ciclo Escolar ${_safeStatHtmlEscape(d.cycle)}</span>
+    </div>
 
     <script>
         window.onload = function() {
@@ -4093,14 +3798,9 @@ function exportReprobadosRecuperacionExcel() {
             <tr><td colspan="${headerColspan}" style="font-size:10pt; text-align:right; border:none; border-bottom:2pt solid #1e3a8a; padding-bottom:6px;">Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</td></tr>
         </table>
         ${bodyExcelHtml}
-        ${buildOfficialStatisticalSignaturesHtml({
-            mode: 'excel',
-            colspan: headerColspan,
-            secondarySigner: 'both',
-            includeStamp: true,
-            includeDate: true,
-            cycle: d.cycle
-        })}
+        <table style="border-collapse:collapse; width:100%; margin-top:12px;">
+            <tr><td colspan="${headerColspan}" style="border:none; text-align:right; font-size:9.5pt; color:#475569;">${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolName)} &bull; Ciclo Escolar ${_safeStatHtmlEscape(d.cycle)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolCode)}</td></tr>
+        </table>
     </body>
     </html>
     `;

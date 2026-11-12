@@ -18,9 +18,11 @@ assert(gradeStats.includes('setCuadroZoom'), "Debe incluir función setCuadroZoo
 assert(gradeStats.includes('printCuadroEstadisticoOficial'), "Debe incluir botón de impresión directa");
 assert(gradeStats.includes('110% Ampliado'), "Debe incluir opción 110% Ampliado por defecto");
 
-// 3. Validar espacio para la firma
-assert(gradeStats.includes('sig-space'), "Debe incluir clase sig-space para espacio vertical de firma en impresión");
-assert(gradeStats.includes('height:52px;') || gradeStats.includes('height: 52px;'), "Debe tener altura de al menos 50px para firma física");
+// 3. Validar regla institucional: ningún cuadro estadístico debe llevar bloque de firmas
+assert(!gradeStats.includes('cuadro-signatures'), "Cuadro estadístico en pantalla no debe incluir cuadro-signatures");
+assert(!gradeStats.includes('signatures-container'), "Cuadro estadístico impreso no debe incluir signatures-container");
+assert(!gradeStats.includes('sig-space'), "Cuadro estadístico no debe incluir sig-space");
+assert(gradeStats.includes('cuadro-footer-meta'), "Debe incluir pie informativo limpio (cuadro-footer-meta) en 1 hoja");
 
 // 4. Validar que se quitó la palabra ENCCO del nombre de establecimiento del Cuadro
 assert(!gradeStats.includes("CIENCIAS COMERCIALES (ENCCO)"), "No debe incluir (ENCCO) en el nombre del establecimiento");
