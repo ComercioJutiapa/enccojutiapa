@@ -5093,7 +5093,7 @@ async function pullStateFromFirebaseCloud(force = false) {
 
     try {
         const _t = Date.now();
-        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes] = await Promise.all([
+        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes, delStudentsRes] = await Promise.all([
             fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/students.json?t=${_t}`).catch(() => null),
@@ -5104,10 +5104,23 @@ async function pullStateFromFirebaseCloud(force = false) {
             fetch(`${firebaseUrl}/encc_school_state/activeCycle.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/cycles.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${_t}`).catch(() => null),
-            fetch(`${firebaseUrl}/encc_school_state/recuperaciones.json?t=${_t}`).catch(() => null)
+            fetch(`${firebaseUrl}/encc_school_state/recuperaciones.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/deletedStudentIds.json?t=${_t}`).catch(() => null)
         ]);
 
         const cloudState = {};
+        if (delStudentsRes && delStudentsRes.ok) {
+            const delIds = await delStudentsRes.json();
+            if (Array.isArray(delIds) && delIds.length > 0) {
+                cloudState.deletedStudentIds = delIds;
+                STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...delIds]));
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(STATE.deletedStudentIds));
+                    }
+                } catch(e) {}
+            }
+        }
         if (activeCycleRes && activeCycleRes.ok) {
             const ac = await activeCycleRes.json();
             if (ac && typeof ac === 'string') cloudState.activeCycle = ac.trim();
@@ -5453,6 +5466,11 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'deletedStudentIds') {
                         if (Array.isArray(nodeData)) {
                             STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...nodeData]));
+                            try {
+                                if (typeof localStorage !== 'undefined') {
+                                    localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(STATE.deletedStudentIds));
+                                }
+                            } catch(e) {}
                             const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
                             if (!isHistoryActive && Array.isArray(STATE.students)) {
                                 const delSet = new Set(STATE.deletedStudentIds);
@@ -5461,6 +5479,7 @@ function initFirebaseRealtimeConnection() {
                                 if (STATE.students.length !== prevLen) {
                                     if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
                                     if (typeof updateDashboardKPIs === 'function') updateDashboardKPIs();
+                                    if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
                                 }
                             }
                         }
@@ -9661,17 +9680,25 @@ async function initApp() {
     }
 
     // ⚡ [v190] CARGA PROFESIONAL CONCURRENTE BAJO DEMANDA (ZERO LOCAL CACHE + IN-MEMORY SESSION)
-    // Descarga paralela de nodos esenciales (users, pensum, students, config, rolesConfig)
+    // Descarga paralela de nodos esenciales (users, pensum, students, config, rolesConfig, deletedStudentIds)
     // Omitiendo árboles masivos pesados (auditLog, deep history, asistencias completas) para carga instantánea
     let hasLoadedExistingUsers = false;
     try {
+        if (typeof localStorage !== 'undefined') {
+            try {
+                const cachedDel = JSON.parse(localStorage.getItem('ENCCO_DELETED_STUDENTS') || '[]');
+                if (Array.isArray(cachedDel) && cachedDel.length > 0) {
+                    STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...cachedDel]));
+                }
+            } catch(e) {}
+        }
         const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
         if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
             const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
             const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
             const _t = Date.now();
             
-            const [usersRes, pensumRes, studentsRes, configRes, rolesRes, activeCycleRes, cyclesRes, gradesListRes, headerRes] = await Promise.all([
+            const [usersRes, pensumRes, studentsRes, configRes, rolesRes, activeCycleRes, cyclesRes, gradesListRes, headerRes, delStudentsRes] = await Promise.all([
                 fetch(`${_fbUrl}/encc_school_state/users.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/pensum.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/students.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
@@ -9680,11 +9707,24 @@ async function initApp() {
                 fetch(`${_fbUrl}/encc_school_state/activeCycle.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/cycles.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/gradesList.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
-                fetch(`${_fbUrl}/encc_school_state/schoolHeader.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
+                fetch(`${_fbUrl}/encc_school_state/schoolHeader.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/deletedStudentIds.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
             ]);
             if (_timeoutId) clearTimeout(_timeoutId);
 
             const granularState = {};
+            if (delStudentsRes && delStudentsRes.ok) {
+                const delData = await delStudentsRes.json();
+                if (Array.isArray(delData) && delData.length > 0) {
+                    granularState.deletedStudentIds = delData;
+                    STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...delData]));
+                    try {
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(STATE.deletedStudentIds));
+                        }
+                    } catch(e) {}
+                }
+            }
             if (activeCycleRes && activeCycleRes.ok) {
                 const acData = await activeCycleRes.json();
                 if (acData && typeof acData === 'string') {
@@ -11141,6 +11181,32 @@ try {
                 if (event.data.type === 'SYNC_STATE_UPDATE') {
                     console.log("⚡ [Inter-Pestaña] Cambio en tiempo real recibido desde otra pestaña.");
                     applyIncomingCloudState(event.data.state, false);
+                } else if (event.data.type === 'STUDENT_DELETED') {
+                    const { studentId, personalCode, carne, deletedStudentIds } = event.data;
+                    if (Array.isArray(deletedStudentIds)) {
+                        STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...deletedStudentIds]));
+                    }
+                    if (studentId && !(STATE.deletedStudentIds || []).includes(studentId)) {
+                        (STATE.deletedStudentIds = STATE.deletedStudentIds || []).push(studentId);
+                    }
+                    const delSet = new Set(STATE.deletedStudentIds || []);
+                    if (studentId) delSet.add(studentId);
+                    if (personalCode) delSet.add(personalCode);
+                    if (carne) delSet.add(carne);
+                    try {
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(Array.from(delSet)));
+                        }
+                    } catch(e) {}
+                    if (Array.isArray(STATE.students)) {
+                        const prevLen = STATE.students.length;
+                        STATE.students = STATE.students.filter(s => s && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
+                        if (STATE.students.length !== prevLen) {
+                            if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                            if (typeof updateDashboardKPIs === 'function') updateDashboardKPIs();
+                            if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+                        }
+                    }
                 } else if (event.data.type === 'NODE_UPDATED' && event.data.node === 'config' && event.data.data) {
                     console.log("⚡ [Inter-Pestaña] Actualización de configuración/bimestre recibida.");
                     applyBimestreAndLockConfig(event.data.data, false);
@@ -11317,6 +11383,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     // 3. Ingreso de Notas y Calificaciones (Fusión inteligente multiusuario y mapeo de índices)
     if (Array.isArray(incomingState.deletedStudentIds) && incomingState.deletedStudentIds.length > 0) {
         STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...incomingState.deletedStudentIds]));
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(STATE.deletedStudentIds));
+            }
+        } catch(e) {}
     }
     if (!isHistoryActive && Array.isArray(incomingState.students)) {
         const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
@@ -15127,6 +15198,11 @@ async function deleteStudent(studentId) {
     if (carne && !STATE.deletedStudentIds.includes(carne)) {
         STATE.deletedStudentIds.push(carne);
     }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('ENCCO_DELETED_STUDENTS', JSON.stringify(STATE.deletedStudentIds));
+        }
+    } catch(e) {}
 
     // 2. Limpiar dirty set local
     if (window._locallyDirtyStudentIds) {
@@ -15198,6 +15274,20 @@ async function deleteStudent(studentId) {
     if (typeof loadHonorRoll === 'function' && (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) loadHonorRoll();
     if (typeof renderGradeStatsView === 'function' && STATE.activeView === 'grade-stats') renderGradeStatsView();
 
+    // 6.1. Difusión inter-pestañas inmediata a través de BroadcastChannel
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.postMessage({
+                type: 'STUDENT_DELETED',
+                studentId: resolvedId,
+                personalCode: personalCode,
+                carne: carne,
+                deletedStudentIds: STATE.deletedStudentIds,
+                timestamp: nowTime
+            });
+        } catch(bcErr) {}
+    }
+
     if (typeof showToast === 'function') {
         showToast(`El estudiante "${sName}" ha sido eliminado definitivamente del sistema.`, "info");
     }
@@ -15209,29 +15299,28 @@ async function deleteStudent(studentId) {
 
     // 7. Persistencia y eliminación en Firebase (Firestore + Realtime Database)
     try {
-        // A) Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
+        // A) Firestore (SDK Modular + Fallback REST Directo)
+        try {
+            const deleteTargets = [resolvedId, personalCode, carne].filter(Boolean);
+            if (window.FirebaseModular && window.FirebaseModular.db) {
                 const { db, doc, deleteDoc } = window.FirebaseModular;
                 if (typeof deleteDoc === 'function') {
                     const deleteOps = [];
-                    if (resolvedId) {
-                        deleteOps.push(deleteDoc(doc(db, 'students', resolvedId)).catch(() => {}));
-                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', resolvedId)).catch(() => {}));
-                    }
-                    if (personalCode) {
-                        deleteOps.push(deleteDoc(doc(db, 'students', personalCode)).catch(() => {}));
-                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', personalCode)).catch(() => {}));
-                    }
-                    if (carne) {
-                        deleteOps.push(deleteDoc(doc(db, 'students', carne)).catch(() => {}));
-                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', carne)).catch(() => {}));
-                    }
+                    deleteTargets.forEach(targetKey => {
+                        deleteOps.push(deleteDoc(doc(db, 'students', targetKey)).catch(() => {}));
+                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', targetKey)).catch(() => {}));
+                    });
                     await Promise.all(deleteOps);
                 }
-            } catch(fsErr) {
-                console.warn("Aviso al eliminar estudiante en Firestore:", fsErr);
             }
+            // Fallback REST garantizado contra Google Firestore REST API
+            const fbKey = atob("QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR");
+            deleteTargets.forEach(targetKey => {
+                fetch(`https://firestore.googleapis.com/v1/projects/encco-jutiapa-live-2026/databases/(default)/documents/students/${encodeURIComponent(targetKey)}?key=${fbKey}`, { method: 'DELETE' }).catch(() => {});
+                fetch(`https://firestore.googleapis.com/v1/projects/encco-jutiapa-live-2026/databases/(default)/documents/estudiantes/${encodeURIComponent(targetKey)}?key=${fbKey}`, { method: 'DELETE' }).catch(() => {});
+            });
+        } catch(fsErr) {
+            console.warn("Aviso al eliminar estudiante en Firestore:", fsErr);
         }
 
         // B) Firebase Realtime Database
@@ -47139,6 +47228,18 @@ function initFirestoreModularLiveListeners() {
                     const sData = change.doc.data();
                     const sId = change.doc.id;
                     const fullStudent = { id: sId, ...sData };
+
+                    // 🛡️ Blindaje Anti-Resurrección: Descartar inmediatamente estudiantes eliminados (tombstone)
+                    const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+                    if (delSet.has(sId) || (fullStudent.personalCode && delSet.has(fullStudent.personalCode)) || (fullStudent.carne && delSet.has(fullStudent.carne))) {
+                        if (Array.isArray(STATE.students)) {
+                            const curIdx = STATE.students.findIndex(s => s && (s.id === sId || (fullStudent.personalCode && s.personalCode === fullStudent.personalCode) || (fullStudent.carne && s.carne === fullStudent.carne)));
+                            if (curIdx !== -1) {
+                                STATE.students.splice(curIdx, 1);
+                            }
+                        }
+                        return;
+                    }
 
                     // 🛡️ Bloqueo estricto multi-ciclo: no re-inyectar egresados ni alumnos residuales de ciclos cerrados
                     const activeCyc = String((window.STATE && window.STATE.activeCycle) || '2027').trim();
