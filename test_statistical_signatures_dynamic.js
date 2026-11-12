@@ -132,6 +132,7 @@ lastOpenedPrintHtml = '';
 window.printGradeStatsReport('section');
 assertHasNoSignatures(lastOpenedPrintHtml, 'printGradeStatsReport(section)');
 assert(lastOpenedPrintHtml.includes('2028'), 'printGradeStatsReport debe reflejar ciclo dinámico 2028');
+assert(lastOpenedPrintHtml.includes('JORNADA MATUTINA'), 'printGradeStatsReport debe reflejar Jornada Matutina dinámica');
 
 lastOpenedPrintHtml = '';
 window.printGradeStatsReport('grades');
@@ -142,6 +143,7 @@ window.exportGradeStatsOfficialExcel();
 assertHasNoSignatures(lastDownloadedExcelHtml, 'exportGradeStatsOfficialExcel (actas)');
 assert(lastDownloadedExcelHtml.includes('ESCUELA NACIONAL DE CIENCIAS COMERCIALES'), 'Excel debe incluir nombre oficial');
 assert(lastDownloadedExcelHtml.includes('22-01-0014-46'), 'Excel debe incluir código MINEDUC dinámico');
+assert(lastDownloadedExcelHtml.includes('JORNADA MATUTINA'), 'Excel debe incluir Jornada Matutina dinámica');
 assert(!lastDownloadedExcelHtml.includes('ESCUELA NACIONAL EN CIENCIAS'), 'Excel no debe tener error tipográfico EN CIENCIAS');
 console.log('✓ [TEST 1] Tab 1 (Pantalla Resumen + Sábana, Impresión Sección/Grados y Excel) verificados SIN firmas.');
 
@@ -152,6 +154,7 @@ const cuadroScreen2028 = domNodes.gradeStatsDocumentContainer.innerHTML;
 assertHasNoSignatures(cuadroScreen2028, 'Cuadro Estadístico pantalla 2028');
 assert(cuadroScreen2028.includes('cuadro-footer-meta'), 'Cuadro pantalla debe mostrar pie informativo limpio');
 assert(cuadroScreen2028.includes('CICLO 2028'), 'Cuadro pantalla debe mostrar ciclo dinámico 2028');
+assert(cuadroScreen2028.includes('Matutina / Oficial'), 'Cuadro pantalla debe mostrar Jornada Matutina dinámica');
 
 lastOpenedPrintHtml = '';
 window.printCuadroEstadisticoOficial();

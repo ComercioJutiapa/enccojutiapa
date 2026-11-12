@@ -456,14 +456,14 @@
                     return cloned;
                 }).filter(Boolean);
 
-                // Resguardar cohorte de egresados del ciclo que cierra en memoria y en /encc_school_state/egresados/{currentActiveCycle}.json
+                // Resguardar cohorte de egresados del ciclo que cierra en memoria y en /encc_school_state/historico/{currentActiveCycle}/egresadosSnapshot.json
                 if (window.STATE) {
                     if (!window.STATE.graduatedStudentsByCycle) window.STATE.graduatedStudentsByCycle = {};
                     window.STATE.graduatedStudentsByCycle[currentActiveCycle] = graduatedCohort;
                 }
                 if (graduatedCohort.length > 0 && typeof fetch === 'function') {
                     const fbUrl = this.getFirebaseUrl();
-                    fetch(`${fbUrl}/encc_school_state/egresados/${currentActiveCycle}.json`, {
+                    fetch(`${fbUrl}/encc_school_state/historico/${currentActiveCycle}/egresadosSnapshot.json`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(graduatedCohort)

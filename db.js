@@ -503,9 +503,8 @@
             }
             multiPathPayload['config/lastModified'] = now;
 
-            // Dual write: /encc_school_state/ y raíz
+            // Escribir en /encc_school_state/ (y espejo permitido /students) sin PATCH a /.json raíz (bloqueado en reglas para /calificaciones)
             await rtdbRequest('/encc_school_state.json', 'PATCH', multiPathPayload);
-            await rtdbRequest('/.json', 'PATCH', multiPathPayload);
         } catch (re) {
             console.warn("[EnccoDB] Advertencia al persistir lote en RTDB:", re.message);
         }

@@ -5067,22 +5067,39 @@ const FIREBASE_CONFIG = {
 
 
 
-// Descargar de Firebase Realtime Database (GET Concurrente y Atómico)
+// Descargar de Firebase Realtime Database (GET Concurrente y Atómico sin descargar /historico)
 async function pullStateFromFirebaseCloud(force = false) {
     const firebaseUrl = getFirebaseDatabaseUrl();
     if (!firebaseUrl) return false;
 
     try {
         const _t = Date.now();
-        const [usersRes, pensumRes, studentsRes, configRes, rolesRes] = await Promise.all([
+        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes] = await Promise.all([
             fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
-            fetch(`${firebaseUrl}/students.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/students.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/config.json?t=${_t}`).catch(() => null),
-            fetch(`${firebaseUrl}/encc_school_state/rolesConfig.json?t=${_t}`).catch(() => null)
+            fetch(`${firebaseUrl}/encc_school_state/rolesConfig.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/gradesList.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/schoolHeader.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/activeCycle.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/cycles.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${_t}`).catch(() => null)
         ]);
 
         const cloudState = {};
+        if (activeCycleRes && activeCycleRes.ok) {
+            const ac = await activeCycleRes.json();
+            if (ac && typeof ac === 'string') cloudState.activeCycle = ac.trim();
+        }
+        if (cyclesRes && cyclesRes.ok) {
+            const cy = await cyclesRes.json();
+            if (Array.isArray(cy) && cy.length > 0) cloudState.cycles = cy;
+        }
+        if (headerRes && headerRes.ok) {
+            const hdr = await headerRes.json();
+            if (hdr && typeof hdr === 'object') cloudState.schoolHeader = hdr;
+        }
         if (usersRes && usersRes.ok) {
             const u = await usersRes.json();
             if (u) cloudState.users = Array.isArray(u) ? u : Object.values(u);
@@ -5090,6 +5107,10 @@ async function pullStateFromFirebaseCloud(force = false) {
         if (pensumRes && pensumRes.ok) {
             const p = await pensumRes.json();
             if (p) cloudState.pensum = Array.isArray(p) ? p : Object.values(p);
+        }
+        if (gradesListRes && gradesListRes.ok) {
+            const g = await gradesListRes.json();
+            if (g) cloudState.gradesList = Array.isArray(g) ? g : Object.values(g);
         }
         if (studentsRes && studentsRes.ok) {
             const s = await studentsRes.json();
@@ -5103,25 +5124,16 @@ async function pullStateFromFirebaseCloud(force = false) {
             const r = await rolesRes.json();
             if (r) cloudState.rolesConfig = r;
         }
+        if (exonRes && exonRes.ok) {
+            const ex = await exonRes.json();
+            if (ex && typeof ex === 'object') cloudState.exoneraciones = ex;
+        }
 
         if (cloudState.students || cloudState.users || cloudState.pensum) {
             const applied = applyIncomingCloudState(cloudState, force);
             if (applied) {
                 updateDbSyncStatus('synced');
                 return true;
-            }
-        } else {
-            // Fallback al endpoint global sólo si fallaron las consultas atómicas
-            const resFallback = await fetch(`${firebaseUrl}/encc_school_state.json?t=${_t}`).catch(() => null);
-            if (resFallback && resFallback.ok) {
-                const cFallback = await resFallback.json();
-                if (cFallback && typeof cFallback === 'object') {
-                    const applied = applyIncomingCloudState(cFallback, force);
-                    if (applied) {
-                        updateDbSyncStatus('synced');
-                        return true;
-                    }
-                }
             }
         }
     } catch(err) {
@@ -5206,8 +5218,25 @@ function initFirebaseRealtimeConnection() {
                 _firebaseEventSource.close();
                 _firebaseEventSource = null;
             }
-            const sseUrl = `${firebaseUrl}/encc_school_state.json`;
+            // Conectar SSE ligero a /lastModified.json (~16 bytes) para evitar descargar /historico (4.6 MB) en el handshake inicial
+            const sseUrl = `${firebaseUrl}/encc_school_state/lastModified.json`;
             _firebaseEventSource = new EventSource(sseUrl);
+
+            // SSE dedicado de baja latencia para alertas de auxiliatura y revocación de sesiones (< 1 KB)
+            try {
+                if (window._firebaseAlertsEventSource) {
+                    window._firebaseAlertsEventSource.close();
+                    window._firebaseAlertsEventSource = null;
+                }
+                const alertsSse = new EventSource(`${firebaseUrl}/encc_school_state/attendanceAlerts.json`);
+                alertsSse.addEventListener('put', (ev) => {
+                    try {
+                        const p = JSON.parse(ev.data);
+                        if (p && p.data && typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+                    } catch(_) {}
+                });
+                window._firebaseAlertsEventSource = alertsSse;
+            } catch(_) {}
 
             // Registrar efecto de limpieza en AuthStore para destrucción garantizada en logout
             if (window.EnccoAuthStore && typeof window.EnccoAuthStore.registerEffect === 'function') {
@@ -5217,7 +5246,13 @@ function initFirebaseRealtimeConnection() {
                             _firebaseEventSource.close();
                             _firebaseEventSource = null;
                             console.log("🔒 [Cleanup Effect] Firebase EventSource cerrado.");
-        } catch(e) {}
+                        } catch(e) {}
+                    }
+                    if (window._firebaseAlertsEventSource) {
+                        try {
+                            window._firebaseAlertsEventSource.close();
+                            window._firebaseAlertsEventSource = null;
+                        } catch(e) {}
                     }
                 });
             }
@@ -5234,21 +5269,23 @@ function initFirebaseRealtimeConnection() {
                         let revObj = null;
                         if (cleanPath === 'security/sessionRevocation') revObj = nodeData;
                         else if (cleanPath === 'security' && nodeData) revObj = nodeData.sessionRevocation;
-                        else if ((cleanPath === '' || cleanPath === '/') && nodeData && nodeData.security) revObj = nodeData.security.sessionRevocation;
+                        else if ((cleanPath === '' || cleanPath === '/') && nodeData && typeof nodeData === 'object' && nodeData.security) revObj = nodeData.security.sessionRevocation;
 
                         if (revObj && revObj.revocationTimestamp && typeof handleIncomingSessionRevocation === 'function') {
                             handleIncomingSessionRevocation(revObj);
                         }
                     }
 
-                    // [v190] Sincronización continua y reactiva de eventos SSE de Firebase
-
+                    // [v271] Sincronización fluida vía sello temporal (lastModified) o payload granular
                     if (cleanPath === '' || cleanPath === '/') {
-                        if (nodeData && typeof nodeData === 'object') {
+                        const myLastSave = Math.max(Number(STATE._lastSavedLocally) || 0, Number(STATE.lastModified) || 0);
+                        if (typeof nodeData === 'number') {
+                            if (nodeData > myLastSave && typeof pullStateFromFirebaseCloud === 'function') {
+                                pullStateFromFirebaseCloud(false);
+                            }
+                        } else if (nodeData && typeof nodeData === 'object') {
                             const sseTime = Number(nodeData.lastModified) || 0;
-                            const myLastSave = Math.max(Number(STATE._lastSavedLocally) || 0, Number(STATE.lastModified) || 0);
                             if (sseTime <= myLastSave && myLastSave > 0) {
-                                // Eco propio o reconexión SSE con datos no más nuevos que los locales
                                 console.log(`🛡️ [SSE Anti-Reversión] Evento raíz ignorado (sseTime: ${sseTime} <= local: ${myLastSave})`);
                             } else {
                                 applyIncomingCloudState(nodeData, false);
@@ -6549,7 +6586,7 @@ function printGuideTeachersOfficialDirectory() {
                 <div class="line-school">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</div>
                 <div class="line-title">NÓMINA OFICIAL DE DOCENTES GUÍAS</div>
                 ${filterSubtitle}
-                <div class="line-meta">CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA VESPERTINA &bull; CÓDIGO: ${escapeHtml(h.mineducCode || h.schoolCode || '22-01-0014-46')}</div>
+                <div class="line-meta">CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA ${escapeHtml(String(h.jornada || h.shift || 'Matutina').toUpperCase())} &bull; CÓDIGO: ${escapeHtml(h.mineducCode || h.schoolCode || '22-01-0014-46')}</div>
             </td>
         </tr>
     </table>
@@ -8180,6 +8217,7 @@ function ensureSireOfficialStudents() {
         }
     }
 
+    if (isCycle2026) {
     // 🛡️ Garantizar presencia inmutable de Méndez López, Julio Luis Elias en la nómina oficial (4to Perito Contador Sección B)
     const hasJulioMendez = (STATE.students || []).some(s => s && (
         s.id === 'stu-sire-H380PHM' || 
@@ -8351,6 +8389,7 @@ function ensureSireOfficialStudents() {
 
         if (!STATE.exoneraciones) STATE.exoneraciones = {};
         STATE.exoneraciones['exon_stu-sire-H652EZI_all_4'] = exonJustin;
+    }
     }
 
     // 🎓 Preservación absoluta de calificaciones: Firebase es la única fuente autoritativa
@@ -9607,14 +9646,16 @@ async function initApp() {
             const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
             const _t = Date.now();
             
-            const [usersRes, pensumRes, studentsRes, configRes, rolesRes, activeCycleRes, cyclesRes] = await Promise.all([
+            const [usersRes, pensumRes, studentsRes, configRes, rolesRes, activeCycleRes, cyclesRes, gradesListRes, headerRes] = await Promise.all([
                 fetch(`${_fbUrl}/encc_school_state/users.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/pensum.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/students.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/config.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/rolesConfig.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
                 fetch(`${_fbUrl}/encc_school_state/activeCycle.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
-                fetch(`${_fbUrl}/encc_school_state/cycles.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
+                fetch(`${_fbUrl}/encc_school_state/cycles.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/gradesList.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/schoolHeader.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
             ]);
             if (_timeoutId) clearTimeout(_timeoutId);
 
@@ -9631,6 +9672,19 @@ async function initApp() {
                 if (Array.isArray(cyData) && cyData.length > 0) {
                     granularState.cycles = cyData;
                     STATE.cycles = cyData;
+                }
+            }
+            if (headerRes && headerRes.ok) {
+                const hdrData = await headerRes.json();
+                if (hdrData && typeof hdrData === 'object') {
+                    granularState.schoolHeader = hdrData;
+                    STATE.schoolHeader = hdrData;
+                }
+            }
+            if (gradesListRes && gradesListRes.ok) {
+                const glData = await gradesListRes.json();
+                if (Array.isArray(glData) && glData.length > 0) {
+                    granularState.gradesList = glData;
                 }
             }
             if (usersRes && usersRes.ok) {
@@ -9660,16 +9714,10 @@ async function initApp() {
                     hasLoadedExistingUsers = true;
                 }
                 console.log("⚡ [v190] Cascarón institucional cargado concurrentemente en tiempo récord (~250ms).");
-            } else {
-                // Fallback defensivo a encc_school_state.json sólo si los nodos atómicos no respondieron
-                const _cloudRes = await fetch(`${_fbUrl}/encc_school_state.json?t=${_t}`).catch(() => null);
-                if (_cloudRes && _cloudRes.ok) {
-                    const _cloudData = await _cloudRes.json();
-                    if (_cloudData && typeof _cloudData === "object") {
-                        applyIncomingCloudState(_cloudData, true);
-                        hasLoadedExistingUsers = true;
-                    }
-                }
+            } else if (typeof pullStateFromFirebaseCloud === 'function') {
+                // Reintento granular (evita descargar /historico completo de 4.6 MB)
+                const pulled = await pullStateFromFirebaseCloud(true);
+                if (pulled) hasLoadedExistingUsers = true;
             }
         }
     } catch(_fbPullErr) {
@@ -11247,12 +11295,25 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (!isHistoryActive && Array.isArray(incomingState.students)) {
         const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+        const activeCyc = String(STATE.activeCycle || '2027').trim();
+        const activeCycNum = parseInt(activeCyc, 10);
+        const archivedCycles = new Set(
+            (Array.isArray(STATE.cycles) ? STATE.cycles : [])
+                .filter(c => c && (c.isArchived || c.status === 'Histórico'))
+                .map(c => String(c.year || c.name || '').trim())
+                .filter(Boolean)
+        );
+        if (activeCycNum >= 2027) archivedCycles.add('2026');
+
         incomingState.students = incomingState.students.filter(s => {
             if (!s || !s.id || deletedStus.has(s.id) || deletedStus.has(s.personalCode) || deletedStus.has(s.carne)) return false;
-            // 🛡️ REGLA PERPETUA MULTI-CICLO (2027, 2028, 2029...): Excluir egresados de la nómina activa
+            // 🛡️ REGLA PERPETUA MULTI-CICLO (2027, 2028, 2029...): Excluir egresados y alumnos residuales de ciclos cerrados
             const stLower = String(s.status || '').toLowerCase().trim();
             const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
             if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+            const sCyc = String(s.academicCycle || s.cycle || '').trim();
+            if (sCyc && sCyc !== activeCyc && archivedCycles.has(sCyc)) return false;
+            if (s.graduationCycle && !isNaN(activeCycNum) && activeCycNum > parseInt(String(s.graduationCycle).trim(), 10)) return false;
             return true;
         });
     }
@@ -47033,6 +47094,16 @@ function initFirestoreModularLiveListeners() {
                     const sId = change.doc.id;
                     const fullStudent = { id: sId, ...sData };
 
+                    // 🛡️ Bloqueo estricto multi-ciclo: no re-inyectar egresados ni alumnos residuales de ciclos cerrados
+                    const activeCyc = String((window.STATE && window.STATE.activeCycle) || '2027').trim();
+                    const activeCycNum = parseInt(activeCyc, 10);
+                    const fsStatus = String(fullStudent.status || '').toLowerCase().trim();
+                    const fsGrade = String(fullStudent.grade || fullStudent.gradeCode || fullStudent.gradeLabel || '').toLowerCase();
+                    if (fsStatus === 'egresado' || fsGrade.includes('egresad') || fsGrade.includes('graduand')) return;
+                    const fsCycle = String(fullStudent.academicCycle || fullStudent.cycle || '').trim();
+                    if (activeCycNum >= 2027 && fsCycle === '2026') return;
+                    if (fullStudent.graduationCycle && !isNaN(activeCycNum) && activeCycNum > parseInt(String(fullStudent.graduationCycle).trim(), 10)) return;
+
                     // 🛡️ Rescatar y depurar claves planas con puntos ('grades.Materia', 'gradebookDetails.Materia.4')
                     if (!fullStudent.grades || typeof fullStudent.grades !== 'object') fullStudent.grades = {};
                     else fullStudent.grades = { ...fullStudent.grades };
@@ -52300,7 +52371,7 @@ function printStudentExonerationOfficialCertificate(data) {
                     </tr>
                     <tr>
                         <td class="field-lbl">Carrera Oficial:</td>
-                        <td class="field-val" colspan="3">Perito Contador con Orientación en Computación Comercial (Jornada Vespertina)</td>
+                        <td class="field-val" colspan="3">Perito Contador con Orientación en Computación Comercial (Jornada ${escapeHtml((STATE.schoolHeader && (STATE.schoolHeader.jornada || STATE.schoolHeader.shift)) || 'Matutina')})</td>
                     </tr>
                 </table>
             </div>
@@ -53804,15 +53875,23 @@ function sanitizeResolved2026AttendanceAlerts() {
 }
 window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAlerts;
 
-// 🛡️ [Garantía Institucional Multi-Ciclo (2027, 2028, 2029...): Exclusión Universal de Egresados y Limpieza de Ciclo 2027]
+// 🛡️ [Garantía Institucional Multi-Ciclo (2027, 2028, 2029...): Exclusión Universal de Egresados y Residuos de Ciclos Cerrados]
 function sanitizeCycle2027PristineState() {
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || '2027').trim();
     const activeCycleNum = parseInt(activeCycle, 10);
     const isHist = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+    if (isHist) return;
 
-    // Regla universal para cualquier ciclo >= 2027 (2027, 2028, 2029...):
-    // Ningún alumno con estado 'Egresado' o grado 'Graduando / Egresado' puede figurar en la nómina activa.
-    if (!isHist && Array.isArray(STATE.students)) {
+    const archivedYears = new Set(
+        (Array.isArray(STATE.cycles) ? STATE.cycles : [])
+            .filter(c => c && (c.isArchived || c.status === 'Histórico'))
+            .map(c => String(c.year || c.name || '').trim())
+            .filter(Boolean)
+    );
+    if (activeCycleNum >= 2027) archivedYears.add('2026');
+
+    // 1. Filtrar alumnos egresados o residuales de ciclos cerrados/archivados (nunca borrar datos reales del ciclo activo)
+    if (Array.isArray(STATE.students)) {
         const initialLen = STATE.students.length;
         STATE.students = STATE.students.filter(s => {
             if (!s) return false;
@@ -53827,52 +53906,36 @@ function sanitizeCycle2027PristineState() {
                     return false;
                 }
             }
+            const sCycle = String(s.academicCycle || s.cycle || '').trim();
+            if (sCycle && sCycle !== activeCycle && archivedYears.has(sCycle)) {
+                return false;
+            }
             return true;
         });
+
+        // Saneamiento no destructivo de caracteres UTF-8 corruptos en nombres de estudiantes activos
+        STATE.students.forEach(s => {
+            if (!s) return;
+            ['firstName', 'lastName', 'name'].forEach(f => {
+                if (typeof s[f] === 'string' && s[f].includes('\ufffd')) {
+                    s[f] = s[f].replace(/\ufffd/g, 'Í');
+                }
+            });
+        });
+
         if (STATE.students.length !== initialLen && typeof saveStateToLocalStorageQuick === 'function') {
             saveStateToLocalStorageQuick();
         }
     }
 
-    if (activeCycle === '2027') {
-        // 1. Asistencia 2027 en blanco: eliminar cualquier planilla huérfana de 2027
-        if (STATE.attendanceRecords && typeof STATE.attendanceRecords === 'object') {
-            Object.keys(STATE.attendanceRecords).forEach(k => {
-                if (k.startsWith('2027')) {
-                    delete STATE.attendanceRecords[k];
-                }
-            });
-        }
-
-        // 2. Calificaciones 2027 en blanco y exclusión de registros residuales de 2026
-        if (Array.isArray(STATE.students)) {
-            const initialLen = STATE.students.length;
-            STATE.students = STATE.students.filter(s => {
-                if (!s) return false;
-                const stLower = String(s.status || '').toLowerCase().trim();
-                const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
-                if (stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) {
-                    return false;
-                }
-                const sCycle = String(s.academicCycle || s.cycle || '2027').trim();
-                if (sCycle === '2026' && s.id === 'stu-sire-H380PHM') {
-                    return false;
-                }
-                if (sCycle === '2027') {
-                    if (s.grades && Object.keys(s.grades).length > 0) s.grades = {};
-                    if (s.gradebookDetails && Object.keys(s.gradebookDetails).length > 0) s.gradebookDetails = {};
-                    if (Array.isArray(s.exoneraciones) && s.exoneraciones.length > 0) s.exoneraciones = [];
-                    if (Array.isArray(s.academicExceptions) && s.academicExceptions.length > 0) s.academicExceptions = [];
-                    delete s.isExonerated;
-                    delete s.exonerado;
-                    delete s.exoneratedBimestre;
-                }
-                return true;
-            });
-            if (STATE.students.length !== initialLen && typeof saveStateToLocalStorageQuick === 'function') {
-                saveStateToLocalStorageQuick();
+    // 2. Depurar únicamente planillas de asistencia pertenecientes a ciclos cerrados/archivados (preservar asistencia real de 2027+)
+    if (activeCycleNum >= 2027 && STATE.attendanceRecords && typeof STATE.attendanceRecords === 'object') {
+        Object.keys(STATE.attendanceRecords).forEach(k => {
+            const yearPrefix = (String(k).match(/^(20\d{2})_/) || [])[1];
+            if (yearPrefix && archivedYears.has(yearPrefix)) {
+                delete STATE.attendanceRecords[k];
             }
-        }
+        });
     }
 }
 window.sanitizeCycle2027PristineState = sanitizeCycle2027PristineState;

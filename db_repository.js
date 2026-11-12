@@ -69,7 +69,25 @@
                 return (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
             },
             getActive() {
-                return this.getAll().filter(s => s.status !== 'Retirado');
+                const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+                const isHist = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle);
+                const activeCyc = String(st.activeCycle || '').trim();
+                const archivedYears = new Set(
+                    (Array.isArray(st.cycles) ? st.cycles : [])
+                        .filter(c => c && (c.isArchived || c.status === 'Histórico'))
+                        .map(c => String(c.year || c.name || '').trim())
+                );
+                return this.getAll().filter(s => {
+                    if (!s) return false;
+                    const stLower = String(s.status || '').toLowerCase().trim();
+                    const grLower = String(s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+                    if (stLower === 'retirado' || stLower === 'egresado' || grLower.includes('egresad') || grLower.includes('graduand')) return false;
+                    if (!isHist && activeCyc) {
+                        const sCyc = String(s.academicCycle || s.cycle || '').trim();
+                        if (sCyc && sCyc !== activeCyc && archivedYears.has(sCyc)) return false;
+                    }
+                    return true;
+                });
             },
             getRetired() {
                 return this.getAll().filter(s => s.status === 'Retirado');

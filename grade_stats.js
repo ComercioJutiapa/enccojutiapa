@@ -63,7 +63,9 @@ function resolveOfficialStatisticalMeta(options = {}) {
     const department = cleanTxt(hdr.department) || 'Jutiapa';
     const address = cleanTxt(hdr.address) || 'Complejo Educativo, Barrio el Cóndor, Jutiapa';
     const career = cleanTxt(hdr.career) || 'PERITO CONTADOR';
-    const jornadaSector = cleanTxt(hdr.jornadaSector) || 'Vespertina / Oficial';
+    const jornada = cleanTxt(hdr.jornada || hdr.shift) || 'Matutina';
+    const sector = cleanTxt(hdr.sector) || 'Oficial';
+    const jornadaSector = cleanTxt(hdr.jornadaSector) || `${jornada} / ${sector}`;
     const dateText = cleanTxt(options.dateText) || `${municipality}, ${new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
     return {
@@ -74,6 +76,8 @@ function resolveOfficialStatisticalMeta(options = {}) {
         municipioDepto: `${municipality}, ${department}`,
         address,
         career,
+        jornada,
+        sector,
         jornadaSector,
         cycle,
         dateText,
@@ -909,7 +913,7 @@ function exportGradeStatsOfficialExcel() {
         <body>
             <table>
                 <tr><td colspan="${d.officialSubjects.length + 4}" class="title">${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().schoolName)}</td></tr>
-                <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:center; font-size:9.5pt; border:none; font-weight:bold;">JORNADA VESPERTINA &bull; CÓDIGO MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().schoolCode)} &bull; JUTIAPA, JUTIAPA</td></tr>
+                <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:center; font-size:9.5pt; border:none; font-weight:bold;">JORNADA ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().jornada.toUpperCase())} &bull; CÓDIGO MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().schoolCode)} &bull; ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta().municipioDepto.toUpperCase())}</td></tr>
                 <tr><td colspan="${d.officialSubjects.length + 4}" class="subtitle">Resumen de Promedios Finales - ${escapeHtml(d.gradeTitle)}</td></tr>
                 <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:right; border:none;">Emisión: ${escapeHtml(d.dateFormattedLong)}</td></tr>
                 <tr></tr>
@@ -1303,7 +1307,7 @@ function printGradeStatsReport(reportType = 'section') {
                 <div class="line-school">${escapeHtml(schoolName)}</div>
                 <div class="line-title">${escapeHtml(reportTitle)}</div>
                 <div class="line-meta">
-                    ${escapeHtml(data.bimLabel.toUpperCase())} &bull; ${escapeHtml(data.gradeFilterLabel.toUpperCase())} &bull; CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA VESPERTINA &bull; CÓDIGO: ${escapeHtml(schoolCode)}
+                    ${escapeHtml(data.bimLabel.toUpperCase())} &bull; ${escapeHtml(data.gradeFilterLabel.toUpperCase())} &bull; CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA ${escapeHtml(statMeta.jornada.toUpperCase())} &bull; CÓDIGO: ${escapeHtml(schoolCode)}
                 </div>
             </td>
         </tr>
@@ -1448,7 +1452,7 @@ function renderCuadroEstadisticoOficial() {
             codigo: meta.schoolCode || '22-01-0014-46',
             carrera: meta.career || 'PERITO CONTADOR',
             direccion: meta.address || 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
-            jornadaSector: meta.jornadaSector || 'Vespertina / Oficial',
+            jornadaSector: meta.jornadaSector || 'Matutina / Oficial',
             municipioDepto: meta.municipioDepto || 'Jutiapa, Jutiapa',
             grados: [
                 { nombre: 'CUARTO', hi: 78, hp: 41, hcd: 26, hsd: 11, mi: 60, mp: 34, mcd: 20, msd: 6, tot: 138 },
@@ -1582,7 +1586,7 @@ function renderCuadroEstadisticoOficial() {
             codigo: meta.schoolCode || '22-01-0014-46',
             carrera: meta.career || 'PERITO CONTADOR',
             direccion: meta.address || 'Complejo Educativo, Barrio el Cóndor, Jutiapa',
-            jornadaSector: meta.jornadaSector || 'Vespertina / Oficial',
+            jornadaSector: meta.jornadaSector || 'Matutina / Oficial',
             municipioDepto: meta.municipioDepto || 'Jutiapa, Jutiapa',
             grados: [
                 { nombre: 'CUARTO', ...byGrade['CUARTO'] },
@@ -2910,7 +2914,7 @@ function renderReprobadosRecuperacionView() {
                     ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                 </h2>
                 <div style="font-size:0.88rem; color:#475569; font-weight:600;">
-                    Jornada Vespertina • Código MINEDUC: 22-01-0014-46 • Jutiapa, Jutiapa
+                    Jornada ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: viewingCycle }).jornada)} • Código MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: viewingCycle }).schoolCode)} • ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: viewingCycle }).municipioDepto)}
                 </div>
                 <div style="font-size:0.92rem; font-weight:700; color:#0369a1; margin-top:6px; display:flex; align-items:center; gap:8px;">
                     <i class="fa-solid fa-graduation-cap"></i> Panel Analítico: Alumnos Reprobados, Asignaturas, Catedráticos y Recuperación
@@ -3793,7 +3797,7 @@ function exportReprobadosRecuperacionExcel() {
         <table style="border-collapse:collapse; width:100%; margin-bottom:12px;">
             <tr><td colspan="${headerColspan}" style="font-size:10pt; font-weight:bold; text-align:center; border:none; color:#1e3a8a;">REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN</td></tr>
             <tr><td colspan="${headerColspan}" style="font-size:15pt; font-weight:bold; text-align:center; border:none; color:#0f172a;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</td></tr>
-            <tr><td colspan="${headerColspan}" style="font-size:10.5pt; font-weight:bold; text-align:center; border:none; color:#334155;">JORNADA VESPERTINA - CÓDIGO MINEDUC: 22-01-0014-46 - JUTIAPA, JUTIAPA</td></tr>
+            <tr><td colspan="${headerColspan}" style="font-size:10.5pt; font-weight:bold; text-align:center; border:none; color:#334155;">JORNADA ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).jornada.toUpperCase())} - CÓDIGO MINEDUC: ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolCode)} - ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).municipioDepto.toUpperCase())}</td></tr>
             <tr><td colspan="${headerColspan}" style="font-size:12pt; font-weight:bold; text-align:center; border:none; color:#1e3a8a; padding-top:4px;">${docSubtitle}</td></tr>
             <tr><td colspan="${headerColspan}" style="font-size:10pt; text-align:right; border:none; border-bottom:2pt solid #1e3a8a; padding-bottom:6px;">Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</td></tr>
         </table>
