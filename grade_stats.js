@@ -2293,38 +2293,38 @@ window._enccoHist2026Fetching = false;
 
 const REPROBADOS_PENSUM_CATALOG = {
     CUARTO: [
-        { full: 'Matemática Comercial', short: 'Mat. Com.' },
-        { full: 'Introducción a la Economía', short: 'Intro. Econ.' },
-        { full: 'Administración y Organización de Empresas', short: 'Admón. Emp.' },
-        { full: 'Redacción y Correspondencia Mercantil', short: 'Redacción' },
-        { full: 'Contabilidad de Sociedades', short: 'Cont. Soc.' },
-        { full: 'Inglés Comercial I', short: 'Inglés I' },
-        { full: 'Fundamentos de Derecho', short: 'Fund. Der.' },
-        { full: 'Computación I', short: 'Comp. I' },
-        { full: 'Caligrafía y Ortografía', short: 'Caligrafía' }
+        { order: 1, full: 'Contabilidad de Sociedades', short: 'Cont. Soc.', aliases: ['contabilidad de sociedades', 'contabilidad sociedades', 'sociedades'] },
+        { order: 2, full: 'Matemática Comercial', short: 'Mat. Com.', aliases: ['matematica comercial', 'matematica'] },
+        { order: 3, full: 'Fundamentos de Derecho', short: 'Fund. Der.', aliases: ['fundamentos de derecho', 'fundamentos derecho'] },
+        { order: 4, full: 'Inglés Comercial I', short: 'Inglés I', aliases: ['ingles comercial i', 'ingles comercial 1', 'ingles i', 'ingles 1'] },
+        { order: 5, full: 'Redacción y Correspondencia Mercantil', short: 'Redacción', aliases: ['redaccion y correspondencia mercantil', 'redaccion y correspondencia', 'redaccion correspondencia mercantil', 'redaccion'] },
+        { order: 6, full: 'Introducción a la Economía', short: 'Intro. Econ.', aliases: ['introduccion a la economia', 'introduccion economia', 'economia'] },
+        { order: 7, full: 'Ortografía y Caligrafía', short: 'Ort. y Calig.', aliases: ['ortografia y caligrafia', 'caligrafia y ortografia', 'ortografia', 'caligrafia'] },
+        { order: 8, full: 'Administración y Organización de Oficina', short: 'Admón. Ofic.', aliases: ['administracion y organizacion de oficina', 'administracion y organizacion de empresas', 'administracion y organizacion', 'organizacion de oficina', 'administracion'] },
+        { order: 9, full: 'Computación I', short: 'Comp. I', aliases: ['computacion i', 'computacion 1'] }
     ],
     QUINTO: [
-        { full: 'Cálculo Mercantil y Financiero', short: 'Cálc. Merc.' },
-        { full: 'Mecanografía', short: 'Mecanog.' },
-        { full: 'Contabilidad de Costos', short: 'Cont. Cost.' },
-        { full: 'Geografía Económica', short: 'Geog. Econ.' },
-        { full: 'Catalogación y Archivo', short: 'Cat. Arch.' },
-        { full: 'Legislación Fiscal y Aduanera', short: 'Leg. Fiscal' },
-        { full: 'Finanzas Públicas', short: 'Fin. Públ.' },
-        { full: 'Computación II', short: 'Comp. II' },
-        { full: 'Inglés Comercial II', short: 'Inglés II' }
+        { order: 1, full: 'Contabilidad de Costos', short: 'Cont. Cost.', aliases: ['contabilidad de costos', 'contabilidad costos', 'costos'] },
+        { order: 2, full: 'Cálculo Mercantil y Financiero', short: 'Cálc. Merc.', aliases: ['calculo mercantil y financiero', 'calculo mercantil', 'calculo'] },
+        { order: 3, full: 'Inglés Comercial II', short: 'Inglés II', aliases: ['ingles comercial ii', 'ingles comercial 2', 'ingles ii', 'ingles 2'] },
+        { order: 4, full: 'Legislación Fiscal y Aduanal', short: 'Leg. Fiscal', aliases: ['legislacion fiscal y aduanal', 'legislacion fiscal y aduanera', 'legislacion fiscal'] },
+        { order: 5, full: 'Finanzas Públicas', short: 'Fin. Públ.', aliases: ['finanzas publicas', 'finanzas'] },
+        { order: 6, full: 'Geografía Económica', short: 'Geog. Econ.', aliases: ['geografia economica', 'geografia'] },
+        { order: 7, full: 'Catalogación y Archivo', short: 'Cat. Arch.', aliases: ['catalogacion y archivo', 'catalogacion', 'archivo'] },
+        { order: 8, full: 'Mecanografía', short: 'Mecanog.', aliases: ['mecanografia'] },
+        { order: 9, full: 'Computación II', short: 'Comp. II', aliases: ['computacion ii', 'computacion 2'] }
     ],
     SEXTO: [
-        { full: 'Auditoría', short: 'Auditoría' },
-        { full: 'Computación III', short: 'Comp. III' },
-        { full: 'Contabilidad Bancaria', short: 'Cont. Banc.' },
-        { full: 'Contabilidad Gubernamental e Integrada', short: 'Cont. Gub.' },
-        { full: 'Derecho Mercantil y Laboral', short: 'Der. Merc.' },
-        { full: 'Estadística Comercial', short: 'Estadíst.' },
-        { full: 'Organización de Empresas y Técnicas de Oficina', short: 'Org. Emp.' },
-        { full: 'Práctica Supervisada', short: 'Práctica' },
-        { full: 'Seminario sobre Problemas Socioeconómicos de Guatemala', short: 'Seminario' },
-        { full: 'Ética Profesional y Relaciones Humanas', short: 'Ética Prof.' }
+        { order: 1, full: 'Contabilidad Bancaria', short: 'Cont. Banc.', aliases: ['contabilidad bancaria', 'bancaria'] },
+        { order: 2, full: 'Contabilidad Gubernamental Integrada', short: 'Cont. Gub.', aliases: ['contabilidad gubernamental integrada', 'contabilidad gubernamental e integrada', 'contabilidad gubernamental', 'gubernamental'] },
+        { order: 3, full: 'Estadística Comercial', short: 'Estadíst.', aliases: ['estadistica comercial', 'estadistica'] },
+        { order: 4, full: 'Organización de Empresas', short: 'Org. Emp.', aliases: ['organizacion de empresas', 'organizacion de empresas y tecnicas de oficina'] },
+        { order: 5, full: 'Ética Profesional y Relaciones Humanas', short: 'Ética Prof.', aliases: ['etica profesional y relaciones humanas', 'etica profesional', 'etica'] },
+        { order: 6, full: 'Práctica Supervisada', short: 'Práctica', aliases: ['practica supervisada', 'practica'] },
+        { order: 7, full: 'Auditoría', short: 'Auditoría', aliases: ['auditoria'] },
+        { order: 8, full: 'Derecho Mercantil y Nociones de Derecho Laboral', short: 'Der. Merc.', aliases: ['derecho mercantil y nociones de derecho laboral', 'derecho mercantil y nociones del derecho laboral', 'derecho mercantil y laboral', 'derecho mercantil'] },
+        { order: 9, full: 'Computación III', short: 'Comp. III', aliases: ['computacion iii', 'computacion 3'] },
+        { order: 10, full: 'Seminario sobre Problemas Socioeconómicos de Guatemala', short: 'Seminario', aliases: ['seminario sobre problemas socioeconomicos de guatemala', 'seminario'] }
     ]
 };
 
@@ -2336,21 +2336,99 @@ function normalizeReprobadosSubjectKey(name) {
         .replace(/[^a-z0-9]/g, '');
 }
 
-function findMatchingGradeEntry(gradesMap, targetFullName) {
+function extractCourseNumeralSuffix(name) {
+    const clean = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const m = clean.match(/(?:^|\s|\b)(iii|ii|i|3|2|1)$/i);
+    if (!m) return '';
+    const map = { iii: '3', '3': '3', ii: '2', '2': '2', i: '1', '1': '1' };
+    return map[m[1]] || '';
+}
+
+function hasCourseCrossCollision(normA, normB) {
+    const calA = normA.includes('caligrafia') || normA.includes('ortografia');
+    const redA = normA.includes('redaccion') || normA.includes('correspondencia');
+    const catA = normA.includes('catalogacion') || normA.includes('archivo');
+    const admA = normA.includes('administracion') || normA.includes('organizaciondeoficina');
+    const orgEmpA = normA.includes('organizaciondeempresas') && !normA.includes('administracion');
+
+    const calB = normB.includes('caligrafia') || normB.includes('ortografia');
+    const redB = normB.includes('redaccion') || normB.includes('correspondencia');
+    const catB = normB.includes('catalogacion') || normB.includes('archivo');
+    const admB = normB.includes('administracion') || normB.includes('organizaciondeoficina');
+    const orgEmpB = normB.includes('organizaciondeempresas') && !normB.includes('administracion');
+
+    if ((calA && redB) || (redA && calB)) return true;
+    if ((catA && admB) || (admA && catB)) return true;
+    if ((orgEmpA && normB.includes('administracion')) || (normA.includes('administracion') && orgEmpB)) return true;
+    return false;
+}
+
+function findCatalogItemForSubject(rawName, gradeKey = null) {
+    const norm = normalizeReprobadosSubjectKey(rawName);
+    if (!norm) return null;
+    const sufTarget = extractCourseNumeralSuffix(rawName);
+    const gradesToCheck = gradeKey && REPROBADOS_PENSUM_CATALOG[gradeKey]
+        ? [gradeKey]
+        : ['CUARTO', 'QUINTO', 'SEXTO'];
+
+    for (const gk of gradesToCheck) {
+        for (const item of REPROBADOS_PENSUM_CATALOG[gk]) {
+            if (normalizeReprobadosSubjectKey(item.full) === norm) return item;
+            if (Array.isArray(item.aliases) && item.aliases.some(al => normalizeReprobadosSubjectKey(al) === norm)) {
+                return item;
+            }
+        }
+    }
+    for (const gk of gradesToCheck) {
+        for (const item of REPROBADOS_PENSUM_CATALOG[gk]) {
+            const ni = normalizeReprobadosSubjectKey(item.full);
+            const sufItem = extractCourseNumeralSuffix(item.full);
+            if (sufTarget && sufItem && sufTarget !== sufItem) continue;
+            if (sufTarget && !sufItem) continue;
+            if (hasCourseCrossCollision(norm, ni)) continue;
+            if (norm.length >= 5 && (ni.includes(norm) || norm.includes(ni))) return item;
+            if (Array.isArray(item.aliases)) {
+                for (const al of item.aliases) {
+                    const nal = normalizeReprobadosSubjectKey(al);
+                    const sufAl = extractCourseNumeralSuffix(al);
+                    if (sufTarget && sufAl && sufTarget !== sufAl) continue;
+                    if (norm.length >= 5 && (nal.includes(norm) || norm.includes(nal))) return item;
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function areReprobadosSubjectsEquivalent(nameA, nameB, gradeKey = null) {
+    const na = normalizeReprobadosSubjectKey(nameA);
+    const nb = normalizeReprobadosSubjectKey(nameB);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+
+    const itemA = findCatalogItemForSubject(nameA, gradeKey);
+    const itemB = findCatalogItemForSubject(nameB, gradeKey);
+    if (itemA && itemB) return itemA.full === itemB.full;
+    if (itemA && !itemB) return false;
+    if (itemB && !itemA) return false;
+
+    const sufA = extractCourseNumeralSuffix(nameA);
+    const sufB = extractCourseNumeralSuffix(nameB);
+    if (sufA && sufB && sufA !== sufB) return false;
+    if (hasCourseCrossCollision(na, nb)) return false;
+    return (na.length >= 5 && nb.length >= 5 && (na.includes(nb) || nb.includes(na)));
+}
+
+function findMatchingGradeEntry(gradesMap, targetFullName, gradeKey = null) {
     if (!gradesMap || typeof gradesMap !== 'object') return null;
+    const keys = Object.keys(gradesMap);
     const normTarget = normalizeReprobadosSubjectKey(targetFullName);
     if (!normTarget) return null;
-    const keys = Object.keys(gradesMap);
     for (const k of keys) {
         if (normalizeReprobadosSubjectKey(k) === normTarget) return { key: k, val: gradesMap[k] };
     }
-    const numT = (normTarget.match(/\d+|[ivx]+$/) || [''])[0];
     for (const k of keys) {
-        const normK = normalizeReprobadosSubjectKey(k);
-        if (!normK) continue;
-        const numK = (normK.match(/\d+|[ivx]+$/) || [''])[0];
-        const sameNum = (!numT && !numK) || (numT === numK);
-        if (sameNum && (normK.includes(normTarget) || normTarget.includes(normK))) {
+        if (areReprobadosSubjectsEquivalent(k, targetFullName, gradeKey)) {
             return { key: k, val: gradesMap[k] };
         }
     }
@@ -2381,29 +2459,15 @@ function computeCourseAnnualAverage(scoresArray, courseName, gradeKey) {
 function resolveFullSubjectsForStudent(studentObj, gradeKey, auditReprobadas = null, cycleLabel = '2027') {
     const baseCatalog = REPROBADOS_PENSUM_CATALOG[gradeKey] || REPROBADOS_PENSUM_CATALOG.CUARTO;
     const gradesObj = (studentObj && studentObj.grades && typeof studentObj.grades === 'object') ? studentObj.grades : {};
-    const repMap = new Map();
-    if (Array.isArray(auditReprobadas)) {
-        auditReprobadas.forEach(r => {
-            if (r && r.materia) repMap.set(normalizeReprobadosSubjectKey(r.materia), r);
-        });
-    }
+    const repList = Array.isArray(auditReprobadas) ? auditReprobadas : [];
 
     const usedKeys = new Set();
     const list = baseCatalog.map(item => {
-        const normFull = normalizeReprobadosSubjectKey(item.full);
-        // 1. Verificar si está explícitamente en las reprobadas (prioridad de auditoría 2026)
-        let matchedRep = repMap.get(normFull);
-        if (!matchedRep && repMap.size > 0) {
-            for (const [rk, rv] of repMap.entries()) {
-                if (rk.includes(normFull) || normFull.includes(rk)) {
-                    matchedRep = rv;
-                    break;
-                }
-            }
-        }
+        const matchedRep = repList.find(r => r && r.materia && areReprobadosSubjectsEquivalent(r.materia, item.full, gradeKey));
         if (matchedRep) {
             usedKeys.add(normalizeReprobadosSubjectKey(matchedRep.materia));
             return {
+                order: item.order,
                 materia: item.full,
                 shortLabel: item.short,
                 nota: Number(matchedRep.nota || 0),
@@ -2413,8 +2477,7 @@ function resolveFullSubjectsForStudent(studentObj, gradeKey, auditReprobadas = n
             };
         }
 
-        // 2. Buscar nota real en studentObj.grades / getReportCardSubjectGrades
-        const found = findMatchingGradeEntry(gradesObj, item.full);
+        const found = findMatchingGradeEntry(gradesObj, item.full, gradeKey);
         let notaVal = null;
         if (studentObj && typeof window !== 'undefined' && typeof window.getReportCardSubjectGrades === 'function') {
             const rc = window.getReportCardSubjectGrades(studentObj, found ? found.key : item.full);
@@ -2431,6 +2494,7 @@ function resolveFullSubjectsForStudent(studentObj, gradeKey, auditReprobadas = n
         const isEvaluada = (notaVal !== null && notaVal > 0);
         const isAprobada = isEvaluada ? (notaVal >= 60) : (Array.isArray(auditReprobadas) ? true : false);
         return {
+            order: item.order,
             materia: item.full,
             shortLabel: item.short,
             nota: notaVal,
@@ -2440,20 +2504,21 @@ function resolveFullSubjectsForStudent(studentObj, gradeKey, auditReprobadas = n
         };
     });
 
-    // Agregar materias adicionales personalizadas fuera del catálogo base si existieran en s.grades
+    // Solo agregar materias adicionales válidas del ciclo (nunca materias de otro grado o fantasmas)
     Object.keys(gradesObj).forEach(extraKey => {
         const nk = normalizeReprobadosSubjectKey(extraKey);
-        if (!nk || usedKeys.has(nk)) return;
-        const alreadyInCatalog = list.some(x => {
-            const nx = normalizeReprobadosSubjectKey(x.materia);
-            return nx === nk || nx.includes(nk) || nk.includes(nx);
-        });
+        if (!nk || usedKeys.has(nk) || extraKey.includes('\ufffd')) return;
+        const alreadyInCatalog = list.some(x => areReprobadosSubjectsEquivalent(x.materia, extraKey, gradeKey));
         if (alreadyInCatalog) return;
+        const belongsOtherGrade = ['CUARTO', 'QUINTO', 'SEXTO'].some(gk => gk !== gradeKey && !!findCatalogItemForSubject(extraKey, gk));
+        if (belongsOtherGrade) return;
+
         const arr = gradesObj[extraKey];
         const avg = Array.isArray(arr) ? computeCourseAnnualAverage(arr, extraKey, gradeKey) : null;
         if (avg === null) return;
         const shortWord = extraKey.trim().split(/\s+/).slice(0, 2).map(w => w.slice(0, 6)).join(' ');
         list.push({
+            order: 99,
             materia: extraKey,
             shortLabel: shortWord || extraKey.slice(0, 10),
             nota: avg,
@@ -2466,16 +2531,15 @@ function resolveFullSubjectsForStudent(studentObj, gradeKey, auditReprobadas = n
     return list;
 }
 
-function getAbbreviatedCourseNameForSheet(courseName) {
-    const norm = normalizeReprobadosSubjectKey(courseName);
-    for (const gKey of ['CUARTO', 'QUINTO', 'SEXTO']) {
-        const hit = (REPROBADOS_PENSUM_CATALOG[gKey] || []).find(item => {
-            const ni = normalizeReprobadosSubjectKey(item.full);
-            return ni === norm || ni.includes(norm) || norm.includes(ni);
-        });
-        if (hit) return hit.short;
-    }
-    return String(courseName || '').trim().slice(0, 14);
+function getAbbreviatedCourseNameForSheet(courseName, gradeKey = null) {
+    const hit = findCatalogItemForSubject(courseName, gradeKey);
+    if (hit) return hit.short;
+    return String(courseName || '').trim().slice(0, 16);
+}
+
+function resolveCanonicalSubjectNameForSheet(courseName, gradeKey = null) {
+    const hit = findCatalogItemForSubject(courseName, gradeKey);
+    return hit ? hit.full : String(courseName || '').trim();
 }
 
 /**
@@ -2484,7 +2548,6 @@ function getAbbreviatedCourseNameForSheet(courseName) {
  */
 function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
     if (!courseName) return 'Catedrático Titular';
-    const cNorm = String(courseName).trim().toLowerCase();
     const gNorm = String(gradeKey || '').trim().toLowerCase();
     const sNorm = String(section || '').trim().toUpperCase();
 
@@ -2492,11 +2555,11 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
     if (typeof STATE !== 'undefined' && Array.isArray(STATE.pensum)) {
         const match = STATE.pensum.find(p => {
             if (!p) return false;
-            const pName = String(p.subject || p.name || '').trim().toLowerCase();
+            const pName = p.subject || p.name || '';
             const pGrade = String(p.grade || p.gradeCode || '').trim().toLowerCase();
             const pSec = String(p.section || '').trim().toUpperCase();
-            
-            const matchName = (pName === cNorm || pName.includes(cNorm) || cNorm.includes(pName));
+
+            const matchName = areReprobadosSubjectsEquivalent(pName, courseName, gradeKey);
             let matchGrade = true;
             if (gNorm) {
                 if (gNorm.includes('cuarto') || gNorm.includes('4')) matchGrade = (pGrade.includes('4') || pGrade.includes('cuarto'));
@@ -2505,11 +2568,7 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
             }
             const matchSec = (!pSec || !sNorm || pSec === sNorm || pSec === 'ALL');
             return matchName && matchGrade && matchSec;
-        }) || STATE.pensum.find(p => {
-            if (!p) return false;
-            const pName = String(p.subject || p.name || '').trim().toLowerCase();
-            return pName === cNorm || pName.includes(cNorm) || cNorm.includes(pName);
-        });
+        }) || STATE.pensum.find(p => p && areReprobadosSubjectsEquivalent(p.subject || p.name || '', courseName, gradeKey));
 
         if (match) {
             if (match.teacherName && String(match.teacherName).trim() && !String(match.teacherName).toLowerCase().includes('por asignar')) {
@@ -2528,8 +2587,8 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
             if (!u || (u.role !== 'docente' && u.role !== 'catedratico')) return false;
             const courses = Array.isArray(u.assignedCourses) ? u.assignedCourses : (Array.isArray(u.courses) ? u.courses : []);
             return courses.some(c => {
-                const cStr = typeof c === 'string' ? c.toLowerCase() : String(c.name || c.subject || '').toLowerCase();
-                return cStr === cNorm || cStr.includes(cNorm) || cNorm.includes(cStr);
+                const cStr = typeof c === 'string' ? c : String(c.name || c.subject || '');
+                return areReprobadosSubjectsEquivalent(cStr, courseName, gradeKey);
             });
         });
         if (uMatch && (uMatch.name || uMatch.fullName)) {
@@ -2606,12 +2665,16 @@ function renderReprobadosRecuperacionView() {
             const isProm = (numRep === 0);
             const isCd = (numRep > 0 && numRep <= maxRecup);
             const isSd = (numRep > maxRecup);
-            const repArr = Array.isArray(s.reprobadas) ? s.reprobadas.map(r => ({
-                materia: r.materia,
-                materiaNum: r.materiaNum,
-                nota: Number(r.nota || 0),
-                maestro: r.maestro || 'Catedrático Titular'
-            })) : [];
+            const repArr = Array.isArray(s.reprobadas) ? s.reprobadas.map(r => {
+                const canonMat = resolveCanonicalSubjectNameForSheet(r.materia, gradeStr);
+                const catHit = findCatalogItemForSubject(canonMat, gradeStr);
+                return {
+                    materia: canonMat,
+                    materiaNum: catHit ? catHit.order : Number(r.materiaNum || 99),
+                    nota: Number(r.nota || 0),
+                    maestro: r.maestro || 'Catedrático Titular'
+                };
+            }).sort((a, b) => (a.materiaNum || 99) - (b.materiaNum || 99)) : [];
             const fullHistObj = byCode2026.get(String(s.code || '').trim().toUpperCase()) || null;
             const materiasCompletas = resolveFullSubjectsForStudent(fullHistObj, gradeStr, repArr, '2026');
 
@@ -2688,33 +2751,22 @@ function renderReprobadosRecuperacionView() {
                 return;
             }
 
-            // PROCESAMIENTO DE CURSOS Y PROMEDIOS
-            const gradesObj = s.grades || {};
-            const reprobadas = [];
-            const courseKeys = Object.keys(gradesObj);
-
-            courseKeys.forEach(cName => {
-                const b = gradesObj[cName];
-                if (!Array.isArray(b) || b.length === 0) return;
-
-                const promedioCurso = computeCourseAnnualAverage(b, cName, gKey);
-                if (promedioCurso !== null && promedioCurso < 60) {
-                    const teacher = resolveActiveTeacherForCourse(cName, gKey, cleanSec);
-                    reprobadas.push({
-                        materia: cName,
-                        materiaNum: reprobadas.length + 1,
-                        nota: promedioCurso,
-                        maestro: teacher
-                    });
-                }
-            });
+            // PROCESAMIENTO DE CURSOS Y PROMEDIOS (100% dinámico en orden oficial SIRE desde Firebase RTDB)
+            const materiasCompletas = resolveFullSubjectsForStudent({ ...s, section: cleanSec }, gKey, null, viewingCycle);
+            const reprobadas = materiasCompletas
+                .filter(m => m.evaluada && !m.aprobada)
+                .map((m, rIdx) => ({
+                    materia: m.materia,
+                    materiaNum: m.order || (rIdx + 1),
+                    nota: m.nota,
+                    maestro: m.maestro || resolveActiveTeacherForCourse(m.materia, gKey, cleanSec)
+                }));
 
             const maxRecup = (gKey === 'SEXTO') ? 4 : 3;
             const numRep = reprobadas.length;
             const isProm = (numRep === 0);
             const isCd = (numRep > 0 && numRep <= maxRecup);
             const isSd = (numRep > maxRecup);
-            const materiasCompletas = resolveFullSubjectsForStudent(s, gKey, reprobadas, viewingCycle);
 
             rawStudentsList.push({
                 num: idx + 1,
@@ -2759,6 +2811,9 @@ function renderReprobadosRecuperacionView() {
         });
     });
     const teachersList = Array.from(uniqueTeachersSet).sort();
+
+    // Lista dinámica de secciones presentes en el ciclo (A, B, C, D, E...)
+    const dynamicSections = Array.from(new Set(rawStudentsList.map(s => s && s.section).filter(Boolean))).sort();
 
     // APLICAR FILTROS REACTIVOS
     const currentGrade = window._reprobadosGradeFilter || 'ALL';
@@ -2933,13 +2988,10 @@ function renderReprobadosRecuperacionView() {
                     </select>
                 </div>
                 <div>
-                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Sección:</label>
-                    <select onchange="onReprobadosSectionChange(this.value)" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.8rem; background:#fff; min-width:110px;">
-                        <option value="ALL" ${currentSec === 'ALL' ? 'selected' : ''}>Todas (A-D)</option>
-                        <option value="A" ${currentSec === 'A' ? 'selected' : ''}>Sección A</option>
-                        <option value="B" ${currentSec === 'B' ? 'selected' : ''}>Sección B</option>
-                        <option value="C" ${currentSec === 'C' ? 'selected' : ''}>Sección C</option>
-                        <option value="D" ${currentSec === 'D' ? 'selected' : ''}>Sección D</option>
+                    <label style="font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Sección:</label>
+                    <select onchange="onReprobadosSectionChange(this.value)" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.88rem; background:#fff; min-width:120px;">
+                        <option value="ALL" ${currentSec === 'ALL' ? 'selected' : ''}>Todas (${dynamicSections.length > 0 ? dynamicSections.join(', ') : 'A-Z'})</option>
+                        ${(dynamicSections.length > 0 ? dynamicSections : ['A', 'B', 'C', 'D']).map(sec => `<option value="${escapeHtml(sec)}" ${currentSec === sec ? 'selected' : ''}>Sección ${escapeHtml(sec)}</option>`).join('')}
                     </select>
                 </div>
                 <div>
@@ -2964,7 +3016,7 @@ function renderReprobadosRecuperacionView() {
     if (activeSubView === 'materias') {
         html += `
         <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.95rem; text-align:left;">
                 <thead>
                     <tr style="background:#0369a1; color:#ffffff;">
                         <th style="padding:10px 12px; border:1px solid #0284c7; width:110px;">Grado / Secc.</th>
@@ -3108,7 +3160,7 @@ function renderReprobadosRecuperacionView() {
             </div>
         </div>
         <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.95rem; text-align:left;">
                 <thead>
                     <tr style="background:#dc2626; color:#ffffff;">
                         <th style="padding:9px 10px; border:1px solid #b91c1c; width:35px; text-align:center;">No.</th>
@@ -3181,7 +3233,7 @@ window.switchReprobadosConDerechoLayout = switchReprobadosConDerechoLayout;
 
 function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
     if (!Array.isArray(conDerechoList) || conDerechoList.length === 0) {
-        return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
+        return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; font-size:1rem;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
     }
 
     const gradeOrder = ['CUARTO', 'QUINTO', 'SEXTO'];
@@ -3193,8 +3245,8 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
 
     const isPrint = (mode === 'print');
     const isExcel = (mode === 'excel');
-    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#dbeafe' : '#b45309');
-    const headerFg = (isPrint || isExcel) ? '#0f172a' : '#ffffff';
+    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : '#b45309');
+    const headerFg = isPrint ? '#0f172a' : '#ffffff';
     const borderCss = isPrint || isExcel ? '1px solid #000000' : '1px solid #cbd5e1';
 
     let out = '';
@@ -3202,7 +3254,7 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
         const groupStudents = conDerechoList.filter(s => s.grade === gKey);
         if (groupStudents.length === 0) return;
 
-        // Columnas dinámicas del pensum del grado
+        // Columnas en orden oficial exacto SIRE del grado
         const colDefs = [];
         const seenCol = new Set();
         const baseCat = REPROBADOS_PENSUM_CATALOG[gKey] || [];
@@ -3215,39 +3267,42 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
         });
         groupStudents.forEach(st => {
             (st.materiasCompletas || []).forEach(m => {
-                const nm = normalizeReprobadosSubjectKey(m.materia);
-                if (nm && !seenCol.has(nm)) {
-                    seenCol.add(nm);
-                    colDefs.push({ full: m.materia, short: m.shortLabel || getAbbreviatedCourseNameForSheet(m.materia), norm: nm });
+                const already = colDefs.some(c => areReprobadosSubjectsEquivalent(m.materia, c.full, gKey));
+                if (!already) {
+                    const nm = normalizeReprobadosSubjectKey(m.materia);
+                    if (nm && !seenCol.has(nm)) {
+                        seenCol.add(nm);
+                        colDefs.push({ full: m.materia, short: m.shortLabel || getAbbreviatedCourseNameForSheet(m.materia, gKey), norm: nm });
+                    }
                 }
             });
         });
 
         const numCols = colDefs.length || 9;
-        const perCoursePct = (40 / numCols).toFixed(2);
+        const perCoursePct = (33 / numCols).toFixed(2);
 
         const groupTitleBlock = isExcel
-            ? `<tr style="background:#cbe2f8;"><td colspan="${numCols + 6}" style="font-weight:bold; font-size:11pt; text-align:left; border:${borderCss}; padding:6px;">${gradeLabels[gKey] || gKey} — ${groupStudents.length} Alumno(s) Con Derecho a Recuperación</td></tr>`
-            : `<div style="margin:${out ? '14px' : '4px'} 0 6px 0; padding:5px 10px; background:${isPrint ? '#f1f5f9' : '#fef3c7'}; border:${isPrint ? '1px solid #000' : '1px solid #fcd34d'}; border-left:4px solid ${isPrint ? '#000' : '#d97706'}; font-weight:800; font-size:${isPrint ? '8.5pt' : '0.86rem'}; color:${isPrint ? '#000' : '#92400e'}; display:flex; justify-content:space-between; align-items:center;">
+            ? `<tr style="background:#dbeafe;"><td colspan="${numCols + 6}" style="font-weight:bold; font-size:11.5pt; color:#1e3a8a; text-align:left; border:1pt solid #000000; padding:8px;">${gradeLabels[gKey] || gKey} (${numCols} Asignaturas Oficiales) — ${groupStudents.length} Alumno(s) Con Derecho a Recuperación</td></tr>`
+            : `<div style="margin:${out ? '16px' : '4px'} 0 8px 0; padding:6px 12px; background:${isPrint ? '#f1f5f9' : '#fef3c7'}; border:${isPrint ? '1.5px solid #000' : '1px solid #fcd34d'}; border-left:4px solid ${isPrint ? '#000' : '#d97706'}; font-weight:800; font-size:${isPrint ? '10.5pt' : '1rem'}; color:${isPrint ? '#000' : '#92400e'}; display:flex; justify-content:space-between; align-items:center;">
                 <span>${gradeLabels[gKey] || gKey} (${numCols} Asignaturas Oficiales)</span>
                 <span>${groupStudents.length} Alumno(s)</span>
                </div>`;
 
         const tableStyle = isExcel
-            ? 'width:100%; border-collapse:collapse; font-size:9pt; margin-bottom:14px;'
-            : `width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '7pt' : '0.75rem'};`;
+            ? 'width:100%; border-collapse:collapse; font-size:10.5pt; margin-bottom:16px;'
+            : `width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '9.5pt' : '0.94rem'};`;
 
-        let tHtml = isExcel ? `<table>${groupTitleBlock}` : `${groupTitleBlock}<table style="${tableStyle}">`;
+        let tHtml = isExcel ? `<table style="${tableStyle}">${groupTitleBlock}` : `${groupTitleBlock}<table style="${tableStyle}">`;
         tHtml += `
-            <thead>
+            <thead style="display:table-header-group;">
                 <tr style="background:${headerBg}; color:${headerFg};">
-                    <th style="width:3%; border:${borderCss}; padding:${isPrint ? '3px 2px' : '6px 3px'}; text-align:center;">No.</th>
-                    <th style="width:7.5%; border:${borderCss}; padding:${isPrint ? '3px 2px' : '6px 3px'}; text-align:center;">Código</th>
-                    <th style="width:19%; border:${borderCss}; padding:${isPrint ? '3px 4px' : '6px 5px'}; text-align:left;">Estudiante</th>
-                    <th style="width:3.5%; border:${borderCss}; padding:${isPrint ? '3px 1px' : '6px 2px'}; text-align:center;">Sec</th>
-                    ${colDefs.map(c => `<th title="${escapeHtml(c.full)}" style="width:${perCoursePct}%; border:${borderCss}; padding:${isPrint ? '2px 1px' : '4px 2px'}; text-align:center; font-size:${isPrint ? '6.2pt' : '0.67rem'}; line-height:1.1; word-wrap:break-word;">${escapeHtml(c.short)}</th>`).join('')}
-                    <th style="width:4%; border:${borderCss}; padding:${isPrint ? '3px 1px' : '6px 2px'}; text-align:center;">Rep.</th>
-                    <th style="width:23%; border:${borderCss}; padding:${isPrint ? '3px 4px' : '6px 5px'}; text-align:left;">Nota(s) de Recuperación (Papel)</th>
+                    <th style="width:3%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 4px'}; text-align:center;">No.</th>
+                    <th style="width:7.5%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 4px'}; text-align:center;">Código</th>
+                    <th style="width:18%; border:${borderCss}; padding:${isPrint ? '5px 4px' : '8px 6px'}; text-align:left;">Estudiante</th>
+                    <th style="width:3.5%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 3px'}; text-align:center;">Sec</th>
+                    ${colDefs.map(c => `<th title="${escapeHtml(c.full)}" style="width:${perCoursePct}%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '6px 3px'}; text-align:center; font-size:${isPrint ? '8.2pt' : (isExcel ? '10pt' : '0.84rem')}; line-height:1.15; word-wrap:break-word;">${escapeHtml(c.short)}</th>`).join('')}
+                    <th style="width:3.5%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 3px'}; text-align:center;">Rep.</th>
+                    <th style="width:31.5%; border:${borderCss}; padding:${isPrint ? '5px 5px' : '8px 6px'}; text-align:left;">Nota(s) de Recuperación (Papel)</th>
                 </tr>
             </thead>
             <tbody>
@@ -3259,38 +3314,43 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
             const repItems = Array.isArray(st.reprobadas) ? st.reprobadas : [];
 
             const courseCells = colDefs.map(col => {
-                const matchM = mList.find(m => normalizeReprobadosSubjectKey(m.materia) === col.norm ||
-                    normalizeReprobadosSubjectKey(m.materia).includes(col.norm) || col.norm.includes(normalizeReprobadosSubjectKey(m.materia)));
+                const matchM = mList.find(m => areReprobadosSubjectsEquivalent(m.materia, col.full, gKey));
                 if (!matchM) {
-                    return `<td style="border:${borderCss}; text-align:center; padding:3px 1px; color:#94a3b8;">--</td>`;
+                    return `<td style="border:${borderCss}; text-align:center; padding:${isPrint ? '5px 2px' : '7px 3px'}; color:#94a3b8;">--</td>`;
                 }
                 const notaTxt = (matchM.nota !== null && matchM.nota !== undefined) ? String(matchM.nota) : '--';
                 if (!matchM.aprobada && matchM.evaluada) {
-                    return `<td title="${escapeHtml(matchM.materia)} — Reprobada (${escapeHtml(matchM.maestro || '')})" style="border:${borderCss}; text-align:center; padding:${isPrint ? '2px 1px' : '4px 2px'}; background:#ffe4e6 !important; color:#b91c1c; font-weight:900;">${notaTxt}</td>`;
+                    return `<td title="${escapeHtml(matchM.materia)} — Reprobada (${escapeHtml(matchM.maestro || '')})" style="border:${borderCss}; text-align:center; padding:${isPrint ? '5px 2px' : '7px 3px'}; background:#ffe4e6 !important; color:#b91c1c; font-weight:900;">${notaTxt}</td>`;
                 }
-                return `<td title="${escapeHtml(matchM.materia)}" style="border:${borderCss}; text-align:center; padding:${isPrint ? '2px 1px' : '4px 2px'}; color:${matchM.evaluada ? '#0f172a' : '#64748b'}; font-weight:${matchM.evaluada ? '600' : '400'};">${notaTxt}</td>`;
+                return `<td title="${escapeHtml(matchM.materia)}" style="border:${borderCss}; text-align:center; padding:${isPrint ? '5px 2px' : '7px 3px'}; color:${matchM.evaluada ? '#0f172a' : '#64748b'}; font-weight:${matchM.evaluada ? '600' : '400'};">${notaTxt}</td>`;
             }).join('');
 
             const recupBoxes = isExcel
-                ? repItems.map(r => `${escapeHtml(getAbbreviatedCourseNameForSheet(r.materia))} (${r.nota}): [ _____ ]`).join(' | ')
-                : `<div style="display:flex; flex-direction:column; gap:2px;">
-                    ${repItems.map(r => `
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; font-size:${isPrint ? '6.5pt' : '0.7rem'}; line-height:1.15;">
-                            <span style="font-weight:700; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(getAbbreviatedCourseNameForSheet(r.materia))} <span style="color:#b91c1c;">(${r.nota})</span></span>
-                            <span style="display:inline-block; width:${isPrint ? '34px' : '38px'}; height:${isPrint ? '13px' : '15px'}; border:1px solid #0f172a; background:#ffffff; flex-shrink:0;"></span>
+                ? repItems.map(r => {
+                    const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
+                    return `${escapeHtml(fullRName)} (${r.nota} pts): [ ________ ]`;
+                }).join('<br>')
+                : `<div style="display:flex; flex-direction:column; gap:${isPrint ? '4px' : '5px'};">
+                    ${repItems.map(r => {
+                        const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
+                        return `
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:${isPrint ? '9.5pt' : '0.92rem'}; line-height:1.25;">
+                            <span style="font-weight:700; color:#0f172a; word-wrap:break-word;">${escapeHtml(fullRName)} <span style="color:#b91c1c; font-weight:900;">(${r.nota})</span></span>
+                            <span style="display:inline-block; width:${isPrint ? '62px' : '64px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff; flex-shrink:0;"></span>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                    </div>`;
 
             tHtml += `
-                <tr style="background:${rowBg}; page-break-inside:avoid;">
-                    <td style="border:${borderCss}; text-align:center; font-weight:700; padding:3px 2px;">${idx + 1}</td>
-                    <td style="border:${borderCss}; text-align:center; font-family:monospace; font-weight:800; color:${isPrint ? '#000' : '#0369a1'}; padding:3px 2px; word-break:break-all;">${escapeHtml(st.code)}</td>
-                    <td style="border:${borderCss}; text-align:left; font-weight:700; color:#0f172a; padding:3px 4px; word-wrap:break-word;">${escapeHtml(st.name)}</td>
-                    <td style="border:${borderCss}; text-align:center; font-weight:800; padding:3px 1px;">${escapeHtml(st.section)}</td>
+                <tr style="background:${rowBg}; page-break-inside:avoid; ${isExcel ? 'height:28pt;' : ''}">
+                    <td style="border:${borderCss}; text-align:center; font-weight:700; padding:${isPrint ? '5px 2px' : '7px 4px'};">${idx + 1}</td>
+                    <td style="border:${borderCss}; text-align:center; font-family:monospace; font-weight:800; color:${isPrint ? '#000' : '#0369a1'}; padding:${isPrint ? '5px 2px' : '7px 4px'}; word-break:break-all;">${escapeHtml(st.code)}</td>
+                    <td style="border:${borderCss}; text-align:left; font-weight:700; color:#0f172a; padding:${isPrint ? '5px 4px' : '7px 6px'}; word-wrap:break-word;">${escapeHtml(st.name)}</td>
+                    <td style="border:${borderCss}; text-align:center; font-weight:800; padding:${isPrint ? '5px 2px' : '7px 3px'};">${escapeHtml(st.section)}</td>
                     ${courseCells}
-                    <td style="border:${borderCss}; text-align:center; font-weight:900; color:#92400e; background:#fef3c7 !important; padding:3px 1px;">${st.num_rep}</td>
-                    <td style="border:${borderCss}; text-align:left; padding:3px 4px; vertical-align:middle;">${recupBoxes}</td>
+                    <td style="border:${borderCss}; text-align:center; font-weight:900; color:#92400e; background:#fef3c7 !important; padding:${isPrint ? '5px 2px' : '7px 3px'};">${st.num_rep}</td>
+                    <td style="border:${borderCss}; text-align:left; padding:${isPrint ? '5px 5px' : '7px 6px'}; vertical-align:middle;">${recupBoxes}</td>
                 </tr>
             `;
         });
@@ -3304,27 +3364,27 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
 
 function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
     if (!Array.isArray(conDerechoList) || conDerechoList.length === 0) {
-        return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
+        return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; font-size:1rem;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
     }
 
     const isPrint = (mode === 'print');
     const isExcel = (mode === 'excel');
-    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#dbeafe' : '#d97706');
-    const headerFg = (isPrint || isExcel) ? '#0f172a' : '#ffffff';
+    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : '#d97706');
+    const headerFg = isPrint ? '#0f172a' : '#ffffff';
     const borderCss = isPrint || isExcel ? '1px solid #000000' : '1px solid #cbd5e1';
 
     let html = `
-        <table style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '7.5pt' : (isExcel ? '9pt' : '0.8rem')}; text-align:left;">
-            <thead>
+        <table style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '10pt' : (isExcel ? '10.5pt' : '0.98rem')}; text-align:left;">
+            <thead style="display:table-header-group;">
                 <tr style="background:${headerBg}; color:${headerFg};">
-                    <th style="width:4%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '7px 4px'}; text-align:center;">No.</th>
-                    <th style="width:10%; border:${borderCss}; padding:${isPrint ? '4px 3px' : '7px 5px'}; text-align:center;">Código</th>
-                    <th style="width:22%; border:${borderCss}; padding:${isPrint ? '4px 5px' : '7px 6px'};">Estudiante</th>
-                    <th style="width:8%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '7px 4px'}; text-align:center;">Grado / Rep.</th>
-                    <th style="width:32%; border:${borderCss}; padding:${isPrint ? '4px 5px' : '7px 6px'};">Asignaturas del Pensum y Catedrático</th>
-                    <th style="width:7%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '7px 4px'}; text-align:center;">Prom.</th>
-                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '7px 4px'}; text-align:center;">Estado</th>
-                    <th style="width:8%; border:${borderCss}; padding:${isPrint ? '4px 3px' : '7px 4px'}; text-align:center;">Recup. (Papel)</th>
+                    <th style="width:4%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">No.</th>
+                    <th style="width:10%; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">Código</th>
+                    <th style="width:21%; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Estudiante</th>
+                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Grado / Rep.</th>
+                    <th style="width:31%; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Asignaturas del Pensum y Catedrático</th>
+                    <th style="width:7%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Prom.</th>
+                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Estado</th>
+                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">Recup. (Papel)</th>
                 </tr>
             </thead>
     `;
@@ -3332,7 +3392,7 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
     conDerechoList.forEach((st, idx) => {
         const mList = (Array.isArray(st.materiasCompletas) && st.materiasCompletas.length > 0)
             ? st.materiasCompletas
-            : (st.reprobadas || []).map(r => ({ materia: r.materia, nota: r.nota, aprobada: false, evaluada: true, maestro: r.maestro }));
+            : (st.reprobadas || []).map(r => ({ materia: resolveCanonicalSubjectNameForSheet(r.materia, st.grade), nota: r.nota, aprobada: false, evaluada: true, maestro: r.maestro }));
         const rowSpan = mList.length || 1;
         const baseBg = (idx % 2 === 0) ? '#ffffff' : (isPrint ? '#f8fafc' : '#fffdf7');
 
@@ -3343,29 +3403,29 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
             const notaStr = (m.nota !== null && m.nota !== undefined) ? `${m.nota}` : '--';
             const estadoLabel = isRep ? 'PERDIDA' : (m.evaluada ? 'Aprobada' : 'Sin nota');
             const recupCell = isRep
-                ? (isExcel ? '' : `<span style="display:inline-block; width:44px; height:15px; border:1px solid #0f172a; background:#ffffff;"></span>`)
+                ? (isExcel ? '[ ________ ]' : `<span style="display:inline-block; width:${isPrint ? '64px' : '68px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff;"></span>`)
                 : `<span style="color:#94a3b8;">---</span>`;
 
-            html += `<tr style="${rowHighlight}">`;
+            html += `<tr style="${rowHighlight} ${isExcel ? 'height:24pt;' : ''}">`;
             if (mIdx === 0) {
                 html += `
-                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-weight:700; vertical-align:top; padding:4px 2px; background:${baseBg};">${idx + 1}</td>
-                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-family:monospace; font-weight:800; color:${isPrint ? '#000' : '#0369a1'}; vertical-align:top; padding:4px 3px; background:${baseBg}; word-break:break-all;">${escapeHtml(st.code)}</td>
-                    <td rowspan="${rowSpan}" style="border:${borderCss}; font-weight:800; color:#0f172a; vertical-align:top; padding:4px 5px; background:${baseBg}; word-wrap:break-word;">${escapeHtml(st.name)}</td>
-                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; vertical-align:top; padding:4px 2px; background:${baseBg};">
+                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-weight:700; vertical-align:top; padding:6px 3px; background:${baseBg};">${idx + 1}</td>
+                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-family:monospace; font-weight:800; color:${isPrint ? '#000' : '#0369a1'}; vertical-align:top; padding:6px 4px; background:${baseBg}; word-break:break-all;">${escapeHtml(st.code)}</td>
+                    <td rowspan="${rowSpan}" style="border:${borderCss}; font-weight:800; color:#0f172a; vertical-align:top; padding:6px 6px; background:${baseBg}; word-wrap:break-word;">${escapeHtml(st.name)}</td>
+                    <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; vertical-align:top; padding:6px 3px; background:${baseBg};">
                         <div style="font-weight:800; color:${isPrint ? '#000' : '#0369a1'};">${st.grade.substring(0, 4)} "${escapeHtml(st.section)}"</div>
-                        <div style="margin-top:3px; font-size:${isPrint ? '6.5pt' : '0.72rem'}; font-weight:900; color:#92400e;">(${st.num_rep} rep.)</div>
+                        <div style="margin-top:4px; font-size:${isPrint ? '9pt' : '0.86rem'}; font-weight:900; color:#92400e;">(${st.num_rep} rep.)</div>
                     </td>
                 `;
             }
             html += `
-                <td style="border:${borderCss}; padding:${isPrint ? '2px 5px' : '4px 6px'};">
+                <td style="border:${borderCss}; padding:${isPrint ? '5px 6px' : '7px 8px'};">
                     <span style="font-weight:${isRep ? '800' : '600'}; color:${isRep ? '#991b1b' : '#0f172a'};">${mIdx + 1}. ${escapeHtml(m.materia)}</span>
-                    ${isRep && m.maestro ? `<div style="font-size:${isPrint ? '6.2pt' : '0.7rem'}; color:#475569;">Catedrático: ${escapeHtml(m.maestro)}</div>` : ''}
+                    ${isRep && m.maestro ? `<div style="font-size:${isPrint ? '8.5pt' : '0.86rem'}; color:#475569; margin-top:2px;">Catedrático: ${escapeHtml(m.maestro)}</div>` : ''}
                 </td>
-                <td style="border:${borderCss}; text-align:center; font-weight:${isRep ? '900' : '700'}; color:${isRep ? '#b91c1c' : '#166534'}; padding:2px 3px;">${notaStr}</td>
-                <td style="border:${borderCss}; text-align:center; font-weight:800; font-size:${isPrint ? '6.5pt' : '0.72rem'}; color:${isRep ? '#b91c1c' : '#15803d'}; padding:2px 2px;">${estadoLabel}</td>
-                <td style="border:${borderCss}; text-align:center; padding:2px 3px; background:${isRep ? '#ffffff' : baseBg};">${recupCell}</td>
+                <td style="border:${borderCss}; text-align:center; font-weight:${isRep ? '900' : '700'}; color:${isRep ? '#b91c1c' : '#166534'}; padding:5px 4px;">${notaStr}</td>
+                <td style="border:${borderCss}; text-align:center; font-weight:800; font-size:${isPrint ? '9pt' : '0.88rem'}; color:${isRep ? '#b91c1c' : '#15803d'}; padding:5px 3px;">${estadoLabel}</td>
+                <td style="border:${borderCss}; text-align:center; padding:4px 4px; background:${isRep ? '#ffffff' : baseBg};">${recupCell}</td>
             </tr>`;
         });
         html += `</tbody>`;
@@ -3458,30 +3518,30 @@ function printReprobadosRecuperacionView() {
 
     if (isConDerechoPrint) {
         const conDerechoList = filtered.filter(s => s.isConDerecho);
-        docSubtitle = `LISTADO OFICIAL DE ALUMNOS CON DERECHO A EXÁMENES DE RECUPERACIÓN (${layout === 'vertical' ? 'FORMATO VERTICAL' : 'SÁBANA HORIZONTAL'})`;
+        docSubtitle = 'NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN';
         bodyTableHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'print');
     } else {
         const targetList = (subView === 'sin_derecho') ? filtered.filter(s => s.isSinDerecho) : filtered;
         if (subView === 'sin_derecho') {
-            docSubtitle = 'LISTADO OFICIAL DE ALUMNOS REPROBADOS DEFINITIVOS (SIN DERECHO A RECUPERACIÓN)';
+            docSubtitle = 'LISTADO OFICIAL DE ALUMNOS REPROBADOS DEFINITIVOS';
         }
         bodyTableHtml = `
         <table>
-            <thead>
+            <thead style="display:table-header-group;">
                 <tr>
-                    <th style="width:30px;">No.</th>
-                    <th style="width:75px;">Código</th>
-                    <th>Nombre del Estudiante</th>
-                    <th style="width:40px;">Sexo</th>
-                    <th style="width:80px;">Grado/Secc</th>
-                    <th style="width:60px;">Total Rep.</th>
-                    <th>Materias Reprobadas, Calificación y Catedrático Titular</th>
-                    <th style="width:140px;">Situación de Promoción</th>
+                    <th style="width:4%;">No.</th>
+                    <th style="width:10%;">Código</th>
+                    <th style="width:22%;">Nombre del Estudiante</th>
+                    <th style="width:5%;">Sexo</th>
+                    <th style="width:9%;">Grado/Secc</th>
+                    <th style="width:6%;">Rep.</th>
+                    <th style="width:31%;">Materias Reprobadas, Calificación y Catedrático</th>
+                    <th style="width:13%;">Situación</th>
                 </tr>
             </thead>
             <tbody>
                 ${targetList.map((st, idx) => `
-                    <tr>
+                    <tr style="page-break-inside:avoid;">
                         <td style="text-align:center;">${idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; font-weight:bold;">${st.code}</td>
                         <td style="font-weight:bold;">${escapeHtml(st.name)}</td>
@@ -3489,7 +3549,7 @@ function printReprobadosRecuperacionView() {
                         <td style="text-align:center; font-weight:bold;">${st.grade.substring(0, 4)} "${st.section}"</td>
                         <td style="text-align:center; font-weight:bold;">${st.num_rep}</td>
                         <td>
-                            ${st.reprobadas.map(r => `<div><strong>${escapeHtml(r.materia)}</strong>: ${r.nota} pts (Catedrático: ${escapeHtml(r.maestro)})</div>`).join('')}
+                            ${st.reprobadas.map(r => `<div style="margin-bottom:2px;"><strong>${escapeHtml(resolveCanonicalSubjectNameForSheet(r.materia, st.grade))}</strong>: ${r.nota} pts (${escapeHtml(r.maestro)})</div>`).join('')}
                         </td>
                         <td style="font-weight:bold; text-align:center;">
                             ${st.condicion}
@@ -3517,7 +3577,7 @@ function printReprobadosRecuperacionView() {
     }
     body {
         font-family: Arial, sans-serif;
-        font-size: 8pt;
+        font-size: 10pt;
         color: #000;
         margin: 0;
         padding: 0;
@@ -3525,42 +3585,38 @@ function printReprobadosRecuperacionView() {
     }
     .header {
         text-align: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 6px;
-        margin-bottom: 10px;
+        border-bottom: 1.5px solid #000;
+        padding-bottom: 5px;
+        margin-bottom: 8px;
     }
     .header h1 {
-        font-size: 13pt;
+        font-size: 12pt;
         margin: 0;
         font-weight: 900;
         text-transform: uppercase;
     }
-    .header h2 {
-        font-size: 10pt;
-        margin: 2px 0;
-        font-weight: 700;
-    }
     .header p {
-        font-size: 8.5pt;
+        font-size: 9.5pt;
         margin: 2px 0;
     }
     table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: 12px;
+        font-size: 10pt;
     }
     th, td {
         border: 1px solid #000;
-        padding: 3px 4px;
+        padding: 4px 5px;
         vertical-align: middle;
     }
     th {
-        background-color: #f1f5f9;
+        background-color: #e2e8f0;
         font-weight: bold;
         text-align: center;
     }
     .signatures {
-        margin-top: 28px;
+        margin-top: 26px;
         display: flex;
         justify-content: space-around;
         text-align: center;
@@ -3570,18 +3626,16 @@ function printReprobadosRecuperacionView() {
         width: 40%;
         border-top: 1px solid #000;
         padding-top: 6px;
-        font-size: 8.5pt;
+        font-size: 9.5pt;
         font-weight: bold;
     }
 </style>
 </head>
 <body>
     <div class="header">
-        <p style="font-size:7.5pt; font-weight:bold; letter-spacing:1px; margin-bottom:2px;">REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN</p>
-        <h1>ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h1>
-        <h2>JORNADA VESPERTINA - CÓDIGO MINEDUC: 22-01-0014-46 - JUTIAPA, JUTIAPA</h2>
+        <h1>ESCUELA NACIONAL DE CIENCIAS COMERCIALES — JUTIAPA (CÓD. 22-01-0014-46)</h1>
         <p><strong>${docSubtitle}</strong></p>
-        <p>Ciclo Escolar: <strong>${d.cycle}</strong> ${d.is2026Official ? '(Datos Oficiales Auditoría SIRE)' : '(Registro Dinámico RTDB)'} | Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
+        <p>Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
     </div>
 
     ${bodyTableHtml}
@@ -3659,62 +3713,65 @@ function exportReprobadosRecuperacionExcel() {
 
     if (isConDerechoExcel) {
         const conDerechoList = filtered.filter(s => s.isConDerecho);
-        docSubtitle = `LISTADO OFICIAL CON DERECHO A RECUPERACIÓN (${layout === 'vertical' ? 'FORMATO VERTICAL' : 'SÁBANA HORIZONTAL'}) - CICLO ${d.cycle}`;
+        docSubtitle = `NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN - CICLO ${d.cycle}`;
         bodyExcelHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'excel');
     } else {
         const targetList = (subView === 'sin_derecho') ? filtered.filter(s => s.isSinDerecho) : filtered;
+        if (subView === 'sin_derecho') {
+            docSubtitle = `LISTADO OFICIAL DE ALUMNOS REPROBADOS DEFINITIVOS - CICLO ${d.cycle}`;
+        }
         let rowsHtml = '';
         let counter = 1;
         targetList.forEach(st => {
             if (st.reprobadas.length === 0) {
                 rowsHtml += `
-                    <tr>
-                        <td>${counter++}</td>
-                        <td>${st.code}</td>
-                        <td>${st.name}</td>
-                        <td>${st.genderLabel}</td>
-                        <td>${st.grade}</td>
-                        <td>${st.section}</td>
+                    <tr style="height:24pt;">
+                        <td style="text-align:center;">${counter++}</td>
+                        <td style="text-align:center;">${st.code}</td>
+                        <td>${escapeHtml(st.name)}</td>
+                        <td style="text-align:center;">${st.genderLabel}</td>
+                        <td style="text-align:center;">${st.grade}</td>
+                        <td style="text-align:center;">${st.section}</td>
                         <td>NINGUNA</td>
+                        <td style="text-align:center;">--</td>
                         <td>--</td>
-                        <td>--</td>
-                        <td>${st.condicion}</td>
+                        <td style="text-align:center;">${st.condicion}</td>
                     </tr>
                 `;
             } else {
                 st.reprobadas.forEach(r => {
                     const condClass = st.isConDerecho ? 'cd' : (st.isSinDerecho ? 'sd' : '');
                     rowsHtml += `
-                        <tr>
-                            <td>${counter++}</td>
-                            <td>${st.code}</td>
-                            <td>${st.name}</td>
-                            <td>${st.genderLabel}</td>
-                            <td>${st.grade}</td>
-                            <td>${st.section}</td>
-                            <td>${r.materia}</td>
+                        <tr style="height:24pt;">
+                            <td style="text-align:center;">${counter++}</td>
+                            <td style="text-align:center;">${st.code}</td>
+                            <td>${escapeHtml(st.name)}</td>
+                            <td style="text-align:center;">${st.genderLabel}</td>
+                            <td style="text-align:center;">${st.grade}</td>
+                            <td style="text-align:center;">${st.section}</td>
+                            <td>${escapeHtml(resolveCanonicalSubjectNameForSheet(r.materia, st.grade))}</td>
                             <td style="text-align:center; color:#b91c1c; font-weight:bold;">${r.nota}</td>
-                            <td>${r.maestro}</td>
-                            <td class="${condClass}">${st.condicion}</td>
+                            <td>${escapeHtml(r.maestro)}</td>
+                            <td class="${condClass}" style="text-align:center;">${st.condicion}</td>
                         </tr>
                     `;
                 });
             }
         });
         bodyExcelHtml = `
-        <table>
+        <table style="width:100%; border-collapse:collapse; font-size:10.5pt;">
             <thead>
                 <tr>
-                    <th>No.</th>
-                    <th>Código Personal</th>
-                    <th>Nombre Completo del Estudiante</th>
-                    <th>Género</th>
-                    <th>Grado</th>
-                    <th>Sección</th>
-                    <th>Asignatura Reprobada</th>
-                    <th>Calificación</th>
-                    <th>Catedrático Titular</th>
-                    <th>Situación Final</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">No.</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Código Personal</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Nombre Completo del Estudiante</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Género</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Grado</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Sección</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Asignatura Reprobada</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Calificación</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Catedrático Titular</th>
+                    <th style="background:#1e3a8a; color:#ffffff; padding:8px;">Situación Final</th>
                 </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -3727,27 +3784,27 @@ function exportReprobadosRecuperacionExcel() {
         <meta charset="utf-8">
         <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Recuperación Oficial</x:Name><x:WorksheetOptions><x:DisplayGridlines/><x:FitToPage/><x:Print><x:ValidPrinterInfo/><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print><x:PageSetup><x:Layout x:Orientation="${orientationXml}"/></x:PageSetup></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
         <style>
-            body { font-family: Arial, sans-serif; font-size: 9.5pt; }
-            th { background-color: #dbeafe; color: #0f172a; font-weight: bold; border: 1pt solid #000; text-align: center; }
-            td { border: 0.5pt solid #000; vertical-align: middle; }
+            body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #0f172a; }
+            th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; border: 1pt solid #000; text-align: center; font-size: 10.5pt; padding: 7px 5px; }
+            td { border: 0.5pt solid #000; vertical-align: middle; font-size: 10.5pt; padding: 6px 5px; }
             .cd { background-color: #fef3c7; color: #92400e; font-weight: bold; }
             .sd { background-color: #fee2e2; color: #b91c1c; font-weight: bold; }
         </style>
     </head>
     <body>
-        <table style="border-collapse:collapse; width:100%; margin-bottom:10px;">
-            <tr><td colspan="${headerColspan}" style="font-size:9pt; font-weight:bold; text-align:center; border:none;">REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN</td></tr>
-            <tr><td colspan="${headerColspan}" style="font-size:14pt; font-weight:bold; text-align:center; border:none;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</td></tr>
-            <tr><td colspan="${headerColspan}" style="font-size:10pt; font-weight:bold; text-align:center; border:none;">JORNADA VESPERTINA - CÓDIGO MINEDUC: 22-01-0014-46 - JUTIAPA, JUTIAPA</td></tr>
-            <tr><td colspan="${headerColspan}" style="font-size:11pt; font-weight:bold; text-align:center; border:none;">${docSubtitle}</td></tr>
-            <tr><td colspan="${headerColspan}" style="font-size:9pt; text-align:right; border:none;">Emisión: ${new Date().toLocaleDateString('es-GT')}</td></tr>
+        <table style="border-collapse:collapse; width:100%; margin-bottom:12px;">
+            <tr><td colspan="${headerColspan}" style="font-size:10pt; font-weight:bold; text-align:center; border:none; color:#1e3a8a;">REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN</td></tr>
+            <tr><td colspan="${headerColspan}" style="font-size:15pt; font-weight:bold; text-align:center; border:none; color:#0f172a;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</td></tr>
+            <tr><td colspan="${headerColspan}" style="font-size:10.5pt; font-weight:bold; text-align:center; border:none; color:#334155;">JORNADA VESPERTINA - CÓDIGO MINEDUC: 22-01-0014-46 - JUTIAPA, JUTIAPA</td></tr>
+            <tr><td colspan="${headerColspan}" style="font-size:12pt; font-weight:bold; text-align:center; border:none; color:#1e3a8a; padding-top:4px;">${docSubtitle}</td></tr>
+            <tr><td colspan="${headerColspan}" style="font-size:10pt; text-align:right; border:none; border-bottom:2pt solid #1e3a8a; padding-bottom:6px;">Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</td></tr>
         </table>
         ${bodyExcelHtml}
-        <table style="border-collapse:collapse; width:100%; margin-top:24px;">
-            <tr><td colspan="${headerColspan}" style="border:none; height:24px;"></td></tr>
+        <table style="border-collapse:collapse; width:100%; margin-top:28px;">
+            <tr><td colspan="${headerColspan}" style="border:none; height:28px;"></td></tr>
             <tr>
-                <td colspan="${Math.floor(headerColspan / 2)}" style="border:none; text-align:center; font-weight:bold;">____________________________________________________<br>Licda. Mirza Elizabeth Aragón Polanco de Hernández<br>Directora</td>
-                <td colspan="${Math.ceil(headerColspan / 2)}" style="border:none; text-align:center; font-weight:bold;">____________________________________________________<br>Comisión de Evaluación del Rendimiento Escolar<br>Claustro de Catedráticos</td>
+                <td colspan="${Math.floor(headerColspan / 2)}" style="border:none; text-align:center; font-weight:bold; font-size:10.5pt;">____________________________________________________<br>Licda. Mirza Elizabeth Aragón Polanco de Hernández<br>Directora</td>
+                <td colspan="${Math.ceil(headerColspan / 2)}" style="border:none; text-align:center; font-weight:bold; font-size:10.5pt;">____________________________________________________<br>Comisión de Evaluación del Rendimiento Escolar<br>Claustro de Catedráticos</td>
             </tr>
         </table>
     </body>

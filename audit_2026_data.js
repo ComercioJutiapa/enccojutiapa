@@ -2913,13 +2913,13 @@
         "maestro": "NEHEMIAS YALIL  SALGUERO SAGASTUME"
       },
       {
-        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
+        "materia": "INGLÉS COMERCIAL II",
         "materiaNum": 3,
         "nota": 0,
         "maestro": "MILVIA ARACELY  JACOBO ESCOBAR"
       },
       {
-        "materia": "INGLÉS COMERCIAL II",
+        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
         "materiaNum": 4,
         "nota": 0,
         "maestro": "SANDRA PAOLA  BERNAL YANES"
@@ -3450,7 +3450,7 @@
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
       },
       {
-        "materia": "INGLÉS COMERCIAL II",
+        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
         "materiaNum": 4,
         "nota": 56,
         "maestro": "LILIAN   ALAS GRIJALVA"
@@ -4383,7 +4383,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "MATEMÁTICA FINANCIERA",
+        "materia": "AUDITORÍA",
         "materiaNum": 7,
         "nota": 58,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -4401,7 +4401,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "MATEMÁTICA FINANCIERA",
+        "materia": "AUDITORÍA",
         "materiaNum": 7,
         "nota": 56,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -4452,7 +4452,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "MATEMÁTICA FINANCIERA",
+        "materia": "AUDITORÍA",
         "materiaNum": 7,
         "nota": 56,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -5119,7 +5119,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "AUDITORÍA",
+        "materia": "DERECHO MERCANTIL Y NOCIONES DE DERECHO LABORAL",
         "materiaNum": 8,
         "nota": 50,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -5192,7 +5192,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "AUDITORÍA",
+        "materia": "DERECHO MERCANTIL Y NOCIONES DE DERECHO LABORAL",
         "materiaNum": 8,
         "nota": 53,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -5276,7 +5276,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "AUDITORÍA",
+        "materia": "DERECHO MERCANTIL Y NOCIONES DE DERECHO LABORAL",
         "materiaNum": 8,
         "nota": 56,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -5437,7 +5437,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "AUDITORÍA",
+        "materia": "DERECHO MERCANTIL Y NOCIONES DE DERECHO LABORAL",
         "materiaNum": 8,
         "nota": 52,
         "maestro": "WILDER PORFIRIO  PÉREZ LÓPEZ"
@@ -5620,7 +5620,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "AUDITORÍA",
+        "materia": "DERECHO MERCANTIL Y NOCIONES DE DERECHO LABORAL",
         "materiaNum": 8,
         "nota": 51,
         "maestro": "WILDER PORFIRIO  PÉREZ LÓPEZ"
@@ -5836,7 +5836,7 @@
     "num_rep": 1,
     "reprobadas": [
       {
-        "materia": "INGLÉS COMERCIAL II",
+        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
         "materiaNum": 4,
         "nota": 57,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"
@@ -6099,13 +6099,13 @@
         "maestro": "HECTOR NOÉ  HERNÁNDEZ LINARES"
       },
       {
-        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
+        "materia": "INGLÉS COMERCIAL II",
         "materiaNum": 3,
         "nota": 0,
         "maestro": "MILVIA ARACELY  JACOBO ESCOBAR"
       },
       {
-        "materia": "INGLÉS COMERCIAL II",
+        "materia": "LEGISLACIÓN FISCAL Y ADUANAL",
         "materiaNum": 4,
         "nota": 0,
         "maestro": "ELDA ARGENTINA  LÓPEZ MONZÓN"

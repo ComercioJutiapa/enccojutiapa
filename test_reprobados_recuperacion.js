@@ -277,6 +277,54 @@ assert.strictEqual(window._lastReprobadosReportData.cycle, '2028');
 assert(!window._lastReprobadosReportData.students.some(s => s.code === 'GRAD27'), "Los egresados nunca deben aparecer en 2028 ni ciclos futuros");
 console.log("✓ Ciclo futuro 2028 validado dinámicamente sin egresados.");
 
+// 8. Validación de orden exacto SIRE, corrección de nombres 2026, encabezados limpios, letra grande y formato Excel institucional
+console.log("\n[TEST 7] Verificando orden SIRE, corrección de materias 2026, impresión limpia/legible y Excel institucional...");
+global.STATE = {
+    viewingHistoricalCycle: '2026',
+    isHistoricalReadOnlyMode: true,
+    students: [],
+    users: [],
+    pensum: []
+};
+window.switchReprobadosSubView('con_derecho');
+window.switchReprobadosConDerechoLayout('horizontal');
+const d26 = window._lastReprobadosReportData;
+const chkAuditoria = ['F737WSW', 'E265CMG', 'E749SHG'];
+chkAuditoria.forEach(c => {
+    const st = d26.students.find(x => x.code === c);
+    assert(st && st.reprobadas.some(r => r.materia === 'Auditoría'), `${c} debe recuperar Auditoría, nunca Matemática Financiera`);
+    assert(!st.reprobadas.some(r => r.materia.toUpperCase().includes('FINANCIERA')), `${c} no debe contener Matemática Financiera`);
+});
+['C318SQK', 'E672PGQ', 'F269NUN', 'D326DMZ', 'G527TFX'].forEach(c => {
+    const st = d26.students.find(x => x.code === c);
+    assert(st && st.reprobadas.some(r => r.materia === 'Derecho Mercantil y Nociones de Derecho Laboral'), `${c} debe recuperar Derecho Mercantil y Nociones de Derecho Laboral`);
+});
+['G827YJS', 'F057WQZ'].forEach(c => {
+    const st = d26.students.find(x => x.code === c);
+    assert(st && st.reprobadas.some(r => r.materia === 'Legislación Fiscal y Aduanal'), `${c} debe recuperar Legislación Fiscal y Aduanal`);
+});
+
+window.printReprobadosRecuperacionView();
+const pHtml = window._lastReprobadosPrintHtml;
+assert(!pHtml.toUpperCase().includes('SÁBANA HORIZONTAL'), "La impresión directa no debe contener '(SÁBANA HORIZONTAL)'");
+assert(!pHtml.toUpperCase().includes('AUDITORÍA SIRE'), "La impresión directa no debe incluir 'Auditoría SIRE'");
+assert(pHtml.includes('font-size:9.5pt') || pHtml.includes('font-size: 10pt'), "La impresión debe usar letra ampliada legible (9.5pt - 10pt)");
+assert(pHtml.includes('width:62px; height:22px'), "Las casillas de nota en papel deben tener tamaño amplio (62x22px)");
+
+window.exportReprobadosRecuperacionExcel();
+const xHtml = window._lastReprobadosExcelHtml;
+assert(!xHtml.toUpperCase().includes('SÁBANA HORIZONTAL'), "El Excel no debe contener '(SÁBANA HORIZONTAL)'");
+assert(xHtml.includes('REPÚBLICA DE GUATEMALA - MINISTERIO DE EDUCACIÓN'), "El Excel debe incluir membrete oficial institucional");
+assert(xHtml.includes('font-size: 10.5pt') || xHtml.includes('font-size:10.5pt'), "El Excel debe usar letra amplia institucional (10.5pt)");
+
+// Verificar orden exacto SIRE en tabla renderizada de 4to (Cont. Soc. antes de Mat. Com. y Comp. I al final)
+const screenHtml = mockDomElements['gradeStatsDocumentContainer'].innerHTML;
+const idxSoc = screenHtml.indexOf('Contabilidad de Sociedades');
+const idxMat = screenHtml.indexOf('Matemática Comercial');
+const idxComp1 = screenHtml.indexOf('Computación I');
+assert(idxSoc > 0 && idxMat > idxSoc && idxComp1 > idxMat, "Las asignaturas deben seguir el orden exacto de SIRE");
+console.log("✓ Orden SIRE, materias corregidas, encabezados limpios, letra ampliada y Excel institucional validados.");
+
 console.log("\n========================================================");
 console.log("✅ TODAS LAS PRUEBAS DEL MÓDULO REPROBADOS PASARON CON ÉXITO");
 console.log("========================================================\n");
