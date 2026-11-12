@@ -2158,6 +2158,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (STATE.schoolHeader && Object.keys(STATE.schoolHeader).length > 0) cleanPayload.schoolHeader = STATE.schoolHeader;
     if (STATE.exoneraciones && typeof STATE.exoneraciones === 'object') cleanPayload.exoneraciones = STATE.exoneraciones;
     if (STATE.calificaciones && typeof STATE.calificaciones === 'object' && Object.keys(STATE.calificaciones).length > 0) cleanPayload.calificaciones = STATE.calificaciones;
+    if (STATE.recuperaciones && typeof STATE.recuperaciones === 'object' && Object.keys(STATE.recuperaciones).length > 0) cleanPayload.recuperaciones = STATE.recuperaciones;
 
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
         updateDbSyncStatus("disconnected", "⚠️ Sin conexión a Internet");
@@ -2231,6 +2232,15 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
                         headers: headers,
                         body: JSON.stringify(cleanPayload.calificaciones)
                     }).catch(e => console.warn(`Aviso al sincronizar calificaciones:`, e))
+                );
+            }
+            if (cleanPayload.recuperaciones !== undefined) {
+                syncPromises.push(
+                    fetch(`${firebaseUrl}/encc_school_state/recuperaciones.json`, {
+                        method: "PATCH",
+                        headers: headers,
+                        body: JSON.stringify(cleanPayload.recuperaciones)
+                    }).catch(e => console.warn(`Aviso al sincronizar recuperaciones:`, e))
                 );
             }
             await Promise.all(syncPromises);
@@ -5074,7 +5084,7 @@ async function pullStateFromFirebaseCloud(force = false) {
 
     try {
         const _t = Date.now();
-        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes] = await Promise.all([
+        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes] = await Promise.all([
             fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/students.json?t=${_t}`).catch(() => null),
@@ -5084,7 +5094,8 @@ async function pullStateFromFirebaseCloud(force = false) {
             fetch(`${firebaseUrl}/encc_school_state/schoolHeader.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/activeCycle.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/cycles.json?t=${_t}`).catch(() => null),
-            fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${_t}`).catch(() => null)
+            fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/recuperaciones.json?t=${_t}`).catch(() => null)
         ]);
 
         const cloudState = {};
@@ -5127,6 +5138,10 @@ async function pullStateFromFirebaseCloud(force = false) {
         if (exonRes && exonRes.ok) {
             const ex = await exonRes.json();
             if (ex && typeof ex === 'object') cloudState.exoneraciones = ex;
+        }
+        if (recupRes && recupRes.ok) {
+            const rc = await recupRes.json();
+            if (rc && typeof rc === 'object') cloudState.recuperaciones = rc;
         }
 
         if (cloudState.students || cloudState.users || cloudState.pensum) {
@@ -8646,6 +8661,7 @@ function getInitialData() {
         studentPermissions: [],
         attendancePermissionsMeta: {},
         attendanceRecords: {},
+        recuperaciones: {},
         courseBitacora: [],
         dismissedAlerts: {},
         schoolHeader: {
@@ -11804,6 +11820,21 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
         if (STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
             renderExoneracionesLogView();
+        }
+    }
+
+    // 5d. Recuperaciones Multi-Ciclo (Aisladas en nodo propio, sin alterar notas ordinarias)
+    if (!isHistoryActive && incomingState.recuperaciones && typeof incomingState.recuperaciones === 'object') {
+        const cleanRecups = {};
+        Object.keys(incomingState.recuperaciones).forEach(stuCode => {
+            const stuMap = incomingState.recuperaciones[stuCode];
+            if (stuMap && typeof stuMap === 'object' && Object.keys(stuMap).length > 0) {
+                cleanRecups[stuCode] = JSON.parse(JSON.stringify(stuMap));
+            }
+        });
+        STATE.recuperaciones = cleanRecups;
+        if (window._currentGradeStatsActiveTab === 'reprobados' && typeof window.renderReprobadosRecuperacionView === 'function') {
+            window.renderReprobadosRecuperacionView();
         }
     }
 

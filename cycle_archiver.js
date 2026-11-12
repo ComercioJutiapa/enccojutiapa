@@ -156,6 +156,7 @@
                 const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
                 const exoneraciones = (window.STATE && Array.isArray(window.STATE.academicExonerations)) ? window.STATE.academicExonerations : [];
                 const exoneracionesMap = (window.STATE && window.STATE.exoneraciones && typeof window.STATE.exoneraciones === 'object') ? window.STATE.exoneraciones : {};
+                const recuperaciones = (window.STATE && window.STATE.recuperaciones && typeof window.STATE.recuperaciones === 'object') ? window.STATE.recuperaciones : {};
                 const studentAnnotations = (window.STATE && Array.isArray(window.STATE.studentAnnotations)) ? window.STATE.studentAnnotations : [];
                 const calificaciones = (window.STATE && window.STATE.calificaciones && typeof window.STATE.calificaciones === 'object') ? window.STATE.calificaciones : {};
                 const gradingConfigs = (window.STATE && window.STATE.gradingConfigs && typeof window.STATE.gradingConfigs === 'object') ? window.STATE.gradingConfigs : {};
@@ -184,6 +185,7 @@
                     gradesSnapshot: JSON.parse(JSON.stringify(gradesList)),
                     exoneracionesSnapshot: JSON.parse(JSON.stringify(exoneraciones)),
                     exoneracionesMapSnapshot: JSON.parse(JSON.stringify(exoneracionesMap)),
+                    recuperacionesSnapshot: JSON.parse(JSON.stringify(recuperaciones)),
                     annotationsSnapshot: JSON.parse(JSON.stringify(studentAnnotations)),
                     calificacionesSnapshot: JSON.parse(JSON.stringify(calificaciones)),
                     gradingConfigsSnapshot: JSON.parse(JSON.stringify(gradingConfigs)),
@@ -301,6 +303,93 @@
         },
 
         /**
+         * Evalúa automáticamente la promoción de un estudiante considerando materias reprobadas
+         * y sus calificaciones en 1ª/2ª oportunidad de recuperación (umbral >= 60).
+         */
+        evaluateStudentPromotionWithRecuperaciones(st, prevGrade, cycle) {
+            const gradesMap = (st && st.grades && typeof st.grades === 'object') ? st.grades : {};
+            const failedCourses = [];
+            Object.keys(gradesMap).forEach(subjName => {
+                const raw = gradesMap[subjName];
+                let nums = [];
+                if (Array.isArray(raw)) {
+                    nums = raw.map(v => Number(v)).filter(v => Number.isFinite(v));
+                } else if (raw && typeof raw === 'object') {
+                    nums = ['b1', 'b2', 'b3', 'b4'].map(k => Number(raw[k])).filter(v => Number.isFinite(v));
+                }
+                // Ignorar cursos sin ninguna nota > 0 (alumnos sin evaluar / estructura vacía)
+                if (nums.length === 0 || nums.every(v => v === 0)) return;
+                const avg = Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
+                if (avg < 60) {
+                    failedCourses.push({ materia: subjName, nota: avg });
+                }
+            });
+
+            if (failedCourses.length === 0) {
+                return { shouldPromote: true, statusLabel: 'Promovido' };
+            }
+
+            const grUpper = String(prevGrade || (st && (st.grade || st.gradeCode || st.gradeLabel)) || '').toUpperCase();
+            const gKey = (grUpper.includes('6') || grUpper.includes('SEXTO'))
+                ? 'SEXTO'
+                : ((grUpper.includes('5') || grUpper.includes('QUINTO')) ? 'QUINTO' : 'CUARTO');
+            const maxRecup = (gKey === 'SEXTO') ? 4 : 3;
+
+            if (failedCourses.length > maxRecup) {
+                return { shouldPromote: false, statusLabel: 'Reprobado Definitivo' };
+            }
+
+            const studentCode = String((st && (st.code || st.studentCode || st.personalCode || st.cui)) || '').trim().toUpperCase();
+            if (typeof window !== 'undefined' && typeof window.evaluateStudentPostRecovery === 'function') {
+                const post = window.evaluateStudentPostRecovery({
+                    code: studentCode,
+                    grade: gKey,
+                    isConDerecho: true,
+                    reprobadas: failedCourses
+                }, cycle);
+                if (post && post.isPromovidoRecup) {
+                    return { shouldPromote: true, statusLabel: 'Promovido en Recuperación' };
+                }
+                if (post && post.isReprobadoRecup) {
+                    return { shouldPromote: false, statusLabel: 'Reprobado Post-Recuperación' };
+                }
+                return { shouldPromote: false, statusLabel: 'Pendiente Recuperación' };
+            }
+
+            // Respaldo autónomo si grade_stats.js no está cargado en el entorno actual
+            const stState = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+            const recRoot = (stState.recuperaciones && typeof stState.recuperaciones === 'object') ? stState.recuperaciones : {};
+            const stuRecs = recRoot[studentCode] || recRoot[studentCode.toLowerCase()] || null;
+            if (!stuRecs || typeof stuRecs !== 'object') {
+                return { shouldPromote: false, statusLabel: 'Pendiente Recuperación' };
+            }
+
+            let aprobadas = 0;
+            let perdidasDef = 0;
+            failedCourses.forEach(fc => {
+                const normSlugLower = String(fc.materia || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                const entry = stuRecs[normSlugLower] || stuRecs[normSlugLower.toUpperCase()] || Object.values(stuRecs).find(e => e && String(e.materia || '').toUpperCase().trim() === String(fc.materia || '').toUpperCase().trim()) || null;
+                if (entry) {
+                    const o1 = (entry.opp1 !== null && entry.opp1 !== undefined && entry.opp1 !== '') ? Number(entry.opp1) : null;
+                    const o2 = (entry.opp2 !== null && entry.opp2 !== undefined && entry.opp2 !== '') ? Number(entry.opp2) : null;
+                    const fin = (o1 !== null && o1 >= 60) ? o1 : (o2 !== null ? Math.max(o1 || 0, o2) : o1);
+                    if (fin !== null) {
+                        if (fin >= 60) aprobadas++;
+                        else if (o2 !== null || (o1 !== null && o1 < 60 && o2 !== null)) perdidasDef++;
+                    }
+                }
+            });
+
+            if (aprobadas === failedCourses.length) {
+                return { shouldPromote: true, statusLabel: 'Promovido en Recuperación' };
+            }
+            if (perdidasDef > 0 && (aprobadas + perdidasDef === failedCourses.length)) {
+                return { shouldPromote: false, statusLabel: 'Reprobado Post-Recuperación' };
+            }
+            return { shouldPromote: false, statusLabel: 'Pendiente Recuperación' };
+        },
+
+        /**
          * Apertura un nuevo ciclo lectivo (ej. 2027), archivando el ciclo previo y limpiando el estado activo (< 1 MB)
          */
         async openNewAcademicCycle(newCycleYear, options = {}) {
@@ -387,20 +476,28 @@
                     let targetGradeInput = prevGrade;
                     let targetSectionInput = prevSection;
                     let wasPromoted = false;
+                    let computedPromoStatus = '';
 
                     if (override) {
                         wasPromoted = !!override.shouldPromote;
+                        computedPromoStatus = override.academicPromotionStatus || '';
                         targetGradeInput = override.targetGrade || (wasPromoted && typeof window.getNextGradeLevel === 'function' ? window.getNextGradeLevel(prevGrade) : prevGrade);
                         targetSectionInput = override.targetSection || prevSection;
                     } else if (promoteStudents) {
-                        wasPromoted = true;
-                        const rawUpper = String(prevGrade || prevSection).toUpperCase();
-                        if (rawUpper.includes('4') || rawUpper.includes('CUARTO')) {
-                            targetGradeInput = '5to Perito Contador';
-                        } else if (rawUpper.includes('5') || rawUpper.includes('QUINTO')) {
-                            targetGradeInput = '6to Perito Contador';
-                        } else if (rawUpper.includes('6') || rawUpper.includes('SEXTO')) {
-                            targetGradeInput = 'Graduando / Egresado';
+                        const evalRecup = this.evaluateStudentPromotionWithRecuperaciones(st, prevGrade, currentActiveCycle);
+                        wasPromoted = evalRecup.shouldPromote;
+                        computedPromoStatus = evalRecup.statusLabel || '';
+                        if (wasPromoted) {
+                            const rawUpper = String(prevGrade || prevSection).toUpperCase();
+                            if (rawUpper.includes('4') || rawUpper.includes('CUARTO')) {
+                                targetGradeInput = '5to Perito Contador';
+                            } else if (rawUpper.includes('5') || rawUpper.includes('QUINTO')) {
+                                targetGradeInput = '6to Perito Contador';
+                            } else if (rawUpper.includes('6') || rawUpper.includes('SEXTO')) {
+                                targetGradeInput = 'Graduando / Egresado';
+                            }
+                        } else {
+                            targetGradeInput = prevGrade;
                         }
                     }
 
@@ -433,10 +530,10 @@
                         cloned.statusSire = 'INSCRITO';
                         cloned.active = true;
                         if (wasPromoted) {
-                            cloned.academicPromotionStatus = 'Promovido';
+                            cloned.academicPromotionStatus = computedPromoStatus || 'Promovido';
                             promotedCount++;
                         } else {
-                            cloned.academicPromotionStatus = (override && override.academicPromotionStatus) || 'Pendiente Recuperación';
+                            cloned.academicPromotionStatus = computedPromoStatus || 'Pendiente Recuperación';
                             retainedCount++;
                         }
 
@@ -456,18 +553,34 @@
                     return cloned;
                 }).filter(Boolean);
 
-                // Resguardar cohorte de egresados del ciclo que cierra en memoria y en /encc_school_state/historico/{currentActiveCycle}/egresadosSnapshot.json
+                // Resguardar cohorte de egresados y recuperaciones del ciclo que cierra en memoria y en /encc_school_state/historico/{currentActiveCycle}/
+                const closingRecuperaciones = (window.STATE && window.STATE.recuperaciones && typeof window.STATE.recuperaciones === 'object')
+                    ? JSON.parse(JSON.stringify(window.STATE.recuperaciones))
+                    : {};
                 if (window.STATE) {
                     if (!window.STATE.graduatedStudentsByCycle) window.STATE.graduatedStudentsByCycle = {};
                     window.STATE.graduatedStudentsByCycle[currentActiveCycle] = graduatedCohort;
+                    if (!window.STATE.recuperacionesByCycle || typeof window.STATE.recuperacionesByCycle !== 'object') {
+                        window.STATE.recuperacionesByCycle = {};
+                    }
+                    window.STATE.recuperacionesByCycle[currentActiveCycle] = closingRecuperaciones;
                 }
-                if (graduatedCohort.length > 0 && typeof fetch === 'function') {
+                if (typeof fetch === 'function') {
                     const fbUrl = this.getFirebaseUrl();
-                    fetch(`${fbUrl}/encc_school_state/historico/${currentActiveCycle}/egresadosSnapshot.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(graduatedCohort)
-                    }).catch(() => {});
+                    if (graduatedCohort.length > 0) {
+                        fetch(`${fbUrl}/encc_school_state/historico/${currentActiveCycle}/egresadosSnapshot.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(graduatedCohort)
+                        }).catch(() => {});
+                    }
+                    if (Object.keys(closingRecuperaciones).length > 0) {
+                        fetch(`${fbUrl}/encc_school_state/historico/${currentActiveCycle}/recuperacionesSnapshot.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(closingRecuperaciones)
+                        }).catch(() => {});
+                    }
                 }
 
                 // 3. Resetear registros temporales y transaccionales del año anterior preservando la bitácora acumulativa y asignaciones docentes
@@ -492,6 +605,9 @@
                     window.STATE.announcements = [];
                     window.STATE.academicExonerations = [];
                     window.STATE.exoneraciones = {};
+                    window.STATE.recuperaciones = {};
+                    if (window._enccoRecupHydratedCycles) delete window._enccoRecupHydratedCycles[targetNewCycle];
+                    if (window._enccoRecupFetchingCycles) delete window._enccoRecupFetchingCycles[targetNewCycle];
                     window.STATE.calificaciones = {};
                     window.STATE.gradingConfigs = {};
                     window.STATE.dismissedAlerts = {};
@@ -575,11 +691,20 @@
                     EnccoCloudSync.syncNode('students', window.STATE.students);
                     EnccoCloudSync.syncNode('pensum', window.STATE.pensum);
                     EnccoCloudSync.syncNode('calificaciones', {});
+                    EnccoCloudSync.syncNode('recuperaciones', {});
                     EnccoCloudSync.syncNode('gradingConfigs', {});
                     EnccoCloudSync.syncNode('academicExonerations', []);
                     EnccoCloudSync.syncNode('studentPermissions', []);
                     EnccoCloudSync.syncNode('disciplineReports', []);
                     EnccoCloudSync.syncNode('config', window.STATE.config);
+                }
+                if (typeof fetch === 'function') {
+                    const fbUrl = this.getFirebaseUrl();
+                    fetch(`${fbUrl}/encc_school_state/recuperaciones.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    }).catch(() => {});
                 }
 
                 // 5. Actualizar la interfaz de usuario en tiempo real
@@ -724,6 +849,7 @@
                         gradingConfigs: JSON.parse(JSON.stringify(window.STATE.gradingConfigs || {})),
                         academicExonerations: JSON.parse(JSON.stringify(window.STATE.academicExonerations || [])),
                         exoneraciones: JSON.parse(JSON.stringify(window.STATE.exoneraciones || {})),
+                        recuperaciones: JSON.parse(JSON.stringify(window.STATE.recuperaciones || {})),
                         config: window.STATE.config ? JSON.parse(JSON.stringify(window.STATE.config)) : {}
                     };
                     try {
@@ -743,6 +869,7 @@
                 const histGradingConfigs = archivedData.gradingConfigsSnapshot || archivedData.gradingConfigs || {};
                 const histExoneraciones = archivedData.exoneracionesSnapshot || archivedData.academicExonerations || [];
                 const histExoneracionesMap = archivedData.exoneracionesMapSnapshot || archivedData.exoneraciones || {};
+                const histRecuperaciones = archivedData.recuperacionesSnapshot || archivedData.recuperaciones || {};
 
                 window.STATE.isHistoricalReadOnlyMode = true;
                 window.STATE.historicalViewingCycle = targetCycle;
@@ -764,6 +891,11 @@
                 window.STATE.gradingConfigs = JSON.parse(JSON.stringify(histGradingConfigs));
                 window.STATE.academicExonerations = JSON.parse(JSON.stringify(histExoneraciones));
                 window.STATE.exoneraciones = JSON.parse(JSON.stringify(histExoneracionesMap));
+                window.STATE.recuperaciones = JSON.parse(JSON.stringify(histRecuperaciones));
+                if (!window.STATE.recuperacionesByCycle || typeof window.STATE.recuperacionesByCycle !== 'object') {
+                    window.STATE.recuperacionesByCycle = {};
+                }
+                window.STATE.recuperacionesByCycle[targetCycle] = JSON.parse(JSON.stringify(histRecuperaciones));
                 if (histPensum.length > 0) window.STATE.pensum = JSON.parse(JSON.stringify(histPensum));
                 if (typeof window.normalizeSchoolAcademicData === 'function') {
                     window.normalizeSchoolAcademicData(window.STATE);
@@ -826,6 +958,7 @@
                 window.STATE.gradingConfigs = restoredState.gradingConfigs || {};
                 window.STATE.academicExonerations = restoredState.academicExonerations || [];
                 window.STATE.exoneraciones = restoredState.exoneraciones || {};
+                window.STATE.recuperaciones = restoredState.recuperaciones || {};
                 if (restoredState.config) {
                     window.STATE.config = restoredState.config;
                 }
@@ -836,13 +969,15 @@
                 Promise.all([
                     fetch(`${fbUrl}/encc_school_state/students.json`).then(r => r.json()).catch(() => null),
                     fetch(`${fbUrl}/encc_school_state/calificaciones.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${fbUrl}/encc_school_state/attendanceRecords.json`).then(r => r.json()).catch(() => null)
-                ]).then(([cloudStudents, cloudCalif, cloudAtt]) => {
+                    fetch(`${fbUrl}/encc_school_state/attendanceRecords.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${fbUrl}/encc_school_state/recuperaciones.json`).then(r => r.json()).catch(() => null)
+                ]).then(([cloudStudents, cloudCalif, cloudAtt, cloudRecup]) => {
                     if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
                         window.STATE.students = cloudStudents;
                     }
                     window.STATE.calificaciones = cloudCalif || {};
                     window.STATE.attendanceRecords = cloudAtt || {};
+                    window.STATE.recuperaciones = (cloudRecup && typeof cloudRecup === 'object') ? cloudRecup : {};
                     if (typeof renderStudentsTable === 'function') renderStudentsTable();
                     if (typeof renderBoletasTable === 'function') renderBoletasTable();
                     if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();

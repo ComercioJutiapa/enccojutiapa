@@ -2290,6 +2290,8 @@ if (typeof escapeHtml !== 'function') {
 }
 window._reprobadosSubView = 'materias'; // 'materias' | 'con_derecho' | 'sin_derecho'
 window._reprobadosConDerechoLayout = window._reprobadosConDerechoLayout || 'horizontal'; // 'horizontal' | 'vertical'
+window._reprobadosConDerechoMode = window._reprobadosConDerechoMode || 'papel'; // 'papel' | 'con_notas'
+window._reprobadosPostStatusFilter = window._reprobadosPostStatusFilter || 'ALL';
 window._reprobadosGradeFilter = 'ALL';
 window._reprobadosSectionFilter = 'ALL';
 window._reprobadosTeacherFilter = 'ALL';
@@ -2297,6 +2299,8 @@ window._reprobadosSearchQuery = '';
 window._lastReprobadosReportData = null;
 window._enccoHist2026StudentsCache = window._enccoHist2026StudentsCache || null;
 window._enccoHist2026Fetching = false;
+window._enccoRecupHydratedCycles = window._enccoRecupHydratedCycles || {};
+window._enccoRecupFetchingCycles = window._enccoRecupFetchingCycles || {};
 
 const REPROBADOS_PENSUM_CATALOG = {
     CUARTO: [
@@ -2607,6 +2611,325 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
 }
 window.resolveActiveTeacherForCourse = resolveActiveTeacherForCourse;
 
+function _sanitizeRecupKeyToken(raw) {
+    return String(raw || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function _getRecupCycleUrlPath(cycle, codeKey, subjSlug) {
+    const cleanCyc = String(cycle || '').trim();
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const activeCyc = String(st.activeCycle || '2027').trim();
+    const isHistCycle = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle || (cleanCyc && cleanCyc !== activeCyc));
+    const baseNode = isHistCycle
+        ? `/encc_school_state/historico/${encodeURIComponent(cleanCyc || '2026')}/recuperacionesSnapshot`
+        : '/encc_school_state/recuperaciones';
+    if (!codeKey) return `${baseNode}.json`;
+    if (!subjSlug) return `${baseNode}/${encodeURIComponent(codeKey)}.json`;
+    return `${baseNode}/${encodeURIComponent(codeKey)}/${encodeURIComponent(subjSlug)}.json`;
+}
+
+function _getRecupMemoryStore(cycle) {
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const cleanCyc = String(
+        cycle ||
+        st.viewingHistoricalCycle ||
+        st.historicalViewingCycle ||
+        (st.isHistoricalReadOnlyMode ? '2026' : (st.activeCycle || '2027'))
+    ).trim();
+    if (!st.recuperacionesByCycle || typeof st.recuperacionesByCycle !== 'object') {
+        st.recuperacionesByCycle = {};
+    }
+    // Si está viendo el ciclo activo (y no histórico), usar STATE.recuperaciones directamente
+    const isCurrentActive = !st.isHistoricalReadOnlyMode && cleanCyc === String(st.activeCycle || '2027').trim();
+    if (isCurrentActive) {
+        if (!st.recuperaciones || typeof st.recuperaciones !== 'object') st.recuperaciones = {};
+        return st.recuperaciones;
+    }
+    if (!st.recuperacionesByCycle[cleanCyc] || typeof st.recuperacionesByCycle[cleanCyc] !== 'object') {
+        const isHistMatch = !!(st.isHistoricalReadOnlyMode && cleanCyc === String(st.historicalViewingCycle || st.viewingHistoricalCycle || '').trim());
+        st.recuperacionesByCycle[cleanCyc] = (isHistMatch && st.recuperaciones && typeof st.recuperaciones === 'object')
+            ? JSON.parse(JSON.stringify(st.recuperaciones))
+            : {};
+    }
+    return st.recuperacionesByCycle[cleanCyc];
+}
+
+function hydrateRecuperacionesFromCloud(cycle) {
+    const cleanCyc = String(cycle || '').trim();
+    if (!cleanCyc || typeof fetch !== 'function') return;
+    if (window._enccoRecupHydratedCycles[cleanCyc] || window._enccoRecupFetchingCycles[cleanCyc]) return;
+    window._enccoRecupFetchingCycles[cleanCyc] = true;
+    const fbUrl = (typeof getFirebaseDatabaseUrl === 'function')
+        ? getFirebaseDatabaseUrl()
+        : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+    const pathUrl = _getRecupCycleUrlPath(cleanCyc);
+    fetch(`${fbUrl}${pathUrl}?t=${Date.now()}`)
+        .then(r => (r && r.ok ? r.json() : null))
+        .then(data => {
+            window._enccoRecupHydratedCycles[cleanCyc] = true;
+            if (data && typeof data === 'object') {
+                const targetStore = _getRecupMemoryStore(cleanCyc);
+                Object.keys(data).forEach(codeK => {
+                    if (data[codeK] && typeof data[codeK] === 'object') {
+                        targetStore[codeK] = { ...(targetStore[codeK] || {}), ...data[codeK] };
+                    }
+                });
+                if (window._currentGradeStatsActiveTab === 'reprobados' && typeof window.renderReprobadosRecuperacionView === 'function') {
+                    window.renderReprobadosRecuperacionView();
+                }
+            }
+        })
+        .catch(() => {})
+        .finally(() => {
+            window._enccoRecupFetchingCycles[cleanCyc] = false;
+        });
+}
+
+function getStudentSubjectRecoveryRecord(studentCode, subjectName, gradeKey, cycle) {
+    const cleanCode = String(studentCode || '').trim().toUpperCase();
+    if (!cleanCode) return null;
+    const store = _getRecupMemoryStore(cycle);
+    const stuRecs = store[cleanCode] || store[cleanCode.toLowerCase()];
+    if (!stuRecs || typeof stuRecs !== 'object') return null;
+
+    const canonName = resolveCanonicalSubjectNameForSheet(subjectName, gradeKey);
+    const exactSlug = _sanitizeRecupKeyToken(canonName);
+    let entry = stuRecs[exactSlug] || stuRecs[_sanitizeRecupKeyToken(subjectName)] || null;
+    if (!entry) {
+        for (const k of Object.keys(stuRecs)) {
+            const candidate = stuRecs[k];
+            if (candidate && candidate.materia && areReprobadosSubjectsEquivalent(candidate.materia, canonName, gradeKey)) {
+                entry = candidate;
+                break;
+            }
+        }
+    }
+    if (!entry || typeof entry !== 'object') return null;
+
+    const opp1 = (entry.opp1 !== null && entry.opp1 !== undefined && entry.opp1 !== '') ? Math.min(100, Math.max(0, Math.round(Number(entry.opp1)))) : null;
+    const opp2 = (entry.opp2 !== null && entry.opp2 !== undefined && entry.opp2 !== '') ? Math.min(100, Math.max(0, Math.round(Number(entry.opp2)))) : null;
+    if (opp1 === null && opp2 === null) return null;
+
+    const finalScore = (opp1 !== null && opp1 >= 60)
+        ? opp1
+        : (opp2 !== null ? Math.max(opp1 !== null ? opp1 : 0, opp2) : opp1);
+    const aprobada = finalScore !== null && finalScore >= 60;
+    const oportunidad = (opp1 !== null && opp1 >= 60) ? 1 : (opp2 !== null ? 2 : 1);
+
+    return {
+        ...entry,
+        opp1,
+        opp2,
+        notaFinalRecup: finalScore,
+        aprobada,
+        oportunidad,
+        hasNote: finalScore !== null
+    };
+}
+window.getStudentSubjectRecoveryRecord = getStudentSubjectRecoveryRecord;
+
+function evaluateStudentPostRecovery(studentObj, cycle) {
+    const repItems = Array.isArray(studentObj && studentObj.reprobadas) ? studentObj.reprobadas : [];
+    const totalReq = repItems.length;
+    let ingresadas = 0;
+    let ganadas = 0;
+    let perdidas = 0;
+    let pendientes = 0;
+    const bySubject = {};
+
+    repItems.forEach(r => {
+        const rec = getStudentSubjectRecoveryRecord(studentObj.code, r.materia, studentObj.grade, cycle);
+        const key = _sanitizeRecupKeyToken(resolveCanonicalSubjectNameForSheet(r.materia, studentObj.grade));
+        bySubject[key] = rec;
+        if (rec && rec.hasNote) {
+            ingresadas++;
+            if (rec.aprobada) ganadas++;
+            else perdidas++;
+        } else {
+            pendientes++;
+        }
+    });
+
+    let postStatus = 'PENDIENTE';
+    let postLabel = 'PENDIENTE DE RECUPERACIÓN';
+    let isPromovidoRecup = false;
+    let isReprobadoRecup = false;
+
+    if (studentObj && studentObj.isConDerecho && totalReq > 0) {
+        if (ganadas === totalReq) {
+            postStatus = 'PROMOVIDO_RECUP';
+            postLabel = 'PROMOVIDO EN RECUPERACIÓN';
+            isPromovidoRecup = true;
+        } else if (pendientes === 0 && perdidas > 0) {
+            postStatus = 'REPROBADO_RECUP';
+            postLabel = `REPROBADO (${perdidas} pendiente${perdidas > 1 ? 's' : ''})`;
+            isReprobadoRecup = true;
+        } else if (ingresadas > 0) {
+            postStatus = 'PENDIENTE';
+            postLabel = `PARCIAL (${ganadas}/${totalReq} aprobadas)`;
+        }
+    }
+
+    return {
+        totalReq,
+        ingresadas,
+        ganadas,
+        perdidas,
+        pendientes,
+        postStatus,
+        postLabel,
+        isPromovidoRecup,
+        isReprobadoRecup,
+        bySubject
+    };
+}
+window.evaluateStudentPostRecovery = evaluateStudentPostRecovery;
+
+function canEditRecoveryGrade(courseTeacher = '', cycle = '') {
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const role = String(st.currentRole || (st.currentUser && st.currentUser.role) || '').toLowerCase().trim();
+    if (['admin', 'superadmin', 'director', 'directora', 'director_general', 'secretaria', 'secretario'].includes(role)) {
+        return true;
+    }
+    const cleanCyc = String(cycle || '').trim();
+    const isHist = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle || (cleanCyc && cleanCyc !== String(st.activeCycle || '2027').trim()));
+    if (!isHist && (role === 'docente' || role === 'catedratico')) {
+        const myName = String((st.currentUser && (st.currentUser.name || st.currentUser.fullName)) || '').toLowerCase().trim();
+        const tName = String(courseTeacher || '').toLowerCase().trim();
+        if (myName && tName && (myName === tName || tName.includes(myName) || myName.includes(tName))) {
+            return true;
+        }
+    }
+    return false;
+}
+window.canEditRecoveryGrade = canEditRecoveryGrade;
+
+async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppNum, rawVal) {
+    const d = window._lastReprobadosReportData || {};
+    const cycle = String(
+        d.cycle ||
+        (window.STATE && (window.STATE.viewingHistoricalCycle || window.STATE.historicalViewingCycle || window.STATE.activeCycle)) ||
+        '2027'
+    ).trim();
+
+    const cleanCode = String(studentCode || '').trim().toUpperCase();
+    if (!cleanCode) return false;
+    const stObj = Array.isArray(d.students) ? d.students.find(s => String(s.code || '').toUpperCase() === cleanCode) : null;
+    const canonMateria = resolveCanonicalSubjectNameForSheet(subjectName, gradeKey);
+    const subjItem = stObj && Array.isArray(stObj.reprobadas)
+        ? stObj.reprobadas.find(r => areReprobadosSubjectsEquivalent(r.materia, canonMateria, gradeKey))
+        : null;
+
+    if (!canEditRecoveryGrade(subjItem ? subjItem.maestro : '', cycle)) {
+        if (typeof showToast === 'function') {
+            showToast('No tiene permisos para editar esta nota de recuperación.', 'warning');
+        }
+        return false;
+    }
+
+    const oppField = Number(oppNum) === 2 ? 'opp2' : 'opp1';
+    const strVal = String(rawVal === undefined || rawVal === null ? '' : rawVal).trim();
+    let parsedScore = null;
+    if (strVal !== '') {
+        const n = Number(strVal);
+        if (isNaN(n)) return false;
+        parsedScore = Math.min(100, Math.max(0, Math.round(n)));
+    }
+
+    const store = _getRecupMemoryStore(cycle);
+    if (!store[cleanCode] || typeof store[cleanCode] !== 'object') store[cleanCode] = {};
+    const slug = _sanitizeRecupKeyToken(canonMateria);
+    const current = store[cleanCode][slug] ? { ...store[cleanCode][slug] } : {};
+
+    current[oppField] = parsedScore;
+    if (oppField === 'opp1' && parsedScore !== null && parsedScore >= 60) {
+        current.opp2 = null; // Aprobada en 1ª oportunidad: limpiar opp2 residual
+    }
+
+    const p1 = (current.opp1 !== null && current.opp1 !== undefined && current.opp1 !== '') ? Number(current.opp1) : null;
+    const p2 = (current.opp2 !== null && current.opp2 !== undefined && current.opp2 !== '') ? Number(current.opp2) : null;
+    const fbUrl = (typeof getFirebaseDatabaseUrl === 'function')
+        ? getFirebaseDatabaseUrl()
+        : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+    const itemUrl = `${fbUrl}${_getRecupCycleUrlPath(cycle, cleanCode, slug)}`;
+    const isHistCycle = cycle !== String((window.STATE && window.STATE.activeCycle) || '2027').trim();
+
+    if (p1 === null && p2 === null) {
+        // Cero residuos: eliminar nodo cuando ambas casillas queden vacías
+        delete store[cleanCode][slug];
+        if (Object.keys(store[cleanCode]).length === 0) delete store[cleanCode];
+        window._enccoRecupHydratedCycles[cycle] = true;
+        if (typeof fetch === 'function') {
+            fetch(itemUrl, { method: 'DELETE' }).catch(() => {});
+            if (!isHistCycle) {
+                fetch(`${fbUrl}/encc_school_state/lastModified.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Date.now())
+                }).catch(() => {});
+            }
+        }
+    } else {
+        const finalScore = (p1 !== null && p1 >= 60) ? p1 : (p2 !== null ? Math.max(p1 || 0, p2) : p1);
+        const payload = {
+            studentId: (stObj && stObj.studentId) || cleanCode,
+            personalCode: cleanCode,
+            cycle,
+            grade: gradeKey,
+            materia: canonMateria,
+            notaOriginal: subjItem ? Number(subjItem.nota || 0) : (current.notaOriginal || 0),
+            opp1: p1,
+            opp2: p2,
+            notaFinalRecup: finalScore,
+            aprobada: finalScore !== null && finalScore >= 60,
+            oportunidad: (p1 !== null && p1 >= 60) ? 1 : (p2 !== null ? 2 : 1),
+            updatedAt: Date.now(),
+            updatedBy: (window.STATE && window.STATE.currentUser && (window.STATE.currentUser.name || window.STATE.currentUser.role)) || 'Dirección / Sistema'
+        };
+        store[cleanCode][slug] = payload;
+        window._enccoRecupHydratedCycles[cycle] = true;
+        if (typeof fetch === 'function') {
+            fetch(itemUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(res => {
+                if (res && res.ok && !isHistCycle) {
+                    fetch(`${fbUrl}/encc_school_state/lastModified.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(Date.now())
+                    }).catch(() => {});
+                }
+            }).catch(() => {});
+        }
+    }
+
+    if (typeof renderReprobadosRecuperacionView === 'function') {
+        renderReprobadosRecuperacionView();
+    }
+    return true;
+}
+window.saveRecoverySubjectGrade = saveRecoverySubjectGrade;
+
+function switchReprobadosConDerechoMode(mode) {
+    window._reprobadosConDerechoMode = (mode === 'con_notas') ? 'con_notas' : 'papel';
+    renderReprobadosRecuperacionView();
+}
+window.switchReprobadosConDerechoMode = switchReprobadosConDerechoMode;
+
+function onReprobadosPostStatusChange(val) {
+    window._reprobadosPostStatusFilter = val || 'ALL';
+    renderReprobadosRecuperacionView();
+}
+window.onReprobadosPostStatusChange = onReprobadosPostStatusChange;
+
 /**
  * Renderiza el módulo analítico de Alumnos Reprobados y Recuperación Académica
  */
@@ -2777,6 +3100,7 @@ function renderReprobadosRecuperacionView() {
 
             rawStudentsList.push({
                 num: idx + 1,
+                studentId: s.id || '',
                 code: s.code || s.studentCode || s.personalCode || s.cui || 'S/C',
                 name: String(s.name || '').toUpperCase().trim(),
                 sex: sexLetter,
@@ -2794,6 +3118,11 @@ function renderReprobadosRecuperacionView() {
             });
         });
     }
+
+    hydrateRecuperacionesFromCloud(viewingCycle);
+    rawStudentsList.forEach(stObj => {
+        stObj.postRecup = evaluateStudentPostRecovery(stObj, viewingCycle);
+    });
 
     // Guardar para impresión y exportación Excel
     window._lastReprobadosReportData = {
@@ -3126,30 +3455,68 @@ function renderReprobadosRecuperacionView() {
 
     // SUB-VISTA 2: CON DERECHO A RECUPERACIÓN
     else if (activeSubView === 'con_derecho') {
-        const conDerechoList = filteredStudents.filter(s => s.isConDerecho);
+        const allConDerecho = filteredStudents.filter(s => s.isConDerecho);
         const activeLayout = (window._reprobadosConDerechoLayout === 'vertical') ? 'vertical' : 'horizontal';
+        const activeMode = (window._reprobadosConDerechoMode === 'con_notas') ? 'con_notas' : 'papel';
+        const postFilter = window._reprobadosPostStatusFilter || 'ALL';
+
+        const promRecupCount = allConDerecho.filter(s => s.postRecup && s.postRecup.isPromovidoRecup).length;
+        const repRecupCount = allConDerecho.filter(s => s.postRecup && s.postRecup.isReprobadoRecup).length;
+        const pendRecupCount = allConDerecho.length - promRecupCount - repRecupCount;
+
+        const conDerechoList = (activeMode === 'con_notas' && postFilter !== 'ALL')
+            ? allConDerecho.filter(s => s.postRecup && s.postRecup.postStatus === postFilter)
+            : allConDerecho;
 
         html += `
         <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-                <div style="font-size:0.9rem; font-weight:800; color:#92400e;">
+                <div style="font-size:0.95rem; font-weight:800; color:#92400e;">
                     <i class="fa-solid fa-triangle-exclamation"></i> Listado de Alumnos Con Derecho a Exámenes de Recuperación (${conDerechoList.length} alumnos)
                 </div>
-                <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">
-                    Criterio: 4to y 5to (1 a 3 materias reprobadas) • 6to (1 a 4 materias reprobadas) • Formato de hoja oficial con todas las asignaturas y espacio para recuperación en papel
+                <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">
+                    Criterio: 4to y 5to (1 a 3 materias reprobadas) • 6to (1 a 4 materias reprobadas) • ${activeMode === 'con_notas' ? 'Ingreso, verificación e impresión con notas de recuperación' : 'Formato de hoja oficial con casillas en blanco para recuperación en papel'}
                 </div>
             </div>
-            <div style="display:inline-flex; align-items:center; gap:4px; background:#fffbeb; border:1px solid #fcd34d; padding:4px; border-radius:8px;">
-                <span style="font-size:0.74rem; font-weight:800; color:#92400e; padding:0 6px;">Disposición:</span>
-                <button type="button" onclick="switchReprobadosConDerechoLayout('horizontal')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.77rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeLayout === 'horizontal' ? 'background:#d97706; color:#ffffff;' : 'background:transparent; color:#78350f;'}">
-                    <i class="fa-solid fa-arrows-left-right"></i> Horizontal (Sábana)
-                </button>
-                <button type="button" onclick="switchReprobadosConDerechoLayout('vertical')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.77rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeLayout === 'vertical' ? 'background:#d97706; color:#ffffff;' : 'background:transparent; color:#78350f;'}">
-                    <i class="fa-solid fa-arrows-up-down"></i> Vertical (Detalle)
-                </button>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <div style="display:inline-flex; align-items:center; gap:4px; background:#eff6ff; border:1px solid #93c5fd; padding:4px; border-radius:8px;">
+                    <span style="font-size:0.76rem; font-weight:800; color:#1e3a8a; padding:0 6px;">Modo:</span>
+                    <button type="button" onclick="switchReprobadosConDerechoMode('papel')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeMode === 'papel' ? 'background:#0284c7; color:#ffffff;' : 'background:transparent; color:#1e3a8a;'}">
+                        <i class="fa-regular fa-file-lines"></i> En Blanco (Papel)
+                    </button>
+                    <button type="button" onclick="switchReprobadosConDerechoMode('con_notas')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeMode === 'con_notas' ? 'background:#16a34a; color:#ffffff;' : 'background:transparent; color:#166534;'}">
+                        <i class="fa-solid fa-pen-to-square"></i> Con Notas (Ingreso / Verificar)
+                    </button>
+                </div>
+                <div style="display:inline-flex; align-items:center; gap:4px; background:#fffbeb; border:1px solid #fcd34d; padding:4px; border-radius:8px;">
+                    <span style="font-size:0.76rem; font-weight:800; color:#92400e; padding:0 6px;">Disposición:</span>
+                    <button type="button" onclick="switchReprobadosConDerechoLayout('horizontal')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeLayout === 'horizontal' ? 'background:#d97706; color:#ffffff;' : 'background:transparent; color:#78350f;'}">
+                        <i class="fa-solid fa-arrows-left-right"></i> Horizontal (Sábana)
+                    </button>
+                    <button type="button" onclick="switchReprobadosConDerechoLayout('vertical')" style="padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${activeLayout === 'vertical' ? 'background:#d97706; color:#ffffff;' : 'background:transparent; color:#78350f;'}">
+                        <i class="fa-solid fa-arrows-up-down"></i> Vertical (Detalle)
+                    </button>
+                </div>
             </div>
         </div>
-        ${buildConDerechoLayoutContent(conDerechoList, activeLayout, 'screen')}
+        ${activeMode === 'con_notas' ? `
+        <div style="margin-bottom:12px; padding:10px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:0.84rem; font-weight:700;">
+                <span style="background:#dcfce7; color:#166534; padding:4px 10px; border-radius:6px; border:1px solid #86efac;">Promovidos en Recup.: <strong>${promRecupCount}</strong></span>
+                <span style="background:#fef3c7; color:#92400e; padding:4px 10px; border-radius:6px; border:1px solid #fcd34d;">Pendientes / Parciales: <strong>${pendRecupCount}</strong></span>
+                <span style="background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:6px; border:1px solid #fca5a5;">Reprobados Post-Recup.: <strong>${repRecupCount}</strong></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.82rem; font-weight:700; color:#475569;">Estado Post-Recup.:</label>
+                <select onchange="onReprobadosPostStatusChange(this.value)" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; font-size:0.84rem; background:#ffffff;">
+                    <option value="ALL" ${postFilter === 'ALL' ? 'selected' : ''}>Todos (${allConDerecho.length})</option>
+                    <option value="PROMOVIDO_RECUP" ${postFilter === 'PROMOVIDO_RECUP' ? 'selected' : ''}>Promovidos en Recup. (${promRecupCount})</option>
+                    <option value="PENDIENTE" ${postFilter === 'PENDIENTE' ? 'selected' : ''}>Pendientes / Parciales (${pendRecupCount})</option>
+                    <option value="REPROBADO_RECUP" ${postFilter === 'REPROBADO_RECUP' ? 'selected' : ''}>Reprobados Post-Recup. (${repRecupCount})</option>
+                </select>
+            </div>
+        </div>` : ''}
+        ${buildConDerechoLayoutContent(conDerechoList, activeLayout, 'screen', activeMode)}
         `;
     }
 
@@ -3242,10 +3609,85 @@ function switchReprobadosConDerechoLayout(layout) {
 }
 window.switchReprobadosConDerechoLayout = switchReprobadosConDerechoLayout;
 
-function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
+function _getConDerechoViewingCycle() {
+    const d = (typeof window !== 'undefined' && window._lastReprobadosReportData) ? window._lastReprobadosReportData : null;
+    if (d && d.cycle) return String(d.cycle).trim();
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    return String(st.viewingHistoricalCycle || st.historicalViewingCycle || st.activeCycle || '2027').trim();
+}
+
+function _getPostRecupBadgeHtml(postRecup, mode = 'screen') {
+    const pr = postRecup || { postStatus: 'PENDIENTE', postLabel: 'PENDIENTE DE RECUPERACIÓN' };
+    if (mode === 'excel') {
+        return `<div style="margin-top:4px; font-weight:bold;">Resultado: ${escapeHtml(pr.postLabel)}</div>`;
+    }
+    const isProm = pr.postStatus === 'PROMOVIDO_RECUP';
+    const isRep = pr.postStatus === 'REPROBADO_RECUP';
+    const bg = isProm ? '#dcfce7' : (isRep ? '#fee2e2' : '#fef3c7');
+    const border = isProm ? '#86efac' : (isRep ? '#fca5a5' : '#fcd34d');
+    const fg = isProm ? '#166534' : (isRep ? '#991b1b' : '#92400e');
+    const isPrint = (mode === 'print');
+    return `<div style="margin-top:5px; padding:${isPrint ? '2px 6px' : '3px 8px'}; border-radius:4px; background:${bg} !important; border:1px solid ${border}; color:${fg}; font-size:${isPrint ? '8.2pt' : '0.78rem'}; font-weight:800; display:inline-block;">${escapeHtml(pr.postLabel)}</div>`;
+}
+
+function _buildRecupSubjectScoreHtml(st, repItem, gKey, mode = 'screen', cycle = '2027', isVerticalCell = false) {
+    const isPrint = (mode === 'print');
+    const isExcel = (mode === 'excel');
+    const fullRName = resolveCanonicalSubjectNameForSheet(repItem.materia, gKey);
+    const rec = getStudentSubjectRecoveryRecord(st.code, repItem.materia, gKey, cycle);
+    const opp1 = (rec && rec.opp1 !== null && rec.opp1 !== undefined) ? rec.opp1 : null;
+    const opp2 = (rec && rec.opp2 !== null && rec.opp2 !== undefined) ? rec.opp2 : null;
+    const hasNote = !!(rec && rec.hasNote);
+    const notaFinal = hasNote ? rec.notaFinalRecup : null;
+    const aprobada = !!(rec && rec.aprobada);
+    const showOpp2 = (opp1 !== null && opp1 < 60) || opp2 !== null;
+
+    if (isExcel) {
+        if (isVerticalCell) {
+            if (!hasNote) return '[ ________ ]';
+            const oppTxt = opp2 !== null ? ` [1a:${opp1}/2a:${opp2}]` : '';
+            return `<b>${notaFinal} pts</b> (${aprobada ? 'APROB.' : 'REPR.'}${oppTxt})`;
+        }
+        const statusTxt = hasNote
+            ? `<b>${notaFinal} pts</b> (${opp2 !== null ? `1ª:${opp1} / 2ª:${opp2}` : '1ª Opp'} - ${aprobada ? 'APROBADA' : 'REPROBADA'})`
+            : '[ ________ ]';
+        return `${escapeHtml(fullRName)} (${repItem.nota} pts): ${statusTxt}`;
+    }
+
+    if (isPrint) {
+        if (!hasNote) {
+            const boxW = isVerticalCell ? '64px' : '62px';
+            return `<span style="display:inline-block; width:${boxW}; height:22px; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff; flex-shrink:0;"></span>`;
+        }
+        const stColor = aprobada ? '#166534' : '#b91c1c';
+        const stBg = aprobada ? '#dcfce7' : '#fee2e2';
+        const oppMeta = opp2 !== null ? ` <span style="font-size:7.8pt; color:#475569;">(1ª:${opp1}/2ª:${opp2})</span>` : '';
+        return `<span style="display:inline-flex; align-items:center; gap:4px; background:${stBg} !important; border:1px solid ${stColor}; color:${stColor}; padding:1px 6px; border-radius:4px; font-weight:900; font-size:${isVerticalCell ? '9pt' : '8.8pt'}; flex-shrink:0;">${notaFinal} ${aprobada ? 'APROB.' : 'REPR.'}${oppMeta}</span>`;
+    }
+
+    const canEdit = canEditRecoveryGrade(repItem.maestro, cycle);
+    const roAttr = canEdit ? '' : 'disabled title="Solo lectura: no tiene permisos sobre esta asignatura"';
+    const inputStyle = `width:56px; padding:3px 5px; border:1.5px solid ${canEdit ? '#0284c7' : '#cbd5e1'}; border-radius:4px; font-weight:800; font-size:0.88rem; text-align:center; background:${canEdit ? '#ffffff' : '#f1f5f9'}; color:#0f172a;`;
+    const badgeHtml = hasNote
+        ? `<span style="padding:2px 6px; border-radius:4px; font-size:0.76rem; font-weight:800; background:${aprobada ? '#dcfce7' : '#fee2e2'}; color:${aprobada ? '#166534' : '#b91c1c'}; border:1px solid ${aprobada ? '#86efac' : '#fca5a5'};">${aprobada ? '✓' : '✗'} ${notaFinal}</span>`
+        : `<span style="padding:2px 6px; border-radius:4px; font-size:0.74rem; font-weight:700; background:#f1f5f9; color:#64748b;">Pend.</span>`;
+
+    const opp1Input = `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#334155;">1ª:<input type="number" min="0" max="100" step="1" placeholder="--" value="${opp1 !== null ? opp1 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 1, this.value)" style="${inputStyle}"></label>`;
+    const opp2Input = showOpp2
+        ? `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#92400e;">2ª:<input type="number" min="0" max="100" step="1" placeholder="--" value="${opp2 !== null ? opp2 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 2, this.value)" style="${inputStyle}"></label>`
+        : '';
+
+    return `<span style="display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; flex-shrink:0;">${opp1Input}${opp2Input}${badgeHtml}</span>`;
+}
+
+function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen', conDerechoMode = null) {
     if (!Array.isArray(conDerechoList) || conDerechoList.length === 0) {
         return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; font-size:1rem;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
     }
+
+    const activeRecupMode = (conDerechoMode === 'con_notas' || (conDerechoMode == null && typeof window !== 'undefined' && window._reprobadosConDerechoMode === 'con_notas')) ? 'con_notas' : 'papel';
+    const isConNotas = (activeRecupMode === 'con_notas');
+    const cycle = _getConDerechoViewingCycle();
 
     const gradeOrder = ['CUARTO', 'QUINTO', 'SEXTO'];
     const gradeLabels = {
@@ -3256,9 +3698,10 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
 
     const isPrint = (mode === 'print');
     const isExcel = (mode === 'excel');
-    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : '#b45309');
+    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : (isConNotas ? '#15803d' : '#b45309'));
     const headerFg = isPrint ? '#0f172a' : '#ffffff';
     const borderCss = isPrint || isExcel ? '1px solid #000000' : '1px solid #cbd5e1';
+    const recupColTitle = isConNotas ? 'Notas y Situación de Recuperación' : 'Nota(s) de Recuperación (Papel)';
 
     let out = '';
     gradeOrder.forEach(gKey => {
@@ -3294,7 +3737,7 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
 
         const groupTitleBlock = isExcel
             ? `<tr style="background:#dbeafe;"><td colspan="${numCols + 6}" style="font-weight:bold; font-size:11.5pt; color:#1e3a8a; text-align:left; border:1pt solid #000000; padding:8px;">${gradeLabels[gKey] || gKey} (${numCols} Asignaturas Oficiales) — ${groupStudents.length} Alumno(s) Con Derecho a Recuperación</td></tr>`
-            : `<div style="margin:${out ? '16px' : '4px'} 0 8px 0; padding:6px 12px; background:${isPrint ? '#f1f5f9' : '#fef3c7'}; border:${isPrint ? '1.5px solid #000' : '1px solid #fcd34d'}; border-left:4px solid ${isPrint ? '#000' : '#d97706'}; font-weight:800; font-size:${isPrint ? '10.5pt' : '1rem'}; color:${isPrint ? '#000' : '#92400e'}; display:flex; justify-content:space-between; align-items:center;">
+            : `<div style="margin:${out ? '16px' : '4px'} 0 8px 0; padding:6px 12px; background:${isPrint ? '#f1f5f9' : (isConNotas ? '#f0fdf4' : '#fef3c7')}; border:${isPrint ? '1.5px solid #000' : `1px solid ${isConNotas ? '#86efac' : '#fcd34d'}`}; border-left:4px solid ${isPrint ? '#000' : (isConNotas ? '#16a34a' : '#d97706')}; font-weight:800; font-size:${isPrint ? '10.5pt' : '1rem'}; color:${isPrint ? '#000' : (isConNotas ? '#166534' : '#92400e')}; display:flex; justify-content:space-between; align-items:center;">
                 <span>${gradeLabels[gKey] || gKey} (${numCols} Asignaturas Oficiales)</span>
                 <span>${groupStudents.length} Alumno(s)</span>
                </div>`;
@@ -3313,7 +3756,7 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
                     <th style="width:3.5%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 3px'}; text-align:center;">Sec</th>
                     ${colDefs.map(c => `<th title="${escapeHtml(c.full)}" style="width:${perCoursePct}%; border:${borderCss}; padding:${isPrint ? '4px 2px' : '6px 3px'}; text-align:center; font-size:${isPrint ? '8.2pt' : (isExcel ? '10pt' : '0.84rem')}; line-height:1.15; word-wrap:break-word;">${escapeHtml(c.short)}</th>`).join('')}
                     <th style="width:3.5%; border:${borderCss}; padding:${isPrint ? '5px 2px' : '8px 3px'}; text-align:center;">Rep.</th>
-                    <th style="width:31.5%; border:${borderCss}; padding:${isPrint ? '5px 5px' : '8px 6px'}; text-align:left;">Nota(s) de Recuperación (Papel)</th>
+                    <th style="width:31.5%; border:${borderCss}; padding:${isPrint ? '5px 5px' : '8px 6px'}; text-align:left;">${recupColTitle}</th>
                 </tr>
             </thead>
             <tbody>
@@ -3323,6 +3766,7 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
             const rowBg = (idx % 2 === 0) ? '#ffffff' : (isPrint ? '#f8fafc' : '#fffdf5');
             const mList = Array.isArray(st.materiasCompletas) ? st.materiasCompletas : [];
             const repItems = Array.isArray(st.reprobadas) ? st.reprobadas : [];
+            const postRecup = st.postRecup || evaluateStudentPostRecovery(st, cycle);
 
             const courseCells = colDefs.map(col => {
                 const matchM = mList.find(m => areReprobadosSubjectsEquivalent(m.materia, col.full, gKey));
@@ -3336,22 +3780,40 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
                 return `<td title="${escapeHtml(matchM.materia)}" style="border:${borderCss}; text-align:center; padding:${isPrint ? '5px 2px' : '7px 3px'}; color:${matchM.evaluada ? '#0f172a' : '#64748b'}; font-weight:${matchM.evaluada ? '600' : '400'};">${notaTxt}</td>`;
             }).join('');
 
-            const recupBoxes = isExcel
-                ? repItems.map(r => {
-                    const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
-                    return `${escapeHtml(fullRName)} (${r.nota} pts): [ ________ ]`;
-                }).join('<br>')
-                : `<div style="display:flex; flex-direction:column; gap:${isPrint ? '4px' : '5px'};">
-                    ${repItems.map(r => {
+            let recupBoxes = '';
+            if (isConNotas) {
+                recupBoxes = isExcel
+                    ? (repItems.map(r => _buildRecupSubjectScoreHtml(st, r, gKey, mode, cycle, false)).join('<br>') + _getPostRecupBadgeHtml(postRecup, 'excel'))
+                    : `<div style="display:flex; flex-direction:column; gap:${isPrint ? '4px' : '6px'};">
+                        ${repItems.map(r => {
+                            const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
+                            const rightPart = _buildRecupSubjectScoreHtml(st, r, gKey, mode, cycle, false);
+                            return `
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:${isPrint ? '9pt' : '0.88rem'}; line-height:1.25;">
+                                <span style="font-weight:700; color:#0f172a; word-wrap:break-word;">${escapeHtml(fullRName)} <span style="color:#b91c1c; font-weight:900;">(${r.nota})</span></span>
+                                ${rightPart}
+                            </div>`;
+                        }).join('')}
+                        <div>${_getPostRecupBadgeHtml(postRecup, mode)}</div>
+                       </div>`;
+            } else {
+                recupBoxes = isExcel
+                    ? repItems.map(r => {
                         const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
-                        return `
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:${isPrint ? '9.5pt' : '0.92rem'}; line-height:1.25;">
-                            <span style="font-weight:700; color:#0f172a; word-wrap:break-word;">${escapeHtml(fullRName)} <span style="color:#b91c1c; font-weight:900;">(${r.nota})</span></span>
-                            <span style="display:inline-block; width:${isPrint ? '62px' : '64px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff; flex-shrink:0;"></span>
-                        </div>
-                    `;
-                    }).join('')}
-                   </div>`;
+                        return `${escapeHtml(fullRName)} (${r.nota} pts): [ ________ ]`;
+                    }).join('<br>')
+                    : `<div style="display:flex; flex-direction:column; gap:${isPrint ? '4px' : '5px'};">
+                        ${repItems.map(r => {
+                            const fullRName = resolveCanonicalSubjectNameForSheet(r.materia, gKey);
+                            return `
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:${isPrint ? '9.5pt' : '0.92rem'}; line-height:1.25;">
+                                <span style="font-weight:700; color:#0f172a; word-wrap:break-word;">${escapeHtml(fullRName)} <span style="color:#b91c1c; font-weight:900;">(${r.nota})</span></span>
+                                <span style="display:inline-block; width:${isPrint ? '62px' : '64px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff; flex-shrink:0;"></span>
+                            </div>
+                        `;
+                        }).join('')}
+                       </div>`;
+            }
 
             tHtml += `
                 <tr style="background:${rowBg}; page-break-inside:avoid; ${isExcel ? 'height:28pt;' : ''}">
@@ -3373,29 +3835,34 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen') {
     return out;
 }
 
-function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
+function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen', conDerechoMode = null) {
     if (!Array.isArray(conDerechoList) || conDerechoList.length === 0) {
         return `<div style="padding:24px; text-align:center; color:#64748b; font-weight:600; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; font-size:1rem;">No hay alumnos con derecho a recuperación según los filtros aplicados.</div>`;
     }
 
+    const activeRecupMode = (conDerechoMode === 'con_notas' || (conDerechoMode == null && typeof window !== 'undefined' && window._reprobadosConDerechoMode === 'con_notas')) ? 'con_notas' : 'papel';
+    const isConNotas = (activeRecupMode === 'con_notas');
+    const cycle = _getConDerechoViewingCycle();
+
     const isPrint = (mode === 'print');
     const isExcel = (mode === 'excel');
-    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : '#d97706');
+    const headerBg = isPrint ? '#e2e8f0' : (isExcel ? '#1e3a8a' : (isConNotas ? '#15803d' : '#d97706'));
     const headerFg = isPrint ? '#0f172a' : '#ffffff';
     const borderCss = isPrint || isExcel ? '1px solid #000000' : '1px solid #cbd5e1';
+    const colRecupHdr = isConNotas ? 'Nota Recup.' : 'Recup. (Papel)';
 
     let html = `
         <table style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '10pt' : (isExcel ? '10.5pt' : '0.98rem')}; text-align:left;">
             <thead style="display:table-header-group;">
                 <tr style="background:${headerBg}; color:${headerFg};">
                     <th style="width:4%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">No.</th>
-                    <th style="width:10%; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">Código</th>
-                    <th style="width:21%; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Estudiante</th>
-                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Grado / Rep.</th>
-                    <th style="width:31%; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Asignaturas del Pensum y Catedrático</th>
-                    <th style="width:7%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Prom.</th>
-                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Estado</th>
-                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">Recup. (Papel)</th>
+                    <th style="width:9%; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">Código</th>
+                    <th style="width:19%; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Estudiante</th>
+                    <th style="width:10%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Grado / Rep.</th>
+                    <th style="width:${isConNotas ? '27%' : '33%'}; border:${borderCss}; padding:${isPrint ? '6px 6px' : '9px 8px'};">Asignaturas del Pensum y Catedrático</th>
+                    <th style="width:6%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Prom.</th>
+                    <th style="width:8%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">Estado</th>
+                    <th style="width:${isConNotas ? '17%' : '9%'}; border:${borderCss}; padding:${isPrint ? '6px 4px' : '9px 6px'}; text-align:center;">${colRecupHdr}</th>
                 </tr>
             </thead>
     `;
@@ -3406,6 +3873,7 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
             : (st.reprobadas || []).map(r => ({ materia: resolveCanonicalSubjectNameForSheet(r.materia, st.grade), nota: r.nota, aprobada: false, evaluada: true, maestro: r.maestro }));
         const rowSpan = mList.length || 1;
         const baseBg = (idx % 2 === 0) ? '#ffffff' : (isPrint ? '#f8fafc' : '#fffdf7');
+        const postRecup = st.postRecup || evaluateStudentPostRecovery(st, cycle);
 
         html += `<tbody style="page-break-inside:avoid; break-inside:avoid;">`;
         mList.forEach((m, mIdx) => {
@@ -3413,16 +3881,21 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
             const rowHighlight = isRep ? 'background:#ffe4e6 !important;' : `background:${baseBg};`;
             const notaStr = (m.nota !== null && m.nota !== undefined) ? `${m.nota}` : '--';
             const estadoLabel = isRep ? 'PERDIDA' : (m.evaluada ? 'Aprobada' : 'Sin nota');
-            const recupCell = isRep
-                ? (isExcel ? '[ ________ ]' : `<span style="display:inline-block; width:${isPrint ? '64px' : '68px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff;"></span>`)
-                : `<span style="color:#94a3b8;">---</span>`;
+
+            let recupCell = `<span style="color:#94a3b8;">---</span>`;
+            if (isRep) {
+                recupCell = isConNotas
+                    ? _buildRecupSubjectScoreHtml(st, m, st.grade, mode, cycle, true)
+                    : (isExcel ? '[ ________ ]' : `<span style="display:inline-block; width:${isPrint ? '64px' : '68px'}; height:${isPrint ? '22px' : '24px'}; border:1.5px solid #0f172a; border-radius:3px; background:#ffffff;"></span>`);
+            }
 
             html += `<tr style="${rowHighlight} ${isExcel ? 'height:24pt;' : ''}">`;
             if (mIdx === 0) {
+                const postBadge = isConNotas ? _getPostRecupBadgeHtml(postRecup, mode) : '';
                 html += `
                     <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-weight:700; vertical-align:top; padding:6px 3px; background:${baseBg};">${idx + 1}</td>
                     <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; font-family:monospace; font-weight:800; color:${isPrint ? '#000' : '#0369a1'}; vertical-align:top; padding:6px 4px; background:${baseBg}; word-break:break-all;">${escapeHtml(st.code)}</td>
-                    <td rowspan="${rowSpan}" style="border:${borderCss}; font-weight:800; color:#0f172a; vertical-align:top; padding:6px 6px; background:${baseBg}; word-wrap:break-word;">${escapeHtml(st.name)}</td>
+                    <td rowspan="${rowSpan}" style="border:${borderCss}; font-weight:800; color:#0f172a; vertical-align:top; padding:6px 6px; background:${baseBg}; word-wrap:break-word;">${escapeHtml(st.name)}${postBadge}</td>
                     <td rowspan="${rowSpan}" style="border:${borderCss}; text-align:center; vertical-align:top; padding:6px 3px; background:${baseBg};">
                         <div style="font-weight:800; color:${isPrint ? '#000' : '#0369a1'};">${st.grade.substring(0, 4)} "${escapeHtml(st.section)}"</div>
                         <div style="margin-top:4px; font-size:${isPrint ? '9pt' : '0.86rem'}; font-weight:900; color:#92400e;">(${st.num_rep} rep.)</div>
@@ -3446,9 +3919,9 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen') {
     return isExcel ? html : `<div style="${isPrint ? '' : 'overflow-x:auto;'}">${html}</div>`;
 }
 
-function buildConDerechoLayoutContent(conDerechoList, layout = 'horizontal', mode = 'screen') {
-    if (layout === 'vertical') return buildConDerechoVerticalHtml(conDerechoList, mode);
-    return buildConDerechoHorizontalHtml(conDerechoList, mode);
+function buildConDerechoLayoutContent(conDerechoList, layout = 'horizontal', mode = 'screen', conDerechoMode = null) {
+    if (layout === 'vertical') return buildConDerechoVerticalHtml(conDerechoList, mode, conDerechoMode);
+    return buildConDerechoHorizontalHtml(conDerechoList, mode, conDerechoMode);
 }
 
 // CONTROLADORES DE EVENTOS DE SUB-VISTAS Y FILTROS
@@ -3489,6 +3962,19 @@ function toggleReprobadosDetail(detailId) {
 }
 window.toggleReprobadosDetail = toggleReprobadosDetail;
 
+function _filterConDerechoForOutput(filteredStudents, cycle) {
+    const activeMode = (window._reprobadosConDerechoMode === 'con_notas') ? 'con_notas' : 'papel';
+    const postFilter = window._reprobadosPostStatusFilter || 'ALL';
+    const base = filteredStudents.filter(s => s.isConDerecho).map(s => ({
+        ...s,
+        postRecup: evaluateStudentPostRecovery(s, cycle)
+    }));
+    const list = (activeMode === 'con_notas' && postFilter !== 'ALL')
+        ? base.filter(s => s.postRecup && s.postRecup.postStatus === postFilter)
+        : base;
+    return { activeMode, list };
+}
+
 /**
  * Impresión Oficial (Hoja Carta Horizontal o Vertical según sub-vista y disposición seleccionada)
  * Membrete Institucional exacto sin la palabra ENCCO
@@ -3528,9 +4014,11 @@ function printReprobadosRecuperacionView() {
     let docSubtitle = 'INFORME OFICIAL DE ALUMNOS REPROBADOS, MATERIAS, CATEDRÁTICOS Y DERECHO A RECUPERACIÓN';
 
     if (isConDerechoPrint) {
-        const conDerechoList = filtered.filter(s => s.isConDerecho);
-        docSubtitle = 'NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN';
-        bodyTableHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'print');
+        const { activeMode, list: conDerechoList } = _filterConDerechoForOutput(filtered, d.cycle);
+        docSubtitle = (activeMode === 'con_notas')
+            ? 'NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN — CON NOTAS ASENTADAS'
+            : 'NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN';
+        bodyTableHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'print', activeMode);
     } else {
         const targetList = (subView === 'sin_derecho') ? filtered.filter(s => s.isSinDerecho) : filtered;
         if (subView === 'sin_derecho') {
@@ -3643,7 +4131,7 @@ function printReprobadosRecuperacionView() {
     <div class="header">
         <h1>${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolName)} — ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).municipality.toUpperCase())} (CÓD. ${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).schoolCode)})</h1>
         <p><strong>${docSubtitle}</strong></p>
-        <p>Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
+        <p>Ciclo Escolar: <strong>${d.cycle}</strong> &nbsp;|&nbsp; Jornada: <strong>${_safeStatHtmlEscape(resolveOfficialStatisticalMeta({ cycle: d.cycle }).jornada)}</strong> &nbsp;|&nbsp; Fecha de Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
     </div>
 
     ${bodyTableHtml}
@@ -3714,9 +4202,11 @@ function exportReprobadosRecuperacionExcel() {
     let docSubtitle = `NÓMINA DE ALUMNOS REPROBADOS Y SITUACIÓN DE RECUPERACIÓN - CICLO ${d.cycle}`;
 
     if (isConDerechoExcel) {
-        const conDerechoList = filtered.filter(s => s.isConDerecho);
-        docSubtitle = `NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN - CICLO ${d.cycle}`;
-        bodyExcelHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'excel');
+        const { activeMode, list: conDerechoList } = _filterConDerechoForOutput(filtered, d.cycle);
+        docSubtitle = (activeMode === 'con_notas')
+            ? `NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN — CON NOTAS ASENTADAS - CICLO ${d.cycle}`
+            : `NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN - CICLO ${d.cycle}`;
+        bodyExcelHtml = buildConDerechoLayoutContent(conDerechoList, layout, 'excel', activeMode);
     } else {
         const targetList = (subView === 'sin_derecho') ? filtered.filter(s => s.isSinDerecho) : filtered;
         if (subView === 'sin_derecho') {
