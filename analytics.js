@@ -729,6 +729,14 @@
                             `).join('')}
                         </tbody>
                     </table>
+                    ${typeof window.buildOfficialStatisticalSignaturesHtml === 'function'
+                        ? window.buildOfficialStatisticalSignaturesHtml({ mode: 'print', secondarySigner: 'both', includeStamp: true, includeDate: true })
+                        : `<div style="margin-top:36px; display:flex; justify-content:space-around; text-align:center; page-break-inside:avoid;">
+                            <div style="width:220px; border-top:1.5px solid #0f172a; padding-top:5px; font-size:10px; font-weight:700;">Comisión de Evaluación / Secretaría</div>
+                            <div style="min-width:90px; padding-bottom:14px; font-size:9px; color:#94a3b8; letter-spacing:2px; font-weight:700;">( S E L L O )</div>
+                            <div style="width:220px; border-top:1.5px solid #0f172a; padding-top:5px; font-size:10px; font-weight:700;">Dirección del Plantel</div>
+                        </div>`
+                    }
                     <script>
                         window.onload = function() { window.print(); };
                     </script>

@@ -38391,16 +38391,19 @@ function printStudentDemographicsReport() {
                 </tbody>
             </table>
 
-            <div class="signatures">
-                <div class="sig-box">
-                    Secretaría Académica<br>
-                    Vo.Bo. Control de Matrícula
-                </div>
-                <div class="sig-box">
-                    Licda. Director(a) ENCCO<br>
-                    Sello Oficial Institucional
-                </div>
-            </div>
+            ${typeof window.buildOfficialStatisticalSignaturesHtml === 'function'
+                ? window.buildOfficialStatisticalSignaturesHtml({ mode: 'print', secondarySigner: 'secretaria', includeStamp: true, includeDate: false })
+                : `<div class="signatures" style="page-break-inside:avoid;">
+                    <div class="sig-box">
+                        Secretaría Académica<br>
+                        Vo.Bo. Control de Matrícula
+                    </div>
+                    <div class="sig-box">
+                        Dirección General<br>
+                        Sello Oficial Institucional
+                    </div>
+                </div>`
+            }
         </body>
         </html>
     `);
@@ -40756,14 +40759,17 @@ function printRenglonGenderReport() {
             </tbody>
         </table>
 
-        <div style="margin-top:60px; display:flex; justify-content:space-around; text-align:center; font-size:10pt;">
-            <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
-                <strong>Dirección General</strong><br>ENCCO Jutiapa
-            </div>
-            <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
-                <strong>Secretaría Académica</strong><br>Control de Personal
-            </div>
-        </div>
+        ${typeof window.buildOfficialStatisticalSignaturesHtml === 'function'
+            ? window.buildOfficialStatisticalSignaturesHtml({ mode: 'print', secondarySigner: 'secretaria', includeStamp: true, includeDate: true, cycle })
+            : `<div style="margin-top:60px; display:flex; justify-content:space-around; text-align:center; font-size:10pt; page-break-inside:avoid;">
+                <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
+                    <strong>Dirección General</strong><br>${(typeof STATE !== 'undefined' && STATE.schoolHeader && STATE.schoolHeader.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}
+                </div>
+                <div style="border-top:1.5px solid #000; width:220px; padding-top:6px;">
+                    <strong>Secretaría Académica</strong><br>Control de Personal
+                </div>
+            </div>`
+        }
     `;
 
     renderAndShowPrintDocument("Informe Estadístico de Docentes", htmlContent, 'portrait');
