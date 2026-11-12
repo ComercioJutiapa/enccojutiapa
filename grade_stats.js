@@ -2898,24 +2898,23 @@ function getStudentSubjectRecoveryRecord(studentCode, subjectName, gradeKey, cyc
     }
     if (!entry || typeof entry !== 'object') return null;
 
-    const opp1 = (entry.opp1 !== null && entry.opp1 !== undefined && entry.opp1 !== '') ? Math.min(100, Math.max(0, Math.round(Number(entry.opp1)))) : null;
-    const opp2 = (entry.opp2 !== null && entry.opp2 !== undefined && entry.opp2 !== '') ? Math.min(100, Math.max(0, Math.round(Number(entry.opp2)))) : null;
-    if (opp1 === null && opp2 === null) return null;
-
-    const finalScore = (opp1 !== null && opp1 >= 60)
-        ? opp1
-        : (opp2 !== null ? Math.max(opp1 !== null ? opp1 : 0, opp2) : opp1);
-    const aprobada = finalScore !== null && finalScore >= 60;
-    const oportunidad = (opp1 !== null && opp1 >= 60) ? 1 : (opp2 !== null ? 2 : 1);
+    const rawScore = (entry.notaRecup !== null && entry.notaRecup !== undefined && entry.notaRecup !== '')
+        ? entry.notaRecup
+        : ((entry.notaFinalRecup !== null && entry.notaFinalRecup !== undefined && entry.notaFinalRecup !== '')
+            ? entry.notaFinalRecup
+            : entry.opp1);
+    if (rawScore === null || rawScore === undefined || rawScore === '') return null;
+    const numScore = Number(rawScore);
+    if (isNaN(numScore)) return null;
+    const finalScore = Math.min(100, Math.max(0, Math.round(numScore)));
+    const aprobada = finalScore >= 60;
 
     return {
         ...entry,
-        opp1,
-        opp2,
+        notaRecup: finalScore,
         notaFinalRecup: finalScore,
         aprobada,
-        oportunidad,
-        hasNote: finalScore !== null
+        hasNote: true
     };
 }
 window.getStudentSubjectRecoveryRecord = getStudentSubjectRecoveryRecord;
@@ -2996,7 +2995,8 @@ function canEditRecoveryGrade(courseTeacher = '', cycle = '') {
 }
 window.canEditRecoveryGrade = canEditRecoveryGrade;
 
-async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppNum, rawVal) {
+async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, rawValOrOpp, maybeVal) {
+    const rawVal = (arguments.length >= 5) ? maybeVal : rawValOrOpp;
     const d = window._lastReprobadosReportData || {};
     const cycle = String(
         d.cycle ||
@@ -3019,7 +3019,6 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppN
         return false;
     }
 
-    const oppField = Number(oppNum) === 2 ? 'opp2' : 'opp1';
     const strVal = String(rawVal === undefined || rawVal === null ? '' : rawVal).trim();
     let parsedScore = null;
     if (strVal !== '') {
@@ -3033,21 +3032,14 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppN
     const slug = _sanitizeRecupKeyToken(canonMateria);
     const current = store[cleanCode][slug] ? { ...store[cleanCode][slug] } : {};
 
-    current[oppField] = parsedScore;
-    if (oppField === 'opp1' && parsedScore !== null && parsedScore >= 60) {
-        current.opp2 = null; // Aprobada en 1ª oportunidad: limpiar opp2 residual
-    }
-
-    const p1 = (current.opp1 !== null && current.opp1 !== undefined && current.opp1 !== '') ? Number(current.opp1) : null;
-    const p2 = (current.opp2 !== null && current.opp2 !== undefined && current.opp2 !== '') ? Number(current.opp2) : null;
     const fbUrl = (typeof getFirebaseDatabaseUrl === 'function')
         ? getFirebaseDatabaseUrl()
         : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
     const itemUrl = `${fbUrl}${_getRecupCycleUrlPath(cycle, cleanCode, slug)}`;
     const isHistCycle = cycle !== String((window.STATE && window.STATE.activeCycle) || '2027').trim();
 
-    if (p1 === null && p2 === null) {
-        // Cero residuos: eliminar nodo cuando ambas casillas queden vacías
+    if (parsedScore === null) {
+        // Cero residuos: eliminar nodo cuando la casilla quede vacía
         delete store[cleanCode][slug];
         if (Object.keys(store[cleanCode]).length === 0) delete store[cleanCode];
         window._enccoRecupHydratedCycles[cycle] = true;
@@ -3062,7 +3054,6 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppN
             }
         }
     } else {
-        const finalScore = (p1 !== null && p1 >= 60) ? p1 : (p2 !== null ? Math.max(p1 || 0, p2) : p1);
         const payload = {
             studentId: (stObj && stObj.studentId) || cleanCode,
             personalCode: cleanCode,
@@ -3070,11 +3061,9 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppN
             grade: gradeKey,
             materia: canonMateria,
             notaOriginal: subjItem ? Number(subjItem.nota || 0) : (current.notaOriginal || 0),
-            opp1: p1,
-            opp2: p2,
-            notaFinalRecup: finalScore,
-            aprobada: finalScore !== null && finalScore >= 60,
-            oportunidad: (p1 !== null && p1 >= 60) ? 1 : (p2 !== null ? 2 : 1),
+            notaRecup: parsedScore,
+            notaFinalRecup: parsedScore,
+            aprobada: parsedScore >= 60,
             updatedAt: Date.now(),
             updatedBy: (window.STATE && window.STATE.currentUser && (window.STATE.currentUser.name || window.STATE.currentUser.role)) || 'Dirección / Sistema'
         };
@@ -3098,7 +3087,7 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, oppN
     }
 
     if (typeof renderReprobadosRecuperacionView === 'function') {
-        renderReprobadosRecuperacionView();
+        renderReprobadosRecuperacionView({ reuseData: true });
     }
     return true;
 }
@@ -3853,21 +3842,17 @@ function _buildRecupSubjectScoreHtml(st, repItem, gKey, mode = 'screen', cycle =
     const isExcel = (mode === 'excel');
     const fullRName = resolveCanonicalSubjectNameForSheet(repItem.materia, gKey);
     const rec = getStudentSubjectRecoveryRecord(st.code, repItem.materia, gKey, cycle);
-    const opp1 = (rec && rec.opp1 !== null && rec.opp1 !== undefined) ? rec.opp1 : null;
-    const opp2 = (rec && rec.opp2 !== null && rec.opp2 !== undefined) ? rec.opp2 : null;
     const hasNote = !!(rec && rec.hasNote);
     const notaFinal = hasNote ? rec.notaFinalRecup : null;
     const aprobada = !!(rec && rec.aprobada);
-    const showOpp2 = (opp1 !== null && opp1 < 60) || opp2 !== null;
 
     if (isExcel) {
         if (isVerticalCell) {
             if (!hasNote) return '[ ________ ]';
-            const oppTxt = opp2 !== null ? ` [1a:${opp1}/2a:${opp2}]` : '';
-            return `<b>${notaFinal} pts</b> (${aprobada ? 'APROB.' : 'REPR.'}${oppTxt})`;
+            return `<b>${notaFinal} pts</b> (${aprobada ? 'APROB.' : 'REPR.'})`;
         }
         const statusTxt = hasNote
-            ? `<b>${notaFinal} pts</b> (${opp2 !== null ? `1ª:${opp1} / 2ª:${opp2}` : '1ª Opp'} - ${aprobada ? 'APROBADA' : 'REPROBADA'})`
+            ? `<b>${notaFinal} pts</b> (${aprobada ? 'APROBADA' : 'REPROBADA'})`
             : '[ ________ ]';
         return `${escapeHtml(fullRName)} (${repItem.nota} pts): ${statusTxt}`;
     }
@@ -3879,23 +3864,19 @@ function _buildRecupSubjectScoreHtml(st, repItem, gKey, mode = 'screen', cycle =
         }
         const stColor = aprobada ? '#166534' : '#b91c1c';
         const stBg = aprobada ? '#dcfce7' : '#fee2e2';
-        const oppMeta = opp2 !== null ? ` <span style="font-size:7.8pt; color:#475569;">(1ª:${opp1}/2ª:${opp2})</span>` : '';
-        return `<span style="display:inline-flex; align-items:center; gap:4px; background:${stBg} !important; border:1px solid ${stColor}; color:${stColor}; padding:1px 6px; border-radius:4px; font-weight:900; font-size:${isVerticalCell ? '9pt' : '8.8pt'}; flex-shrink:0;">${notaFinal} ${aprobada ? 'APROB.' : 'REPR.'}${oppMeta}</span>`;
+        return `<span style="display:inline-flex; align-items:center; gap:4px; background:${stBg} !important; border:1px solid ${stColor}; color:${stColor}; padding:1px 6px; border-radius:4px; font-weight:900; font-size:${isVerticalCell ? '9pt' : '8.8pt'}; flex-shrink:0;">${notaFinal} ${aprobada ? 'APROB.' : 'REPR.'}</span>`;
     }
 
     const canEdit = canEditRecoveryGrade(repItem.maestro, cycle);
     const roAttr = canEdit ? '' : 'disabled title="Solo lectura: no tiene permisos sobre esta asignatura"';
-    const inputStyle = `width:56px; padding:3px 5px; border:1.5px solid ${canEdit ? '#0284c7' : '#cbd5e1'}; border-radius:4px; font-weight:800; font-size:0.88rem; text-align:center; background:${canEdit ? '#ffffff' : '#f1f5f9'}; color:#0f172a;`;
+    const inputStyle = `width:60px; padding:3px 5px; border:1.5px solid ${canEdit ? '#0284c7' : '#cbd5e1'}; border-radius:4px; font-weight:800; font-size:0.88rem; text-align:center; background:${canEdit ? '#ffffff' : '#f1f5f9'}; color:#0f172a;`;
     const badgeHtml = hasNote
         ? `<span style="padding:2px 6px; border-radius:4px; font-size:0.76rem; font-weight:800; background:${aprobada ? '#dcfce7' : '#fee2e2'}; color:${aprobada ? '#166534' : '#b91c1c'}; border:1px solid ${aprobada ? '#86efac' : '#fca5a5'};">${aprobada ? '✓' : '✗'} ${notaFinal}</span>`
         : `<span style="padding:2px 6px; border-radius:4px; font-size:0.74rem; font-weight:700; background:#f1f5f9; color:#64748b;">Pend.</span>`;
 
-    const opp1Input = `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#334155;">1ª:<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${opp1 !== null ? opp1 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 1, this.value)" style="${inputStyle}"></label>`;
-    const opp2Input = showOpp2
-        ? `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#92400e;">2ª:<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${opp2 !== null ? opp2 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 2, this.value)" style="${inputStyle}"></label>`
-        : '';
+    const singleInput = `<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${notaFinal !== null ? notaFinal : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, this.value)" style="${inputStyle}">`;
 
-    return `<span style="display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; flex-shrink:0;">${opp1Input}${opp2Input}${badgeHtml}</span>`;
+    return `<span style="display:inline-flex; align-items:center; gap:5px; flex-wrap:nowrap; flex-shrink:0;">${singleInput}${badgeHtml}</span>`;
 }
 
 function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen', conDerechoMode = null) {

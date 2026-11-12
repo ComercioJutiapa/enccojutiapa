@@ -370,12 +370,15 @@
                 const normSlugLower = String(fc.materia || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
                 const entry = stuRecs[normSlugLower] || stuRecs[normSlugLower.toUpperCase()] || Object.values(stuRecs).find(e => e && String(e.materia || '').toUpperCase().trim() === String(fc.materia || '').toUpperCase().trim()) || null;
                 if (entry) {
-                    const o1 = (entry.opp1 !== null && entry.opp1 !== undefined && entry.opp1 !== '') ? Number(entry.opp1) : null;
-                    const o2 = (entry.opp2 !== null && entry.opp2 !== undefined && entry.opp2 !== '') ? Number(entry.opp2) : null;
-                    const fin = (o1 !== null && o1 >= 60) ? o1 : (o2 !== null ? Math.max(o1 || 0, o2) : o1);
-                    if (fin !== null) {
-                        if (fin >= 60) aprobadas++;
-                        else if (o2 !== null || (o1 !== null && o1 < 60 && o2 !== null)) perdidasDef++;
+                    const rawRec = (entry.notaRecup !== null && entry.notaRecup !== undefined && entry.notaRecup !== '')
+                        ? entry.notaRecup
+                        : ((entry.notaFinalRecup !== null && entry.notaFinalRecup !== undefined && entry.notaFinalRecup !== '') ? entry.notaFinalRecup : entry.opp1);
+                    if (rawRec !== null && rawRec !== undefined && rawRec !== '') {
+                        const fin = Number(rawRec);
+                        if (!isNaN(fin)) {
+                            if (fin >= 60) aprobadas++;
+                            else perdidasDef++;
+                        }
                     }
                 }
             });

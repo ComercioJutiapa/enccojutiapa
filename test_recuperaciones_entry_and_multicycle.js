@@ -187,22 +187,23 @@ async function runTests() {
     assert(!lastPrintHtml.includes('Fdo.') && !lastPrintHtml.includes('Director(a)'), 'Impresión NO debe llevar firmas');
     assert(lastPrintHtml.includes('Matutina'), 'Impresión debe reflejar Jornada Matutina');
 
-    // 3b. Ingresar 1ª oportunidad reprobada (48 pts) en Contabilidad de Sociedades
-    const saved1 = await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', 1, '48');
+    // 3b. Ingresar nota reprobada de recuperación única (48 pts) en Contabilidad de Sociedades
+    const saved1 = await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', '48');
     assert.strictEqual(saved1, true);
     const recCosto1 = window.getStudentSubjectRecoveryRecord('T2027A01', 'Contabilidad de Sociedades', 'CUARTO', '2027');
-    assert(recCosto1 && recCosto1.opp1 === 48 && recCosto1.aprobada === false && recCosto1.notaFinalRecup === 48);
+    assert(recCosto1 && recCosto1.notaRecup === 48 && recCosto1.aprobada === false && recCosto1.notaFinalRecup === 48);
     assert(fetchCalls.some(c => c.method === 'PUT' && c.url.includes('/encc_school_state/recuperaciones/T2027A01/contabilidad_de_sociedades.json')));
 
-    // Cambiar a Modo Con Notas y verificar input dinámico de 2ª oportunidad visible
+    // Cambiar a Modo Con Notas y verificar que SOLO existe UNA casilla de recuperación (sin 1ª ni 2ª)
     window.switchReprobadosConDerechoMode('con_notas');
     const containerHtml1 = document.getElementById('gradeStatsDocumentContainer').innerHTML;
-    assert(containerHtml1.includes('1ª:') && containerHtml1.includes('2ª:'), 'Al reprobar 1ª oportunidad (<60), debe desbloquearse casilla 2ª');
+    assert(!containerHtml1.includes('1ª:') && !containerHtml1.includes('2ª:'), 'Solo debe existir UNA recuperación sin casillas de 1ª o 2ª oportunidad');
+    assert(containerHtml1.includes('recup-score-input'), 'Debe renderizar la casilla única de recuperación');
     assert(containerHtml1.includes('Promovidos en Recup.'), 'Debe mostrar barra de KPIs Post-Recuperación');
 
-    // 3c. Aprobar Contabilidad de Sociedades en 2ª oportunidad (72 pts) y Fundamentos de Derecho en 1ª (78 pts)
-    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', 2, '72');
-    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Fundamentos de Derecho', 1, '78');
+    // 3c. Actualizar a nota aprobada (72 pts) en Contabilidad de Sociedades y 78 pts en Fundamentos de Derecho
+    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', '72');
+    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Fundamentos de Derecho', '78');
 
     const postEval = window.evaluateStudentPostRecovery(window._lastReprobadosReportData.students[0], '2027');
     assert.strictEqual(postEval.postStatus, 'PROMOVIDO_RECUP');
@@ -212,40 +213,42 @@ async function runTests() {
     // Verificar que las notas ordinarias NO fueron alteradas
     assert.deepStrictEqual(global.STATE.students[0].grades, stu2027OriginalGrades, 'Notas ordinarias jamás deben sobrescribirse');
 
-    // 3d. Impresión y Excel en Modo Con Notas (Horizontal y Vertical)
+    // 3d. Impresión y Excel en Modo Con Notas (Horizontal y Vertical) — sin mención de 1ª ni 2ª oportunidad
     window._reprobadosConDerechoLayout = 'horizontal';
     window.printReprobadosRecuperacionView();
     assert(lastPrintHtml.includes('CON NOTAS ASENTADAS'), 'Impresión Con Notas debe indicar subtítulo');
     assert(lastPrintHtml.includes('72 APROB.') && lastPrintHtml.includes('78 APROB.'), 'Impresión debe incluir notas asentadas');
     assert(lastPrintHtml.includes('PROMOVIDO EN RECUPERACIÓN'), 'Impresión debe mostrar estado post-recuperación');
+    assert(!lastPrintHtml.includes('1ª:') && !lastPrintHtml.includes('2ª:'), 'Impresión no debe mencionar múltiples oportunidades');
     assert(!lastPrintHtml.includes('Fdo.'), 'Impresión Con Notas NO debe llevar firmas');
 
     window._reprobadosConDerechoLayout = 'vertical';
     window.printReprobadosRecuperacionView();
-    assert(lastPrintHtml.includes('1ª:48/2ª:72'), 'Impresión Vertical debe detallar 1ª y 2ª oportunidad cuando aplica');
+    assert(lastPrintHtml.includes('72 APROB.'), 'Impresión Vertical debe mostrar nota única aprobada');
+    assert(!lastPrintHtml.includes('1ª:') && !lastPrintHtml.includes('2ª:'), 'Impresión Vertical no debe mostrar 1ª/2ª oportunidad');
     assert(lastPrintHtml.includes('PROMOVIDO EN RECUPERACIÓN'));
 
     window.exportReprobadosRecuperacionExcel();
     const excelHtml = lastBlobParts.join('');
     assert(excelHtml.includes('72 pts') && excelHtml.includes('PROMOVIDO EN RECUPERACIÓN'), 'Excel debe exportar notas y estado final');
+    assert(!excelHtml.includes('1ª Opp') && !excelHtml.includes('1a:'), 'Excel no debe incluir múltiples oportunidades');
 
     // 3e. Protección contra escritura no autorizada (docente ajeno)
     global.STATE.currentRole = 'docente';
     global.STATE.currentUser = { name: 'Otro Catedrático', role: 'docente' };
     const fetchBeforeUnauth = fetchCalls.length;
-    const unauthOk = await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', 1, '99');
+    const unauthOk = await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', '99');
     assert.strictEqual(unauthOk, false, 'Docente ajeno no debe poder guardar');
     assert.strictEqual(fetchCalls.length, fetchBeforeUnauth, 'No debe enviarse PUT no autorizado a Firebase');
 
-    // 3f. Borrado sin residuos (vaciar oportunidades -> DELETE y limpieza de nodos vacíos)
+    // 3f. Borrado sin residuos (vaciar nota -> DELETE y limpieza de nodos vacíos)
     global.STATE.currentRole = 'director';
     global.STATE.currentUser = { name: 'Directora General', role: 'director' };
-    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', 2, '');
-    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', 1, '');
-    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Fundamentos de Derecho', 1, '');
+    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Contabilidad de Sociedades', '');
+    await window.saveRecoverySubjectGrade('T2027A01', 'CUARTO', 'Fundamentos de Derecho', '');
     assert(fetchCalls.some(c => c.method === 'DELETE' && c.url.includes('contabilidad_de_sociedades.json')), 'Vaciar nota debe lanzar DELETE en RTDB');
     assert.strictEqual(global.STATE.recuperaciones['T2027A01'], undefined, 'Cero residuos: nodo del estudiante vacío debe eliminarse');
-    console.log("✓ Ingreso 1ª/2ª opp, RBAC, Impresión, Excel y limpieza DELETE sin residuos validados.");
+    console.log("✓ Recuperación única, RBAC, Impresión, Excel y limpieza DELETE sin residuos validados.");
 
     // TEST 4: Aislamiento Ciclo Histórico 2026 vs Activo 2027
     console.log("\n[TEST 4] Verificando aislamiento estricto de escritura entre 2026 Histórico y 2027 Activo...");
@@ -261,7 +264,7 @@ async function runTests() {
     const first2026Cd = window._lastReprobadosReportData.students.find(s => s.isConDerecho);
     assert(first2026Cd && first2026Cd.reprobadas.length > 0, 'Debe existir alumno con derecho en 2026');
     const subj2026 = first2026Cd.reprobadas[0].materia;
-    const saved2026 = await window.saveRecoverySubjectGrade(first2026Cd.code, first2026Cd.grade, subj2026, 1, '66');
+    const saved2026 = await window.saveRecoverySubjectGrade(first2026Cd.code, first2026Cd.grade, subj2026, '66');
     assert.strictEqual(saved2026, true);
     assert(fetchCalls.some(c => c.method === 'PUT' && c.url.includes('/encc_school_state/historico/2026/recuperacionesSnapshot/')), 'Ciclo 2026 debe guardar en nodo histórico aislado');
     assert.strictEqual(Object.keys(global.STATE.recuperaciones).length, 0, 'STATE.recuperaciones activo (2027) no debe contaminarse al editar 2026');
@@ -319,9 +322,9 @@ async function runTests() {
             }
         ],
         recuperaciones: {
-            'R2027P1': { 'contabilidad_de_sociedades': { materia: 'Contabilidad de Sociedades', opp1: 68, opp2: null, notaFinalRecup: 68, aprobada: true } },
-            'R2027F6': { 'auditoria': { materia: 'Auditoría', opp1: 45, opp2: 54, notaFinalRecup: 54, aprobada: false } },
-            'R2027G6': { 'seminario': { materia: 'Seminario', opp1: 75, opp2: null, notaFinalRecup: 75, aprobada: true } }
+            'R2027P1': { 'contabilidad_de_sociedades': { materia: 'Contabilidad de Sociedades', notaRecup: 68, notaFinalRecup: 68, aprobada: true } },
+            'R2027F6': { 'auditoria': { materia: 'Auditoría', notaRecup: 54, notaFinalRecup: 54, aprobada: false } },
+            'R2027G6': { 'seminario': { materia: 'Seminario', notaRecup: 75, notaFinalRecup: 75, aprobada: true } }
         },
         config: { bimestreActivoOficial: 4, lockedBimestres: { 1: true, 2: true, 3: true, 4: true } }
     };
