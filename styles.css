@@ -5903,6 +5903,24 @@ body.theme-dark .custom-table tbody tr:hover {
     }
 }
 
+.recup-table-scroll-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+@media screen and (max-width: 1280px), (pointer: coarse) {
+    .reprobados-dashboard-container input.recup-score-input {
+        width: 64px !important;
+        min-height: 36px !important;
+        height: 36px !important;
+        padding: 4px 5px !important;
+        font-size: 16px !important;
+        line-height: 1.1 !important;
+    }
+}
+
 @media print {
     #view-grade-stats .section-toolbar,
     .reprobados-dashboard-container .grade-stats-tab-group,

@@ -623,6 +623,9 @@ const EnccoIndexedDBCacheService = {
     },
 
     async exportBackupJSON() {
+        if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
+            return '{}';
+        }
         if (typeof STATE !== 'undefined' && STATE) {
             return JSON.stringify(STATE, null, 2);
         }
@@ -1869,6 +1872,12 @@ async function detectAndApplyBestDatabaseEndpoint() {
 window.detectAndApplyBestDatabaseEndpoint = detectAndApplyBestDatabaseEndpoint;
 
 function openDbConfigModal() {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
+        if (typeof showToast === 'function') {
+            showToast('Sincronización en tiempo real activa con Firebase.', 'info');
+        }
+        return;
+    }
     const modal = document.getElementById('dbConfigModal');
     const urlInput = document.getElementById('firebaseUrlInput');
     if (urlInput) {
@@ -24890,16 +24899,22 @@ function runGlobalSpotlightSearch(rawQuery) {
     let html = '';
 
     if (!q) {
-        // Atajos rápidos directos de navegación
+        const allowBackup = (typeof canAccessBackup === 'function') ? canAccessBackup() : false;
+        const canView = (v) => (typeof hasRolePermission === 'function') ? hasRolePermission(v) : true;
+        // Atajos rápidos directos de navegación (filtrados dinámicamente por rol)
         const shortcuts = [
-            { icon: "fa-calendar-check", color: "#15803d", title: "Control de Asistencia", desc: "Pasar asistencia diaria por grado o cátedra", fn: "navigateTo('attendance')" },
-            { icon: "fa-pen-to-square", color: "#0284c7", title: "Ingreso de Calificaciones", desc: "Planilla de notas de bimestres y actividades", fn: "navigateTo('gradebook')" },
-            { icon: "fa-id-card", color: "#0d47a1", title: "Emisión de Carnés Oficiales", desc: "Impresión de credenciales con Código de Barras y QR", fn: "navigateTo('carnets')" },
-            { icon: "fa-print", color: "#7c3aed", title: "Boletines de Calificaciones", desc: "Cuadros oficiales de notas por sección", fn: "navigateTo('reports')" },
-            { icon: "fa-user-plus", color: "#d97706", title: "Inscripción de Alumnos", desc: "Registrar nuevos expedientes en el plantel", fn: "navigateTo('enrollment')" },
-            { icon: "fa-file-signature", color: "#ea580c", title: "Permisos y Justificaciones", desc: "Control de ausencias de auxiliatura", fn: "openCreatePermissionModal()" },
-            { icon: "fa-download", color: "#16a34a", title: "Descargar Respaldo JSON", desc: "Copia de seguridad inmediata de la base de datos", fn: "exportDataBackupJSON()" }
-        ];
+            { permView: 'attendance', icon: "fa-calendar-check", color: "#15803d", title: "Control de Asistencia", desc: "Pasar asistencia diaria por grado o cátedra", fn: "navigateTo('attendance')" },
+            { permView: 'gradebook', icon: "fa-pen-to-square", color: "#0284c7", title: "Ingreso de Calificaciones", desc: "Planilla de notas de bimestres y actividades", fn: "navigateTo('gradebook')" },
+            { permView: 'carnets', icon: "fa-id-card", color: "#0d47a1", title: "Emisión de Carnés Oficiales", desc: "Impresión de credenciales con Código de Barras y QR", fn: "navigateTo('carnets')" },
+            { permView: 'reports', icon: "fa-print", color: "#7c3aed", title: "Boletines de Calificaciones", desc: "Cuadros oficiales de notas por sección", fn: "navigateTo('reports')" },
+            { permView: 'enrollment', icon: "fa-user-plus", color: "#d97706", title: "Inscripción de Alumnos", desc: "Registrar nuevos expedientes en el plantel", fn: "navigateTo('enrollment')" },
+            { permView: 'permissions-history', icon: "fa-file-signature", color: "#ea580c", title: "Permisos y Justificaciones", desc: "Control de ausencias de auxiliatura", fn: "openCreatePermissionModal()" },
+            { requireBackup: true, icon: "fa-download", color: "#16a34a", title: "Descargar Respaldo JSON", desc: "Copia de seguridad inmediata de la base de datos", fn: "exportDataBackupJSON()" }
+        ].filter(s => {
+            if (s.requireBackup && !allowBackup) return false;
+            if (s.permView && !canView(s.permView)) return false;
+            return true;
+        });
 
         html += `<div style="font-size:0.75rem; font-weight:800; color:#64748b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; padding:0 4px;">⚡ Accesos Rápidos Principales</div>`;
         shortcuts.forEach(s => {

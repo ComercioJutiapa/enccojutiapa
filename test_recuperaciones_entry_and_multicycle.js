@@ -364,8 +364,36 @@ async function runTests() {
     assert.deepStrictEqual(global.STATE.recuperaciones, {}, 'Al salir de modo histórico vuelve a 2028 con recuperaciones = {}');
 
     console.log("✓ Transición 2027 -> 2028 con promoción automática por recuperaciones y aislamiento histórico validada.");
+
+    // TEST 6: Rendimiento fluido para tablet (< 350ms en 412 alumnos 2026) y bloqueo total de Backup para docentes
+    console.log("\n[TEST 6] Verificando rendimiento <350ms, responsividad tablet y cero opciones de Backup para docentes...");
+    global.STATE.activeCycle = '2026';
+    global.STATE.viewingHistoricalCycle = '2026';
+    global.STATE.isHistoricalReadOnlyMode = true;
+    global.STATE.currentRole = 'director';
+    window._enccoRecupHydratedCycles['2026'] = true;
+    window._reprobadosSubView = 'con_derecho';
+    window._reprobadosConDerechoLayout = 'horizontal';
+    window._reprobadosConDerechoMode = 'con_notas';
+    const perfStart = Date.now();
+    window.renderReprobadosRecuperacionView();
+    window.switchReprobadosSubView('con_derecho');
+    const perfElapsed = Date.now() - perfStart;
+    assert(perfElapsed < 350, `Render 2026 + cambio a Con Derecho debe ser < 350ms (actual: ${perfElapsed}ms)`);
+    const horizTabletHtml = document.getElementById('gradeStatsDocumentContainer').innerHTML;
+    assert(horizTabletHtml.includes('recup-table-scroll-wrap') && horizTabletHtml.includes('min-width:1120px'), 'Tabla horizontal debe habilitar scroll táctil en tablet');
+
+    // Verificar en código fuente de app.js y styles.css guardias anti-backup docente y estilos táctiles
+    const appCode = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8').replace(/\r\n/g, '\n');
+    assert(appCode.includes("if (typeof canAccessBackup === 'function' && !canAccessBackup()) {\n            return '{}';"), 'IndexedDB exportBackupJSON debe bloquear roles sin permiso');
+    assert(appCode.includes("if (s.requireBackup && !allowBackup) return false;"), 'Spotlight Search no debe mostrar Descargar Respaldo JSON a docentes');
+    assert(appCode.includes("function openDbConfigModal() {\n    if (typeof canAccessBackup === 'function' && !canAccessBackup())"), 'openDbConfigModal debe bloquear acceso a docentes');
+    const cssCode = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+    assert(cssCode.includes('input.recup-score-input'), 'styles.css debe incluir reglas táctiles para input.recup-score-input');
+    console.log(`✓ Rendimiento fluido validado (${perfElapsed}ms para 412 alumnos + Con Derecho) y cero apartados Backup para docentes.`);
+
     console.log("\n========================================================");
-    console.log("🎉 TODAS LAS PRUEBAS DE RECUPERACIONES MULTICICLO PASARON (5/5)");
+    console.log("🎉 TODAS LAS PRUEBAS DE RECUPERACIONES MULTICICLO PASARON (6/6)");
     console.log("========================================================");
 }
 

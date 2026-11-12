@@ -235,7 +235,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261015_v259_attendance_visibility_restored">
+    <link rel="stylesheet" href="styles.css?v=20261111_v272_recup_tablet_perf">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -6535,7 +6535,7 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261017_v270_persistence_fix').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261111_v272_recup_tablet_perf').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
@@ -6546,11 +6546,11 @@
     <script src="ui.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="sire.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
-    <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
+    <script src="app.js?v=20261111_v272_recup_tablet_perf" charset="UTF-8"></script>
+    <script src="cycle_archiver.js?v=20261111_v272_recup_tablet_perf" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
-    <script src="grade_stats.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
-    <script src="analytics.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <script src="grade_stats.js?v=20261111_v272_recup_tablet_perf" charset="UTF-8"></script>
+    <script src="analytics.js?v=20261111_v272_recup_tablet_perf" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>

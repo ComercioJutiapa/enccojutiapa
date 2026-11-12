@@ -2339,21 +2339,60 @@ const REPROBADOS_PENSUM_CATALOG = {
     ]
 };
 
+const _REPROBADOS_NORM_CACHE = new Map();
+const _REPROBADOS_NUMERAL_CACHE = new Map();
+const _REPROBADOS_CATALOG_BY_GRADE_EXACT = new Map();
+const _REPROBADOS_CATALOG_FIND_CACHE = new Map();
+const _REPROBADOS_EQUIV_CACHE = new Map();
+
 function normalizeReprobadosSubjectKey(name) {
-    return String(name || '')
+    const raw = String(name || '');
+    const cached = _REPROBADOS_NORM_CACHE.get(raw);
+    if (cached !== undefined) return cached;
+    const norm = raw
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]/g, '');
+    if (_REPROBADOS_NORM_CACHE.size > 4000) _REPROBADOS_NORM_CACHE.clear();
+    _REPROBADOS_NORM_CACHE.set(raw, norm);
+    return norm;
 }
 
 function extractCourseNumeralSuffix(name) {
-    const clean = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const raw = String(name || '');
+    const cached = _REPROBADOS_NUMERAL_CACHE.get(raw);
+    if (cached !== undefined) return cached;
+    const clean = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     const m = clean.match(/(?:^|\s|\b)(iii|ii|i|3|2|1)$/i);
-    if (!m) return '';
     const map = { iii: '3', '3': '3', ii: '2', '2': '2', i: '1', '1': '1' };
-    return map[m[1]] || '';
+    const res = m ? (map[m[1]] || '') : '';
+    if (_REPROBADOS_NUMERAL_CACHE.size > 4000) _REPROBADOS_NUMERAL_CACHE.clear();
+    _REPROBADOS_NUMERAL_CACHE.set(raw, res);
+    return res;
 }
+
+// Pre-compilar índice exacto y metadatos normalizados del catálogo una sola vez al cargar el script
+const _REPROBADOS_PRECOMPILED_CATALOG = (() => {
+    const out = {};
+    ['CUARTO', 'QUINTO', 'SEXTO'].forEach(gk => {
+        const exactMap = new Map();
+        const items = (REPROBADOS_PENSUM_CATALOG[gk] || []).map(item => {
+            const ni = normalizeReprobadosSubjectKey(item.full);
+            const sufItem = extractCourseNumeralSuffix(item.full);
+            if (ni && !exactMap.has(ni)) exactMap.set(ni, item);
+            const aliasesMeta = Array.isArray(item.aliases) ? item.aliases.map(al => {
+                const nal = normalizeReprobadosSubjectKey(al);
+                if (nal && !exactMap.has(nal)) exactMap.set(nal, item);
+                return { nal, sufAl: extractCourseNumeralSuffix(al) };
+            }) : [];
+            return { item, ni, sufItem, aliasesMeta };
+        });
+        _REPROBADOS_CATALOG_BY_GRADE_EXACT.set(gk, exactMap);
+        out[gk] = items;
+    });
+    return out;
+})();
 
 function hasCourseCrossCollision(normA, normB) {
     const calA = normA.includes('caligrafia') || normA.includes('ortografia');
@@ -2377,38 +2416,52 @@ function hasCourseCrossCollision(normA, normB) {
 function findCatalogItemForSubject(rawName, gradeKey = null) {
     const norm = normalizeReprobadosSubjectKey(rawName);
     if (!norm) return null;
-    const sufTarget = extractCourseNumeralSuffix(rawName);
-    const gradesToCheck = gradeKey && REPROBADOS_PENSUM_CATALOG[gradeKey]
-        ? [gradeKey]
-        : ['CUARTO', 'QUINTO', 'SEXTO'];
+    const gScope = (gradeKey && REPROBADOS_PENSUM_CATALOG[gradeKey]) ? gradeKey : '*';
+    const cacheKey = `${gScope}|${norm}|${extractCourseNumeralSuffix(rawName)}`;
+    if (_REPROBADOS_CATALOG_FIND_CACHE.has(cacheKey)) {
+        return _REPROBADOS_CATALOG_FIND_CACHE.get(cacheKey);
+    }
 
-    for (const gk of gradesToCheck) {
-        for (const item of REPROBADOS_PENSUM_CATALOG[gk]) {
-            if (normalizeReprobadosSubjectKey(item.full) === norm) return item;
-            if (Array.isArray(item.aliases) && item.aliases.some(al => normalizeReprobadosSubjectKey(al) === norm)) {
-                return item;
-            }
+    const sufTarget = extractCourseNumeralSuffix(rawName);
+    const gradesToCheck = (gScope !== '*') ? [gScope] : ['CUARTO', 'QUINTO', 'SEXTO'];
+
+    let matched = null;
+    for (let i = 0; i < gradesToCheck.length; i++) {
+        const exactMap = _REPROBADOS_CATALOG_BY_GRADE_EXACT.get(gradesToCheck[i]);
+        if (exactMap && exactMap.has(norm)) {
+            matched = exactMap.get(norm);
+            break;
         }
     }
-    for (const gk of gradesToCheck) {
-        for (const item of REPROBADOS_PENSUM_CATALOG[gk]) {
-            const ni = normalizeReprobadosSubjectKey(item.full);
-            const sufItem = extractCourseNumeralSuffix(item.full);
-            if (sufTarget && sufItem && sufTarget !== sufItem) continue;
-            if (sufTarget && !sufItem) continue;
-            if (hasCourseCrossCollision(norm, ni)) continue;
-            if (norm.length >= 5 && (ni.includes(norm) || norm.includes(ni))) return item;
-            if (Array.isArray(item.aliases)) {
-                for (const al of item.aliases) {
-                    const nal = normalizeReprobadosSubjectKey(al);
-                    const sufAl = extractCourseNumeralSuffix(al);
-                    if (sufTarget && sufAl && sufTarget !== sufAl) continue;
-                    if (norm.length >= 5 && (nal.includes(norm) || norm.includes(nal))) return item;
+
+    if (!matched) {
+        for (let i = 0; i < gradesToCheck.length && !matched; i++) {
+            const metaList = _REPROBADOS_PRECOMPILED_CATALOG[gradesToCheck[i]] || [];
+            for (let j = 0; j < metaList.length; j++) {
+                const m = metaList[j];
+                if (sufTarget && m.sufItem && sufTarget !== m.sufItem) continue;
+                if (sufTarget && !m.sufItem) continue;
+                if (hasCourseCrossCollision(norm, m.ni)) continue;
+                if (norm.length >= 5 && (m.ni.includes(norm) || norm.includes(m.ni))) {
+                    matched = m.item;
+                    break;
                 }
+                for (let k = 0; k < m.aliasesMeta.length; k++) {
+                    const am = m.aliasesMeta[k];
+                    if (sufTarget && am.sufAl && sufTarget !== am.sufAl) continue;
+                    if (norm.length >= 5 && (am.nal.includes(norm) || norm.includes(am.nal))) {
+                        matched = m.item;
+                        break;
+                    }
+                }
+                if (matched) break;
             }
         }
     }
-    return null;
+
+    if (_REPROBADOS_CATALOG_FIND_CACHE.size > 4000) _REPROBADOS_CATALOG_FIND_CACHE.clear();
+    _REPROBADOS_CATALOG_FIND_CACHE.set(cacheKey, matched);
+    return matched;
 }
 
 function areReprobadosSubjectsEquivalent(nameA, nameB, gradeKey = null) {
@@ -2417,17 +2470,27 @@ function areReprobadosSubjectsEquivalent(nameA, nameB, gradeKey = null) {
     if (!na || !nb) return false;
     if (na === nb) return true;
 
-    const itemA = findCatalogItemForSubject(nameA, gradeKey);
-    const itemB = findCatalogItemForSubject(nameB, gradeKey);
-    if (itemA && itemB) return itemA.full === itemB.full;
-    if (itemA && !itemB) return false;
-    if (itemB && !itemA) return false;
-
+    const gScope = (gradeKey && REPROBADOS_PENSUM_CATALOG[gradeKey]) ? gradeKey : '*';
     const sufA = extractCourseNumeralSuffix(nameA);
     const sufB = extractCourseNumeralSuffix(nameB);
-    if (sufA && sufB && sufA !== sufB) return false;
-    if (hasCourseCrossCollision(na, nb)) return false;
-    return (na.length >= 5 && nb.length >= 5 && (na.includes(nb) || nb.includes(na)));
+    const cacheKey = `${gScope}|${na}|${sufA}|${nb}|${sufB}`;
+    const cached = _REPROBADOS_EQUIV_CACHE.get(cacheKey);
+    if (cached !== undefined) return cached;
+
+    let res = false;
+    const itemA = findCatalogItemForSubject(nameA, gradeKey);
+    const itemB = findCatalogItemForSubject(nameB, gradeKey);
+    if (itemA && itemB) {
+        res = (itemA.full === itemB.full);
+    } else if (!itemA && !itemB) {
+        if (!(sufA && sufB && sufA !== sufB) && !hasCourseCrossCollision(na, nb)) {
+            res = (na.length >= 5 && nb.length >= 5 && (na.includes(nb) || nb.includes(na)));
+        }
+    }
+
+    if (_REPROBADOS_EQUIV_CACHE.size > 8000) _REPROBADOS_EQUIV_CACHE.clear();
+    _REPROBADOS_EQUIV_CACHE.set(cacheKey, res);
+    return res;
 }
 
 function findMatchingGradeEntry(gradesMap, targetFullName, gradeKey = null) {
@@ -2553,6 +2616,88 @@ function resolveCanonicalSubjectNameForSheet(courseName, gradeKey = null) {
     return hit ? hit.full : String(courseName || '').trim();
 }
 
+let _activeRenderTeacherIndex = null;
+
+function _extractPensumGradeKey(pGradeStr) {
+    const g = String(pGradeStr || '').trim().toLowerCase();
+    if (!g) return '';
+    if (g.includes('4') || g.includes('cuarto')) return 'CUARTO';
+    if (g.includes('5') || g.includes('quinto')) return 'QUINTO';
+    if (g.includes('6') || g.includes('sexto')) return 'SEXTO';
+    return '';
+}
+
+function _buildTeacherLookupIndex() {
+    const st = (typeof STATE !== 'undefined' && STATE) ? STATE : (window.STATE || {});
+    const pensumArr = Array.isArray(st.pensum) ? st.pensum : [];
+    const usersArr = Array.isArray(st.users) ? st.users : [];
+    const userById = new Map();
+    usersArr.forEach(u => { if (u && u.id) userById.set(u.id, u); });
+
+    const resolveTeacherFromEntry = (match) => {
+        if (!match) return '';
+        if (match.teacherName && String(match.teacherName).trim() && !String(match.teacherName).toLowerCase().includes('por asignar')) {
+            return String(match.teacherName).trim();
+        }
+        if (match.teacherId && userById.has(match.teacherId)) {
+            const u = userById.get(match.teacherId);
+            if (u && (u.name || u.fullName)) return (u.name || u.fullName).trim();
+        }
+        return '';
+    };
+
+    const byGradeSecSubj = new Map();
+    const byGradeAllSecSubj = new Map();
+    const bySubjOnly = new Map();
+    const hasTeacher = (t) => !!t;
+
+    pensumArr.forEach(p => {
+        if (!p) return;
+        const pName = p.subject || p.name || '';
+        const gKey = _extractPensumGradeKey(p.grade || p.gradeCode || '');
+        const pSec = String(p.section || '').trim().toUpperCase();
+        const catItem = findCatalogItemForSubject(pName, gKey || null);
+        const canonNorm = catItem ? normalizeReprobadosSubjectKey(catItem.full) : normalizeReprobadosSubjectKey(pName);
+        if (!canonNorm) return;
+
+        const tName = resolveTeacherFromEntry(p);
+        if (!hasTeacher(tName)) return;
+
+        if (!bySubjOnly.has(canonNorm)) bySubjOnly.set(canonNorm, tName);
+        if (gKey) {
+            if (!pSec || pSec === 'ALL') {
+                const kAll = `${gKey}|${canonNorm}`;
+                if (!byGradeAllSecSubj.has(kAll)) byGradeAllSecSubj.set(kAll, tName);
+            } else {
+                const kExact = `${gKey}|${pSec}|${canonNorm}`;
+                if (!byGradeSecSubj.has(kExact)) byGradeSecSubj.set(kExact, tName);
+            }
+        }
+    });
+
+    const usersBySubj = new Map();
+    usersArr.forEach(u => {
+        if (!u || (u.role !== 'docente' && u.role !== 'catedratico')) return;
+        const tName = (u.name || u.fullName || '').trim();
+        if (!tName) return;
+        const courses = Array.isArray(u.assignedCourses) ? u.assignedCourses : (Array.isArray(u.courses) ? u.courses : []);
+        courses.forEach(c => {
+            const cStr = typeof c === 'string' ? c : String((c && (c.name || c.subject)) || '');
+            const catItem = findCatalogItemForSubject(cStr, null);
+            const cn = catItem ? normalizeReprobadosSubjectKey(catItem.full) : normalizeReprobadosSubjectKey(cStr);
+            if (cn && !usersBySubj.has(cn)) usersBySubj.set(cn, tName);
+        });
+    });
+
+    return {
+        byGradeSecSubj,
+        byGradeAllSecSubj,
+        bySubjOnly,
+        usersBySubj,
+        resultCache: new Map()
+    };
+}
+
 /**
  * Resolver de Catedrático Titular para el ciclo activo (2027+)
  * Función pura de SOLO LECTURA: NO muta STATE.users ni escribe a Firebase.
@@ -2562,7 +2707,39 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
     const gNorm = String(gradeKey || '').trim().toLowerCase();
     const sNorm = String(section || '').trim().toUpperCase();
 
-    // 1. Buscar en STATE.pensum (Solo lectura)
+    if (_activeRenderTeacherIndex) {
+        const cKey = `${gNorm}|${sNorm}|${courseName}`;
+        const cachedTeacher = _activeRenderTeacherIndex.resultCache.get(cKey);
+        if (cachedTeacher !== undefined) return cachedTeacher;
+
+        const targetGKey = _extractPensumGradeKey(gradeKey);
+        const catItem = findCatalogItemForSubject(courseName, targetGKey || null);
+        const canonNorm = catItem ? normalizeReprobadosSubjectKey(catItem.full) : normalizeReprobadosSubjectKey(courseName);
+        let found = '';
+        if (canonNorm) {
+            if (targetGKey && sNorm) {
+                found = _activeRenderTeacherIndex.byGradeSecSubj.get(`${targetGKey}|${sNorm}|${canonNorm}`)
+                    || _activeRenderTeacherIndex.byGradeAllSecSubj.get(`${targetGKey}|${canonNorm}`)
+                    || '';
+            }
+            if (!found && targetGKey && !sNorm) {
+                found = _activeRenderTeacherIndex.byGradeAllSecSubj.get(`${targetGKey}|${canonNorm}`) || '';
+                if (!found) {
+                    for (const [k, v] of _activeRenderTeacherIndex.byGradeSecSubj.entries()) {
+                        if (k.startsWith(`${targetGKey}|`) && k.endsWith(`|${canonNorm}`)) { found = v; break; }
+                    }
+                }
+            }
+            if (!found) found = _activeRenderTeacherIndex.bySubjOnly.get(canonNorm) || '';
+            if (!found) found = _activeRenderTeacherIndex.usersBySubj.get(canonNorm) || '';
+        }
+        if (found) {
+            _activeRenderTeacherIndex.resultCache.set(cKey, found);
+            return found;
+        }
+    }
+
+    // 1. Buscar en STATE.pensum (Solo lectura, fallback para llamadas directas o cursos fuera de catálogo)
     if (typeof STATE !== 'undefined' && Array.isArray(STATE.pensum)) {
         const match = STATE.pensum.find(p => {
             if (!p) return false;
@@ -2583,11 +2760,17 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
 
         if (match) {
             if (match.teacherName && String(match.teacherName).trim() && !String(match.teacherName).toLowerCase().includes('por asignar')) {
-                return String(match.teacherName).trim();
+                const resT = String(match.teacherName).trim();
+                if (_activeRenderTeacherIndex) _activeRenderTeacherIndex.resultCache.set(`${gNorm}|${sNorm}|${courseName}`, resT);
+                return resT;
             }
             if (match.teacherId && Array.isArray(STATE.users)) {
                 const u = STATE.users.find(usr => usr && usr.id === match.teacherId);
-                if (u && (u.name || u.fullName)) return (u.name || u.fullName).trim();
+                if (u && (u.name || u.fullName)) {
+                    const resU = (u.name || u.fullName).trim();
+                    if (_activeRenderTeacherIndex) _activeRenderTeacherIndex.resultCache.set(`${gNorm}|${sNorm}|${courseName}`, resU);
+                    return resU;
+                }
             }
         }
     }
@@ -2603,10 +2786,13 @@ function resolveActiveTeacherForCourse(courseName, gradeKey, section) {
             });
         });
         if (uMatch && (uMatch.name || uMatch.fullName)) {
-            return (uMatch.name || uMatch.fullName).trim();
+            const resUM = (uMatch.name || uMatch.fullName).trim();
+            if (_activeRenderTeacherIndex) _activeRenderTeacherIndex.resultCache.set(`${gNorm}|${sNorm}|${courseName}`, resUM);
+            return resUM;
         }
     }
 
+    if (_activeRenderTeacherIndex) _activeRenderTeacherIndex.resultCache.set(`${gNorm}|${sNorm}|${courseName}`, 'Catedrático Titular');
     return 'Catedrático Titular';
 }
 window.resolveActiveTeacherForCourse = resolveActiveTeacherForCourse;
@@ -2673,7 +2859,7 @@ function hydrateRecuperacionesFromCloud(cycle) {
         .then(r => (r && r.ok ? r.json() : null))
         .then(data => {
             window._enccoRecupHydratedCycles[cleanCyc] = true;
-            if (data && typeof data === 'object') {
+            if (data && typeof data === 'object' && Object.keys(data).length > 0) {
                 const targetStore = _getRecupMemoryStore(cleanCyc);
                 Object.keys(data).forEach(codeK => {
                     if (data[codeK] && typeof data[codeK] === 'object') {
@@ -2681,7 +2867,7 @@ function hydrateRecuperacionesFromCloud(cycle) {
                     }
                 });
                 if (window._currentGradeStatsActiveTab === 'reprobados' && typeof window.renderReprobadosRecuperacionView === 'function') {
-                    window.renderReprobadosRecuperacionView();
+                    window.renderReprobadosRecuperacionView({ reuseData: true });
                 }
             }
         })
@@ -2920,22 +3106,28 @@ window.saveRecoverySubjectGrade = saveRecoverySubjectGrade;
 
 function switchReprobadosConDerechoMode(mode) {
     window._reprobadosConDerechoMode = (mode === 'con_notas') ? 'con_notas' : 'papel';
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.switchReprobadosConDerechoMode = switchReprobadosConDerechoMode;
 
 function onReprobadosPostStatusChange(val) {
     window._reprobadosPostStatusFilter = val || 'ALL';
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.onReprobadosPostStatusChange = onReprobadosPostStatusChange;
 
 /**
  * Renderiza el módulo analítico de Alumnos Reprobados y Recuperación Académica
  */
-function renderReprobadosRecuperacionView() {
+function renderReprobadosRecuperacionView(renderOpts = {}) {
     const container = document.getElementById('gradeStatsDocumentContainer');
     if (!container) return;
+
+    const prevActiveEl = (typeof document !== 'undefined' && document.activeElement && document.activeElement.id === 'reprobadosQuickSearchInput')
+        ? document.activeElement
+        : null;
+    const prevSelStart = prevActiveEl && typeof prevActiveEl.selectionStart === 'number' ? prevActiveEl.selectionStart : null;
+    const prevSelEnd = prevActiveEl && typeof prevActiveEl.selectionEnd === 'number' ? prevActiveEl.selectionEnd : null;
 
     const STATE = window.STATE || {};
     const viewingCycle = String(
@@ -2946,9 +3138,22 @@ function renderReprobadosRecuperacionView() {
 
     const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
 
-    let rawStudentsList = [];
+    const cachedReport = window._lastReprobadosReportData;
+    const canReuseComputed = !!(
+        renderOpts &&
+        renderOpts.reuseData === true &&
+        cachedReport &&
+        cachedReport.cycle === viewingCycle &&
+        cachedReport.is2026Official === is2026Official &&
+        Array.isArray(cachedReport.students)
+    );
 
-    if (is2026Official) {
+    let rawStudentsList = [];
+    _activeRenderTeacherIndex = canReuseComputed ? null : _buildTeacherLookupIndex();
+    try {
+    if (canReuseComputed) {
+        rawStudentsList = cachedReport.students;
+    } else if (is2026Official) {
         // CICLO 2026: DATOS OFICIALES AUDITADOS DEL SIRE MINEDUC (412 estudiantes)
         const auditSource = (typeof AUDIT_2026_STUDENTS !== 'undefined' && Array.isArray(AUDIT_2026_STUDENTS))
             ? AUDIT_2026_STUDENTS
@@ -3342,7 +3547,7 @@ function renderReprobadosRecuperacionView() {
                 <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Búsqueda Rápida:</label>
                 <div style="position:relative;">
                     <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.85rem;"></i>
-                    <input type="text" placeholder="Buscar por alumno, código o materia..." value="${escapeHtml(currentQuery)}" oninput="onReprobadosSearchInput(this.value)" style="width:100%; padding:5px 10px 5px 30px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.82rem; background:#fff;">
+                    <input type="text" id="reprobadosQuickSearchInput" placeholder="Buscar por alumno, código o materia..." value="${escapeHtml(currentQuery)}" oninput="onReprobadosSearchInput(this.value)" style="width:100%; padding:5px 10px 5px 30px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.82rem; background:#fff;">
                 </div>
             </div>
         </div>
@@ -3600,12 +3805,25 @@ function renderReprobadosRecuperacionView() {
     `;
 
     container.innerHTML = html;
+
+    if (prevActiveEl && typeof document.getElementById === 'function') {
+        const nextSearch = document.getElementById('reprobadosQuickSearchInput');
+        if (nextSearch && typeof nextSearch.focus === 'function') {
+            nextSearch.focus();
+            if (prevSelStart !== null && typeof nextSearch.setSelectionRange === 'function') {
+                try { nextSearch.setSelectionRange(prevSelStart, prevSelEnd); } catch(e) {}
+            }
+        }
+    }
+    } finally {
+        _activeRenderTeacherIndex = null;
+    }
 }
 window.renderReprobadosRecuperacionView = renderReprobadosRecuperacionView;
 
 function switchReprobadosConDerechoLayout(layout) {
     window._reprobadosConDerechoLayout = (layout === 'vertical') ? 'vertical' : 'horizontal';
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.switchReprobadosConDerechoLayout = switchReprobadosConDerechoLayout;
 
@@ -3672,9 +3890,9 @@ function _buildRecupSubjectScoreHtml(st, repItem, gKey, mode = 'screen', cycle =
         ? `<span style="padding:2px 6px; border-radius:4px; font-size:0.76rem; font-weight:800; background:${aprobada ? '#dcfce7' : '#fee2e2'}; color:${aprobada ? '#166534' : '#b91c1c'}; border:1px solid ${aprobada ? '#86efac' : '#fca5a5'};">${aprobada ? '✓' : '✗'} ${notaFinal}</span>`
         : `<span style="padding:2px 6px; border-radius:4px; font-size:0.74rem; font-weight:700; background:#f1f5f9; color:#64748b;">Pend.</span>`;
 
-    const opp1Input = `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#334155;">1ª:<input type="number" min="0" max="100" step="1" placeholder="--" value="${opp1 !== null ? opp1 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 1, this.value)" style="${inputStyle}"></label>`;
+    const opp1Input = `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#334155;">1ª:<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${opp1 !== null ? opp1 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 1, this.value)" style="${inputStyle}"></label>`;
     const opp2Input = showOpp2
-        ? `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#92400e;">2ª:<input type="number" min="0" max="100" step="1" placeholder="--" value="${opp2 !== null ? opp2 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 2, this.value)" style="${inputStyle}"></label>`
+        ? `<label style="display:inline-flex; align-items:center; gap:3px; font-size:0.76rem; font-weight:700; color:#92400e;">2ª:<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${opp2 !== null ? opp2 : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, 2, this.value)" style="${inputStyle}"></label>`
         : '';
 
     return `<span style="display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; flex-shrink:0;">${opp1Input}${opp2Input}${badgeHtml}</span>`;
@@ -3744,9 +3962,9 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen', conDerec
 
         const tableStyle = isExcel
             ? 'width:100%; border-collapse:collapse; font-size:10.5pt; margin-bottom:16px;'
-            : `width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '9.5pt' : '0.94rem'};`;
+            : `width:100%; ${isPrint ? '' : 'min-width:1120px;'} table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '9.5pt' : '0.94rem'};`;
 
-        let tHtml = isExcel ? `<table style="${tableStyle}">${groupTitleBlock}` : `${groupTitleBlock}<table style="${tableStyle}">`;
+        let tHtml = isExcel ? `<table style="${tableStyle}">${groupTitleBlock}` : `${groupTitleBlock}<table class="recup-con-derecho-table" style="${tableStyle}">`;
         tHtml += `
             <thead style="display:table-header-group;">
                 <tr style="background:${headerBg}; color:${headerFg};">
@@ -3829,7 +4047,7 @@ function buildConDerechoHorizontalHtml(conDerechoList, mode = 'screen', conDerec
         });
 
         tHtml += `</tbody></table>`;
-        out += isExcel ? tHtml : `<div style="${isPrint ? '' : 'overflow-x:auto;'}">${tHtml}</div>`;
+        out += isExcel ? tHtml : `<div class="${isPrint ? '' : 'recup-table-scroll-wrap'}" style="${isPrint ? '' : 'overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;'}">${tHtml}</div>`;
     });
 
     return out;
@@ -3852,7 +4070,7 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen', conDerecho
     const colRecupHdr = isConNotas ? 'Nota Recup.' : 'Recup. (Papel)';
 
     let html = `
-        <table style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '10pt' : (isExcel ? '10.5pt' : '0.98rem')}; text-align:left;">
+        <table class="recup-con-derecho-vertical-table" style="width:100%; ${isPrint || isExcel ? '' : 'min-width:780px;'} table-layout:fixed; border-collapse:collapse; font-size:${isPrint ? '10pt' : (isExcel ? '10.5pt' : '0.98rem')}; text-align:left;">
             <thead style="display:table-header-group;">
                 <tr style="background:${headerBg}; color:${headerFg};">
                     <th style="width:4%; border:${borderCss}; padding:${isPrint ? '6px 3px' : '9px 5px'}; text-align:center;">No.</th>
@@ -3916,7 +4134,7 @@ function buildConDerechoVerticalHtml(conDerechoList, mode = 'screen', conDerecho
     });
 
     html += `</table>`;
-    return isExcel ? html : `<div style="${isPrint ? '' : 'overflow-x:auto;'}">${html}</div>`;
+    return isExcel ? html : `<div class="${isPrint ? '' : 'recup-table-scroll-wrap'}" style="${isPrint ? '' : 'overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;'}">${html}</div>`;
 }
 
 function buildConDerechoLayoutContent(conDerechoList, layout = 'horizontal', mode = 'screen', conDerechoMode = null) {
@@ -3927,31 +4145,39 @@ function buildConDerechoLayoutContent(conDerechoList, layout = 'horizontal', mod
 // CONTROLADORES DE EVENTOS DE SUB-VISTAS Y FILTROS
 function switchReprobadosSubView(subView) {
     window._reprobadosSubView = subView;
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.switchReprobadosSubView = switchReprobadosSubView;
 
 function onReprobadosGradeChange(val) {
     window._reprobadosGradeFilter = val;
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.onReprobadosGradeChange = onReprobadosGradeChange;
 
 function onReprobadosSectionChange(val) {
     window._reprobadosSectionFilter = val;
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.onReprobadosSectionChange = onReprobadosSectionChange;
 
 function onReprobadosTeacherChange(val) {
     window._reprobadosTeacherFilter = val;
-    renderReprobadosRecuperacionView();
+    renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.onReprobadosTeacherChange = onReprobadosTeacherChange;
 
+let _reprobadosSearchDebounceTimer = null;
 function onReprobadosSearchInput(val) {
     window._reprobadosSearchQuery = val;
-    renderReprobadosRecuperacionView();
+    if (_reprobadosSearchDebounceTimer) clearTimeout(_reprobadosSearchDebounceTimer);
+    if (typeof setTimeout === 'function') {
+        _reprobadosSearchDebounceTimer = setTimeout(() => {
+            renderReprobadosRecuperacionView({ reuseData: true });
+        }, 160);
+    } else {
+        renderReprobadosRecuperacionView({ reuseData: true });
+    }
 }
 window.onReprobadosSearchInput = onReprobadosSearchInput;
 
