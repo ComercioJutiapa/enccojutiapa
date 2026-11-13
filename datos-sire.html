@@ -20,6 +20,38 @@
         var _sireSubjects = window._sireSubjects;
         var _sirePensumCatalog = window._sirePensumCatalog;
 
+        // ======================================================================
+        // GESTIÓN DINÁMICA DE CICLOS ESCOLARES (100% SOLO LECTURA - RTDB/FIRESTORE)
+        // ======================================================================
+        window.sireActiveCycle = '2027';
+        window.currentSireCycle = '2027';
+        window.sireCyclesList = [
+            { name: '2027', status: 'Activo', isArchived: false, description: 'Ciclo Escolar Oficial 2027' },
+            { name: '2026', status: 'Histórico', isArchived: true, description: 'Ciclo Escolar Oficial MINEDUC 2026' }
+        ];
+
+        (function initInitialSireCycle() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const qCycle = urlParams.get('cycle');
+                const sessCycle = sessionStorage.getItem('ENCCO_VIEWING_CYCLE') || localStorage.getItem('ENCCO_ACTIVE_CYCLE');
+                if (qCycle && qCycle.trim()) {
+                    window.currentSireCycle = qCycle.trim();
+                } else if (sessCycle && sessCycle.trim()) {
+                    window.currentSireCycle = sessCycle.trim();
+                } else {
+                    window.currentSireCycle = '2027';
+                }
+            } catch(e) {
+                window.currentSireCycle = '2027';
+            }
+        })();
+
+        window.getCurrentSireCycle = function() {
+            return (window.currentSireCycle || window.sireActiveCycle || '2027').toString().trim();
+        };
+        var getCurrentSireCycle = window.getCurrentSireCycle;
+
         function getStudentsSafe() {
             if (window._sireStudents && window._sireStudents.length > 0) return window._sireStudents;
             if (window._filteredStudents && window._filteredStudents.length > 0) return window._filteredStudents;
@@ -273,7 +305,7 @@
                 const rows = [
                     ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA - ENCCO (1970)'],
                     ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA DE REGISTROS EDUCATIVOS (SIRE)'],
-                    ['CUADRO OFICIAL DE CALIFICACIONES POR GRADO - CICLO ESCOLAR 2026'],
+                    ['CUADRO OFICIAL DE CALIFICACIONES POR GRADO - CICLO ESCOLAR ' + getCurrentSireCycle()],
                     ['CÓDIGO ESTABLECIMIENTO: ' + schoolCode + ' | ' + gCfg.label.toUpperCase() + ' | TOTAL ALUMNOS: ' + gradeStudents.length],
                     ['PERIODO EVALUADO: ' + period + ' | FECHA DE GENERACIÓN: ' + new Date().toLocaleDateString('es-GT')],
                     [],
@@ -318,7 +350,7 @@
                 XLSX.utils.book_append_sheet(wb, ws, gCfg.title);
             });
 
-            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_Grado_2026.xlsx');
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_Grado_' + getCurrentSireCycle() + '.xlsx');
             if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por Grados descargado exitosamente.', 'success');
         }
 
@@ -410,7 +442,7 @@
                 });
             });
 
-            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_12_Secciones_2026.xlsx');
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_12_Secciones_' + getCurrentSireCycle() + '.xlsx');
             if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por 12 Secciones descargado.', 'success');
         }
 
@@ -460,7 +492,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'SIRE_MINEDUC_Cuadro_' + gKey + '_Perito_Contador_' + period + '_2026.xml';
+                a.download = 'SIRE_MINEDUC_Cuadro_' + gKey + '_Perito_Contador_' + period + '_' + getCurrentSireCycle() + '.xml';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -518,7 +550,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'SIRE_MINEDUC_Cuadro_' + targetGrade + '_Sec_' + targetSection + '_' + period + '_2026.xml';
+            a.download = 'SIRE_MINEDUC_Cuadro_' + targetGrade + '_Sec_' + targetSection + '_' + period + '_' + getCurrentSireCycle() + '.xml';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -615,7 +647,7 @@
             let fileSuffix = targetGrade !== 'ALL' ? targetGrade : 'Completo';
             if (targetSection !== 'ALL') fileSuffix += '_Sec_' + targetSection;
 
-            XLSX.writeFile(wb, 'SIRE_MINEDUC_Plantilla_Tabular_' + fileSuffix + '_' + period + '_2026.xlsx');
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_Plantilla_Tabular_' + fileSuffix + '_' + period + '_' + getCurrentSireCycle() + '.xlsx');
 
             if (typeof showToast === 'function') {
                 showToast('✅ Plantilla Excel Tabular SIRE generada (' + (rows.length - 1) + ' registros).', 'success');
@@ -655,7 +687,7 @@
                 const rows = [
                     ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA (1970)'],
                     ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA SIRE'],
-                    ['PADRÓN OFICIAL DE MATRÍCULA POR GRADO - CICLO ESCOLAR 2026'],
+                    ['PADRÓN OFICIAL DE MATRÍCULA POR GRADO - CICLO ESCOLAR ' + getCurrentSireCycle()],
                     ['ESTABLECIMIENTO: ' + schoolCode + ' | ' + gKey.toUpperCase() + ' PERITO CONTADOR | TOTAL: ' + gradeStudents.length],
                     [],
                     headers
@@ -690,7 +722,7 @@
                 XLSX.utils.book_append_sheet(wb, ws, 'Matricula_' + gKey);
             });
 
-            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Padron_Matricula_Por_Grado_2026.xlsx');
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Padron_Matricula_Por_Grado_' + getCurrentSireCycle() + '.xlsx');
             if (typeof showToast === 'function') showToast('✅ Padrón de Matrícula Oficial SIRE descargado.', 'success');
         }
 
@@ -1599,7 +1631,7 @@
             CONSOLIDADO OFICIAL DE PROMEDIOS PARA SISTEMA SIRE - MINEDUC GUATEMALA
         </p>
         <p style="margin:2px 0 0; font-size:8.5pt; color:#64748b;">
-            Código de Establecimiento: <strong>22-01-0014-46</strong> • Ciclo Escolar: <strong>2026</strong> • Fecha de Emisión: <span id="printDateSpan"></span>
+            Código de Establecimiento: <strong>22-01-0014-46</strong> • Ciclo Escolar: <strong id="printCycleSpan">2027</strong> • Fecha de Emisión: <span id="printDateSpan"></span>
         </p>
         <hr style="margin:12px 0; border:0; border-top:1.5px solid #000;">
     </div>
@@ -1611,7 +1643,7 @@
         <div class="sire-session-bar no-print">
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <span class="connection-status status-connected" id="firebaseLiveStatusBadge" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.78rem; padding:4px 10px;">
-                    <i class="fa-solid fa-cloud-check"></i> Firebase: Conectado (<span id="sireLiveCount">412</span> alumnos)
+                    <i class="fa-solid fa-cloud-check"></i> Firebase: Conectado (<span id="sireLiveCount">0</span> alumnos)
                 </span>
                 <span class="connection-status status-disconnected" id="connStatusBadge" style="font-size:0.78rem; padding:4px 10px;">
                     <i class="fa-solid fa-circle-xmark"></i> Desconectado de SIRE
@@ -1732,8 +1764,16 @@
                 <span style="color:#cbd5e1;">|</span>
                 <span><i class="fa-solid fa-chart-line" style="color:#d97706;"></i> Promedio General: <strong id="statAverageScore" style="font-size:1.05rem; color:#d97706;">0.0</strong></span>
             </div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">
-                Ciclo Escolar <strong>2026</strong> • Formato Oficial MINEDUC
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#334155; font-weight:600; flex-wrap:wrap;">
+                <label for="sireCycleSelect" style="display:flex; align-items:center; gap:5px; margin:0; cursor:pointer;">
+                    <i class="fa-solid fa-calendar-days" style="color:#0284c7;"></i> Ciclo:
+                </label>
+                <select id="sireCycleSelect" onchange="onSireCycleChange(this.value)" style="padding:4px 10px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700; font-size:0.84rem; background:#fff; color:#0f172a; cursor:pointer; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                    <option value="2027">2027 (Activo en Vivo)</option>
+                    <option value="2026">2026 (Histórico SIRE)</option>
+                </select>
+                <span id="sireCycleBadge" style="padding:3px 9px; border-radius:9999px; font-size:0.75rem; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">Activo</span>
+                <span style="color:#94a3b8; font-size:0.75rem; font-weight:500;">• Formato Oficial MINEDUC</span>
             </div>
         </div>
 
@@ -1755,7 +1795,7 @@
                 </button>
                 <button type="button" class="sire-grade-tab" data-grade="ALL" onclick="selectGradeTab('ALL')">
                     <i class="fa-solid fa-globe"></i> Nómina Completa 
-                    <span class="tab-badge" id="badgeAll">412 Alumnos</span>
+                    <span class="tab-badge" id="badgeAll">Cargando...</span>
                 </button>
             </div>
 
@@ -2005,16 +2045,108 @@
             const dateSpan = document.getElementById('printDateSpan');
             if (dateSpan) dateSpan.textContent = todayStr;
 
+            updateSireCycleSelectorUI();
             restoreSireSession();
             initFirebaseDataReader();
         });
 
+        // ======================================================================
+        // CONTROL DINÁMICO DE CICLOS ESCOLARES (SOLO LECTURA ESTRICTA)
+        // ======================================================================
+        function updateSireCycleSelectorUI() {
+            const selectEl = document.getElementById('sireCycleSelect');
+            const badgeEl = document.getElementById('sireCycleBadge');
+            const printCycleSpan = document.getElementById('printCycleSpan');
+            const curCycle = getCurrentSireCycle();
+
+            if (printCycleSpan) {
+                printCycleSpan.textContent = curCycle;
+            }
+
+            if (selectEl) {
+                if (Array.isArray(window.sireCyclesList) && window.sireCyclesList.length > 0) {
+                    const currentVal = curCycle;
+                    let html = '';
+                    window.sireCyclesList.forEach(c => {
+                        const cName = (c.name || c.year || '').toString().trim();
+                        if (!cName) return;
+                        const isAct = (cName === window.sireActiveCycle || c.status === 'Activo' || c.isArchived === false);
+                        const label = cName + (isAct ? ' (Activo en Vivo)' : ' (Histórico SIRE)');
+                        const selected = (cName === currentVal) ? 'selected' : '';
+                        html += `<option value="${cName}" ${selected}>${label}</option>`;
+                    });
+                    if (!window.sireCyclesList.some(c => (c.name || c.year || '').toString().trim() === currentVal)) {
+                        html = `<option value="${currentVal}" selected>${currentVal}</option>` + html;
+                    }
+                    selectEl.innerHTML = html;
+                }
+                selectEl.value = curCycle;
+            }
+
+            if (badgeEl) {
+                const isAct = (curCycle === window.sireActiveCycle);
+                if (isAct) {
+                    badgeEl.textContent = 'Activo en Vivo';
+                    badgeEl.style.background = '#e0f2fe';
+                    badgeEl.style.color = '#0369a1';
+                    badgeEl.style.border = '1px solid #bae6fd';
+                } else {
+                    badgeEl.textContent = 'Histórico SIRE';
+                    badgeEl.style.background = '#fef3c7';
+                    badgeEl.style.color = '#b45309';
+                    badgeEl.style.border = '1px solid #fde68a';
+                }
+            }
+        }
+
+        async function onSireCycleChange(newCycle) {
+            if (!newCycle) return;
+            const cleanCycle = newCycle.toString().trim();
+            window.currentSireCycle = cleanCycle;
+
+            try {
+                sessionStorage.setItem('ENCCO_VIEWING_CYCLE', cleanCycle);
+                const url = new URL(window.location.href);
+                url.searchParams.set('cycle', cleanCycle);
+                window.history.replaceState({}, '', url.toString());
+            } catch(e) {}
+
+            updateSireCycleSelectorUI();
+
+            // Cargar instantáneamente de caché si ya está disponible para este ciclo
+            try {
+                const cached = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE_' + cleanCycle);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        _sireStudents = window._sireStudents = parsed;
+                        applySireFilters();
+                        updateFirebaseLiveBadge(true, _sireStudents.length);
+                    }
+                }
+            } catch(ce) {}
+
+            if (typeof showToast === 'function') {
+                showToast('Consultando nómina oficial para Ciclo ' + cleanCycle + '...', 'info');
+            }
+
+            await fetchFromRtdbRest(cleanCycle);
+            updateFirebaseLiveBadge(true, _sireStudents.length);
+
+            if (typeof showToast === 'function') {
+                showToast('✅ Datos oficiales cargados para Ciclo ' + cleanCycle + ' (' + _sireStudents.length + ' alumnos).', 'success');
+            }
+        }
+
         // 3. LECTURA ESTRICTA Y SINCRONIZACIÓN PERSISTENTE DE FIREBASE (CERO DESCONEXIÓN - 100% SOLO LECTURA)
         async function initFirebaseDataReader() {
             try {
+                updateSireCycleSelectorUI();
+
                 // 0. Renderizado instantáneo (0ms) desde caché de sesión si ya fue consultada
+                const effCycle = getCurrentSireCycle();
                 try {
-                    const cachedRaw = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE_V2') || sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE');
+                    const cachedRaw = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE_' + effCycle) || sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE_V2') || sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE');
                     const cachedPensumRaw = sessionStorage.getItem('ENCCO_SIRE_PENSUM_CACHE');
                     if (cachedRaw) {
                         const parsed = JSON.parse(cachedRaw);
@@ -2031,8 +2163,8 @@
                     }
                 } catch(cacheErr) {}
 
-                // 1. Cargar nómina oficial en tiempo real desde Firebase RTDB REST (el backend activo oficial) en paralelo
-                const rtdbSuccess = await fetchFromRtdbRest();
+                // 1. Cargar nómina oficial en tiempo real desde Firebase RTDB REST (el backend activo oficial)
+                const rtdbSuccess = await fetchFromRtdbRest(effCycle);
                 
                 // 2. Si RTDB no devolvió datos y Firestore está disponible, intentar Firestore
                 if ((!rtdbSuccess || _sireStudents.length === 0) && window.FirebaseModular && window.FirebaseModular.db) {
@@ -2059,19 +2191,21 @@
                         const bc = new BroadcastChannel('ENCCO_STATE_CHANNEL');
                         bc.onmessage = (ev) => {
                             if (ev.data && ev.data.type === 'SYNC_STATE_UPDATE' && ev.data.state && Array.isArray(ev.data.state.students)) {
-                                _sireStudents = window._sireStudents = ev.data.state.students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
-                                applySireFilters();
-                                updateFirebaseLiveBadge(true, _sireStudents.length);
+                                if (getCurrentSireCycle() === window.sireActiveCycle) {
+                                    _sireStudents = window._sireStudents = ev.data.state.students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+                                    applySireFilters();
+                                    updateFirebaseLiveBadge(true, _sireStudents.length);
+                                }
                             }
                         };
                     } catch(bcErr) {}
                 }
 
-                // 5. Latido de sincronización continua (cada 45s) sin saturar Firebase
+                // 5. Latido de sincronización continua (cada 45s) sin saturar Firebase (solo en ciclo activo)
                 if (!window._sireKeepAliveInterval) {
                     window._sireKeepAliveInterval = setInterval(async () => {
-                        if (navigator.onLine) {
-                            await fetchFromRtdbRest();
+                        if (navigator.onLine && getCurrentSireCycle() === window.sireActiveCycle) {
+                            await fetchFromRtdbRest(getCurrentSireCycle());
                             updateFirebaseLiveBadge(true, _sireStudents.length);
                         }
                     }, 45000);
@@ -2081,7 +2215,7 @@
                     window._sireOnlineEventsBound = true;
                     window.addEventListener('online', async () => {
                         updateFirebaseLiveBadge(false);
-                        await fetchFromRtdbRest();
+                        await fetchFromRtdbRest(getCurrentSireCycle());
                         updateFirebaseLiveBadge(true, _sireStudents.length);
                     });
                     window.addEventListener('offline', () => {
@@ -2089,7 +2223,7 @@
                     });
                     document.addEventListener('visibilitychange', async () => {
                         if (document.visibilityState === 'visible' && navigator.onLine) {
-                            await fetchFromRtdbRest();
+                            await fetchFromRtdbRest(getCurrentSireCycle());
                             updateFirebaseLiveBadge(true, _sireStudents.length);
                         }
                     });
@@ -2101,10 +2235,46 @@
             }
         }
 
-        async function fetchFromRtdbRest() {
+        async function fetchFromRtdbRest(cycleOverride) {
             try {
+                // 1. Descubrir / sincronizar ciclos y ciclo activo desde RTDB (GET puro)
+                try {
+                    const [actRes, cycRes] = await Promise.all([
+                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/activeCycle.json', { 
+                            method: 'GET', 
+                            headers: { 'Accept': 'application/json' } 
+                        }).then(r => r.ok ? r.json() : null).catch(() => null),
+                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/cycles.json', { 
+                            method: 'GET', 
+                            headers: { 'Accept': 'application/json' } 
+                        }).then(r => r.ok ? r.json() : null).catch(() => null)
+                    ]);
+                    if (actRes) {
+                        window.sireActiveCycle = actRes.toString().trim();
+                    }
+                    if (Array.isArray(cycRes) && cycRes.length > 0) {
+                        window.sireCyclesList = cycRes;
+                    }
+                    // Si el usuario no especificó explícitamente un ciclo en la URL, sincronizar con el ciclo activo de RTDB
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (!urlParams.get('cycle') && !sessionStorage.getItem('ENCCO_VIEWING_CYCLE') && window.sireActiveCycle) {
+                        window.currentSireCycle = window.sireActiveCycle;
+                    }
+                    updateSireCycleSelectorUI();
+                } catch(cErr) {
+                    console.warn("Aviso al sincronizar metadatos de ciclo:", cErr);
+                }
+
+                const effCycle = (cycleOverride || window.currentSireCycle || window.sireActiveCycle || '2027').toString().trim();
+                const isHistorical = (effCycle !== window.sireActiveCycle);
+
+                // Determinar ruta de estudiantes en RTDB (GET puro)
+                let studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json';
+                if (isHistorical) {
+                    studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/' + encodeURIComponent(effCycle) + '/studentsSnapshot.json';
+                }
+
                 // Lectura ultrarrápida paralela y de SOLO LECTURA estricta (GET pura)
-                // Priorizar /encc_school_state/ que contiene el estado oficial y en tiempo real con calificaciones completas
                 const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { 
                     method: 'GET', 
                     headers: { 'Accept': 'application/json' } 
@@ -2113,11 +2283,13 @@
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
 
-                const studentsPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { 
+                const studentsPromise = fetch(studentsUrl, { 
                     method: 'GET', 
                     headers: { 'Accept': 'application/json' } 
                 }).then(async r => {
-                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (!r.ok && !isHistorical) {
+                        r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    }
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
 
@@ -2137,10 +2309,11 @@
                     if (list.length > 0) {
                         _sireStudents = window._sireStudents = list;
                         try { 
+                            sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE_' + effCycle, JSON.stringify(list));
                             sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE_V2', JSON.stringify(list));
                             sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE', JSON.stringify(list)); 
                         } catch(se) {}
-                        console.log("✅ [Datos para Sire] Alumnos cargados desde Firebase Realtime Database (REST):", list.length);
+                        console.log("✅ [Datos para Sire] Alumnos cargados desde RTDB para ciclo " + effCycle + ":", list.length);
                         applySireFilters();
                         return true;
                     }
@@ -3319,7 +3492,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'SIRE_MINEDUC_Cuadro_' + fileNameSuffix + '_' + period + '_2026.xml';
+            a.download = 'SIRE_MINEDUC_Cuadro_' + fileNameSuffix + '_' + period + '_' + getCurrentSireCycle() + '.xml';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -3429,7 +3602,7 @@ recordsOnly +
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'SIRE_MINEDUC_Calificaciones_Con_Esquema_Embebido_2026.xml';
+            a.download = 'SIRE_MINEDUC_Calificaciones_Con_Esquema_Embebido_' + getCurrentSireCycle() + '.xml';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -3455,7 +3628,7 @@ recordsOnly +
             const rows = [
                 ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA (1970)'],
                 ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA SIRE'],
-                ['CÓDIGO DE ESTABLECIMIENTO:', schoolCode, 'CICLO ESCOLAR:', '2026'],
+                ['CÓDIGO DE ESTABLECIMIENTO:', schoolCode, 'CICLO ESCOLAR:', getCurrentSireCycle()],
                 ['PERIODO EVALUADO:', period, 'FECHA EXPORTACIÓN:', new Date().toLocaleDateString('es-GT')],
                 [],
                 ['No.', 'Código Personal SIRE', 'CUI / DPI', 'Apellidos y Nombres', 'Grado', 'Sección', 'Carrera', 'Promedio General', 'Materias Aprobadas', 'Materias Reprobadas', 'Estado Oficial SIRE']
@@ -3491,7 +3664,7 @@ recordsOnly +
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Datos_SIRE_Promedios");
-            XLSX.writeFile(wb, "ENCCO_Datos_Para_Sire_Promedios_2026.xlsx");
+            XLSX.writeFile(wb, "ENCCO_Datos_Para_Sire_Promedios_" + getCurrentSireCycle() + ".xlsx");
         }
 
         // 8. MODAL DE DESGLOSE POR MATERIA

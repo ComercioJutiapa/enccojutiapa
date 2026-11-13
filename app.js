@@ -12412,10 +12412,17 @@ function navigateTo(viewName, event = null) {
     var _sidebarEl = document.getElementById('sidebar');
     var _sidebarScrollTop = _sidebarEl ? _sidebarEl.scrollTop : 0;
 
-    // Navegación oficial al módulo "Datos para Sire"
+    // Navegación oficial al módulo "Datos para Sire" (con propagación dinámica del ciclo activo o seleccionado)
     if (viewName === 'datos-sire') {
         if (typeof unsubscribeAllFirestoreListeners === "function") unsubscribeAllFirestoreListeners();
-        window.location.href = 'datos-sire.html';
+        var curCycle = (typeof STATE !== 'undefined' && (STATE.viewingHistoricalCycle || STATE.activeCycle)) ? (STATE.viewingHistoricalCycle || STATE.activeCycle) : '';
+        if (!curCycle) {
+            try {
+                curCycle = sessionStorage.getItem('ENCCO_VIEWING_CYCLE') || localStorage.getItem('ENCCO_ACTIVE_CYCLE') || '';
+            } catch(e) {}
+        }
+        var targetUrl = 'datos-sire.html' + (curCycle ? ('?cycle=' + encodeURIComponent(curCycle)) : '');
+        window.location.href = targetUrl;
         return;
     }
 
