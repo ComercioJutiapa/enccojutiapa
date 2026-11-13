@@ -17584,6 +17584,776 @@ function calculateStudentAvg(student) {
     return info.average;
 }
 
+// ==========================================================================
+// MÓDULO OFICIAL: EXPEDIENTE DE ADMISIÓN, DOCUMENTOS Y COMENTARIOS DEL ALUMNO
+// ==========================================================================
+
+const OFFICIAL_EXPEDIENTE_DOCS = [
+    {
+        key: 'certificados_primaria',
+        title: 'Certificados de 1ero a 6to Primaria',
+        subtitle: 'Certificados anuales oficiales de estudios de Educación Primaria (1.° a 6.° grado).',
+        icon: 'fa-file-lines',
+        category: 'Nivel Primario',
+        badgeBg: '#f0fdf4',
+        badgeColor: '#166534'
+    },
+    {
+        key: 'diploma_primaria',
+        title: 'Diploma Oficial de 6to Primaria',
+        subtitle: 'Diploma oficial de culminación de Educación Primaria avalado por MINEDUC.',
+        icon: 'fa-certificate',
+        category: 'Nivel Primario',
+        badgeBg: '#f0fdf4',
+        badgeColor: '#166534'
+    },
+    {
+        key: 'certificados_basico',
+        title: 'Certificados de 1ero a 3ero Básico',
+        subtitle: 'Certificados anuales oficiales de estudios del Ciclo de Educación Básica.',
+        icon: 'fa-file-lines',
+        category: 'Ciclo Básico',
+        badgeBg: '#eff6ff',
+        badgeColor: '#1e40af'
+    },
+    {
+        key: 'diploma_basico',
+        title: 'Diploma Oficial de 3ero Básico',
+        subtitle: 'Diploma oficial de finalización de Educación Básica del Nivel Medio.',
+        icon: 'fa-award',
+        category: 'Ciclo Básico',
+        badgeBg: '#eff6ff',
+        badgeColor: '#1e40af'
+    },
+    {
+        key: 'partida_nacimiento',
+        title: 'Certificación de Nacimiento / Pasaporte',
+        subtitle: 'Certificado de nacimiento extendido por RENAP (vigente) y/o Pasaporte si es extranjero.',
+        icon: 'fa-id-card',
+        category: 'Identificación Legal',
+        badgeBg: '#faf5ff',
+        badgeColor: '#6b21a8'
+    },
+    {
+        key: 'dpi_encargado',
+        title: 'Copia de DPI Encargado / Pasaporte',
+        subtitle: 'Copia legible de DPI del padre, madre o encargado legal y/o Pasaporte si es extranjero.',
+        icon: 'fa-address-card',
+        category: 'Identificación Legal',
+        badgeBg: '#faf5ff',
+        badgeColor: '#6b21a8'
+    }
+];
+
+function getStudentExpedienteSafe(student) {
+    if (!student || typeof student !== 'object') return null;
+    if (!student.expediente || typeof student.expediente !== 'object') {
+        student.expediente = {};
+    }
+    const exp = student.expediente;
+    if (!exp.docs || typeof exp.docs !== 'object') {
+        exp.docs = {};
+    }
+    OFFICIAL_EXPEDIENTE_DOCS.forEach(d => {
+        if (!exp.docs[d.key] || typeof exp.docs[d.key] !== 'object') {
+            exp.docs[d.key] = {
+                status: 'pendiente',
+                type: 'copia',
+                date: '',
+                notes: ''
+            };
+        }
+    });
+    if (!Array.isArray(exp.commentsHistory)) {
+        exp.commentsHistory = [];
+    }
+    if (typeof exp.generalNotes !== 'string') {
+        exp.generalNotes = '';
+    }
+    return exp;
+}
+
+function calculateStudentExpedienteMetrics(student) {
+    const exp = getStudentExpedienteSafe(student);
+    if (!exp) return { deliveredCount: 0, totalRequired: 6, completeness: 0, status: 'sin_expediente', pendingCount: 6, inProgressCount: 0, naCount: 0 };
+
+    let deliveredCount = 0;
+    let pendingCount = 0;
+    let inProgressCount = 0;
+    let naCount = 0;
+
+    OFFICIAL_EXPEDIENTE_DOCS.forEach(d => {
+        const doc = exp.docs[d.key] || {};
+        const st = (doc.status || 'pendiente').toLowerCase();
+        if (st === 'entregado') deliveredCount++;
+        else if (st === 'no_aplica') naCount++;
+        else if (st === 'en_tramite') inProgressCount++;
+        else pendingCount++;
+    });
+
+    const activeRequired = Math.max(1, OFFICIAL_EXPEDIENTE_DOCS.length - naCount);
+    const completeness = Math.min(100, Math.round((deliveredCount / activeRequired) * 100));
+
+    let status = 'incompleto';
+    if (deliveredCount === activeRequired) {
+        status = 'completo';
+    } else if (deliveredCount === 0) {
+        status = 'sin_expediente';
+    }
+
+    exp.deliveredCount = deliveredCount;
+    exp.pendingCount = pendingCount;
+    exp.inProgressCount = inProgressCount;
+    exp.naCount = naCount;
+    exp.totalRequired = activeRequired;
+    exp.completeness = completeness;
+    exp.status = status;
+
+    return { deliveredCount, totalRequired: activeRequired, completeness, status, pendingCount, inProgressCount, naCount };
+}
+
+function updateStudentExpedienteHeaderBadge(student) {
+    if (!student) return;
+    const metrics = calculateStudentExpedienteMetrics(student);
+    const badge = document.getElementById('profExpedienteHeaderBadge');
+    const badgeText = document.getElementById('profExpedienteBadgeText');
+    const tabCount = document.getElementById('profExpedienteTabCount');
+
+    if (tabCount) {
+        tabCount.textContent = `${metrics.deliveredCount}/${metrics.totalRequired}`;
+    }
+
+    if (badge && badgeText) {
+        badge.style.display = 'inline-flex';
+        badge.style.cursor = 'pointer';
+        badge.style.transition = 'all 0.15s ease';
+
+        if (metrics.status === 'completo') {
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#166534';
+            badge.style.border = '1px solid #86efac';
+            badge.innerHTML = `<i class="fa-solid fa-folder-check"></i> <span id="profExpedienteBadgeText">Expediente: Completo (${metrics.deliveredCount}/${metrics.totalRequired})</span>`;
+            badge.title = `Expediente 100% completo (${metrics.deliveredCount} de ${metrics.totalRequired} documentos entregados). Haga clic para abrir.`;
+        } else if (metrics.deliveredCount > 0) {
+            badge.style.background = '#fef3c7';
+            badge.style.color = '#92400e';
+            badge.style.border = '1px solid #fde68a';
+            badge.innerHTML = `<i class="fa-solid fa-folder-open"></i> <span id="profExpedienteBadgeText">Expediente: Incompleto (${metrics.deliveredCount}/${metrics.totalRequired})</span>`;
+            badge.title = `Expediente incompleto (${metrics.deliveredCount} de ${metrics.totalRequired} documentos entregados, ${metrics.pendingCount} pendientes). Haga clic para gestionar.`;
+        } else {
+            badge.style.background = '#fee2e2';
+            badge.style.color = '#991b1b';
+            badge.style.border = '1px solid #fca5a5';
+            badge.innerHTML = `<i class="fa-solid fa-folder-closed"></i> <span id="profExpedienteBadgeText">Sin Expediente (0/${metrics.totalRequired})</span>`;
+            badge.title = `Sin documentos registrados en el expediente (0 de ${metrics.totalRequired}). Haga clic para ingresar documentos.`;
+        }
+    }
+}
+
+function renderStudentExpedienteTab(student) {
+    if (!student) {
+        student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    }
+    if (!student) return;
+
+    const exp = getStudentExpedienteSafe(student);
+    const metrics = calculateStudentExpedienteMetrics(student);
+
+    // 1. Sincronizar Header Badge & Tab Counter
+    updateStudentExpedienteHeaderBadge(student);
+
+    // 2. Actualizar Status Pill & Progress Bar
+    const statusPill = document.getElementById('profExpedienteStatusPill');
+    if (statusPill) {
+        if (metrics.status === 'completo') {
+            statusPill.textContent = 'Expediente Completo';
+            statusPill.style.background = '#dcfce7';
+            statusPill.style.color = '#166534';
+            statusPill.style.border = '1px solid #86efac';
+        } else if (metrics.deliveredCount > 0) {
+            statusPill.textContent = 'Expediente Incompleto';
+            statusPill.style.background = '#fef3c7';
+            statusPill.style.color = '#92400e';
+            statusPill.style.border = '1px solid #fde68a';
+        } else {
+            statusPill.textContent = 'Sin Documentos';
+            statusPill.style.background = '#fee2e2';
+            statusPill.style.color = '#991b1b';
+            statusPill.style.border = '1px solid #fca5a5';
+        }
+    }
+
+    const progPercent = document.getElementById('profExpedienteProgressPercent');
+    if (progPercent) progPercent.textContent = `${metrics.completeness}%`;
+
+    const progRatio = document.getElementById('profExpedienteProgressRatio');
+    if (progRatio) progRatio.textContent = `${metrics.deliveredCount} de ${metrics.totalRequired} Documentos Entregados`;
+
+    const progBar = document.getElementById('profExpedienteProgressBar');
+    if (progBar) {
+        progBar.style.width = `${metrics.completeness}%`;
+        if (metrics.completeness === 100) {
+            progBar.style.background = '#16a34a';
+        } else if (metrics.completeness >= 50) {
+            progBar.style.background = 'linear-gradient(90deg, #0284c7, #16a34a)';
+        } else {
+            progBar.style.background = 'linear-gradient(90deg, #f59e0b, #0284c7)';
+        }
+    }
+
+    const kpiEntregados = document.getElementById('profExpKpiEntregados');
+    if (kpiEntregados) kpiEntregados.textContent = metrics.deliveredCount;
+
+    const kpiPendientes = document.getElementById('profExpKpiPendientes');
+    if (kpiPendientes) kpiPendientes.textContent = metrics.pendingCount;
+
+    const kpiTramite = document.getElementById('profExpKpiTramite');
+    if (kpiTramite) kpiTramite.textContent = metrics.inProgressCount;
+
+    // 3. Renderizar el Grid de 6 Documentos
+    const docsGrid = document.getElementById('profExpedienteDocsGrid');
+    if (docsGrid) {
+        const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+            (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
+            STATE.currentRole === 'admin' || STATE.currentRole === 'director' ||
+            STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar';
+
+        docsGrid.innerHTML = OFFICIAL_EXPEDIENTE_DOCS.map(d => {
+            const doc = (exp.docs && exp.docs[d.key]) ? exp.docs[d.key] : { status: 'pendiente', type: 'copia', date: '', notes: '' };
+            const docStatus = (doc.status || 'pendiente').toLowerCase();
+            const docType = (doc.type || 'copia').toLowerCase();
+            const isDelivered = (docStatus === 'entregado');
+            const isInTramite = (docStatus === 'en_tramite');
+            const isNa = (docStatus === 'no_aplica');
+
+            let cardBorder = '#e2e8f0';
+            let cardBg = '#ffffff';
+            let pillColor = '#94a3b8';
+            let pillBg = '#f1f5f9';
+            let pillText = 'Pendiente';
+
+            if (isDelivered) {
+                cardBorder = '#86efac';
+                cardBg = '#f0fdf4';
+                pillColor = '#166534';
+                pillBg = '#dcfce7';
+                pillText = 'Entregado';
+            } else if (isInTramite) {
+                cardBorder = '#bae6fd';
+                cardBg = '#f0f9ff';
+                pillColor = '#0369a1';
+                pillBg = '#e0f2fe';
+                pillText = 'En Trámite';
+            } else if (isNa) {
+                cardBorder = '#e2e8f0';
+                cardBg = '#f8fafc';
+                pillColor = '#64748b';
+                pillBg = '#f1f5f9';
+                pillText = 'No Aplica';
+            } else {
+                cardBorder = '#fecdd3';
+                cardBg = '#fffafb';
+                pillColor = '#9f1239';
+                pillBg = '#ffe4e6';
+                pillText = 'Pendiente';
+            }
+
+            return `
+            <div class="expediente-doc-card" id="expDocCard-${d.key}" style="background:${cardBg}; border:1.5px solid ${cardBorder}; border-radius:10px; padding:12px 14px; transition:all 0.2s ease; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="width:32px; height:32px; border-radius:8px; background:${d.badgeBg}; display:flex; align-items:center; justify-content:center; color:${d.badgeColor}; font-size:0.95rem; flex-shrink:0;">
+                            <i class="fa-solid ${d.icon}"></i>
+                        </div>
+                        <div>
+                            <span style="font-size:0.86rem; font-weight:800; color:#0f172a; display:block; line-height:1.25;">${escapeHtml(d.title)}</span>
+                            <span style="font-size:0.70rem; color:#64748b; font-weight:600;">${escapeHtml(d.category)}</span>
+                        </div>
+                    </div>
+                    <span id="expDocPill-${d.key}" class="badge" style="background:${pillBg}; color:${pillColor}; font-weight:800; font-size:0.72rem; white-space:nowrap; padding:3px 8px; border-radius:6px;">
+                        ${pillText}
+                    </span>
+                </div>
+                
+                <p style="font-size:0.73rem; color:#475569; margin:0 0 10px 0; line-height:1.3;">
+                    ${escapeHtml(d.subtitle)}
+                </p>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <div>
+                        <label style="display:block; font-size:0.68rem; font-weight:800; color:#334155; margin-bottom:3px; text-transform:uppercase;">
+                            Estado
+                        </label>
+                        <select class="form-control" style="font-size:0.78rem; padding:4px 6px; height:32px; border-radius:6px; font-weight:700;" ${!canEdit ? 'disabled' : ''} onchange="onExpedienteDocFieldChange('${d.key}', 'status', this.value)">
+                            <option value="pendiente" ${docStatus === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                            <option value="entregado" ${docStatus === 'entregado' ? 'selected' : ''}>✅ Entregado</option>
+                            <option value="en_tramite" ${docStatus === 'en_tramite' ? 'selected' : ''}>🔄 En Trámite</option>
+                            <option value="no_aplica" ${docStatus === 'no_aplica' ? 'selected' : ''}>⚪ No Aplica</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.68rem; font-weight:800; color:#334155; margin-bottom:3px; text-transform:uppercase;">
+                            Presentación
+                        </label>
+                        <select class="form-control" style="font-size:0.78rem; padding:4px 6px; height:32px; border-radius:6px;" ${!canEdit ? 'disabled' : ''} onchange="onExpedienteDocFieldChange('${d.key}', 'type', this.value)">
+                            <option value="original" ${docType === 'original' ? 'selected' : ''}>Original</option>
+                            <option value="copia" ${docType === 'copia' ? 'selected' : ''}>Copia Simple</option>
+                            <option value="copia_legalizada" ${docType === 'copia_legalizada' ? 'selected' : ''}>Copia Legalizada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1.1fr 1.9fr; gap:8px;">
+                    <div>
+                        <label style="display:block; font-size:0.68rem; font-weight:800; color:#334155; margin-bottom:3px; text-transform:uppercase;">
+                            Fecha Entrega
+                        </label>
+                        <input type="date" class="form-control" style="font-size:0.76rem; padding:3px 6px; height:30px; border-radius:6px;" value="${escapeHtml(doc.date || '')}" ${!canEdit ? 'readonly' : ''} onchange="onExpedienteDocFieldChange('${d.key}', 'date', this.value)">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.68rem; font-weight:800; color:#334155; margin-bottom:3px; text-transform:uppercase;">
+                            Observaciones / Folio
+                        </label>
+                        <input type="text" class="form-control" placeholder="Folio, libro o notas..." style="font-size:0.76rem; padding:3px 6px; height:30px; border-radius:6px;" value="${escapeHtml(doc.notes || '')}" ${!canEdit ? 'readonly' : ''} onchange="onExpedienteDocFieldChange('${d.key}', 'notes', this.value)">
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    // 4. Notas Generales del Expediente
+    const genNotesEl = document.getElementById('profExpedienteGeneralNotes');
+    if (genNotesEl) {
+        genNotesEl.value = exp.generalNotes || '';
+    }
+
+    // 5. Historial de Comentarios
+    renderStudentExpedienteCommentsList(exp);
+}
+
+function renderStudentExpedienteCommentsList(exp) {
+    const listEl = document.getElementById('profExpedienteCommentsList');
+    const countBadge = document.getElementById('profExpCommentsCount');
+    if (!listEl) return;
+
+    const comments = (exp && Array.isArray(exp.commentsHistory)) ? exp.commentsHistory : [];
+    if (countBadge) {
+        countBadge.textContent = `${comments.length} Comentario${comments.length !== 1 ? 's' : ''}`;
+    }
+
+    if (comments.length === 0) {
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:18px 12px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; color:#64748b; font-size:0.80rem;">
+                <i class="fa-regular fa-comment-dots" style="font-size:1.4rem; color:#94a3b8; display:block; margin-bottom:6px;"></i>
+                <span>No hay comentarios ni anotaciones registradas aún en el expediente de este estudiante.</span>
+            </div>
+        `;
+        return;
+    }
+
+    const canManage = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
+        STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
+
+    const sortedComments = [...comments].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    listEl.innerHTML = sortedComments.map(c => {
+        const canDelete = canManage || (STATE.currentUser && STATE.currentUser.name && c.author === STATE.currentUser.name);
+        return `
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:5px;">
+                <div style="display:flex; align-items:center; gap:7px;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#e0f2fe; color:#0369a1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem;">
+                        ${(c.author || 'S').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <span style="font-size:0.80rem; font-weight:800; color:#0f172a; display:block; line-height:1.2;">
+                            ${escapeHtml(c.author || 'Secretaría')}
+                        </span>
+                        <span style="font-size:0.68rem; color:#64748b; font-weight:600;">
+                            ${escapeHtml(c.role || 'Personal')}
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-size:0.70rem; color:#94a3b8; font-weight:600;"><i class="fa-regular fa-clock"></i> ${escapeHtml(c.date || '')}</span>
+                    ${canDelete ? `
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteStudentExpedienteComment('${c.id}')" style="padding:1px 6px; font-size:0.68rem; border-radius:4px;" title="Eliminar este comentario">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+            <div style="font-size:0.80rem; color:#334155; line-height:1.35; white-space:pre-wrap; background:#f8fafc; border-left:3px solid #0284c7; padding:6px 8px; border-radius:4px;">
+                ${escapeHtml(c.text || '')}
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function onExpedienteDocFieldChange(docKey, field, value) {
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    if (!student) return;
+
+    const exp = getStudentExpedienteSafe(student);
+    if (!exp.docs[docKey]) {
+        exp.docs[docKey] = { status: 'pendiente', type: 'copia', date: '', notes: '' };
+    }
+
+    exp.docs[docKey][field] = value;
+
+    // Si se marca como entregado y no hay fecha, autoasignar fecha de hoy
+    if (field === 'status' && value === 'entregado' && !exp.docs[docKey].date) {
+        exp.docs[docKey].date = new Date().toISOString().slice(0, 10);
+    }
+
+    const nowTime = Date.now();
+    student.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    student._localModifiedAt = nowTime;
+
+    // Re-render dinámico optimizado
+    renderStudentExpedienteTab(student);
+
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+}
+
+function onExpedienteGeneralNotesChange(value) {
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    if (!student) return;
+
+    const exp = getStudentExpedienteSafe(student);
+    exp.generalNotes = value || '';
+
+    const nowTime = Date.now();
+    student.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+}
+
+async function addStudentExpedienteComment() {
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    if (!student) {
+        if (typeof showToast === 'function') showToast('No se encontró al estudiante seleccionado.', 'danger');
+        return;
+    }
+
+    const inputEl = document.getElementById('profExpNewCommentText');
+    const text = inputEl ? inputEl.value.trim() : '';
+    if (!text) {
+        if (typeof showToast === 'function') showToast('Por favor ingrese el contenido del comentario.', 'warning');
+        if (inputEl) inputEl.focus();
+        return;
+    }
+
+    const exp = getStudentExpedienteSafe(student);
+    const authorName = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || STATE.currentRole || 'Secretaría';
+    const roleName = STATE.currentRole ? (STATE.currentRole.charAt(0).toUpperCase() + STATE.currentRole.slice(1)) : 'Secretaría';
+
+    const newComment = {
+        id: 'c_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        text: text,
+        author: authorName,
+        role: roleName,
+        timestamp: Date.now(),
+        date: new Date().toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'short' })
+    };
+
+    exp.commentsHistory.push(newComment);
+    if (inputEl) inputEl.value = '';
+
+    const nowTime = Date.now();
+    student.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+
+    renderStudentExpedienteCommentsList(exp);
+
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+
+    // Sincronización en la nube en segundo plano (asíncrona y no bloqueante)
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            const { db, doc, setDoc } = modular;
+            const stuRef = doc(db, 'students', student.id);
+            const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
+            setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore comentario:", e));
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB comentario:", e));
+        }
+    } catch(err) {
+        console.warn("Aviso de sincronización:", err);
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('Comentario guardado en el expediente.', 'success');
+    }
+}
+
+async function deleteStudentExpedienteComment(commentId) {
+    if (!confirm("¿Está seguro de eliminar este comentario del expediente del estudiante?")) return;
+
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    if (!student) return;
+
+    const exp = getStudentExpedienteSafe(student);
+    exp.commentsHistory = (exp.commentsHistory || []).filter(c => String(c.id) !== String(commentId));
+
+    const nowTime = Date.now();
+    student.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+
+    renderStudentExpedienteCommentsList(exp);
+
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            const { db, doc, setDoc } = modular;
+            const stuRef = doc(db, 'students', student.id);
+            const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
+            setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore borrado comentario:", e));
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB borrado comentario:", e));
+        }
+    } catch(err) {
+        console.warn("Aviso al eliminar comentario:", err);
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('Comentario eliminado.', 'info');
+    }
+}
+
+function quickMarkAllExpedienteDocs(newStatus) {
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+    if (!student) return;
+
+    const exp = getStudentExpedienteSafe(student);
+    const today = new Date().toISOString().slice(0, 10);
+
+    OFFICIAL_EXPEDIENTE_DOCS.forEach(d => {
+        if (!exp.docs[d.key]) exp.docs[d.key] = { status: 'pendiente', type: 'copia', date: '', notes: '' };
+        exp.docs[d.key].status = newStatus;
+        if (newStatus === 'entregado' && !exp.docs[d.key].date) {
+            exp.docs[d.key].date = today;
+        }
+    });
+
+    const nowTime = Date.now();
+    student.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+
+    renderStudentExpedienteTab(student);
+
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`Todos los documentos se marcaron como "${newStatus}".`, 'success');
+    }
+}
+
+function printStudentExpedienteRecord(studentId) {
+    const student = (STATE.students || []).find(s => s && String(s.id) === String(studentId || STATE.selectedStudentId));
+    if (!student) {
+        if (typeof showToast === 'function') showToast('No se encontró al estudiante para imprimir su expediente.', 'warning');
+        return;
+    }
+
+    const exp = getStudentExpedienteSafe(student);
+    const metrics = calculateStudentExpedienteMetrics(student);
+    const stName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : `${student.lastName || ''} ${student.firstName || ''}`;
+    const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(student) : { grade: student.grade || '', section: student.section || '' };
+    const dateFormatted = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const statusBadgeText = metrics.status === 'completo' ? 'EXPEDIENTE COMPLETO (6/6)' : `EXPEDIENTE INCOMPLETO (${metrics.deliveredCount}/${metrics.totalRequired})`;
+    const statusBadgeColor = metrics.status === 'completo' ? '#166534' : '#92400e';
+    const statusBadgeBg = metrics.status === 'completo' ? '#dcfce7' : '#fef3c7';
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert("Por favor permita las ventanas emergentes para imprimir la constancia de expediente.");
+        return;
+    }
+
+    printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Control de Expediente - ${stName}</title>
+        <style>
+            @page { size: letter portrait; margin: 12mm 15mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 10px; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border-bottom: 2px solid #0f172a; padding-bottom: 8px; }
+            .header-title { font-size: 13.5px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin: 0; }
+            .header-sub { font-size: 10.5px; font-weight: 600; color: #475569; margin: 2px 0 0 0; }
+            .info-box { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
+            .info-item { margin-bottom: 3px; font-size: 10.5px; }
+            .info-label { font-weight: 800; color: #334155; }
+            table.docs-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 10.5px; }
+            table.docs-table th { background: #1e293b; color: #ffffff; font-weight: 800; text-transform: uppercase; font-size: 9.5px; padding: 6px 8px; border: 1px solid #0f172a; }
+            table.docs-table td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+            table.docs-table tr:nth-child(even) { background: #f8fafc; }
+            .badge-entregado { background: #dcfce7; color: #166534; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 9.5px; }
+            .badge-pendiente { background: #fee2e2; color: #991b1b; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 9.5px; }
+            .badge-tramite { background: #e0f2fe; color: #0369a1; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 9.5px; }
+            .badge-na { background: #f1f5f9; color: #64748b; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 9.5px; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 35px; }
+            .sig-col { width: 45%; text-align: center; }
+            .sig-line { border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; }
+        </style>
+    </head>
+    <body>
+        <table class="header-table">
+            <tr>
+                <td style="width:75px; vertical-align:middle;">
+                    <img src="https://ui-avatars.com/api/?name=ENCCO&background=15803d&color=fff&size=60" alt="Logo" style="width:60px; height:60px; border-radius:6px;">
+                </td>
+                <td style="vertical-align:middle; text-align:center;">
+                    <div class="header-title">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
+                    <div class="header-sub">JUTIAPA, JUTIAPA &bull; CÓDIGO MINEDUC: 22-01-0014-46</div>
+                    <div style="font-size:11px; font-weight:800; color:#0284c7; margin-top:3px;">CONTROL OFICIAL DE EXPEDIENTE DE ADMISIÓN Y DOCUMENTOS</div>
+                </td>
+                <td style="width:110px; text-align:right; vertical-align:middle;">
+                    <span style="background:${statusBadgeBg}; color:${statusBadgeColor}; border:1px solid ${statusBadgeColor}; font-weight:800; font-size:9px; padding:4px 8px; border-radius:4px; display:inline-block; text-align:center;">
+                        ${statusBadgeText}
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="info-box">
+            <div>
+                <div class="info-item"><span class="info-label">Estudiante:</span> ${stName}</div>
+                <div class="info-item"><span class="info-label">Carné:</span> ${student.carne || 'N/A'} &bull; <span class="info-label">CUI / DPI:</span> ${student.cui || 'N/A'} &bull; <span class="info-label">Cód. Personal:</span> ${student.personalCode || 'N/A'}</div>
+                <div class="info-item"><span class="info-label">Grado y Sección:</span> ${assign.grade} — Sección "${assign.section}" &bull; <span class="info-label">Carrera:</span> ${student.career || 'Perito Contador'}</div>
+            </div>
+            <div>
+                <div class="info-item"><span class="info-label">Ciclo Lectivo:</span> ${student.cycle || STATE.activeCycle || '2026'}</div>
+                <div class="info-item"><span class="info-label">Fecha Emisión:</span> ${dateFormatted}</div>
+                <div class="info-item"><span class="info-label">Estado Alumno:</span> ${student.status || 'Activo'}</div>
+            </div>
+        </div>
+
+        <table class="docs-table">
+            <thead>
+                <tr>
+                    <th style="width:30px; text-align:center;">No.</th>
+                    <th style="width:260px;">Documento Oficial Requerido</th>
+                    <th style="width:110px; text-align:center;">Estado</th>
+                    <th style="width:90px; text-align:center;">Presentación</th>
+                    <th style="width:90px; text-align:center;">Fecha Entrega</th>
+                    <th>Folio / Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${OFFICIAL_EXPEDIENTE_DOCS.map((d, idx) => {
+                    const doc = (exp.docs && exp.docs[d.key]) ? exp.docs[d.key] : { status: 'pendiente', type: 'copia', date: '', notes: '' };
+                    const docSt = (doc.status || 'pendiente').toLowerCase();
+                    let stBadge = '<span class="badge-pendiente">⏳ Pendiente</span>';
+                    if (docSt === 'entregado') stBadge = '<span class="badge-entregado">✅ Entregado</span>';
+                    else if (docSt === 'en_tramite') stBadge = '<span class="badge-tramite">🔄 En Trámite</span>';
+                    else if (docSt === 'no_aplica') stBadge = '<span class="badge-na">⚪ No Aplica</span>';
+
+                    let typeLabel = doc.type === 'original' ? 'Original' : (doc.type === 'copia_legalizada' ? 'Copia Legalizada' : 'Copia Simple');
+
+                    return `
+                    <tr>
+                        <td style="text-align:center; font-weight:800;">${idx + 1}</td>
+                        <td>
+                            <strong>${d.title}</strong>
+                            <div style="font-size:9px; color:#64748b;">${d.category}</div>
+                        </td>
+                        <td style="text-align:center;">${stBadge}</td>
+                        <td style="text-align:center;">${typeLabel}</td>
+                        <td style="text-align:center;">${doc.date || '---'}</td>
+                        <td>${doc.notes || '---'}</td>
+                    </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+
+        ${exp.generalNotes ? `
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; padding:6px 10px; margin-bottom:12px; font-size:10px;">
+                <strong>Notas Generales del Expediente:</strong> ${escapeHtml(exp.generalNotes)}
+            </div>
+        ` : ''}
+
+        ${(exp.commentsHistory && exp.commentsHistory.length > 0) ? `
+            <div style="margin-bottom:14px;">
+                <div style="font-size:10px; font-weight:800; color:#334155; margin-bottom:4px; text-transform:uppercase;">Últimas Anotaciones y Comentarios Registrados:</div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    ${exp.commentsHistory.slice(-3).map(c => `
+                        <div style="font-size:9.5px; border-left:2.5px solid #0284c7; padding-left:6px; color:#334155;">
+                            <strong>${escapeHtml(c.author)} (${escapeHtml(c.role || 'Personal')}) &bull; ${escapeHtml(c.date)}:</strong> ${escapeHtml(c.text)}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        <div class="signatures">
+            <div class="sig-col">
+                <div class="sig-line"></div>
+                <div style="font-weight:800; font-size:10.5px;">Secretaría / Control Académico</div>
+                <div style="font-size:9.5px; color:#475569;">Revisó y Cotejó Expediente Físico</div>
+            </div>
+            <div class="sig-col">
+                <div class="sig-line"></div>
+                <div style="font-weight:800; font-size:10.5px;">Padre, Madre o Encargado Legal</div>
+                <div style="font-size:9.5px; color:#475569;">Firma de Conformidad</div>
+            </div>
+        </div>
+    </body>
+    </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+    }, 450);
+}
+
+// Attach to window for global inline accessibility
+if (typeof window !== 'undefined') {
+    window.OFFICIAL_EXPEDIENTE_DOCS = OFFICIAL_EXPEDIENTE_DOCS;
+    window.getStudentExpedienteSafe = getStudentExpedienteSafe;
+    window.calculateStudentExpedienteMetrics = calculateStudentExpedienteMetrics;
+    window.updateStudentExpedienteHeaderBadge = updateStudentExpedienteHeaderBadge;
+    window.renderStudentExpedienteTab = renderStudentExpedienteTab;
+    window.renderStudentExpedienteCommentsList = renderStudentExpedienteCommentsList;
+    window.onExpedienteDocFieldChange = onExpedienteDocFieldChange;
+    window.onExpedienteGeneralNotesChange = onExpedienteGeneralNotesChange;
+    window.addStudentExpedienteComment = addStudentExpedienteComment;
+    window.deleteStudentExpedienteComment = deleteStudentExpedienteComment;
+    window.quickMarkAllExpedienteDocs = quickMarkAllExpedienteDocs;
+    window.printStudentExpedienteRecord = printStudentExpedienteRecord;
+}
+
 function switchStudentProfileTab(tabKey) {
     document.querySelectorAll('.profile-tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.profile-tab-content').forEach(content => {
@@ -17601,6 +18371,10 @@ function switchStudentProfileTab(tabKey) {
 
     if (tabKey === 'annotations' && typeof renderStudentProfileAnnotations === 'function' && STATE.selectedStudentId) {
         renderStudentProfileAnnotations(STATE.selectedStudentId);
+    }
+    if (tabKey === 'expediente' && typeof renderStudentExpedienteTab === 'function' && STATE.selectedStudentId) {
+        const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
+        if (student) renderStudentExpedienteTab(student);
     }
 }
 
@@ -17827,6 +18601,11 @@ function openStudentProfileModal(id) {
         } else {
             absBadge.style.display = 'none';
         }
+    }
+
+    // 🌟 Actualizar Badge de Expediente (Opción 1) y Contador de Pestaña 6
+    if (typeof updateStudentExpedienteHeaderBadge === 'function') {
+        updateStudentExpedienteHeaderBadge(student);
     }
 
     // KPIs dentro de la Pestaña 2
@@ -18084,6 +18863,11 @@ function openStudentProfileModal(id) {
 
     // 5. Cargar y sincronizar la Pestaña de Bitácora y Anotaciones
     renderStudentProfileAnnotations(id);
+
+    // 6. Cargar y sincronizar la Pestaña de Expediente y Documentos
+    if (typeof renderStudentExpedienteTab === 'function') {
+        renderStudentExpedienteTab(student);
+    }
 
     // Activar por defecto la Pestaña 1 solo si el modal se está abriendo por primera vez
     if (!wasAlreadyOpenForSame) {
@@ -19088,6 +19872,17 @@ async function saveStudentProfileForm(e) {
         student.retireRecipient = '';
         student.retireDate = '';
         student.hasExpediente = true;
+    }
+
+    // 🌟 Capturar Notas Generales del Expediente y Recalcular Métricas Oficiales
+    const genNotesEl = document.getElementById('profExpedienteGeneralNotes');
+    if (genNotesEl) {
+        const exp = (typeof getStudentExpedienteSafe === 'function') ? getStudentExpedienteSafe(student) : (student.expediente || {});
+        exp.generalNotes = genNotesEl.value || '';
+        student.expediente = exp;
+    }
+    if (typeof calculateStudentExpedienteMetrics === 'function') {
+        calculateStudentExpedienteMetrics(student);
     }
 
     try {
