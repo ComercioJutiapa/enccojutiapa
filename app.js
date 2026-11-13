@@ -11943,9 +11943,11 @@ function applyIncomingCloudState(incomingState, force = false) {
         const isActivelyOnGradebook = (STATE.activeView === 'gradebook');
         const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
         const isUserTypingInGradebook = isActivelyOnGradebook && activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('grade-box-input') || activeEl.classList.contains('grade-box-input-exam'));
+        const isActivelyOnReprobados = (STATE.activeView === 'grade-stats' && window._currentGradeStatsActiveTab === 'reprobados');
+        const isUserTypingInRecup = isActivelyOnReprobados && activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('recup-score-input') || activeEl.id === 'reprobadosQuickSearchInput');
         const isRecentlyEditingGrade = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 10000;
 
-        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance) && !isUserTypingInGradebook) {
+        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance) && !isUserTypingInGradebook && !isUserTypingInRecup && !isRecentlyEditingGrade) {
             renderCurrentView();
         }
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
@@ -47551,9 +47553,14 @@ function initFirestoreModularLiveListeners() {
                     (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) {
                     loadHonorRoll();
                 }
-                // Actualizar en tiempo real el módulo de Promedios Finales y Estadísticas
+                // Actualizar en tiempo real el módulo de Promedios Finales y Estadísticas (respetando pestaña e inputs activos)
                 if (typeof renderGradeStatsView === 'function' && STATE.activeView === 'grade-stats') {
-                    renderGradeStatsView();
+                    const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+                    const isTypingInRecup = activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('recup-score-input') || activeEl.id === 'reprobadosQuickSearchInput');
+                    const isRecentlyEditing = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 8000;
+                    if (!isTypingInRecup && !isRecentlyEditing) {
+                        renderGradeStatsView();
+                    }
                 }
             }, err => console.warn('Aviso en onSnapshot students:', err));
             if (typeof unsubStudents === 'function') _firestoreModularUnsubscribers.push(unsubStudents);

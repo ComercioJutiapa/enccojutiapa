@@ -147,7 +147,71 @@ function onGradeStatsGradeChange() {
 }
 window.onGradeStatsGradeChange = onGradeStatsGradeChange;
 
-function renderGradeStatsView() {
+// Sincronizador visual de pestañas superiores en Promedios y Estadísticas
+function _syncGradeStatsTabButtons(activeTab = 'actas') {
+    const btnActas = document.getElementById('tabGradeStatsActas');
+    const btnCuadro = document.getElementById('tabGradeStatsCuadro');
+    const btnReprobados = document.getElementById('tabGradeStatsReprobados');
+
+    const updateBtn = (btn, isActive, activeBg = '#0284c7') => {
+        if (!btn) return;
+        if (isActive) {
+            btn.style.background = activeBg;
+            btn.style.color = '#ffffff';
+            btn.style.fontWeight = '800';
+            btn.style.border = 'none';
+            btn.style.boxShadow = '0 2px 4px rgba(2,132,199,0.25)';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = '#475569';
+            btn.style.fontWeight = '700';
+            btn.style.border = 'none';
+            btn.style.boxShadow = 'none';
+        }
+    };
+
+    updateBtn(btnActas, activeTab === 'actas');
+    updateBtn(btnCuadro, activeTab === 'cuadro');
+    updateBtn(btnReprobados, activeTab === 'reprobados');
+}
+window._syncGradeStatsTabButtons = _syncGradeStatsTabButtons;
+
+// Despachador maestro dinámico de la vista "grade-stats": respeta estrictamente la pestaña activa seleccionada
+function renderGradeStatsView(renderOpts = {}) {
+    if (!hasRolePermission('grade-stats', STATE.currentRole)) return;
+
+    const container = document.getElementById('gradeStatsDocumentContainer');
+    if (!container) return;
+
+    const activeTab = window._currentGradeStatsActiveTab || 'actas';
+    const filterControls = document.querySelectorAll('#view-grade-stats .toolbar-filters > div');
+
+    if (activeTab === 'reprobados') {
+        filterControls.forEach(el => el.style.display = 'none');
+        _syncGradeStatsTabButtons('reprobados');
+        if (typeof renderReprobadosRecuperacionView === 'function') {
+            renderReprobadosRecuperacionView(renderOpts);
+        }
+        return;
+    }
+
+    if (activeTab === 'cuadro') {
+        filterControls.forEach(el => el.style.display = 'none');
+        _syncGradeStatsTabButtons('cuadro');
+        if (typeof renderCuadroEstadisticoOficial === 'function') {
+            renderCuadroEstadisticoOficial();
+        }
+        return;
+    }
+
+    // Pestaña 'actas' por defecto: asegurar filtros visibles y botones sincronizados
+    filterControls.forEach(el => el.style.display = '');
+    _syncGradeStatsTabButtons('actas');
+    _renderGradeStatsActasInternal();
+}
+window.renderGradeStatsView = renderGradeStatsView;
+
+function _renderGradeStatsActasInternal() {
     if (!hasRolePermission('grade-stats', STATE.currentRole)) return;
 
     const container = document.getElementById('gradeStatsDocumentContainer');
@@ -879,14 +943,15 @@ function renderGradeStatsView() {
         dateFormattedLong
     };
 }
-window.renderGradeStatsView = renderGradeStatsView;
+window._renderGradeStatsActasInternal = _renderGradeStatsActasInternal;
+window.renderGradeStatsActas = _renderGradeStatsActasInternal;
 
 // ==========================================================================
 // EXPORTACIÓN OFICIAL DE PROMEDIOS FINALES A EXCEL (.XLSX)
 // ==========================================================================
 function exportGradeStatsOfficialExcel() {
     if (!window._lastGradeStatsReportData) {
-        renderGradeStatsView();
+        _renderGradeStatsActasInternal();
     }
     const d = window._lastGradeStatsReportData;
     if (!d) {
@@ -1385,31 +1450,10 @@ window._lastCuadroEstadisticoData = null;
 
 function switchGradeStatsTab(tab) {
     window._currentGradeStatsActiveTab = tab;
-    const btnActas = document.getElementById('tabGradeStatsActas');
-    const btnCuadro = document.getElementById('tabGradeStatsCuadro');
-    const btnReprobados = document.getElementById('tabGradeStatsReprobados');
+    if (typeof _syncGradeStatsTabButtons === 'function') {
+        _syncGradeStatsTabButtons(tab);
+    }
     const filterControls = document.querySelectorAll('#view-grade-stats .toolbar-filters > div');
-
-    const updateBtn = (btn, isActive, activeBg = '#0284c7') => {
-        if (!btn) return;
-        if (isActive) {
-            btn.style.background = activeBg;
-            btn.style.color = '#ffffff';
-            btn.style.fontWeight = '800';
-            btn.style.border = 'none';
-            btn.style.boxShadow = '0 2px 4px rgba(2,132,199,0.25)';
-        } else {
-            btn.style.background = 'transparent';
-            btn.style.color = '#475569';
-            btn.style.fontWeight = '700';
-            btn.style.border = 'none';
-            btn.style.boxShadow = 'none';
-        }
-    };
-
-    updateBtn(btnActas, tab === 'actas');
-    updateBtn(btnCuadro, tab === 'cuadro');
-    updateBtn(btnReprobados, tab === 'reprobados');
 
     if (tab === 'cuadro') {
         filterControls.forEach(el => el.style.display = 'none');
@@ -1419,7 +1463,7 @@ function switchGradeStatsTab(tab) {
         renderReprobadosRecuperacionView();
     } else {
         filterControls.forEach(el => el.style.display = '');
-        renderGradeStatsView();
+        _renderGradeStatsActasInternal();
     }
 }
 window.switchGradeStatsTab = switchGradeStatsTab;
@@ -3054,6 +3098,13 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, rawV
     const itemUrl = `${fbUrl}${_getRecupCycleUrlPath(cycle, cleanCode, slug)}`;
     const isHistCycle = cycle !== String((window.STATE && window.STATE.activeCycle) || '2027').trim();
 
+    const nowTime = Date.now();
+    if (window.STATE) {
+        window.STATE._lastSavedLocally = nowTime;
+        window.STATE.lastModified = nowTime;
+    }
+    window._lastLocalGradeEditTime = nowTime;
+
     if (parsedScore === null) {
         // Cero residuos: eliminar nodo cuando la casilla quede vacía
         delete store[cleanCode][slug];
@@ -3065,7 +3116,7 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, rawV
                 fetch(`${fbUrl}/encc_school_state/lastModified.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(Date.now())
+                    body: JSON.stringify(nowTime)
                 }).catch(() => {});
             }
         }
@@ -3080,7 +3131,7 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, rawV
             notaRecup: parsedScore,
             notaFinalRecup: parsedScore,
             aprobada: parsedScore >= 60,
-            updatedAt: Date.now(),
+            updatedAt: nowTime,
             updatedBy: (window.STATE && window.STATE.currentUser && (window.STATE.currentUser.name || window.STATE.currentUser.role)) || 'Dirección / Sistema'
         };
         store[cleanCode][slug] = payload;
@@ -3095,7 +3146,7 @@ async function saveRecoverySubjectGrade(studentCode, gradeKey, subjectName, rawV
                     fetch(`${fbUrl}/encc_school_state/lastModified.json`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(Date.now())
+                        body: JSON.stringify(nowTime)
                     }).catch(() => {});
                 }
             }).catch(() => {});
@@ -3890,7 +3941,7 @@ function _buildRecupSubjectScoreHtml(st, repItem, gKey, mode = 'screen', cycle =
         ? `<span style="padding:2px 6px; border-radius:4px; font-size:0.76rem; font-weight:800; background:${aprobada ? '#dcfce7' : '#fee2e2'}; color:${aprobada ? '#166534' : '#b91c1c'}; border:1px solid ${aprobada ? '#86efac' : '#fca5a5'};">${aprobada ? '✓' : '✗'} ${notaFinal}</span>`
         : `<span style="padding:2px 6px; border-radius:4px; font-size:0.74rem; font-weight:700; background:#f1f5f9; color:#64748b;">Pend.</span>`;
 
-    const singleInput = `<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${notaFinal !== null ? notaFinal : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, this.value)" style="${inputStyle}">`;
+    const singleInput = `<input type="number" class="recup-score-input" min="0" max="100" step="1" placeholder="--" value="${notaFinal !== null ? notaFinal : ''}" ${roAttr} data-code="${escapeHtml(st.code)}" data-grade="${escapeHtml(gKey)}" data-subject="${escapeHtml(fullRName)}" onfocus="window._lastLocalGradeEditTime = Date.now()" oninput="window._lastLocalGradeEditTime = Date.now()" onchange="saveRecoverySubjectGrade(this.dataset.code, this.dataset.grade, this.dataset.subject, this.value)" style="${inputStyle}">`;
 
     return `<span style="display:inline-flex; align-items:center; gap:5px; flex-wrap:nowrap; flex-shrink:0;">${singleInput}${badgeHtml}</span>`;
 }
