@@ -1498,37 +1498,35 @@ function renderCuadroEstadisticoOficial() {
                 return;
             }
 
-            // REGLA 2: PENSUM Y PROMEDIO (10 materias en 6to con cierre de 3 bimestres académicos)
-            const gradesObj = s.grades || {};
+            // REGLA 2: PENSUM Y PROMEDIO UNIFICADO
+            // Se sincroniza con getReportCardSubjects, getReportCardSubjectGrades y recuperaciones oficiales
             let reprobadas = 0;
             let totalCursos = 0;
+            const subList = (typeof getReportCardSubjects === 'function')
+                ? getReportCardSubjects(s)
+                : Object.keys(s.grades || {});
 
-            Object.keys(gradesObj).forEach(cName => {
-                const b = gradesObj[cName];
-                if (!Array.isArray(b) || b.length === 0) return;
-                totalCursos++;
+            subList.forEach(cName => {
+                let g = (typeof getReportCardSubjectGrades === 'function')
+                    ? getReportCardSubjectGrades(s, cName)
+                    : null;
 
-                let promedioCurso = 0;
-                if (gKey === 'SEXTO') {
-                    if (cName.toLowerCase().includes('práctica') || cName.toLowerCase().includes('practica')) {
-                        promedioCurso = Number(b[3] || b[0] || 0); // Bloque de Práctica
-                    } else if (cName.toLowerCase().includes('seminario')) {
-                        promedioCurso = Number(b[2] || b[3] || b[0] || 0);
-                    } else {
-                        // 8 Materias académicas regulares de Sexto promediadas sobre los 3 bimestres cursados
-                        const validScores = b.slice(0, 3).map(Number);
-                        const sum = validScores.reduce((acc, v) => acc + v, 0);
-                        promedioCurso = Math.round(sum / (validScores.length || 1));
-                    }
-                } else {
-                    // Cuarto y Quinto: Promedio estándar de 4 bimestres
-                    const validScores = b.map(Number);
-                    const sum = validScores.reduce((acc, v) => acc + v, 0);
-                    promedioCurso = Math.round(sum / (validScores.length || 1));
+                if (!g) {
+                    const b = (s.grades && s.grades[cName]) ? s.grades[cName] : [];
+                    if (!Array.isArray(b) || b.length === 0) return;
+                    const validScores = b.map(Number).filter(v => v > 0);
+                    const avg = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+                    g = { avg, isFullyExon: false };
                 }
 
-                if (promedioCurso < 60) {
-                    reprobadas++;
+                if (g.isFullyExon) return; // Exoneración autorizada no perjudica al estudiante
+
+                if (g.avg > 0 || g.isCycleClosed) {
+                    totalCursos++;
+                    const hasPassedRecup = !!(g.recupRecord && g.recupRecord.hasNote && g.recupRecord.aprobada);
+                    if (g.avg < 60 && !hasPassedRecup) {
+                        reprobadas++;
+                    }
                 }
             });
 
@@ -2512,6 +2510,13 @@ function findMatchingGradeEntry(gradesMap, targetFullName, gradeKey = null) {
 function computeCourseAnnualAverage(scoresArray, courseName, gradeKey) {
     if (!Array.isArray(scoresArray) || scoresArray.length === 0) return null;
     const lowerC = String(courseName || '').toLowerCase();
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const activeCyc = String(st.activeCycle || '2026').trim();
+    const viewingCyc = String(st.viewingHistoricalCycle || st.historicalViewingCycle || (st.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
+    const isHistCycle = !!(st.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
+    const activeBim = parseInt(st.config?.activeBimestre) || (isHistCycle ? 4 : 1);
+    const isCycleClosed = isHistCycle || activeBim >= 4;
+
     if (gradeKey === 'SEXTO') {
         if (lowerC.includes('práctica') || lowerC.includes('practica')) {
             const v = Number(scoresArray[3] || scoresArray[0] || 0);
@@ -2521,11 +2526,18 @@ function computeCourseAnnualAverage(scoresArray, courseName, gradeKey) {
             const v = Number(scoresArray[2] || scoresArray[3] || scoresArray[0] || 0);
             return v > 0 ? Math.round(v) : 0;
         }
-        const validScores = scoresArray.slice(0, 3).map(Number);
+        const limit = isCycleClosed ? 3 : Math.min(3, Math.max(1, activeBim));
+        const rawSlice = scoresArray.slice(0, limit).map(Number);
+        const validScores = isCycleClosed ? rawSlice : rawSlice.filter(v => !isNaN(v) && v > 0);
+        if (validScores.length === 0) return 0;
         const sum = validScores.reduce((acc, v) => acc + (isNaN(v) ? 0 : v), 0);
         return Math.round(sum / (validScores.length || 1));
     }
-    const validScores = scoresArray.map(Number);
+
+    const limit = isCycleClosed ? 4 : Math.min(4, Math.max(1, activeBim));
+    const rawSlice = scoresArray.slice(0, limit).map(Number);
+    const validScores = isCycleClosed ? rawSlice : rawSlice.filter(v => !isNaN(v) && v > 0);
+    if (validScores.length === 0) return 0;
     const sum = validScores.reduce((acc, v) => acc + (isNaN(v) ? 0 : v), 0);
     return Math.round(sum / (validScores.length || 1));
 }

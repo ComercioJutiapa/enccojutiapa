@@ -26057,6 +26057,15 @@ function getReportCardSubjectGrades(student, subject) {
     let avg = 0;
     let isFullyExon = false;
 
+    // Detectar si el ciclo lectivo visualizado está cerrado (2026/histórico o 4to Bimestre cerrado)
+    // o si está en curso (ej. 2027 en Bimestre 1, 2 o 3)
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : {});
+    const activeCyc = String(st.activeCycle || '2026').trim();
+    const viewingCyc = String(st.viewingHistoricalCycle || st.historicalViewingCycle || (st.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
+    const isHistMode = !!(st.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
+    const activeBim = parseInt(st.config?.activeBimestre) || (isHistMode ? 4 : 1);
+    const isCycleClosed = isHistMode || activeBim >= 4;
+
     if (isSpecialUnique) {
         // Seminario y Práctica: NOTA ÚNICA TOTAL en 4to Bimestre, SIN PROMEDIO
         avg = b4 > 0 ? b4 : 0;
@@ -26070,7 +26079,8 @@ function getReportCardSubjectGrades(student, subject) {
         if (isExon3) exonUnitsCount++; else if (b3 > 0) bimasVals.push(b3);
 
         isFullyExon = (exonUnitsCount === 3);
-        const divisor = Math.max(1, 3 - exonUnitsCount);
+        const plannedUnits = isCycleClosed ? 3 : Math.min(3, Math.max(activeBim, bimasVals.length + exonUnitsCount));
+        const divisor = Math.max(1, plannedUnits - exonUnitsCount);
         avg = bimasVals.length > 0 ? Math.round(bimasVals.reduce((a, b) => a + b, 0) / divisor) : 0;
     } else {
         // 4TO Y 5TO GRADO: Promedio sobre 4 unidades (B1, B2, B3, B4) tomando en cuenta exoneraciones
@@ -26082,15 +26092,35 @@ function getReportCardSubjectGrades(student, subject) {
         if (isExon4) exonUnitsCount++; else if (b4 > 0) bimasVals.push(b4);
 
         isFullyExon = (exonUnitsCount === 4);
-        const divisor = Math.max(1, 4 - exonUnitsCount);
+        const plannedUnits = isCycleClosed ? 4 : Math.min(4, Math.max(activeBim, bimasVals.length + exonUnitsCount));
+        const divisor = Math.max(1, plannedUnits - exonUnitsCount);
         avg = bimasVals.length > 0 ? Math.round(bimasVals.reduce((a, b) => a + b, 0) / divisor) : 0;
     }
 
     // 🛡️ REGLA ESTRICTA INSTITUCIONAL ENCCO: El promedio nunca puede exceder 100 puntos
     avg = Math.min(100, Math.max(0, avg));
 
+    // 🌟 INTEGRACIÓN DE NOTA DE RECUPERACIÓN (Si existe asentada y aprobada)
+    let recupRecord = null;
+    if (typeof getStudentSubjectRecoveryRecord === 'function') {
+        const idCandidates = [
+            student.personalCode,
+            student.code,
+            student.studentCode,
+            student.carne,
+            student.id
+        ].filter(Boolean);
+        for (const cand of idCandidates) {
+            const rec = getStudentSubjectRecoveryRecord(cand, subject, student.grade, viewingCyc);
+            if (rec && rec.hasNote) {
+                recupRecord = rec;
+                break;
+            }
+        }
+    }
+
     // 3. Pura LECTURA: jamás mutar student.grades ni student.gradebookDetails
-    return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon, isSpecialUnique };
+    return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon, isSpecialUnique, recupRecord, isCycleClosed, activeBim };
 }
 window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
@@ -26122,28 +26152,35 @@ function buildStudentReportCardInnerHtml(s) {
     const rowsHtml = subjects.map((sub, idx) => {
         const g = getReportCardSubjectGrades(s, sub);
         const isSpecial = g.isSpecialUnique === true || isMateriaEspecialGraduacion(sub);
+        const hasPassedRecup = !!(g.recupRecord && g.recupRecord.hasNote && g.recupRecord.aprobada);
+        const hasFailedRecup = !!(g.recupRecord && g.recupRecord.hasNote && !g.recupRecord.aprobada);
 
-        if (g.avg > 0) {
-            totalAvgSum += g.avg;
+        // Para el cómputo del promedio acumulado del estudiante:
+        const effectiveAvg = hasPassedRecup ? Math.max(g.avg, g.recupRecord.notaRecup >= 60 ? g.recupRecord.notaRecup : 60) : g.avg;
+        if (effectiveAvg > 0) {
+            totalAvgSum += effectiveAvg;
             subjectCount++;
         }
         const isB1Fail = (!g.isExon1 && g.b1 > 0 && g.b1 < 60);
         const isB2Fail = (!g.isExon2 && g.b2 > 0 && g.b2 < 60);
         const isB3Fail = (!g.isExon3 && g.b3 > 0 && g.b3 < 60);
         const isB4Fail = (!g.isExon4 && g.b4 > 0 && g.b4 < 60);
-        const isAvgFail = (!g.isFullyExon && g.avg > 0 && g.avg < 60);
+        const isAvgFail = (!g.isFullyExon && !hasPassedRecup && g.avg > 0 && g.avg < 60);
 
         let resultText = "PENDIENTE";
         let resultColor = "#64748b";
         if (g.isFullyExon) {
             resultText = "EXONERADO";
             resultColor = "#0369a1";
+        } else if (hasPassedRecup) {
+            resultText = "APROBADO (Recup.)";
+            resultColor = "#15803d";
         } else if (g.avg >= 60) {
-            resultText = "APROBADO";
+            resultText = g.isCycleClosed ? "APROBADO" : "APROBANDO";
             resultColor = "#15803d";
         } else if (g.avg > 0) {
-            resultText = "REPROBADO";
-            resultColor = "#dc2626";
+            resultText = g.isCycleClosed ? "REPROBADO" : "EN RIESGO";
+            resultColor = g.isCycleClosed ? "#dc2626" : "#d97706";
         }
 
         const formatBimCell = (score, isFail, isExon, isDashOnly = false, bimNum = 1) => {
@@ -26159,6 +26196,10 @@ function buildStudentReportCardInnerHtml(s) {
             if (numScore > 0) {
                 const isFailing = isFail || numScore < 60;
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFailing ? "900" : "800"}; color:${isFailing ? "#dc2626" : "#000000"}; border:1px solid #000000; width:40px;">${numScore}</td>`;
+            }
+            // Si el ciclo está cerrado (ej. 2026), toda nota vacía u omitida es 0
+            if (g.isCycleClosed) {
+                return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:900; color:#dc2626; border:1px solid #000000; width:40px;">0</td>`;
             }
             // Si el bimestre aún no ha ocurrido (bimNum > activeBim) y no tiene nota (>0), se muestra guión "—"
             if (bimNum > activeBim) {
@@ -26176,11 +26217,23 @@ function buildStudentReportCardInnerHtml(s) {
         const cellB3 = isSpecial ? formatBimCell(0, false, false, true, 3) : formatBimCell(g.b3, isB3Fail, g.isExon3, false, 3);
         const cellB4 = formatBimCell(g.b4, isB4Fail, g.isExon4, false, 4);
 
-        const avgDisplay = isSpecial
+        let avgDisplay = isSpecial
             ? (g.b4 > 0 ? g.b4 : "—")
             : (g.avg > 0 ? g.avg : (g.isFullyExon ? "Exon." : "—"));
 
-        const promTitle = isSpecial ? "Nota única total (Sin promedio)" : (is6to ? "Promedio calculado sobre 3 unidades (tomando en cuenta exoneraciones)" : "Promedio calculado sobre 4 unidades (tomando en cuenta exoneraciones)");
+        if (!isSpecial && hasPassedRecup) {
+            avgDisplay = `${g.avg} <small style="display:inline-block; font-size:8px; font-weight:800; color:#15803d; background:#dcfce7; padding:0 2px; border-radius:2px; border:1px solid #86efac; vertical-align:middle;" title="Recuperación Aprobada: ${g.recupRecord.notaRecup} pts">[R:${g.recupRecord.notaRecup}]</small>`;
+        } else if (!isSpecial && hasFailedRecup) {
+            avgDisplay = `${g.avg} <small style="display:inline-block; font-size:8px; font-weight:800; color:#dc2626; background:#fee2e2; padding:0 2px; border-radius:2px; border:1px solid #fca5a5; vertical-align:middle;" title="Recuperación No Aprobada: ${g.recupRecord.notaRecup} pts">[R:${g.recupRecord.notaRecup}]</small>`;
+        }
+
+        const promTitle = isSpecial 
+            ? "Nota única total (Sin promedio)" 
+            : (hasPassedRecup
+                ? `Promedio Ordinario: ${g.avg} pts | Nota de Recuperación Aprobada: ${g.recupRecord.notaRecup} pts`
+                : (!g.isCycleClosed 
+                    ? `Promedio a la fecha calculado sobre ${g.activeBim} unidad(es)` 
+                    : (is6to ? "Promedio calculado sobre 3 unidades (tomando en cuenta exoneraciones)" : "Promedio calculado sobre 4 unidades (tomando en cuenta exoneraciones)")));
 
         return `
             <tr style="height:${rowHeight};">
@@ -26208,9 +26261,51 @@ function buildStudentReportCardInnerHtml(s) {
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco de Hernández");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
-    const promedioFooterLabel = is6to 
-        ? "PROMEDIO GENERAL ACUMULADO (6TO GRADUANDOS - 3 UNIDADES / NOTA ÚNICA B4):" 
-        : "PROMEDIO GENERAL ACUMULADO (4 UNIDADES):";
+    // Detectar cierre del ciclo para las etiquetas del resumen inferior
+    const activeCyc = String(STATE.activeCycle || '2026').trim();
+    const viewingCyc = String(STATE.viewingHistoricalCycle || STATE.historicalViewingCycle || (STATE.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
+    const isHistCycle = !!(STATE.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
+    const isCycleClosed = isHistCycle || activeBim >= 4;
+
+    const promedioFooterLabel = !isCycleClosed
+        ? `PROMEDIO GENERAL A LA FECHA (${activeBim}.º BIMESTRE EN CURSO):`
+        : (is6to 
+            ? "PROMEDIO GENERAL ACUMULADO (6TO GRADUANDOS - 3 UNIDADES / NOTA ÚNICA B4):" 
+            : "PROMEDIO GENERAL ACUMULADO (4 UNIDADES):");
+
+    let overallStatusLabel = "EN CURSO";
+    let overallStatusColor = "#64748b";
+    if (isGlobalExonerated) {
+        overallStatusLabel = "EXONERADO";
+        overallStatusColor = "#0369a1";
+    } else if (isCycleClosed) {
+        const hasFailedAnyUnrecovered = subjects.some(sub => {
+            const g = getReportCardSubjectGrades(s, sub);
+            if (g.isFullyExon) return false;
+            const recupPassed = g.recupRecord && g.recupRecord.hasNote && g.recupRecord.aprobada;
+            return g.avg < 60 && !recupPassed;
+        });
+        const hasAnyPassedRecup = subjects.some(sub => {
+            const g = getReportCardSubjectGrades(s, sub);
+            return g.recupRecord && g.recupRecord.hasNote && g.recupRecord.aprobada;
+        });
+
+        if (!hasFailedAnyUnrecovered && overallAvg >= 60) {
+            overallStatusLabel = hasAnyPassedRecup ? "PROMOVIDO (Recup.)" : "PROMOVIDO";
+            overallStatusColor = "#15803d";
+        } else if (overallAvg > 0) {
+            overallStatusLabel = "NO PROMOVIDO";
+            overallStatusColor = "#dc2626";
+        }
+    } else {
+        if (overallAvg >= 60) {
+            overallStatusLabel = "APROBANDO";
+            overallStatusColor = "#15803d";
+        } else if (overallAvg > 0) {
+            overallStatusLabel = "EN RIESGO";
+            overallStatusColor = "#d97706";
+        }
+    }
 
     const activeExons = (typeof getStudentExonerationsList === 'function')
         ? getStudentExonerationsList(s)
@@ -26276,7 +26371,7 @@ function buildStudentReportCardInnerHtml(s) {
                         <tr style="height:21px; background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
                             <td colspan="6" style="text-align:right; font-weight:900; padding:2px 8px; border:1px solid #000000; font-size:11px; letter-spacing:0.3px;">${promedioFooterLabel}</td>
                             <td style="text-align:center; font-weight:900; font-size:13.5px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : (isGlobalExonerated ? "EXON." : "—")}</td>
-                            <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; letter-spacing:0.3px; color:${isGlobalExonerated ? "#0369a1" : (overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b"))};">${isGlobalExonerated ? "EXONERADO" : (overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO"))}</td>
+                            <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; letter-spacing:0.3px; color:${overallStatusColor};">${overallStatusLabel}</td>
                         </tr>
                     </tfoot>
                 </table>
