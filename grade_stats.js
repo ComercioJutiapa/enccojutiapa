@@ -1395,12 +1395,14 @@ function switchGradeStatsTab(tab) {
         if (isActive) {
             btn.style.background = activeBg;
             btn.style.color = '#ffffff';
+            btn.style.fontWeight = '800';
             btn.style.border = 'none';
-            btn.style.boxShadow = '0 1px 3px rgba(2,132,199,0.3)';
+            btn.style.boxShadow = '0 2px 4px rgba(2,132,199,0.25)';
         } else {
-            btn.style.background = '#f1f5f9';
+            btn.style.background = 'transparent';
             btn.style.color = '#475569';
-            btn.style.border = '1px solid #cbd5e1';
+            btn.style.fontWeight = '700';
+            btn.style.border = 'none';
             btn.style.boxShadow = 'none';
         }
     };
@@ -1605,28 +1607,29 @@ function renderCuadroEstadisticoOficial() {
 
     window._lastCuadroEstadisticoData = statData;
 
-    // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR (Optimizado para Tablet Blackview Zeno 10 5G y Desktop)
+    // RENDERIZADO DEL CUADRO ESTADÍSTICO EN EL CONTENEDOR (Optimizado para Tablet y Desktop con diseño limpio)
     const html = `
-    <div class="no-print" style="max-width:1240px; margin:0 auto 14px auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:10px 16px;">
-        <div style="display:flex; align-items:center; gap:8px;">
-            <i class="fa-solid fa-file-circle-check" style="color:#16a34a; font-size:1.15rem;"></i>
+    <div class="no-print" style="max-width:1120px; margin:0 auto 12px auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:36px; border-radius:8px; background:#f0f9ff; display:flex; align-items:center; justify-content:center; color:#0284c7; font-size:1.15rem; border:1px solid #bae6fd;">
+                <i class="fa-solid fa-chart-pie"></i>
+            </div>
             <div>
-                <span style="font-weight:800; font-size:0.92rem; color:#14532d; display:block;">Cuadro Oficial MINEDUC - Vista Ampliada y Centrada</span>
-                <span style="font-size:0.75rem; color:#15803d;">Ajustado para visualizar con total nitidez y centrado en pantalla, y para imprimirse en 1 sola hoja carta horizontal.</span>
+                <span style="font-weight:800; font-size:0.95rem; color:#0f172a; display:block; letter-spacing:0.2px;">Cuadro de Resumen Estadístico Final</span>
+                <span style="font-size:0.75rem; color:#64748b; font-weight:600;">Ciclo Lectivo ${statData.cycle} &bull; Formato Oficial Horizontal MINEDUC</span>
             </div>
         </div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <div style="display:inline-flex; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; background:#ffffff;">
-                <button type="button" class="cuadro-zoom-btn" data-scale="1.0" onclick="setCuadroZoom(1.0)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#ffffff; color:#475569; cursor:pointer;" title="Escala Normal 100%">100%</button>
-                <button type="button" class="cuadro-zoom-btn" data-scale="1.1" onclick="setCuadroZoom(1.1)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#0284c7; color:#ffffff; border-left:1px solid #cbd5e1; cursor:pointer;" title="Escala Ampliada Recomendada">110% Ampliado</button>
-                <button type="button" class="cuadro-zoom-btn" data-scale="1.2" onclick="setCuadroZoom(1.2)" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border:none; background:#ffffff; color:#475569; border-left:1px solid #cbd5e1; cursor:pointer;" title="Gran Formato / Tablet">120% Máximo</button>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="printCuadroEstadisticoOficial()" style="background:#0284c7; border:none; color:#ffffff; font-weight:800; font-size:0.85rem; padding:8px 16px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.25);">
-                <i class="fa-solid fa-print"></i> Imprimir en 1 Hoja Carta Horizontal
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            ${statData.isOfficialHistorical 
+                ? '<span style="display:inline-flex; align-items:center; gap:6px; background:#dcfce7; color:#166534; font-size:0.78rem; font-weight:800; padding:6px 12px; border-radius:6px; border:1px solid #86efac;"><i class="fa-solid fa-shield-check"></i> Oficial SIRE 2026</span>' 
+                : '<span style="display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; color:#0369a1; font-size:0.78rem; font-weight:800; padding:6px 12px; border-radius:6px; border:1px solid #7dd3fc;"><i class="fa-solid fa-circle-dot" style="font-size:8px;"></i> Ciclo Activo en Tiempo Real</span>'}
+            <button type="button" class="btn btn-primary" onclick="printCuadroEstadisticoOficial()" style="background:#0284c7; border:none; color:#ffffff; font-weight:800; font-size:0.86rem; min-height:42px; padding:8px 18px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 5px rgba(2,132,199,0.25); transition:all 0.2s;">
+                <i class="fa-solid fa-print"></i> Imprimir en 1 Hoja Carta
             </button>
         </div>
     </div>
-    <div class="cuadro-estadistico-view encco-doc-page" style="transform-origin:top center; transform:scale(1.1); margin-bottom:50px;">
+    <div class="cuadro-estadistico-viewport" style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; display:flex; justify-content:center; padding:4px 0 35px 0;">
+        <div class="cuadro-estadistico-view encco-doc-page" style="margin:0 auto; width:100%; max-width:1120px; box-shadow:0 4px 14px rgba(0,0,0,0.06); border:1px solid #cbd5e1; border-radius:8px; background:#ffffff;">
         <!-- ENCABEZADO INSTITUCIONAL -->
         <div class="cuadro-header">
             <div style="width:75px; text-align:center;">
@@ -1742,6 +1745,7 @@ function renderCuadroEstadisticoOficial() {
                 ${_safeStatHtmlEscape(statData.establecimiento)} &bull; Código MINEDUC: ${_safeStatHtmlEscape(statData.codigo)} &bull; Ciclo Escolar ${_safeStatHtmlEscape(statData.cycle)}
             </div>
         </div>
+    </div>
     </div>
     `;
 
