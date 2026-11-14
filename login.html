@@ -634,6 +634,28 @@
             // Acceso verificado: resetear contador de seguridad
             if (typeof resetLoginSecurityRecord === 'function') resetLoginSecurityRecord();
 
+            // 3.5 Verificación de rol activo / pausado (100% dinámico y seguro)
+            const targetRole = authRes.role || (authRes.user && authRes.user.role);
+            if (targetRole && window.STATE && Array.isArray(window.STATE.rolesConfig)) {
+                const normRole = String(targetRole).trim().toLowerCase();
+                if (normRole !== 'admin' && normRole !== 'director' && normRole !== 'super_usuario' && normRole !== 'direccion') {
+                    const matchedRole = window.STATE.rolesConfig.find(r => r && (r.key === normRole || (r.name && r.name.toLowerCase() === normRole)));
+                    if (matchedRole && matchedRole.active === false) {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = origBtnHtml;
+                        }
+                        if (alertBox) {
+                            alertBox.style.display = 'flex';
+                            if (alertText) {
+                                alertText.textContent = `El rol institucional "${matchedRole.name || targetRole}" se encuentra actualmente pausado o inactivo. Contacte a Dirección o Administrador.`;
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Acceso Correcto...';
             }

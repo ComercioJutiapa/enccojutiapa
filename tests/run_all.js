@@ -43,7 +43,8 @@ const CRITICAL_SUITES = [
     'tests/test_personal_code_uppercase_normalization.js',
     'tests/test_student_deletion_rbac_and_cloud_sync.js',
     'tests/test_cycle_data_isolation.js',
-    'tests/test_fast_modular_zero_cache_loading.js'
+    'tests/test_fast_modular_zero_cache_loading.js',
+    'tests/test_dynamic_roles_and_permissions.js'
 ];
 
 console.log('================================================================================');

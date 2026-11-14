@@ -3623,7 +3623,9 @@
 
                         <!-- BOTÓN INFERIOR DE GUARDAR Y ACCIONES -->
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1.5px solid #e2e8f0; padding-top:14px;">
-                            <div>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <button type="button" class="btn btn-outline-warning btn-sm" id="btnToggleActiveRole" style="display:none; font-weight:700; padding:8px 18px; border-radius:8px; align-items:center; gap:6px;">
+                                </button>
                                 <button type="button" class="btn btn-outline-danger btn-sm" id="btnDeleteActiveRole" style="display:none; font-weight:700; padding:8px 18px; border-radius:8px; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-trash-can"></i> Eliminar este Rol
                                 </button>
@@ -3659,7 +3661,8 @@
                                         <th>Descripción</th>
                                         <th style="width:170px; text-align:center;">Módulos Permitidos</th>
                                         <th style="width:140px; text-align:center;">Usuarios</th>
-                                        <th style="width:240px; text-align:center;">Acciones</th>
+                                        <th style="width:130px; text-align:center;">Estado</th>
+                                        <th style="width:260px; text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="rolesTableBody">

@@ -1271,6 +1271,79 @@ function normalizePermKey(key) {
     return k;
 }
 
+// 🛡️ CONTROL DINÁMICO DE ESTADO DE ROLES (ACTIVOS / INACTIVOS)
+function isRoleActive(roleKey) {
+    if (!roleKey) return false;
+    const rKey = String(roleKey).trim().toLowerCase();
+    if (rKey === 'admin' || rKey === 'director' || rKey === 'super_usuario' || rKey === 'direccion') return true;
+    if (typeof normalizeRolesConfig === 'function' && (!STATE.rolesConfig || !Array.isArray(STATE.rolesConfig))) {
+        normalizeRolesConfig();
+    }
+    const r = (STATE.rolesConfig || []).find(x => x.key === rKey);
+    if (!r) return true; // Retrocompatibilidad para roles no configurados
+    return r.active !== false;
+}
+window.isRoleActive = isRoleActive;
+
+async function toggleRoleActive(roleKey) {
+    if (!isDirectorOrSuperAdmin()) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso Restringido: Solo la Dirección General y Administrador pueden activar o pausar roles.', 'warning');
+        }
+        return false;
+    }
+    const rKey = String(roleKey || '').trim().toLowerCase();
+    if (rKey === 'admin' || rKey === 'director' || rKey === 'super_usuario' || rKey === 'direccion') {
+        if (typeof showToast === 'function') {
+            showToast('Acción protegida: Los roles de Administración y Dirección son vitales para el plantel y no pueden desactivarse.', 'warning');
+        }
+        return false;
+    }
+
+    if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
+    const r = (STATE.rolesConfig || []).find(x => x.key === rKey);
+    if (!r) {
+        if (typeof showToast === 'function') showToast('Rol no encontrado en el sistema.', 'danger');
+        return false;
+    }
+
+    const newActiveState = !(r.active !== false);
+    r.active = newActiveState;
+    r.lastModified = Date.now();
+
+    // Actualización reactiva instantánea a 0ms en toda la interfaz
+    saveStateToLocalStorage();
+    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
+    if (typeof renderRolesManagementView === 'function') renderRolesManagementView();
+    if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
+    if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+    if (typeof applyReactivePermissions === 'function' && window.EnccoAuthStore) {
+        window.EnccoAuthStore.applyReactivePermissions();
+    }
+
+    const stateLabel = newActiveState ? 'activado y visible' : 'pausado y oculto';
+    if (typeof showToast === 'function') {
+        showToast(`El rol "${r.name}" ha sido ${stateLabel} exitosamente.`, newActiveState ? 'success' : 'info');
+    }
+
+    // Persistencia asíncrona en Firebase (Firestore + RTDB) sin bloqueo de interfaz
+    try {
+        if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.syncNode === 'function') {
+            await EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+        }
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            const { db, doc, setDoc } = window.FirebaseModular;
+            await setDoc(doc(db, 'rolesConfig', r.key), r, { merge: true });
+            await setDoc(doc(db, 'config', 'rolesConfig'), { list: STATE.rolesConfig, lastModified: Date.now() }, { merge: true });
+        }
+    } catch(err) {
+        console.warn('Aviso de sincronización de roles en la nube:', err);
+    }
+
+    return true;
+}
+window.toggleRoleActive = toggleRoleActive;
+
 function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     if (!roleKey) roleKey = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
     if (
@@ -1280,6 +1353,11 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         roleKey === 'director' || roleKey === 'direccion'
     ) return 'edit';
     if (!roleKey || roleKey === 'guest') return 'none';
+
+    // 🛡️ Si el rol está desactivado en la institución, denegar acceso a todos los módulos
+    if (typeof isRoleActive === 'function' && !isRoleActive(roleKey)) {
+        return 'none';
+    }
 
     const key = normalizePermKey(moduleKey);
 
@@ -1386,6 +1464,11 @@ function hasRolePermission(permKey, role = null) {
         return true;
     }
 
+    // 🛡️ Si el rol está desactivado en la institución, bloquear acceso a cualquier módulo
+    if (typeof isRoleActive === 'function' && !isRoleActive(targetRole)) {
+        return false;
+    }
+
     if (!permKey) return false;
 
     try {
@@ -1424,6 +1507,11 @@ function canRoleModify(moduleKey, role = null) {
     // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen modificación irrestricta total
     if (((typeof isSuperUserRole === 'function' && isSuperUserRole(targetRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(targetRole)) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole))) {
         return true;
+    }
+
+    // 🛡️ Si el rol está desactivado en la institución, bloquear modificación
+    if (typeof isRoleActive === 'function' && !isRoleActive(targetRole)) {
+        return false;
     }
 
     if (!moduleKey) return false;
@@ -2756,11 +2844,14 @@ function renderRoleSelectorTabs() {
 
     container.innerHTML = (STATE.rolesConfig || []).map(r => {
         const isSelected = (r.key === _selectedRoleKeyForEditing);
+        const isActive = (r.active !== false);
         const color = r.color || '#0284c7';
+        const opacity = isActive ? '1' : '0.65';
+        const statusBadge = isActive ? '' : '<span style="font-size:0.65rem; background:#64748b; color:#ffffff; padding:1px 6px; border-radius:10px; margin-left:4px; font-weight:700;">Inactivo</span>';
         return `
-            <button type="button" onclick="selectRoleForEditing('${r.key}')" style="background:${isSelected ? color : '#ffffff'}; color:${isSelected ? '#ffffff' : '#334155'}; border:2px solid ${color}; border-radius:8px; padding:7px 16px; font-weight:800; font-size:0.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:${isSelected ? '0 4px 6px -1px rgba(0,0,0,0.15)' : 'none'}; transition:all 0.15s ease;">
+            <button type="button" onclick="selectRoleForEditing('${r.key}')" style="opacity:${opacity}; background:${isSelected ? color : '#ffffff'}; color:${isSelected ? '#ffffff' : '#334155'}; border:2px solid ${color}; border-radius:8px; padding:7px 16px; font-weight:800; font-size:0.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:${isSelected ? '0 4px 6px -1px rgba(0,0,0,0.15)' : 'none'}; transition:all 0.15s ease;">
                 <span style="width:10px; height:10px; border-radius:50%; background:${isSelected ? '#ffffff' : color};"></span>
-                ${r.name}
+                ${r.name} ${statusBadge}
             </button>
         `;
     }).join('');
@@ -2842,6 +2933,33 @@ function loadRoleIntoPermissionsPanel(roleKey) {
     }
 
     renderActiveRolePermissionsGrid(r.permissions || []);
+
+    const toggleBtn = document.getElementById('btnToggleActiveRole');
+    if (toggleBtn) {
+        const isProtectedRoot = (r.key === 'admin' || r.key === 'director' || r.key === 'super_usuario');
+        if (!canEdit || isProtectedRoot) {
+            toggleBtn.style.display = 'none';
+        } else {
+            toggleBtn.style.display = 'inline-flex';
+            const isAct = (r.active !== false);
+            if (isAct) {
+                toggleBtn.className = 'btn btn-outline-warning btn-sm';
+                toggleBtn.style.color = '#d97706';
+                toggleBtn.style.borderColor = '#fcd34d';
+                toggleBtn.style.background = '#fffbeb';
+                toggleBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pausar / Desactivar este Rol';
+                toggleBtn.title = 'Desactivar este rol en la institución (se ocultará de selectores sin borrar datos)';
+            } else {
+                toggleBtn.className = 'btn btn-outline-success btn-sm';
+                toggleBtn.style.color = '#16a34a';
+                toggleBtn.style.borderColor = '#86efac';
+                toggleBtn.style.background = '#f0fdf4';
+                toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i> Reactivar este Rol';
+                toggleBtn.title = 'Reactivar este rol para que vuelva a estar disponible en el plantel';
+            }
+            toggleBtn.setAttribute('onclick', `toggleRoleActive('${r.key}')`);
+        }
+    }
 
     const delBtn = document.getElementById('btnDeleteActiveRole');
     if (delBtn) {
@@ -2950,12 +3068,14 @@ async function saveActiveRolePermissions() {
                 description: desc,
                 color: color,
                 isSystem: isSystemRole,
+                active: true,
                 permissions: permissions,
                 permissionLevels: permissionLevels
             });
         }
 
         normalizeRolesConfig();
+        if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
         _selectedRoleKeyForEditing = key;
 
         const roleObjInState = STATE.rolesConfig.find(r => r.key === key) || {
@@ -3446,6 +3566,7 @@ function initDefaultRolesConfig() {
             description: 'Acceso total y configuración del sistema',
             color: '#0284c7',
             isSystem: true,
+            active: true,
             permissions: allKeys
         },
         {
@@ -3454,6 +3575,7 @@ function initDefaultRolesConfig() {
             description: 'Supervisión institucional, auditoría de notas y aprobación de nóminas',
             color: '#16a34a',
             isSystem: true,
+            active: true,
             permissions: allKeys
         },
         {
@@ -3462,6 +3584,7 @@ function initDefaultRolesConfig() {
             description: 'Control de matrículas, actas, expedientes y emisión de certificados',
             color: '#7c3aed',
             isSystem: true,
+            active: true,
             permissions: allKeys.filter(k => k !== 'roles' && k !== 'grade-lock')
         },
         {
@@ -3470,6 +3593,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
+            active: true,
             permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'users']
         },
         {
@@ -3478,6 +3602,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
+            active: true,
             permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
         },
         {
@@ -3486,6 +3611,7 @@ function initDefaultRolesConfig() {
             description: 'Consulta de calificaciones, boleta de notas y asistencia personal',
             color: '#6366f1',
             isSystem: true,
+            active: true,
             permissions: ['dashboard', 'guide-teachers', 'honor-roll', 'exoneraciones-log', 'permissions-history', 'discipline']
         }
     ];
@@ -3538,6 +3664,15 @@ function normalizeRolesConfig() {
     STATE.rolesConfig.forEach(roleObj => {
         if (SYSTEM_ROLE_KEYS.includes(roleObj.key)) {
             roleObj.isSystem = true;
+        }
+
+        // 4. Blindaje de estado activo (Cero pérdida de datos: si no está definido, se inicializa como true)
+        if (roleObj.key === 'admin' || roleObj.key === 'director' || roleObj.key === 'super_usuario') {
+            roleObj.active = true; // Inmunidad administrativa permanente
+        } else if (typeof roleObj.active === 'undefined') {
+            roleObj.active = true;
+        } else {
+            roleObj.active = !!roleObj.active;
         }
 
         if (!Array.isArray(roleObj.permissions)) {
@@ -4082,6 +4217,27 @@ function renderRolesTable(filterVal = '') {
 
         const moreBadge = permCount > 5 ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.70rem; font-weight:700;">+${permCount - 5} más</span>` : '';
 
+        const isActive = (r.active !== false);
+        const isProtectedRoot = (r.key === 'admin' || r.key === 'director' || r.key === 'super_usuario' || r.key === 'direccion');
+
+        let statusBadgeHtml = '';
+        if (isProtectedRoot) {
+            statusBadgeHtml = `<span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.75rem;"><i class="fa-solid fa-lock"></i> Siempre Activo</span>`;
+        } else if (isActive) {
+            statusBadgeHtml = `<span class="badge badge-success" style="font-weight:800; font-size:0.75rem; background:#16a34a; color:#fff;"><i class="fa-solid fa-circle-check"></i> Activo</span>`;
+        } else {
+            statusBadgeHtml = `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-weight:800; font-size:0.75rem;"><i class="fa-solid fa-circle-pause"></i> Inactivo</span>`;
+        }
+
+        let toggleBtnHtml = '';
+        if (!isProtectedRoot && isDirectorOrSuperAdmin()) {
+            toggleBtnHtml = `
+                <button type="button" class="btn ${isActive ? 'btn-outline-warning' : 'btn-outline-success'} btn-xs" onclick="toggleRoleActive('${r.key}')" title="${isActive ? 'Pausar este rol en la institución' : 'Reactivar este rol en la institución'}" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; ${isActive ? 'color:#d97706; border-color:#fcd34d; background:#fffbeb;' : 'color:#16a34a; border-color:#86efac; background:#f0fdf4;'}">
+                    <i class="fa-solid ${isActive ? 'fa-pause' : 'fa-play'}"></i> ${isActive ? 'Pausar' : 'Activar'}
+                </button>
+            `;
+        }
+
         return `
             <tr>
                 <td>
@@ -4109,10 +4265,14 @@ function renderRolesTable(filterVal = '') {
                     </span>
                 </td>
                 <td style="text-align:center;">
+                    ${statusBadgeHtml}
+                </td>
+                <td style="text-align:center;">
                     <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center; align-items:center;">
                         <button type="button" class="btn btn-primary btn-xs" onclick="selectRoleAndScroll('${r.key}')" title="Configurar Matriz Detallada de Permisos (Modificar / Solo Ver / Bloquear)" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; background:#0284c7; border-color:#0284c7; color:#fff; border-radius:6px;">
                             <i class="fa-solid fa-sliders"></i> Permisos
                         </button>
+                        ${toggleBtnHtml}
                         ${(!isSystemRole && isDirectorOrSuperAdmin()) ? `
                         <button type="button" class="btn btn-outline-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Editar Nombre, Descripción, Color y Módulos del Rol" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px;">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
@@ -4279,6 +4439,7 @@ window.closeUserModal = closeUserModal;
 
 function openUserModal() {
     if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) return;
+    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
 
     const idInput = document.getElementById('userFormId');
     const nameInput = document.getElementById('userFormName');
@@ -4321,6 +4482,7 @@ function openEditUserModal(userId) {
         showToast('Usuario no encontrado.', 'warning');
         return;
     }
+    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions(user.role);
 
     const idInput = document.getElementById('userFormId');
     const nameInput = document.getElementById('userFormName');
@@ -10155,8 +10317,11 @@ function updateLoginAccountSelect() {
     if (!select) return;
 
     const currentSelected = select.value;
-    const adminsAndStaff = STATE.users.filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
-    const teachers = STATE.users.filter(u => u.role === 'docente');
+    const isAct = (r) => (typeof isRoleActive === 'function' ? isRoleActive(r) : true);
+
+    const adminsAndStaff = (STATE.users || []).filter(u => u && isAct(u.role) && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
+    const teachers = (STATE.users || []).filter(u => u && isAct(u.role) && u.role === 'docente');
+    const otherActives = (STATE.users || []).filter(u => u && isAct(u.role) && !adminsAndStaff.includes(u) && !teachers.includes(u));
 
     let html = '';
 
@@ -10179,14 +10344,23 @@ function updateLoginAccountSelect() {
         html += `</optgroup>`;
     }
 
+    if (otherActives.length > 0) {
+        html += `<optgroup label="👥 Otros Perfiles Activos">`;
+        otherActives.forEach(u => {
+            html += `<option value="${u.id}">👤 ${u.name} — ${u.title || u.role}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+
     select.innerHTML = html;
 
-    // Mantener la selección o seleccionar el primero
-    if (currentSelected && STATE.users.some(u => u.id === currentSelected)) {
+    // Mantener la selección o seleccionar el primero activo
+    const availableUsers = [...adminsAndStaff, ...teachers, ...otherActives];
+    if (currentSelected && availableUsers.some(u => u.id === currentSelected)) {
         select.value = currentSelected;
-    } else if ((STATE.users || []).length > 0) {
-        select.value = STATE.users[0].id;
-        fillLoginCredentials(STATE.users[0].id);
+    } else if (availableUsers.length > 0) {
+        select.value = availableUsers[0].id;
+        fillLoginCredentials(availableUsers[0].id);
     }
 }
 
@@ -10351,6 +10525,12 @@ function handleMandatoryLogin(e) {
 
         // 1. COMPROBACIÓN AUTOMÁTICA: Si es DOCENTE, ingresa DIRECTAMENTE sin pantallas intermedias
         if (user.role === 'docente') {
+            if (typeof isRoleActive === 'function' && !isRoleActive('docente')) {
+                if (errorAlert) errorAlert.style.display = 'flex';
+                if (errorMsg) errorMsg.textContent = 'El rol de Catedrático / Docente se encuentra temporalmente pausado o inactivo.';
+                if (typeof showToast === 'function') showToast('El rol de Catedrático / Docente se encuentra temporalmente pausado o inactivo.', 'warning');
+                return;
+            }
             completeLoginWithRole('docente', user);
             return;
         }
@@ -10367,11 +10547,10 @@ function handleMandatoryLogin(e) {
             greeting.textContent = `Bienvenido(a), ${user.name}`;
         }
 
-        let buttonsHtml = '';
+        const isAct = (rk) => (typeof isRoleActive === 'function' ? isRoleActive(rk) : true);
 
-        // Opciones completas según el nivel del usuario autenticado:
-        if (user.role === 'admin') {
-            buttonsHtml = `
+        const btnDefs = {
+            admin: `
                 <!-- 1. SUPERUSUARIO / ADMIN -->
                 <button type="button" onclick="completeLoginWithRole('admin')" class="btn btn-outline" style="padding:12px 14px; border:2px solid var(--brand-blue); border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f0f9ff; text-align:left; min-height:64px; width:100%;">
                     <i class="fa-solid fa-user-shield" style="font-size:1.8rem; color:var(--brand-blue); min-width:36px; text-align:center;"></i>
@@ -10381,7 +10560,8 @@ function handleMandatoryLogin(e) {
                     </div>
                     <i class="fa-solid fa-chevron-right" style="color:var(--brand-blue); font-size:1rem;"></i>
                 </button>
-
+            `,
+            director: `
                 <!-- 2. DIRECCIÓN -->
                 <button type="button" onclick="completeLoginWithRole('director')" class="btn btn-outline" style="padding:12px 14px; border:2px solid #7c3aed; border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f5f3ff; text-align:left; min-height:64px; width:100%;">
                     <i class="fa-solid fa-user-tie" style="font-size:1.8rem; color:#7c3aed; min-width:36px; text-align:center;"></i>
@@ -10391,7 +10571,8 @@ function handleMandatoryLogin(e) {
                     </div>
                     <i class="fa-solid fa-chevron-right" style="color:#7c3aed; font-size:1rem;"></i>
                 </button>
-
+            `,
+            secretaria: `
                 <!-- 3. SECRETARÍA -->
                 <button type="button" onclick="completeLoginWithRole('secretaria')" class="btn btn-outline" style="padding:12px 14px; border:2px solid #0284c7; border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#e0f2fe; text-align:left; min-height:64px; width:100%;">
                     <i class="fa-solid fa-file-signature" style="font-size:1.8rem; color:#0284c7; min-width:36px; text-align:center;"></i>
@@ -10401,7 +10582,8 @@ function handleMandatoryLogin(e) {
                     </div>
                     <i class="fa-solid fa-chevron-right" style="color:#0284c7; font-size:1rem;"></i>
                 </button>
-
+            `,
+            docente: `
                 <!-- 4. DOCENTE -->
                 <button type="button" onclick="completeLoginWithRole('docente')" class="btn btn-outline" style="padding:12px 14px; border:2px solid var(--brand-green); border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f0fdf4; text-align:left; min-height:64px; width:100%;">
                     <i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; color:var(--brand-green-dark); min-width:36px; text-align:center;"></i>
@@ -10411,51 +10593,37 @@ function handleMandatoryLogin(e) {
                     </div>
                     <i class="fa-solid fa-chevron-right" style="color:var(--brand-green-dark); font-size:1rem;"></i>
                 </button>
-            `;
+            `
+        };
+
+        let buttonsHtml = '';
+
+        // Opciones completas según el nivel del usuario autenticado y roles activos:
+        if (user.role === 'admin') {
+            buttonsHtml += btnDefs.admin;
+            buttonsHtml += btnDefs.director;
+            if (isAct('secretaria')) buttonsHtml += btnDefs.secretaria;
+            if (isAct('docente')) buttonsHtml += btnDefs.docente;
         } else if (user.role === 'director') {
-            buttonsHtml = `
-                <!-- 1. DIRECCIÓN -->
-                <button type="button" onclick="completeLoginWithRole('director')" class="btn btn-outline" style="padding:12px 14px; border:2px solid #7c3aed; border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f5f3ff; text-align:left; min-height:64px; width:100%;">
-                    <i class="fa-solid fa-user-tie" style="font-size:1.8rem; color:#7c3aed; min-width:36px; text-align:center;"></i>
-                    <div style="flex:1;">
-                        <strong style="font-size:0.95rem; color:#7c3aed; display:block; margin-bottom:2px;">Dirección del Plantel</strong>
-                        <span style="font-size:0.75rem; color:#475569; line-height:1.2; display:block;">Gestión directiva, pensum oficial y reportes</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right" style="color:#7c3aed; font-size:1rem;"></i>
-                </button>
-
-                <!-- 2. DOCENTE -->
-                <button type="button" onclick="completeLoginWithRole('docente')" class="btn btn-outline" style="padding:12px 14px; border:2px solid var(--brand-green); border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f0fdf4; text-align:left; min-height:64px; width:100%;">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; color:var(--brand-green-dark); min-width:36px; text-align:center;"></i>
-                    <div style="flex:1;">
-                        <strong style="font-size:0.95rem; color:var(--brand-green-dark); display:block; margin-bottom:2px;">Catedrático / Docente</strong>
-                        <span style="font-size:0.75rem; color:#475569; line-height:1.2; display:block;">Mis cátedras asignadas, notas y asistencia</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right" style="color:var(--brand-green-dark); font-size:1rem;"></i>
-                </button>
-            `;
+            buttonsHtml += btnDefs.director;
+            if (isAct('docente')) buttonsHtml += btnDefs.docente;
         } else if (user.role === 'secretaria') {
-            buttonsHtml = `
-                <!-- 1. SECRETARÍA -->
-                <button type="button" onclick="completeLoginWithRole('secretaria')" class="btn btn-outline" style="padding:12px 14px; border:2px solid #0284c7; border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#e0f2fe; text-align:left; min-height:64px; width:100%;">
-                    <i class="fa-solid fa-file-signature" style="font-size:1.8rem; color:#0284c7; min-width:36px; text-align:center;"></i>
-                    <div style="flex:1;">
-                        <strong style="font-size:0.95rem; color:#0284c7; display:block; margin-bottom:2px;">Secretaría Académica</strong>
-                        <span style="font-size:0.75rem; color:#475569; line-height:1.2; display:block;">Inscripciones, nóminas oficiales y expedientes</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right" style="color:#0284c7; font-size:1rem;"></i>
-                </button>
-
-                <!-- 2. DOCENTE -->
-                <button type="button" onclick="completeLoginWithRole('docente')" class="btn btn-outline" style="padding:12px 14px; border:2px solid var(--brand-green); border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f0fdf4; text-align:left; min-height:64px; width:100%;">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; color:var(--brand-green-dark); min-width:36px; text-align:center;"></i>
-                    <div style="flex:1;">
-                        <strong style="font-size:0.95rem; color:var(--brand-green-dark); display:block; margin-bottom:2px;">Catedrático / Docente</strong>
-                        <span style="font-size:0.75rem; color:#475569; line-height:1.2; display:block;">Mis cátedras asignadas, notas y asistencia</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right" style="color:var(--brand-green-dark); font-size:1rem;"></i>
-                </button>
-            `;
+            if (isAct('secretaria')) buttonsHtml += btnDefs.secretaria;
+            if (isAct('docente')) buttonsHtml += btnDefs.docente;
+        } else {
+            // Usuario con rol directo o personalizado
+            if (isAct(user.role)) {
+                buttonsHtml += `
+                    <button type="button" onclick="completeLoginWithRole('${user.role}')" class="btn btn-outline" style="padding:12px 14px; border:2px solid var(--brand-blue); border-radius:10px; display:flex; align-items:center; gap:12px; transition:all 0.2s; cursor:pointer; background:#f0f9ff; text-align:left; min-height:64px; width:100%;">
+                        <i class="fa-solid fa-user" style="font-size:1.8rem; color:var(--brand-blue); min-width:36px; text-align:center;"></i>
+                        <div style="flex:1;">
+                            <strong style="font-size:0.95rem; color:var(--brand-blue); display:block; margin-bottom:2px;">${user.title || user.role}</strong>
+                            <span style="font-size:0.75rem; color:#475569; line-height:1.2; display:block;">Acceso con perfil asignado</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:var(--brand-blue); font-size:1rem;"></i>
+                    </button>
+                `;
+            }
         }
 
         if (optionsContainer) optionsContainer.innerHTML = buttonsHtml;
@@ -10483,6 +10651,15 @@ function cancelInlineRoleSelection() {
 }
 
 function completeLoginWithRole(selectedRole, userObj = null) {
+    if (typeof isRoleActive === 'function' && !isRoleActive(selectedRole)) {
+        const errorMsg = document.getElementById('gateLoginErrorMsg');
+        const errorAlert = document.getElementById('gateLoginAlert');
+        const msg = `El rol institucional "${selectedRole}" se encuentra actualmente pausado o inactivo en la plataforma.`;
+        if (errorAlert) errorAlert.style.display = 'flex';
+        if (errorMsg) errorMsg.textContent = msg;
+        if (typeof showToast === 'function') showToast(msg, 'warning');
+        return;
+    }
     if (typeof closeAllActiveModals === 'function') closeAllActiveModals();
     const user = userObj || STATE.pendingLoginUser || STATE.currentUser;
     if (!user) return;
@@ -10682,7 +10859,7 @@ function updateTopRoleBar() {
 
     if (isDir || isSuperOrAdmin) {
         let userSelectOptions = '<option value="">-- Probar vista como... --</option>';
-        (STATE.users || []).filter(u => u.id !== STATE.currentUser.id).forEach(u => {
+        (STATE.users || []).filter(u => u.id !== STATE.currentUser.id && (typeof isRoleActive !== 'function' || isRoleActive(u.role))).forEach(u => {
             userSelectOptions += `<option value="${u.id}">👤 ${u.name} (${u.title || u.role})</option>`;
         });
 
@@ -11202,7 +11379,7 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
 window.applyBimestreAndLockConfig = applyBimestreAndLockConfig;
 
 // 1. Canal de Comunicación Inmediata entre Pestañas (BroadcastChannel)
-let _enccBroadcastChannel = null;
+var _enccBroadcastChannel = null;
 try {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         _enccBroadcastChannel = new BroadcastChannel('encc_realtime_channel_2026');
@@ -44798,24 +44975,46 @@ window.applyUserRole = applyUserRole;
 
 
 
-function updateUserRoleSelectOptions() {
+function updateUserRoleSelectOptions(preserveRoleKey = null) {
     const userFormRole = document.getElementById('userFormRole');
     const userRoleFilterSelect = document.getElementById('userRoleFilterSelect');
     const userRole = document.getElementById('userRole');
-    const roles = STATE.rolesConfig || (typeof getInitialData === 'function' && getInitialData().rolesConfig) || [];
+    if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
+    const allRoles = STATE.rolesConfig || [];
 
-    const optionsHtml = roles.map(r => `<option value="${r.key}">${r.name}</option>`).join('');
+    // 🛡️ REGLA INSTITUCIONAL: Los roles activados se muestran, los inactivos se ocultan de selectores
+    // Si preserveRoleKey está inactivo pero pertenece a un usuario existente que se edita, se conserva con badge "(Inactivo)"
+    const activeRoles = allRoles.filter(r => {
+        if (r.active !== false) return true;
+        if (preserveRoleKey && r.key === preserveRoleKey) return true;
+        return false;
+    });
+
+    const buildOptions = (targetCurrent) => {
+        return activeRoles.map(r => {
+            const isInactiveNote = (r.active === false) ? ' (Inactivo)' : '';
+            return `<option value="${r.key}">${r.name}${isInactiveNote}</option>`;
+        }).join('');
+    };
 
     if (userFormRole) {
-        const cur = userFormRole.value;
-        userFormRole.innerHTML = optionsHtml;
-        if (cur && roles.some(r => r.key === cur)) userFormRole.value = cur;
+        const cur = preserveRoleKey || userFormRole.value;
+        userFormRole.innerHTML = buildOptions(cur);
+        if (cur && activeRoles.some(r => r.key === cur)) {
+            userFormRole.value = cur;
+        } else if (activeRoles.length > 0) {
+            userFormRole.value = activeRoles[0].key;
+        }
     }
 
     if (userRole) {
-        const cur = userRole.value;
-        userRole.innerHTML = optionsHtml;
-        if (cur && roles.some(r => r.key === cur)) userRole.value = cur;
+        const cur = preserveRoleKey || userRole.value;
+        userRole.innerHTML = buildOptions(cur);
+        if (cur && activeRoles.some(r => r.key === cur)) {
+            userRole.value = cur;
+        } else if (activeRoles.length > 0) {
+            userRole.value = activeRoles[0].key;
+        }
     }
 
     if (userRoleFilterSelect) {
@@ -44826,10 +45025,10 @@ function updateUserRoleSelectOptions() {
             <option value="admin,director,secretaria">🏛️ Directivos / Admin</option>
             <option value="profesor_auxiliar">🛡️ Auxiliares / Disciplina</option>
         `;
-        const extraRoles = roles.filter(r => !['docente', 'admin', 'director', 'secretaria', 'profesor_auxiliar'].includes(r.key))
-            .map(r => `<option value="${r.key}">${r.name}</option>`).join('');
+        const extraRoles = activeRoles.filter(r => !['docente', 'admin', 'director', 'secretaria', 'profesor_auxiliar'].includes(r.key))
+            .map(r => `<option value="${r.key}">${r.name}${(r.active === false) ? ' (Inactivo)' : ''}</option>`).join('');
         userRoleFilterSelect.innerHTML = quickOptions + extraRoles;
-        if (cur && (cur === 'ALL' || cur === 'admin,director,secretaria' || roles.some(r => r.key === cur))) {
+        if (cur && (cur === 'ALL' || cur === 'admin,director,secretaria' || activeRoles.some(r => r.key === cur))) {
             userRoleFilterSelect.value = cur;
         }
     }
