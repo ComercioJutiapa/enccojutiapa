@@ -304,12 +304,28 @@
         document.head.appendChild(style);
     }
 
-    // Inicializar o recuperar datos de STATE
+    // Inicializar o recuperar datos de STATE (Cero Huella en Disco Local)
     function getExamSchedulesData() {
         if (!window.STATE) window.STATE = {};
         if (!STATE.examSchedules || typeof STATE.examSchedules !== 'object') {
             try {
-                const stored = (typeof localStorage !== 'undefined' && localStorage.getItem) ? localStorage.getItem(STORAGE_KEY) : null;
+                // 1. Prioridad absoluta a memoria de sesión volátil (Zero Disk Footprint)
+                let stored = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem)
+                    ? sessionStorage.getItem('encco_exam_schedules_cache')
+                    : null;
+
+                // 2. Migración limpia y purga de localStorage previo para no dejar huellas en disco
+                if (!stored && typeof localStorage !== 'undefined' && localStorage.getItem) {
+                    stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        try {
+                            if (typeof sessionStorage !== 'undefined' && sessionStorage.setItem) {
+                                sessionStorage.setItem('encco_exam_schedules_cache', stored);
+                            }
+                            localStorage.removeItem(STORAGE_KEY);
+                        } catch (cleanErr) {}
+                    }
+                }
                 STATE.examSchedules = stored ? JSON.parse(stored) : {};
             } catch (e) {
                 STATE.examSchedules = {};
@@ -347,8 +363,12 @@
             // 3. Aplicar si se obtuvieron datos válidos
             if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
                 STATE.examSchedules = cloudData;
-                if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+                // Zero Disk Footprint: Guardar únicamente en memoria volátil de sesión y purgar disco
+                if (typeof sessionStorage !== 'undefined' && sessionStorage.setItem) {
+                    try { sessionStorage.setItem('encco_exam_schedules_cache', JSON.stringify(cloudData)); } catch(e) {}
+                }
+                if (typeof localStorage !== 'undefined' && localStorage.removeItem) {
+                    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
                 }
                 if (forceRender) {
                     const v = document.getElementById('view-exam-schedules');
@@ -371,7 +391,12 @@
             _enccBroadcastChannel.addEventListener('message', (ev) => {
                 if (ev && ev.data && ev.data.type === 'EXAM_SCHEDULES_SYNCED' && ev.data.data) {
                     STATE.examSchedules = ev.data.data;
-                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ev.data.data)); } catch(e) {}
+                    if (typeof sessionStorage !== 'undefined' && sessionStorage.setItem) {
+                        try { sessionStorage.setItem('encco_exam_schedules_cache', JSON.stringify(ev.data.data)); } catch(e) {}
+                    }
+                    if (typeof localStorage !== 'undefined' && localStorage.removeItem) {
+                        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+                    }
                     const v = document.getElementById('view-exam-schedules');
                     if (v && v.style.display !== 'none') {
                         renderExamSchedulesView();
@@ -381,12 +406,15 @@
         } catch(e) {}
     }
 
-    // Guardar cambios en LocalStorage y sincronizar a Firebase
+    // Guardar cambios en memoria volátil de sesión y sincronizar a Firebase (Zero Disk Footprint)
     function saveExamSchedulesData(showNotification = true) {
         try {
             const data = getExamSchedulesData();
-            if (typeof localStorage !== 'undefined' && localStorage.setItem) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.setItem) {
+                try { sessionStorage.setItem('encco_exam_schedules_cache', JSON.stringify(data)); } catch(e) {}
+            }
+            if (typeof localStorage !== 'undefined' && localStorage.removeItem) {
+                try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
             }
 
             // Notificar a otras pestañas en tiempo real
@@ -430,9 +458,10 @@
         }
     }
 
-    // Comprobar si el usuario actual tiene acceso al módulo (Dirección, Secretaría, Auxiliatura, Admin)
+    // Comprobar si el usuario actual tiene acceso al módulo (Dirección, Secretaría, Auxiliatura, Admin y roles activos)
     function hasExamScheduleAccess(overrideRole) {
         const role = (overrideRole || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase().trim();
+        if (typeof isRoleActive === 'function' && !isRoleActive(role)) return false;
         const allowed = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         return allowed.includes(role);
     }
@@ -441,6 +470,7 @@
     function isTeacherEligibleForProctoring(u) {
         if (!u) return false;
         if (u.active === false || u.status === 'Inactivo') return false;
+        if (typeof isRoleActive === 'function' && !isRoleActive(u.role)) return false;
         const role = (u.role || '').toLowerCase().trim();
         const userRoles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase().trim()) : [];
         const allRoles = [role, ...userRoles].filter(Boolean);
@@ -464,6 +494,60 @@
         return (h * 60) + (m || 0);
     }
 
+    // Obtener dinámicamente el ciclo activo oficial de la plataforma
+    function getPlatformExamActiveCycle() {
+        if (typeof getPlatformActiveCycle === 'function') {
+            const c = getPlatformActiveCycle();
+            if (c) return String(c).trim();
+        }
+        return (window.STATE && window.STATE.activeCycle) ? String(window.STATE.activeCycle).trim() : '2026';
+    }
+
+    // Obtener la lista de todos los ciclos escolares disponibles en el sistema (100% dinámico multiciclos)
+    function getAvailableExamCycles() {
+        const list = [];
+        if (window.STATE && Array.isArray(STATE.cycles)) {
+            STATE.cycles.forEach(c => {
+                const yr = c.year || c.name;
+                if (yr) {
+                    const clean = String(yr).trim();
+                    if (!list.includes(clean)) list.push(clean);
+                }
+            });
+        }
+        const activeCycle = getPlatformExamActiveCycle();
+        if (!list.includes(activeCycle)) list.push(activeCycle);
+
+        // Incorporar cualquier ciclo que ya tenga programaciones registradas en STATE.examSchedules
+        const allSched = getExamSchedulesData();
+        Object.keys(allSched || {}).forEach(k => {
+            const parts = k.split('_');
+            if (parts.length >= 2 && parts[0] && !list.includes(parts[0])) {
+                list.push(parts[0]);
+            }
+        });
+
+        // Orden descendente (más recientes primero)
+        list.sort((a, b) => b.localeCompare(a));
+        return list;
+    }
+    window.getAvailableExamCycles = getAvailableExamCycles;
+
+    // Obtener el ciclo actualmente seleccionado en la vista de exámenes
+    function getSelectedExamCycle() {
+        if (window._currentSelectedExamCycle) return String(window._currentSelectedExamCycle).trim();
+        return getPlatformExamActiveCycle();
+    }
+    window.getSelectedExamCycle = getSelectedExamCycle;
+
+    // Cambiar de ciclo escolar en la vista
+    function changeExamCycle(newCycle) {
+        if (!newCycle) return;
+        window._currentSelectedExamCycle = String(newCycle).trim();
+        renderExamSchedulesView();
+    }
+    window.changeExamCycle = changeExamCycle;
+
     // Obtener dinámicamente el bimestre activo del sistema (ej. "BIM1", "BIM2", "BIM3", "BIM4")
     function getInstitutionalActiveBimester() {
         const stateConfig = (window.STATE && window.STATE.config) || {};
@@ -473,31 +557,24 @@
             if (!isNaN(num) && num >= 1 && num <= 4) return `BIM${num}`;
             if (typeof rawBim === 'string' && rawBim.startsWith('BIM')) return rawBim;
         }
-        // Fallback a localStorage si existe
-        try {
-            const savedBim = localStorage.getItem('activeBimestre') || localStorage.getItem('encco_active_bimestre');
-            if (savedBim) {
-                const n = parseInt(savedBim, 10);
-                if (!isNaN(n) && n >= 1 && n <= 4) return `BIM${n}`;
-            }
-        } catch (e) {}
         return 'BIM3'; // Default seguro
     }
 
-    // Obtener la clave actual del bloque (ej. "2026_BIM3")
-    function getCurrentScheduleKey(bim = null) {
-        const cycle = (window.STATE && window.STATE.activeCycle) || '2026';
+    // Obtener la clave actual del bloque (ej. "2026_BIM3", "2027_BIM1")
+    function getCurrentScheduleKey(bim = null, cycle = null) {
+        const activeCycle = cycle || getSelectedExamCycle();
         const bimester = bim || window._currentSelectedExamBim || getInstitutionalActiveBimester();
-        return `${cycle}_${bimester}`;
+        return `${activeCycle}_${bimester}`;
     }
 
     // Inicializar o crear un horario vacío para el bloque
     function getOrCreateScheduleBlock(key) {
         const all = getExamSchedulesData();
         if (!all[key]) {
+            const parts = key.split('_');
             all[key] = {
-                cycle: (STATE && STATE.activeCycle) || '2026',
-                bimester: key.split('_')[1] || 'BIM3',
+                cycle: parts[0] || getSelectedExamCycle(),
+                bimester: parts[1] || 'BIM3',
                 days: []
             };
         } else {
@@ -510,6 +587,110 @@
         }
         return all[key];
     }
+
+    // Detección preventiva de colisiones físicas de aulas / salones
+    function detectClassroomCollisions(dayObj) {
+        if (!dayObj || !Array.isArray(dayObj.evaluations)) return [];
+        const salonSlots = [];
+
+        dayObj.evaluations.forEach(ev => {
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+            const startMin = timeStringToMinutes(ev.startTime || '07:30');
+            const dur = parseInt(ev.durationMinutes, 10) || 60;
+            const endMin = startMin + dur;
+            const courseName = ev.courseName || '';
+            const gradeName = ev.academicGradeName || ev.gradeName || '';
+
+            const addSlot = (secName, grpKey, grpObj) => {
+                if (grpObj && grpObj.salon && grpObj.salon.trim()) {
+                    salonSlots.push({
+                        salon: grpObj.salon.trim(),
+                        startMin,
+                        endMin,
+                        timeStr: `${minutesToTimeString(startMin)} - ${minutesToTimeString(endMin)}`,
+                        courseName,
+                        gradeName,
+                        secName,
+                        grpLabel: grpKey === 'groupA' ? 'Grupo A' : 'Grupo B',
+                        evId: ev.id
+                    });
+                }
+            };
+
+            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                ev.sections.forEach(sec => {
+                    if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+                    const secName = sec.sectionLetter || sec.section || '';
+                    addSlot(secName, 'groupA', sec.groupA);
+                    addSlot(secName, 'groupB', sec.groupB);
+                });
+            } else {
+                addSlot('', 'groupA', ev.groupA);
+                addSlot('', 'groupB', ev.groupB);
+            }
+        });
+
+        const collisions = [];
+        for (let i = 0; i < salonSlots.length; i++) {
+            for (let j = i + 1; j < salonSlots.length; j++) {
+                const a = salonSlots[i];
+                const b = salonSlots[j];
+                if (a.evId === b.evId && a.secName === b.secName && a.grpLabel === b.grpLabel) continue;
+                if (a.salon.toLowerCase() === b.salon.toLowerCase()) {
+                    if (Math.max(a.startMin, b.startMin) < Math.min(a.endMin, b.endMin)) {
+                        collisions.push({ a, b, salon: a.salon });
+                    }
+                }
+            }
+        }
+        return collisions;
+    }
+    window.detectClassroomCollisions = detectClassroomCollisions;
+
+    // Calcular la carga acumulada de equidad docente en todo el bimestre (Antifatiga Global)
+    function calculateBimesterWorkload(scheduleBlock) {
+        const workload = {};
+        (STATE.users || []).forEach(u => {
+            if (isTeacherEligibleForProctoring(u)) {
+                workload[u.id] = {
+                    id: u.id,
+                    name: u.name,
+                    totalMinutes: 0,
+                    totalSalones: 0,
+                    daysActiveCount: 0,
+                    daysMap: {}
+                };
+            }
+        });
+
+        const days = (scheduleBlock && Array.isArray(scheduleBlock.days)) ? scheduleBlock.days : [];
+        days.forEach(d => {
+            const dayWorkload = calculateTeacherWorkloadForDate(scheduleBlock, d.date);
+            Object.keys(dayWorkload).forEach(tId => {
+                const item = dayWorkload[tId];
+                if (!workload[tId]) {
+                    workload[tId] = {
+                        id: tId,
+                        name: item.name || tId,
+                        totalMinutes: 0,
+                        totalSalones: 0,
+                        daysActiveCount: 0,
+                        daysMap: {}
+                    };
+                }
+                const m = item.minutes || 0;
+                const s = item.salonesCount || 0;
+                workload[tId].daysMap[d.date] = { minutes: m, salones: s };
+                if (m > 0 || s > 0) {
+                    workload[tId].totalMinutes += m;
+                    workload[tId].totalSalones += s;
+                    workload[tId].daysActiveCount += 1;
+                }
+            });
+        });
+        return workload;
+    }
+    window.calculateBimesterWorkload = calculateBimesterWorkload;
 
     // Helper universal para ubicar un día programado y su bloque correspondiente sin fallos por desalineación de bimestre
     function findDayAndScheduleBlock(dayId, preferredBim = null) {
@@ -1210,11 +1391,16 @@
         }
 
         const officialActiveBim = getInstitutionalActiveBimester();
+        const officialActiveCycle = getPlatformExamActiveCycle();
+        const availableCycles = getAvailableExamCycles();
+        const selectedCycle = getSelectedExamCycle();
+        const isCurrentCycleActive = (selectedCycle === officialActiveCycle);
+
         // Si el usuario no ha seleccionado explícitamente otro bimestre en esta sesión, usar siempre el bimestre activo oficial
         const bimesterSelectVal = window._currentSelectedExamBim || officialActiveBim;
         window._currentSelectedExamBim = bimesterSelectVal;
 
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal, selectedCycle);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
         const bimesterLabels = {
@@ -1226,9 +1412,25 @@
 
         let html = `
             <div class="exam-sched-card">
-                <!-- BARRA SUPERIOR: CONTROLES, BIMESTRE, IMPRESIÓN Y NUEVO DÍA -->
+                <!-- BARRA SUPERIOR: CONTROLES, CICLO, BIMESTRE, IMPRESIÓN Y NUEVO DÍA -->
                 <div class="exam-quick-actions-bar">
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <!-- SELECTOR DE CICLO ESCOLAR (100% DINÁMICO MULTICICLOS) -->
+                        <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:8px; padding:5px 10px;">
+                            <label style="font-weight:800; font-size:0.84rem; color:#334155; margin:0;"><i class="fa-solid fa-calendar" style="color:#0284c7;"></i> Ciclo:</label>
+                            <select id="examCycleSelect" class="form-control form-control-sm" style="width:125px; font-weight:800; border:none; background:transparent; padding:2px 4px; font-size:0.86rem; color:#0f172a;" onchange="window.changeExamCycle(this.value)">
+                                ${availableCycles.map(c => `
+                                    <option value="${c}" ${c === selectedCycle ? 'selected' : ''}>
+                                        Ciclo ${c} ${c === officialActiveCycle ? '⭐' : ''}
+                                    </option>
+                                `).join('')}
+                            </select>
+                            <span class="badge" style="background:${isCurrentCycleActive ? '#15803d' : '#475569'}; color:#ffffff; font-size:0.72rem; font-weight:800; padding:4px 8px; border-radius:6px;" title="Estado del ciclo escolar">
+                                ${isCurrentCycleActive ? 'Oficial' : 'Histórico'}
+                            </span>
+                        </div>
+
+                        <!-- SELECTOR DE BIMESTRE -->
                         <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:8px; padding:5px 10px;">
                             <label style="font-weight:800; font-size:0.84rem; color:#334155; margin:0;"><i class="fa-solid fa-calendar-days" style="color:#0284c7;"></i> Bimestre:</label>
                             <select id="examBimesterSelect" class="form-control form-control-sm" style="width:170px; font-weight:800; border:none; background:transparent; padding:2px 4px; font-size:0.86rem; color:#0f172a;" onchange="window.changeExamBimester(this.value)">
@@ -1253,10 +1455,14 @@
                         </div>
                     </div>
 
-                        <!-- CENTRO DE IMPRESIÓN CONSOLIDADO -->
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <!-- CENTRO DE IMPRESIÓN Y EQUIDAD CONSOLIDADO -->
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-primary" onclick="window.printAllNominasOfBimester()" style="background:#1d4ed8; border-color:#1e40af; font-weight:700; font-size:0.86rem; padding:7px 14px;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
-                                <i class="fa-solid fa-print"></i> Imprimir Todas las Nóminas
+                                <i class="fa-solid fa-print"></i> Imprimir Nóminas
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="window.openBimesterWorkloadModal()" style="font-weight:700; font-size:0.86rem; background:#f0f9ff; color:#0284c7; border-color:#bae6fd;" title="Ver tabla de equidad acumulada de minutos y salones en todo el bimestre">
+                                <i class="fa-solid fa-scale-balanced"></i> Balance Bimestral
                             </button>
                             <button type="button" class="btn btn-outline-primary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700; font-size:0.86rem; background:#eff6ff;" title="Descargar o imprimir calendario completo para personal y cuidadores en PDF">
                                 <i class="fa-solid fa-file-pdf"></i> Calendario Personal
@@ -1266,14 +1472,27 @@
                             </button>
                         </div>
 
+                        ${isCurrentCycleActive ? `
                         <button type="button" class="btn btn-success" onclick="window.addNewExamDayModal()" style="background:#15803d; border-color:#166534; font-weight:700; font-size:0.86rem; padding:7px 14px;">
                             <i class="fa-solid fa-plus"></i> Nuevo Día
                         </button>
+                        ` : ''}
                     </div>
                 </div>
 
                 <!-- CONTENEDOR DE DÍAS CONFIGURADOS -->
                 <div id="examDaysListContainer">
+                    ${!isCurrentCycleActive ? `
+                    <div style="background:#f8fafc; border-left:4px solid #64748b; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                        <div>
+                            <strong style="color:#1e293b; font-size:0.92rem;"><i class="fa-solid fa-clock-rotate-left" style="color:#64748b; margin-right:6px;"></i> Modo Consulta Histórica: Ciclo ${selectedCycle}</strong>
+                            <p style="margin:2px 0 0 0; color:#475569; font-size:0.8rem;">Estás visualizando los registros oficiales preservados del ciclo escolar ${selectedCycle}. La edición está congelada para proteger la integridad de los datos históricos.</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.changeExamCycle('${officialActiveCycle}')" style="font-weight:700; font-size:0.8rem; white-space:nowrap;">
+                            Volver al Ciclo Activo (${officialActiveCycle})
+                        </button>
+                    </div>
+                    ` : ''}
         `;
 
         if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
@@ -1597,6 +1816,12 @@
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.editExamDayDate('${dayObj.id}')" style="background:#f0f9ff; color:#0369a1; font-weight:700; border:1px solid #bae6fd; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Modificar la fecha oficial de esta jornada de exámenes">
                         <i class="fa-solid fa-calendar-day" style="pointer-events:none;"></i> Cambiar Fecha
                     </button>
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.openSubstituteProctorModal('${dayObj.id}')" style="background:#fef3c7; color:#92400e; font-weight:700; border:1px solid #fcd34d; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Sustituir a un docente ausente en todos sus salones de hoy con 1 clic">
+                        <i class="fa-solid fa-user-pen"></i> Sustitución
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printDayDeliveryControlSheet('${dayObj.id}')" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir Hoja de Control de Entrega y Devolución de Pruebas de este día">
+                        <i class="fa-solid fa-clipboard-check"></i> Hoja Control
+                    </button>
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printDailyScheduleOficio('${dayObj.id}')" style="background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (${colCount} Col.)
                     </button>
@@ -1617,6 +1842,26 @@
 
             <!-- CONTENEDOR DESPLEGABLE DEL CUERPO DEL DÍA -->
             <div id="examDayBody_${dayObj.id}" class="exam-day-body" style="display:${isExpanded ? 'block' : 'none'}; margin-bottom:24px;">
+                ${(() => {
+                    const collisions = detectClassroomCollisions(dayObj);
+                    if (!collisions || collisions.length === 0) return '';
+                    return `
+                        <div style="background:#fff1f2; border:1.5px solid #fecdd3; border-radius:10px; padding:12px 16px; margin-bottom:14px; color:#9f1239; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:0.88rem; margin-bottom:6px;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color:#e11d48; font-size:1.1rem;"></i>
+                                ¡Alerta de Colisión en Aulas / Salones (${collisions.length})!
+                            </div>
+                            <div style="font-size:0.8rem; line-height:1.4;">
+                                ${collisions.map(c => `
+                                    <div style="margin-top:4px; padding-left:8px; border-left:3px solid #f43f5e;">
+                                        <strong>${c.salon}:</strong> Asignado simultáneamente a <em>${c.a.courseName} (${c.a.gradeName} ${c.a.secName} ${c.a.grpLabel})</em> y <em>${c.b.courseName} (${c.b.gradeName} ${c.b.secName} ${c.b.grpLabel})</em> en el horario <strong>${c.a.timeStr}</strong>.
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                })()}
+
                 <!-- BARRA DE EQUIDAD DOCENTE (ANTIFATIGA) PARA ESTE DÍA -->
                 <div style="background:#ffffff; border-radius:10px; padding:12px 16px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
@@ -2205,6 +2450,525 @@
             console.error("Error al guardar la nueva fecha del examen:", err);
             showExamScheduleAlert("Error al actualizar la fecha: " + (err.message || err), 'Auxiliaturas de Exámenes', 'danger');
         }
+    };
+
+    // =========================================================================
+    // MODAL DE SUSTITUCIÓN RÁPIDA DE CUIDADOR (1-CLICK EMERGENCY SUBSTITUTE)
+    // =========================================================================
+    window.openSubstituteProctorModal = function (dayId) {
+        const { dayObj } = findDayAndScheduleBlock(dayId);
+        if (!dayObj) {
+            showExamScheduleAlert("No se encontró la jornada de evaluaciones.", "Auxiliaturas", "warning");
+            return;
+        }
+
+        const assignedProctorMap = new Map();
+        (dayObj.evaluations || []).forEach(ev => {
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+            const cName = ev.courseName || '';
+            const gName = ev.academicGradeName || ev.gradeName || '';
+            const label = `${cName} (${gName})`;
+
+            const addProctor = (pId, pName) => {
+                if (!pId) return;
+                if (!assignedProctorMap.has(pId)) {
+                    assignedProctorMap.set(pId, { id: pId, name: pName || pId, slotsCount: 0, subjects: [] });
+                }
+                const entry = assignedProctorMap.get(pId);
+                entry.slotsCount += 1;
+                if (!entry.subjects.includes(label)) entry.subjects.push(label);
+            };
+
+            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                ev.sections.forEach(sec => {
+                    if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+                    ['groupA', 'groupB'].forEach(grpKey => {
+                        const grp = sec[grpKey];
+                        if (grp) {
+                            if (grp.caretakerTeacherId) addProctor(grp.caretakerTeacherId, grp.caretakerTeacherName);
+                            if (grp.caretakerTurn2Id) addProctor(grp.caretakerTurn2Id, grp.caretakerTurn2Name);
+                        }
+                    });
+                });
+            } else {
+                ['groupA', 'groupB'].forEach(grpKey => {
+                    const grp = ev[grpKey];
+                    if (grp) {
+                        if (grp.caretakerTeacherId) addProctor(grp.caretakerTeacherId, grp.caretakerTeacherName);
+                        if (grp.caretakerTurn2Id) addProctor(grp.caretakerTurn2Id, grp.caretakerTurn2Name);
+                    }
+                });
+            }
+        });
+
+        if (assignedProctorMap.size === 0) {
+            showExamScheduleAlert("No hay cuidadores asignados en este día para sustituir.", "Sustitución de Cuidador", "info");
+            return;
+        }
+
+        const currentProctors = Array.from(assignedProctorMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        const allEligible = (STATE.users || []).filter(u => isTeacherEligibleForProctoring(u)).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        const modalId = 'modalSubstituteProctor';
+        const existing = document.getElementById(modalId);
+        if (existing) existing.remove();
+
+        const modalHtml = `
+            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+                <div class="exam-modal-box">
+                    <div style="background:#0284c7; color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
+                        <h4 style="margin:0; font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
+                            <i class="fa-solid fa-user-pen"></i> Sustitución Rápida de Cuidador
+                        </h4>
+                        <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                    </div>
+                    <div style="padding:22px;">
+                        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:0.82rem; color:#0369a1; line-height:1.4;">
+                            <i class="fa-solid fa-circle-info"></i> Seleccione al catedrático que reportó inasistencia y al docente suplente. El sistema reemplazará automáticamente su asignación en todos los salones de esta fecha sin alterar materias ni notas.
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label" style="font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">
+                                1. Docente que No Puede Cuidar Hoy:
+                            </label>
+                            <select id="substituteOriginalTeacherId" class="form-control" style="height:42px; font-weight:700; font-size:0.92rem;">
+                                ${currentProctors.map(p => `
+                                    <option value="${p.id}">👤 ${p.name} (${p.slotsCount} salón${p.slotsCount === 1 ? '' : 'es'} asignado${p.slotsCount === 1 ? '' : 's'})</option>
+                                `).join('')}
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label" style="font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">
+                                2. Catedrático Suplente que Asume la Vigilancia:
+                            </label>
+                            <select id="substituteReplacementTeacherId" class="form-control" style="height:42px; font-weight:700; font-size:0.92rem;">
+                                <option value="">-- Seleccionar Docente Suplente --</option>
+                                ${allEligible.map(u => `
+                                    <option value="${u.id}">👨‍🏫 ${u.name}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+
+                        <div class="form-check p-3 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                            <input class="form-check-input" type="checkbox" id="chkConfirmSubstRules" checked style="margin-top:4px;">
+                            <label class="form-check-label ms-2" for="chkConfirmSubstRules" style="font-weight:700; color:#334155; font-size:0.8rem; cursor:pointer;">
+                                Registrar cambio oficial en la bitácora y actualizar de inmediato las nóminas impresas.
+                            </label>
+                        </div>
+                    </div>
+                    <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px; border-radius:0 0 14px 14px;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="window.confirmSubstituteProctor('${dayId}')" style="background:#0284c7; border-color:#0369a1; font-weight:700; padding:8px 18px;">
+                            <i class="fa-solid fa-check"></i> Aplicar Sustitución
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    };
+
+    window.confirmSubstituteProctor = function (dayId) {
+        try {
+            const origSelect = document.getElementById('substituteOriginalTeacherId');
+            const replSelect = document.getElementById('substituteReplacementTeacherId');
+            if (!origSelect || !replSelect) return;
+
+            const origId = origSelect.value;
+            const replId = replSelect.value;
+
+            if (!origId || !replId) {
+                showExamScheduleAlert("Por favor seleccione tanto el docente ausente como el suplente.", "Sustitución", "warning");
+                return;
+            }
+
+            if (origId === replId) {
+                showExamScheduleAlert("El suplente no puede ser el mismo docente a sustituir.", "Sustitución", "warning");
+                return;
+            }
+
+            const replTeacher = (STATE.users || []).find(u => u.id === replId);
+            const replName = replTeacher ? replTeacher.name : 'Docente Suplente';
+
+            const { dayObj } = findDayAndScheduleBlock(dayId);
+            if (!dayObj) return;
+
+            let count = 0;
+            (dayObj.evaluations || []).forEach(ev => {
+                if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+
+                const replaceInGroup = (grp) => {
+                    if (!grp) return;
+                    if (grp.caretakerTeacherId === origId) {
+                        grp.caretakerTeacherId = replId;
+                        grp.caretakerTeacherName = replName;
+                        count++;
+                    }
+                    if (grp.caretakerTurn2Id === origId) {
+                        grp.caretakerTurn2Id = replId;
+                        grp.caretakerTurn2Name = replName;
+                        count++;
+                    }
+                };
+
+                if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                    ev.sections.forEach(sec => {
+                        if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+                        replaceInGroup(sec.groupA);
+                        replaceInGroup(sec.groupB);
+                    });
+                } else {
+                    replaceInGroup(ev.groupA);
+                    replaceInGroup(ev.groupB);
+                }
+            });
+
+            saveExamSchedulesData(true);
+            const m = document.getElementById('modalSubstituteProctor');
+            if (m) m.remove();
+
+            renderExamSchedulesView();
+
+            if (typeof showToast === 'function') {
+                showToast(`Sustitución exitosa: ${count} asignación(es) transferida(s) a ${replName}.`, "success");
+            }
+        } catch (e) {
+            console.error("Error al aplicar sustitución de cuidador:", e);
+        }
+    };
+
+    // =========================================================================
+    // MODAL Y REPORTE DE EQUIDAD DOCENTE BIMESTRAL (ANTIFATIGA GLOBAL)
+    // =========================================================================
+    window.openBimesterWorkloadModal = function () {
+        const scheduleKey = getCurrentScheduleKey();
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        const workload = calculateBimesterWorkload(scheduleBlock);
+        const teachersList = Object.values(workload).sort((a, b) => b.totalMinutes - a.totalMinutes || (a.name || '').localeCompare(b.name || ''));
+
+        const totalOverallMins = teachersList.reduce((acc, t) => acc + t.totalMinutes, 0);
+        const avgMins = teachersList.length > 0 ? Math.round(totalOverallMins / teachersList.length) : 0;
+
+        const modalId = 'modalBimesterWorkload';
+        const existing = document.getElementById(modalId);
+        if (existing) existing.remove();
+
+        const modalHtml = `
+            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+                <div class="exam-modal-box modal-lg-box">
+                    <div style="background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
+                        <div>
+                            <h4 style="margin:0; font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
+                                <i class="fa-solid fa-scale-balanced"></i> Matriz de Equidad y Carga Bimestral de Cuidadores
+                            </h4>
+                            <span style="font-size:0.78rem; color:#e0f2fe; margin-top:2px; display:block;">
+                                Ciclo Lectivo ${getSelectedExamCycle()} ─ ${scheduleBlock.bimester || 'Bimestre'} (Promedio institucional: ${avgMins} min)
+                            </span>
+                        </div>
+                        <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                    </div>
+                    <div style="padding:20px; max-height:70vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; gap:12px; font-size:0.78rem; font-weight:700;">
+                                <span style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:4px 8px; border-radius:6px;">
+                                    ● Carga Óptima (≤ 180 min)
+                                </span>
+                                <span style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:4px 8px; border-radius:6px;">
+                                    ● Carga Moderada (181-300 min)
+                                </span>
+                                <span style="background:#fefce8; color:#a16207; border:1px solid #fef08a; padding:4px 8px; border-radius:6px;">
+                                    ● Carga Alta (> 300 min)
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.printBimesterWorkloadReport()" style="font-weight:700; font-size:0.8rem;">
+                                <i class="fa-solid fa-print"></i> Imprimir Informe
+                            </button>
+                        </div>
+
+                        <div class="table-responsive" style="border:1px solid #e2e8f0; border-radius:8px;">
+                            <table class="table table-sm table-hover mb-0" style="font-size:0.82rem; width:100%; border-collapse:collapse;">
+                                <thead style="background:#f8fafc; color:#334155; font-weight:800;">
+                                    <tr>
+                                        <th style="padding:10px; border-bottom:1px solid #cbd5e1;">Catedrático / Cuidador</th>
+                                        <th style="padding:10px; text-align:center; border-bottom:1px solid #cbd5e1;">Días</th>
+                                        <th style="padding:10px; text-align:center; border-bottom:1px solid #cbd5e1;">Salones</th>
+                                        <th style="padding:10px; text-align:center; border-bottom:1px solid #cbd5e1;">Total Minutos</th>
+                                        <th style="padding:10px; text-align:center; border-bottom:1px solid #cbd5e1;">Total Horas</th>
+                                        <th style="padding:10px; text-align:center; border-bottom:1px solid #cbd5e1;">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${teachersList.map((t, idx) => {
+                                        const hrs = (t.totalMinutes / 60).toFixed(1);
+                                        const badgeBg = t.totalMinutes > 300 ? '#fefce8' : (t.totalMinutes > 180 ? '#eff6ff' : '#f0fdf4');
+                                        const badgeColor = t.totalMinutes > 300 ? '#a16207' : (t.totalMinutes > 180 ? '#1d4ed8' : '#15803d');
+                                        const badgeBorder = t.totalMinutes > 300 ? '#fef08a' : (t.totalMinutes > 180 ? '#bfdbfe' : '#bbf7d0');
+                                        const badgeText = t.totalMinutes > 300 ? 'Alta' : (t.totalMinutes > 180 ? 'Moderada' : 'Equilibrada');
+                                        return `
+                                            <tr style="${t.totalMinutes === 0 ? 'opacity:0.6;' : ''} border-bottom:1px solid #f1f5f9;">
+                                                <td style="padding:8px 10px; font-weight:700; color:#0f172a;">
+                                                    <span style="color:#64748b; font-size:0.75rem; margin-right:6px;">${idx + 1}.</span>
+                                                    ${t.name}
+                                                </td>
+                                                <td style="padding:8px 10px; text-align:center; font-weight:700;">${t.daysActiveCount}</td>
+                                                <td style="padding:8px 10px; text-align:center; font-weight:700;">${t.totalSalones}</td>
+                                                <td style="padding:8px 10px; text-align:center; font-weight:800; color:#0284c7;">${t.totalMinutes} min</td>
+                                                <td style="padding:8px 10px; text-align:center; font-weight:700;">${hrs} hrs</td>
+                                                <td style="padding:8px 10px; text-align:center;">
+                                                    <span class="badge" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:4px;">
+                                                        ${badgeText}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; border-radius:0 0 14px 14px;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    };
+
+    window.printBimesterWorkloadReport = function () {
+        const scheduleKey = getCurrentScheduleKey();
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        const workload = calculateBimesterWorkload(scheduleBlock);
+        const teachersList = Object.values(workload).sort((a, b) => b.totalMinutes - a.totalMinutes || (a.name || '').localeCompare(b.name || ''));
+        const cycleYear = getSelectedExamCycle();
+        const bimester = scheduleBlock.bimester || 'BIM3';
+
+        const bimesterLabels = {
+            'BIM1': 'Primer Bimestre',
+            'BIM2': 'Segundo Bimestre',
+            'BIM3': 'Tercer Bimestre',
+            'BIM4': 'Cuarto Bimestre'
+        };
+
+        const totalOverallMins = teachersList.reduce((acc, t) => acc + t.totalMinutes, 0);
+        const avgMins = teachersList.length > 0 ? Math.round(totalOverallMins / teachersList.length) : 0;
+
+        const html = `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="utf-8">
+                <title>Informe_Equidad_Cuidadores_${bimester}_${cycleYear}</title>
+                <style>
+                    @page { size: letter portrait; margin: 15mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #000; margin: 0; padding: 0; }
+                    .header-box { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+                    .header-box h2 { margin: 0; font-size: 14pt; text-transform: uppercase; }
+                    .header-box h3 { margin: 3px 0 0 0; font-size: 11pt; font-weight: normal; }
+                    .header-box p { margin: 3px 0 0 0; font-size: 10pt; font-weight: bold; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #000; padding: 6px 8px; font-size: 9pt; }
+                    th { background-color: #f1f5f9; text-align: center; font-weight: bold; }
+                    .center { text-align: center; }
+                    .summary-box { display: flex; justify-content: space-between; margin-top: 10px; font-size: 9pt; font-weight: bold; padding: 6px 8px; background: #f8fafc; border: 1px solid #000; }
+                    .footer-signatures { margin-top: 50px; display: flex; justify-content: space-around; text-align: center; font-size: 9pt; }
+                    .signature-line { border-top: 1px solid #000; width: 220px; margin: 0 auto; padding-top: 5px; }
+                </style>
+            </head>
+            <body>
+                <div class="header-box">
+                    <h2>Escuela Nacional de Ciencias Comerciales</h2>
+                    <h3>Jutiapa ─ Jornada Matutina ─ Ciclo Escolar ${cycleYear}</h3>
+                    <p>INFORME OFICIAL DE EQUIDAD Y CARGA DE VIGILANCIA DE EVALUACIONES</p>
+                    <div style="font-size: 9.5pt; font-weight: normal; margin-top: 3px;">
+                        ${bimesterLabels[bimester] || bimester}
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <span>Total Docentes Evaluadores: ${teachersList.length}</span>
+                    <span>Total Minutos Vigilados: ${totalOverallMins} min (${(totalOverallMins / 60).toFixed(1)} hrs)</span>
+                    <span>Promedio Institucional: ${avgMins} min/docente</span>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">No.</th>
+                            <th>Catedrático Evaluador / Cuidador</th>
+                            <th style="width: 70px;">Jornadas</th>
+                            <th style="width: 70px;">Salones</th>
+                            <th style="width: 100px;">Total Minutos</th>
+                            <th style="width: 90px;">Total Horas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${teachersList.map((t, idx) => `
+                            <tr>
+                                <td class="center">${idx + 1}</td>
+                                <td><strong>${t.name}</strong></td>
+                                <td class="center">${t.daysActiveCount}</td>
+                                <td class="center">${t.totalSalones}</td>
+                                <td class="center"><strong>${t.totalMinutes} min</strong></td>
+                                <td class="center">${(t.totalMinutes / 60).toFixed(1)} hrs</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="footer-signatures">
+                    <div>
+                        <div class="signature-line">Profesor Auxiliar / Disciplina</div>
+                        Auxiliatura General ENCCO
+                    </div>
+                    <div>
+                        <div class="signature-line">Dirección del Plantel</div>
+                        Vo.Bo. Dirección General
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        openPrintWindow(html, `Informe_Carga_Cuidadores_${bimester}_${cycleYear}`, 'portrait');
+    };
+
+    // =========================================================================
+    // HOJA OFICIAL DE CONTROL DE ENTREGA Y DEVOLUCIÓN DE PRUEBAS (AUXILIATURA)
+    // =========================================================================
+    window.printDayDeliveryControlSheet = function (dayId) {
+        const { dayObj } = findDayAndScheduleBlock(dayId);
+        if (!dayObj) {
+            showExamScheduleAlert("No se encontró la jornada de evaluaciones.", "Auxiliaturas", "warning");
+            return;
+        }
+
+        const cycleYear = getSelectedExamCycle();
+        const dateFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+
+        const rows = [];
+        (dayObj.evaluations || []).forEach(ev => {
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+            const startMin = timeStringToMinutes(ev.startTime || '07:30');
+            const dur = parseInt(ev.durationMinutes, 10) || 60;
+            const endMin = startMin + dur;
+            const timeStr = `${minutesToTimeString(startMin)} - ${minutesToTimeString(endMin)}`;
+            const courseName = ev.courseName || '';
+            const gradeName = ev.academicGradeName || ev.gradeName || '';
+
+            const addRow = (secName, grpKey, grpObj) => {
+                if (!grpObj) return;
+                rows.push({
+                    timeStr,
+                    gradeName: `${gradeName} ${secName}`.trim(),
+                    courseName,
+                    groupLetter: grpKey === 'groupA' ? 'Grupo A' : 'Grupo B',
+                    salon: grpObj.salon || 'Por Asignar',
+                    proctorName: grpObj.caretakerTeacherName || 'Sin Asignar',
+                    studentsCount: (grpObj.students && Array.isArray(grpObj.students)) ? grpObj.students.length : '—'
+                });
+            };
+
+            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                ev.sections.forEach(sec => {
+                    if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+                    const secName = sec.sectionLetter || sec.section || '';
+                    addRow(secName, 'groupA', sec.groupA);
+                    addRow(secName, 'groupB', sec.groupB);
+                });
+            } else {
+                addRow('', 'groupA', ev.groupA);
+                addRow('', 'groupB', ev.groupB);
+            }
+        });
+
+        rows.sort((a, b) => timeStringToMinutes(a.timeStr.split(' - ')[0]) - timeStringToMinutes(b.timeStr.split(' - ')[0]) || a.gradeName.localeCompare(b.gradeName));
+
+        const html = `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="utf-8">
+                <title>Control_Pruebas_${dayObj.date}_${cycleYear}</title>
+                <style>
+                    @page { size: legal landscape; margin: 12mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #000; margin: 0; padding: 0; }
+                    .header-box { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+                    .header-box h2 { margin: 0; font-size: 14pt; text-transform: uppercase; }
+                    .header-box h3 { margin: 3px 0 0 0; font-size: 11pt; font-weight: normal; }
+                    .header-box p { margin: 2px 0 0 0; font-size: 9.5pt; font-weight: bold; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                    th, td { border: 1px solid #000; padding: 5px 6px; font-size: 8.5pt; }
+                    th { background-color: #f1f5f9; text-align: center; font-weight: bold; }
+                    .center { text-align: center; }
+                    .sign-cell { height: 26px; }
+                    .footer-notes { margin-top: 15px; font-size: 8pt; display: flex; justify-content: space-between; }
+                </style>
+            </head>
+            <body>
+                <div class="header-box">
+                    <h2>Escuela Nacional de Ciencias Comerciales</h2>
+                    <h3>Jutiapa ─ Jornada Matutina ─ Ciclo Escolar ${cycleYear}</h3>
+                    <p>CONTROL OFICIAL DE ENTREGA Y DEVOLUCIÓN DE EVALUACIONES BIMESTRALES</p>
+                    <div style="margin-top:4px; font-size:9pt; font-weight:normal; text-transform:capitalize;">
+                        <strong>Fecha de Evaluación:</strong> ${dateFormatted}
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:30px;">No.</th>
+                            <th style="width:90px;">Horario</th>
+                            <th style="width:140px;">Grado y Sección</th>
+                            <th>Materia a Evaluar</th>
+                            <th style="width:70px;">Grupo</th>
+                            <th style="width:110px;">Salón</th>
+                            <th style="width:180px;">Catedrático Cuidador</th>
+                            <th style="width:70px;">Pruebas<br>Entregadas</th>
+                            <th style="width:130px;">Firma Docente<br>(Recibe Pruebas)</th>
+                            <th style="width:70px;">Pruebas<br>Devueltas</th>
+                            <th style="width:130px;">Firma Auxiliatura<br>(Recibe Exámenes)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((r, i) => `
+                            <tr>
+                                <td class="center">${i + 1}</td>
+                                <td class="center"><strong>${r.timeStr}</strong></td>
+                                <td>${r.gradeName}</td>
+                                <td><strong>${r.courseName}</strong></td>
+                                <td class="center">${r.groupLetter}</td>
+                                <td class="center">${r.salon}</td>
+                                <td>${r.proctorName}</td>
+                                <td class="center">${r.studentsCount}</td>
+                                <td class="sign-cell"></td>
+                                <td class="center"></td>
+                                <td class="sign-cell"></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="footer-notes">
+                    <div>
+                        <strong>Norma de Auxiliatura:</strong> El docente cuidador debe presentarse a recoger el paquete de pruebas 10 minutos antes y devolverlo calificado o contabilizado al concluir el horario establecido.
+                    </div>
+                    <div>
+                        Firma de Entrega Auxiliatura: ___________________________
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        openPrintWindow(html, `Control_Pruebas_${dayObj.date}`, 'landscape');
     };
 
     window.deleteExamDay = async function (dayId) {
@@ -4240,7 +5004,7 @@
                                 ESCUELA NACIONAL DE CIENCIAS COMERCIALES — JUTIAPA
                             </div>
                             <div style="font-size:0.85rem; color:#475569; font-weight:700;">
-                                Jornada Matutina — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'} — Auxiliatura General
+                                Jornada Matutina — Ciclo Escolar ${getSelectedExamCycle()} — Auxiliatura General
                             </div>
                             <div style="font-size:0.95rem; font-weight:900; color:#15803d; margin-top:3px;">
                                 HORARIO OFICIAL DE EVALUACIONES (${colCount} COLUMNAS): ${dayFormatted}
@@ -4611,7 +5375,7 @@
                                 ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                             </div>
                             <div style="font-size:0.72rem; color:#475569; font-weight:700; line-height:1.15;">
-                                Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'}
+                                Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${getSelectedExamCycle()}
                             </div>
                             <div style="font-size:0.78rem; font-weight:900; color:#15803d; margin-top:1px; line-height:1.15; letter-spacing:0.3px;">
                                 CONTROL OFICIAL DE EVALUACIONES BIMESTRALES — AUXILIATURA GENERAL
@@ -4696,7 +5460,7 @@
                                 ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                             </div>
                             <div style="font-size:0.74rem; color:#475569; font-weight:700; line-height:1.15;">
-                                Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'}
+                                Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${getSelectedExamCycle()}
                             </div>
                             <div style="font-size:0.8rem; font-weight:900; color:#15803d; margin-top:1px; line-height:1.15; letter-spacing:0.3px;">
                                 CONTROL OFICIAL DE EVALUACIONES BIMESTRALES — AUXILIATURA GENERAL
@@ -5362,7 +6126,7 @@
                         <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:50px;"></td>
                         <td style="padding-left:12px;">
                             <div style="font-size:1.15rem; font-weight:900;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES — JUTIAPA</div>
-                            <div style="font-size:0.85rem; color:#475569; font-weight:700;">CALENDARIO GENERAL DE EVALUACIONES BIMESTRALES ─ CICLO LECTIVO ${(STATE && STATE.activeCycle) || '2026'}</div>
+                            <div style="font-size:0.85rem; color:#475569; font-weight:700;">CALENDARIO GENERAL DE EVALUACIONES BIMESTRALES ─ CICLO LECTIVO ${getSelectedExamCycle()}</div>
                         </td>
                     </tr>
                 </table>
@@ -5550,7 +6314,7 @@
             `;
         });
 
-        const activeCycleYear = (window.STATE && STATE.activeCycle) || '2026';
+        const activeCycleYear = getSelectedExamCycle();
         const calendarHtml = `
             <!DOCTYPE html>
             <html lang="es">
@@ -5703,7 +6467,10 @@
         saveExamSchedulesData,
         splitStudentsInTwoGroups,
         calculateTeacherWorkloadForDate,
+        calculateBimesterWorkload,
+        detectClassroomCollisions,
         hasExamScheduleAccess,
+        isTeacherEligibleForProctoring,
         minutesToTimeString,
         timeStringToMinutes,
         getDistinctAcademicGrades,
@@ -5714,6 +6481,14 @@
         getInstitutionalSalonsList,
         autoAssignRandomProctors,
         autoPickProctorsForModal,
+        openSubstituteProctorModal: window.openSubstituteProctorModal,
+        confirmSubstituteProctor: window.confirmSubstituteProctor,
+        openBimesterWorkloadModal: window.openBimesterWorkloadModal,
+        printBimesterWorkloadReport: window.printBimesterWorkloadReport,
+        printDayDeliveryControlSheet: window.printDayDeliveryControlSheet,
+        getAvailableExamCycles: window.getAvailableExamCycles,
+        getSelectedExamCycle: window.getSelectedExamCycle,
+        changeExamCycle: window.changeExamCycle,
         randomizeProctorsForBimester: window.randomizeProctorsForBimester,
         randomizeProctorsForDay: window.randomizeProctorsForDay,
         printDailyScheduleOficio: window.printDailyScheduleOficio,
