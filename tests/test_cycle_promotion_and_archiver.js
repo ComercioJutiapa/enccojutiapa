@@ -224,8 +224,9 @@ assert.ok(Archiver, 'EnccoCycleArchiver debe cargarse en window');
     assert.strictEqual(dulce2027.gradeCode, '6to D');
     assert.deepStrictEqual(dulce2027.grades['Auditoría'], [0, 0, 0, 0], 'Debe inicializar los cursos de 6to en [0,0,0,0]');
 
-    // Verificar egreso de 6to A
-    const grad2027 = sandboxWindow.STATE.students.find(s => s.id === 'stu-6a-01');
+    // Verificar egreso de 6to A (resguardado en graduatedStudentsByCycle para exclusión perpetua)
+    const gradsList = (sandboxWindow.STATE.graduatedStudentsByCycle && sandboxWindow.STATE.graduatedStudentsByCycle['2026']) || sandboxWindow.STATE.students || [];
+    const grad2027 = gradsList.find(s => s.id === 'stu-6a-01');
     assert.strictEqual(grad2027.status, 'Egresado');
     assert.strictEqual(grad2027.active, false);
     assert.strictEqual(grad2027.graduationCycle, '2026');

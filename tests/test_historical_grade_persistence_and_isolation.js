@@ -157,7 +157,10 @@ assert.ok(archiver, 'EnccoCycleArchiver debe estar inicializado');
     console.log('  ✅ Carga histórica con filtro anti-dummy validada con éxito.');
 
     // 2. Modificar una nota histórica como Director (Alonzo Pérez B4 -> 85)
-    // Extraer la función saveStudentSubjectGradeAtomic
+    // Extraer las funciones auxiliares y saveStudentSubjectGradeAtomic
+    const structCode = appCode.slice(appCode.indexOf('function ensureStudentGradebookStructure'), appCode.indexOf('window.ensureStudentGradebookStructure ='));
+    vm.runInContext(structCode + '\nwindow.ensureStudentGradebookStructure = ensureStudentGradebookStructure;', sandbox);
+
     const fnCode = appCode.slice(appCode.indexOf('async function saveStudentSubjectGradeAtomic'), appCode.indexOf('window.saveStudentSubjectGradeAtomic ='));
     vm.runInContext(fnCode + '\nwindow.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;', sandbox);
 

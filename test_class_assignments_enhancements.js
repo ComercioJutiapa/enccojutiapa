@@ -70,7 +70,7 @@ console.log('  ✅ Test 2 Superado: Todas las funciones controladoras modernas e
 // TEST 3: Evaluación de la clasificación de Áreas CNB
 console.log('\n▶ [TEST 3] Evaluando clasificación curricular del CNB (getCnbAreaInfo)...');
 // Extraer getCnbAreaInfo para probarla
-const cnbFnMatch = appJsContent.match(/function getCnbAreaInfo\(subjectName = ''\) \{([\s\S]*?)\n\}\nwindow\.getCnbAreaInfo/);
+const cnbFnMatch = appJsContent.match(/function getCnbAreaInfo\(subjectName = ''\) \{([\s\S]*?)\r?\n\}\r?\nwindow\.getCnbAreaInfo/);
 assert(cnbFnMatch, 'No se pudo extraer la función getCnbAreaInfo');
 const getCnbAreaInfo = new Function('subjectName = ""', cnbFnMatch[1]);
 

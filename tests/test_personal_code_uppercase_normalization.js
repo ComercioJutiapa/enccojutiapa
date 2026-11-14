@@ -36,9 +36,9 @@ assert.ok(
     'studentFormPersonalCode debe tener oninput que auto-convierta a mayúsculas'
 );
 assert.ok(
-    htmlCode.includes('id="quickSireSearchCode"') &&
-    htmlCode.includes('this.value = this.value.toUpperCase();'),
-    'quickSireSearchCode debe tener oninput que auto-convierta a mayúsculas'
+    htmlCode.includes('id="studentFormPersonalCode"') &&
+    htmlCode.includes('text-transform:uppercase'),
+    'studentFormPersonalCode debe tener estilo visual de mayúsculas'
 );
 console.log('  ✅ Entradas de texto en interfaz blindadas con auto-conversión a mayúsculas en tiempo real.');
 

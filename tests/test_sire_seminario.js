@@ -4,13 +4,13 @@ const fs = require('fs');
 const html = fs.readFileSync('datos-sire.html', 'utf8');
 const lines = html.split('\n');
 
-// Extraer resolveCourseSireCode (line 2364) y getStudentSubjectScore (line 2549)
-const resolveLines = lines.slice(2363, 2428).join('\n');
-const scoreLines = lines.slice(2548, 2680).join('\n');
+// Extraer resolveCourseSireCode y getStudentSubjectScore dinámicamente mediante regex
+const rMatch = html.match(/function resolveCourseSireCode\([^\)]*\)\s*\{[\s\S]*?\r?\n        \}/);
+const sMatch = html.match(/function getStudentSubjectScore\([^\)]*\)\s*\{[\s\S]*?\r?\n        \}/);
 
 const fnScope = new Function(`
-    ${resolveLines}
-    ${scoreLines}
+    ${rMatch[0]}
+    ${sMatch[0]}
     return { resolveCourseSireCode, getStudentSubjectScore };
 `);
 const { getStudentSubjectScore, resolveCourseSireCode } = fnScope();

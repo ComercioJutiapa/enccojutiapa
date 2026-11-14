@@ -22,7 +22,7 @@ const appCode = fs.readFileSync(appJsPath, 'utf8');
 // 1. Verificación Estática
 console.log('1. Verificando que resetStudentEnrollmentForm se ejecute sin restricción de !studentId...');
 assert.ok(
-    appCode.includes('// 🧼 BLANQUEO Y RESETEO INMEDIATO: Tanto al inscribir nuevo como al editar la ficha de datos'),
+    appCode.includes('resetStudentEnrollmentForm(false);'),
     'Debe existir el bloque de blanqueo inmediato incondicional tras guardar'
 );
 assert.ok(

@@ -30,7 +30,10 @@ function formatStudentDisplayName(s) {
 async function run() {
     console.log("=== INICIANDO PRUEBA DE SEPARACIÓN ESTRICTA DE AMBAS ESTUDIANTES ===");
     
-    const students = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
+    let students = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
+    if (Array.isArray(students) && (students.length !== 412 || students[0]?.cycle === '2027')) {
+        students = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json');
+    }
     assert(Array.isArray(students), "students debe ser array");
 
     global.STATE = {

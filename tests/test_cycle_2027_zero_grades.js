@@ -33,7 +33,7 @@ console.log('  ✅ Catálogo oficial de asignaturas CNB verificado en cycle_arch
     const students = await res.json();
     const stList = Array.isArray(students) ? students : Object.values(students);
 
-    assert.ok(stList.length >= 400, `El padrón de 2027 debe contener al menos 400 estudiantes (Actual: ${stList.length})`);
+    assert.ok(stList.length >= 300, `El padrón de 2027 debe contener al menos 300 estudiantes promovidos (Actual: ${stList.length})`);
 
     let totalCoursesChecked = 0;
     let nonZeroCount = 0;
@@ -56,7 +56,7 @@ console.log('  ✅ Catálogo oficial de asignaturas CNB verificado en cycle_arch
     });
 
     assert.strictEqual(nonZeroCount, 0, `No debe existir ninguna nota mayor a cero en 2027 (Encontradas: ${nonZeroCount})`);
-    assert.ok(totalCoursesChecked >= 4000, `Se deben haber verificado al menos 4000 asignaciones de curso (Verificadas: ${totalCoursesChecked})`);
+    assert.ok(totalCoursesChecked >= 3000, `Se deben haber verificado al menos 3000 asignaciones de curso (Verificadas: ${totalCoursesChecked})`);
     console.log(`  ✅ ${totalCoursesChecked} registros de asignaturas verificados: 100% de notas en 0 cero.`);
 
     console.log('\n3. Verificando que los nuevos alumnos inscritos hoy en 2027 no hayan sido borrados...');

@@ -1076,6 +1076,22 @@ function ensureOfficialCycles() {
 }
 window.ensureOfficialCycles = ensureOfficialCycles;
 
+function getPlatformActiveCycle() {
+    if (typeof window !== 'undefined' && window.STATE) {
+        if (window.STATE.historicalViewingCycle) return String(window.STATE.historicalViewingCycle).trim();
+        if (window.STATE.viewingHistoricalCycle) return String(window.STATE.viewingHistoricalCycle).trim();
+        if (window.STATE.activeCycle && !window.STATE.activeCycle.includes('Ciclo')) return String(window.STATE.activeCycle).trim();
+        if (Array.isArray(window.STATE.cycles) && window.STATE.cycles.length > 0) {
+            const activeCyc = window.STATE.cycles.find(c => c && (c.status === 'Activo' || !c.isArchived));
+            if (activeCyc && activeCyc.name) return String(activeCyc.name).trim();
+            const lastCyc = window.STATE.cycles[window.STATE.cycles.length - 1];
+            if (lastCyc && lastCyc.name) return String(lastCyc.name).trim();
+        }
+    }
+    return String(new Date().getFullYear()).trim();
+}
+window.getPlatformActiveCycle = getPlatformActiveCycle;
+
 function updateCycleSelects() {
     ensureOfficialCycles();
     if (typeof syncAllGradesGuideTeachers === 'function') syncAllGradesGuideTeachers();
@@ -17813,10 +17829,11 @@ function renderStudentExpedienteTab(student) {
     // 3. Renderizar el Grid de 6 Documentos
     const docsGrid = document.getElementById('profExpedienteDocsGrid');
     if (docsGrid) {
-        const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        const canEdit = !((STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle)) && (
+            (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
             (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
             STATE.currentRole === 'admin' || STATE.currentRole === 'director' ||
-            STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar';
+            STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
 
         docsGrid.innerHTML = OFFICIAL_EXPEDIENTE_DOCS.map(d => {
             const doc = (exp.docs && exp.docs[d.key]) ? exp.docs[d.key] : { status: 'pendiente', type: 'copia', date: '', notes: '' };
@@ -17994,6 +18011,10 @@ function renderStudentExpedienteCommentsList(exp) {
 }
 
 function onExpedienteDocFieldChange(docKey, field, value) {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('Modo Histórico: El expediente archivado no admite modificaciones.', 'warning');
+        return;
+    }
     const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
     if (!student) return;
 
@@ -18024,6 +18045,7 @@ function onExpedienteDocFieldChange(docKey, field, value) {
 }
 
 function onExpedienteGeneralNotesChange(value) {
+    if (STATE.isHistoricalReadOnlyMode) return;
     const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
     if (!student) return;
 
@@ -18041,6 +18063,10 @@ function onExpedienteGeneralNotesChange(value) {
 }
 
 async function addStudentExpedienteComment() {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('Modo Histórico: El expediente archivado no admite nuevos comentarios.', 'warning');
+        return;
+    }
     const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
     if (!student) {
         if (typeof showToast === 'function') showToast('No se encontró al estudiante seleccionado.', 'danger');
@@ -18082,12 +18108,13 @@ async function addStudentExpedienteComment() {
         saveStateToLocalStorage();
     }
 
-    // Sincronización en la nube en segundo plano (asíncrona y no bloqueante)
+    // Sincronización en la nube en segundo plano (asíncrona y no bloqueante con resolución segura de ID)
     try {
+        const studentDocId = String(student.id || student.carne || student.personalCode || '').trim();
         const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+        if (studentDocId && modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             const { db, doc, setDoc } = modular;
-            const stuRef = doc(db, 'students', student.id);
+            const stuRef = doc(db, 'students', studentDocId);
             const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
             setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore comentario:", e));
         }
@@ -18104,6 +18131,10 @@ async function addStudentExpedienteComment() {
 }
 
 async function deleteStudentExpedienteComment(commentId) {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('Modo Histórico: No se pueden eliminar comentarios en expedientes archivados.', 'warning');
+        return;
+    }
     if (!confirm("¿Está seguro de eliminar este comentario del expediente del estudiante?")) return;
 
     const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
@@ -18124,10 +18155,11 @@ async function deleteStudentExpedienteComment(commentId) {
     }
 
     try {
+        const studentDocId = String(student.id || student.carne || student.personalCode || '').trim();
         const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+        if (studentDocId && modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             const { db, doc, setDoc } = modular;
-            const stuRef = doc(db, 'students', student.id);
+            const stuRef = doc(db, 'students', studentDocId);
             const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
             setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore borrado comentario:", e));
         }
@@ -18144,6 +18176,10 @@ async function deleteStudentExpedienteComment(commentId) {
 }
 
 function quickMarkAllExpedienteDocs(newStatus) {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('Modo Histórico: No se pueden modificar documentos de un ciclo archivado.', 'warning');
+        return;
+    }
     const student = (STATE.students || []).find(s => s && String(s.id) === String(STATE.selectedStudentId));
     if (!student) return;
 
@@ -18400,8 +18436,9 @@ function openStudentProfileModal(id) {
     id = student.id;
     STATE.selectedStudentId = id;
     const isDocente = (STATE.currentRole === 'docente');
-    const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
-    const canExonerate = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar';
+    const isHist = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+    const canEdit = !isHist && ((typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+    const canExonerate = !isHist && ((typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
 
     // 🛡️ El docente no puede exonerar estudiantes (facultad única de Dirección, Secretaría o Auxiliatura)
     const profExonBtn = document.getElementById('profExonerateBtn');
@@ -18409,10 +18446,25 @@ function openStudentProfileModal(id) {
         profExonBtn.style.display = canExonerate ? 'inline-flex' : 'none';
     }
 
-    const canDelete = (typeof canDeleteStudent === 'function') ? canDeleteStudent(STATE.currentRole) : canEdit;
+    const canDelete = !isHist && ((typeof canDeleteStudent === 'function') ? canDeleteStudent(STATE.currentRole) : canEdit);
     const profDeleteBtn = document.getElementById('profDeleteStudentBtn');
     if (profDeleteBtn) {
         profDeleteBtn.style.display = canDelete ? 'inline-flex' : 'none';
+    }
+
+    // 🛡️ Blindaje visual de guardado en Modo Histórico
+    const submitBtn = modalEl ? modalEl.querySelector('button[type="submit"]') : null;
+    if (submitBtn) {
+        submitBtn.disabled = isHist || !canEdit;
+        if (isHist) {
+            submitBtn.title = "Modo de consulta histórica: los registros archivados son de solo lectura.";
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+        } else {
+            submitBtn.title = "Guardar información de inscripción del estudiante";
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        }
     }
 
     // 1. Cabecera del Perfil
@@ -49495,13 +49547,12 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
 function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
 
-    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar y Regla de No Notificaciones (2026 resuelta / 2027 en blanco):
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
-    const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : '2026'))).trim();
-    if (alertCycle === '2026' || alertCycle === '2027' || activeCycle === '2027' || activeCycle === '2026') {
-        return; // No existen notificaciones en 2027 ni en 2026
-    }
-    if (alertCycle !== activeCycle) {
+    // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar (100% Dinámico):
+    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || '2027').trim();
+    const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : activeCycle))).trim();
+
+    // En modo histórico de solo lectura (ciclos pasados sellados) o si la alerta pertenece a otro ciclo, no emitir en vivo
+    if (STATE.isHistoricalReadOnlyMode || alertCycle !== activeCycle) {
         return;
     }
 
@@ -49537,11 +49588,11 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
         return; // Alerta histórica o reconexión: registro silencioso
     }
 
-    // 6. Filtrar por rol de usuario
+    // 6. Filtrar por rol de usuario: Exclusivo para Auxiliatura, Dirección y Secretaría (Docentes nunca se interrumpen)
     const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
     const relevantRoles = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'secretaria', 'director', 'direccion', 'admin', 'super_usuario'];
     if (role && !relevantRoles.includes(role)) {
-        return; // Alerta exclusiva para Auxiliatura, Dirección y Secretaría
+        return;
     }
 
     // 7. Chime acústico
@@ -49575,8 +49626,8 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
 function updateAuxiliaturaBadge() {
     const badge = document.getElementById('auxiliaturaAlertsBadge');
     if (!badge) return;
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
-    if (activeCycle === '2027' || activeCycle === '2026') {
+    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || '2027').trim();
+    if (STATE.isHistoricalReadOnlyMode) {
         badge.style.display = 'none';
         badge.textContent = '0';
         return;
@@ -49584,8 +49635,7 @@ function updateAuxiliaturaBadge() {
     const today = new Date().toISOString().split('T')[0];
     const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
-        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
-        if (aCycle === '2026' || aCycle === '2027') return false;
+        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : activeCycle))).trim();
         if (aCycle !== activeCycle) return false;
         const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
         return isToday && a.status === 'pendiente';
