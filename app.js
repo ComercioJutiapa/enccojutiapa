@@ -1461,7 +1461,7 @@ window.canManageStudentPermissions = canManageStudentPermissions;
 function canAccessBackupAndAudit(role = null) {
     if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
     if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
-    const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
+    const curRole = (role || (window.STATE ? STATE.currentRole : '') || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' && window.EnccoAuthStore.getRole() !== 'guest' ? window.EnccoAuthStore.getRole() : '') || '').trim().toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
     const rLower = curRole || userRole;
     if (!rLower || rLower === 'guest') return false;
@@ -1484,12 +1484,12 @@ function canAccessBackupAndAudit(role = null) {
 window.canAccessBackupAndAudit = canAccessBackupAndAudit;
 
 // 🔒 RBAC ESTRICTO: ACCESO Y CREACIÓN DE RESPALDOS INSTITUCIONALES (BACKUPS)
-// Restringido de forma absoluta a Dirección, Superusuario y Administrador.
-// Queda estrictamente PROHIBIDO y bloqueado para Docentes, Secretarías, Auxiliares, Estudiantes, etc.
+// Restringido de forma absoluta a Dirección, Secretaría y Superusuario / Administración.
+// Queda estrictamente PROHIBIDO y bloqueado para Docentes, Auxiliares, Estudiantes, etc.
 function canAccessBackup(role = null) {
     if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
     if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
-    const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
+    const curRole = (role || (window.STATE ? STATE.currentRole : '') || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' && window.EnccoAuthStore.getRole() !== 'guest' ? window.EnccoAuthStore.getRole() : '') || '').trim().toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
     const rLower = curRole || userRole;
     if (!rLower || rLower === 'guest') return false;
@@ -1498,6 +1498,11 @@ function canAccessBackup(role = null) {
         'director',
         'direccion',
         'directora',
+        'secretaria',
+        'secretario',
+        'secretaria_general',
+        'secretaria_contador',
+        'secretaria_auxiliar',
         'super_usuario',
         'superadmin',
         'admin'
@@ -3231,8 +3236,13 @@ window.exportAuditLogCSV = exportAuditLogCSV;
 // ======================================================================
 function openUniversalBackupModal() {
     if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
+        const modal = document.getElementById('modalUniversalBackup');
+        if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
+            modal.classList.remove('active');
+        }
         if (typeof showToast === 'function') {
-            showToast("Acceso Restringido: El Respaldo Maestro está disponible exclusivamente para Dirección y Administración.", "danger");
+            showToast("Acceso Restringido: El Respaldo Maestro está disponible exclusivamente para Dirección, Secretaría y Super Usuario.", "danger");
         }
         return;
     }
@@ -3259,7 +3269,7 @@ function exportSystemSafeBackup() {
     const backupCategory = arguments[0] || 'all';
     if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso Restringido: La descarga de respaldo institucional está disponible exclusivamente para Dirección y Administración.", "danger");
+            showToast("Acceso Restringido: La descarga de respaldo institucional está disponible exclusivamente para Dirección, Secretaría y Super Usuario.", "danger");
         }
         return;
     }
@@ -3273,6 +3283,9 @@ function exportSystemSafeBackup() {
 
         const currentUser = (window.STATE && window.STATE.currentUser) || {};
         const role = (window.STATE && window.STATE.currentRole) || 'director';
+        const dynamicCycle = (typeof getPlatformActiveCycle === 'function')
+            ? getPlatformActiveCycle()
+            : (STATE.activeCycle || String(y));
 
         let snapshotData = {};
         let labelCategory = 'Completo';
@@ -3280,7 +3293,7 @@ function exportSystemSafeBackup() {
         if (backupCategory === 'academic') {
             labelCategory = 'Academico_Notas';
             snapshotData = {
-                activeCycle: STATE.activeCycle || y,
+                activeCycle: dynamicCycle,
                 studentsCount: Array.isArray(STATE.students) ? STATE.students.length : 0,
                 students: STATE.students || [],
                 gradesList: STATE.gradesList || [],
@@ -3292,7 +3305,7 @@ function exportSystemSafeBackup() {
         } else if (backupCategory === 'attendance') {
             labelCategory = 'Asistencia_Convivencia';
             snapshotData = {
-                activeCycle: STATE.activeCycle || y,
+                activeCycle: dynamicCycle,
                 attendanceRecords: STATE.attendanceRecords || {},
                 attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
                 studentPermissions: STATE.studentPermissions || [],
@@ -3303,7 +3316,7 @@ function exportSystemSafeBackup() {
             // 'all' -> 100% Full System State
             labelCategory = 'MAESTRO_COMPLETO';
             snapshotData = {
-                activeCycle: STATE.activeCycle || y,
+                activeCycle: dynamicCycle,
                 studentsCount: Array.isArray(STATE.students) ? STATE.students.length : 0,
                 students: STATE.students || [],
                 gradesList: STATE.gradesList || [],
@@ -3333,6 +3346,7 @@ function exportSystemSafeBackup() {
             academicModel: "40% Zona / 60% Examen (100% Total)",
             exportedBy: currentUser.name || role,
             userRole: role,
+            activeCycle: dynamicCycle,
             backupCategory: backupCategory,
             checksum: {
                 totalStudents: (STATE.students || []).length,
@@ -3350,7 +3364,7 @@ function exportSystemSafeBackup() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ENCO_RESPALDO_OFICIAL_${labelCategory}_${y}-${m}-${d}_${h}${min}.json`;
+        a.download = `ENCCO_RESPALDO_OFICIAL_${dynamicCycle}_${labelCategory}_${y}-${m}-${d}_${h}${min}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -10618,7 +10632,7 @@ function synchronizeGlobalDynamicUI() {
 
 function updateTopRoleBar() {
     const curR = (STATE.currentRole || '').toLowerCase();
-    const canBackup = typeof canAccessBackup === 'function' ? canAccessBackup(curR) : ['director', 'direccion', 'admin', 'super_usuario'].includes(curR);
+    const canBackup = typeof canAccessBackup === 'function' ? canAccessBackup(curR) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(curR);
     const canAudit = typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit(curR) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(curR);
 
     const btnMasterBackup = document.getElementById('btnHeaderMasterBackup');
@@ -13189,10 +13203,11 @@ function renderDashboard() {
                         </p>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        ${(typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit() : false) ? `
+                        ${(typeof canAccessBackup === 'function' ? canAccessBackup() : false) ? `
                         <button type="button" class="btn btn-outline-success btn-xs" onclick="openUniversalBackupModal()" style="font-weight:700;">
                             <i class="fa-solid fa-shield-halved"></i> Respaldo Maestro JSON
-                        </button>
+                        </button>` : ''}
+                        ${(typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit() : false) ? `
                         <button type="button" class="btn btn-outline-primary btn-xs" onclick="openSystemAuditLogModal()" style="font-weight:700;">
                             <i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría
                         </button>` : ''}
@@ -26220,19 +26235,22 @@ window.toggleDbProviderFields = function() {};
 function exportDataBackupJSON() {
     if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso denegado: Esta función está reservada exclusivamente para Dirección y Administración.", "danger");
+            showToast("Acceso denegado: Esta función está reservada exclusivamente para Dirección, Secretaría y Super Usuario.", "danger");
         }
         return;
     }
     if (typeof exportSystemSafeBackup === 'function') {
         exportSystemSafeBackup('all');
     } else {
+        const dynamicCycle = (typeof getPlatformActiveCycle === 'function')
+            ? getPlatformActiveCycle()
+            : (STATE.activeCycle || String(new Date().getFullYear()));
         const jsonStr = JSON.stringify(STATE, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ENCCO_Respaldo_BaseDatos_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `ENCCO_Respaldo_BaseDatos_${dynamicCycle}_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -26245,7 +26263,7 @@ window.exportDataBackupJSON = exportDataBackupJSON;
 async function importDataBackupJSON(e) {
     if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso denegado: La restauración de respaldos está restringida exclusivamente a Dirección y Administración.", "danger");
+            showToast("Acceso denegado: La restauración de respaldos está restringida exclusivamente a Dirección, Secretaría y Super Usuario.", "danger");
         }
         if (e && e.target) e.target.value = '';
         return;
@@ -27600,17 +27618,19 @@ function openCyclePromotionModal(e) {
     populatePromotionCycleSelects();
     renderPromotionStudentsTable();
 
-    // 🔒 Botones exclusivos de Dirección y Admin
+    // 🔒 Botones de respaldo exclusivos de Dirección, Secretaría y Super Usuario
     const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
-    const isDirector = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
-                       (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
-                       role === 'director' || role === 'direccion' || role === 'admin';
+    const canBackup = (typeof canAccessBackup === 'function')
+        ? canAccessBackup(role)
+        : ((typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+           (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+           ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'].includes(role));
 
     const backupBtn = document.getElementById('btnDownloadCycleBackup');
-    if (backupBtn) backupBtn.style.display = isDirector ? 'inline-flex' : 'none';
+    if (backupBtn) backupBtn.style.display = canBackup ? 'inline-flex' : 'none';
 
     const printActBtn = document.getElementById('btnPrintPromotionAct');
-    if (printActBtn) printActBtn.style.display = isDirector ? 'inline-flex' : 'none';
+    if (printActBtn) printActBtn.style.display = canBackup ? 'inline-flex' : 'none';
 
     showModalById('cyclePromotionModal');
 }
@@ -48002,7 +48022,7 @@ window.printCurrentSectionSireReport = printCurrentSectionSireReport;
 function downloadCyclePreArchivingBackup() {
     if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast('Acceso denegado: La descarga de respaldos es potestad exclusiva de Dirección y Administración.', 'danger');
+            showToast('Acceso denegado: La descarga de respaldos es potestad exclusiva de Dirección, Secretaría y Super Usuario.', 'danger');
         }
         return false;
     }
@@ -54617,10 +54637,10 @@ if (document.readyState === 'loading') {
 // ==========================================================================
 async function exportDatabaseBackupJSON() {
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isDirectorOrAdmin = (typeof canAccessBackup === 'function') ? canAccessBackup(currentRole) : ['director', 'admin', 'super_usuario'].includes(currentRole);
-    if (!isDirectorOrAdmin) {
+    const isAuthorized = (typeof canAccessBackup === 'function') ? canAccessBackup(currentRole) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(currentRole);
+    if (!isAuthorized) {
         if (typeof showToast === 'function') {
-            showToast('Acceso restringido: La copia de seguridad es exclusiva para Dirección y Administración.', 'danger');
+            showToast('Acceso restringido: La copia de seguridad es exclusiva para Dirección, Secretaría y Super Usuario.', 'danger');
         }
         return;
     }
@@ -54630,13 +54650,16 @@ async function exportDatabaseBackupJSON() {
     }
 
     try {
+        const activeCycle = (typeof getPlatformActiveCycle === 'function')
+            ? getPlatformActiveCycle()
+            : (STATE.activeCycleKey || STATE.activeCycle || String(new Date().getFullYear()));
         const backupData = {
             metadata: {
                 appName: 'ENCCO Jutiapa Plataforma Oficial',
                 version: '2026.09',
                 exportTimestamp: new Date().toISOString(),
                 exportedBy: (STATE.currentUser && STATE.currentUser.username) || 'admin',
-                activeCycleKey: STATE.activeCycleKey || (new Date().getFullYear().toString())
+                activeCycleKey: activeCycle
             },
             encc_school_state: null,
             exoneraciones: null,
@@ -54645,7 +54668,7 @@ async function exportDatabaseBackupJSON() {
                 studentsCount: (STATE.students && STATE.students.length) || 0,
                 gradesCount: (STATE.grades && STATE.grades.length) || 0,
                 usersCount: (STATE.users && STATE.users.length) || 0,
-                activeCycle: STATE.activeCycleKey || '2026'
+                activeCycle: activeCycle
             }
         };
 
@@ -54667,7 +54690,7 @@ async function exportDatabaseBackupJSON() {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         const dateStr = new Date().toISOString().slice(0, 10);
-        link.download = `Copia_Seguridad_ENCCO_${STATE.activeCycleKey || '2026'}_${dateStr}.json`;
+        link.download = `Copia_Seguridad_ENCCO_${activeCycle}_${dateStr}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

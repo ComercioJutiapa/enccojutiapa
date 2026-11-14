@@ -1099,16 +1099,16 @@
                 ? canAccessBackup(role)
                 : ((typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
                    (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
-                   ['director', 'direccion', 'admin'].includes(role));
+                   ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'].includes(role));
             if (!isAllowed) {
                 if (typeof showToast === 'function') {
-                    showToast('Acceso restringido: La descarga de respaldo institucional es una potestad exclusiva de Dirección.', 'danger');
+                    showToast('Acceso restringido: La descarga de respaldo institucional es una potestad exclusiva de Dirección, Secretaría y Super Usuario.', 'danger');
                 }
                 return false;
             }
 
             const originSelect = (typeof document !== 'undefined') ? document.getElementById('promoOriginCycleSelect') : null;
-            const targetCycle = String(cycleYear || (originSelect ? originSelect.value : '') || (window.STATE && window.STATE.activeCycle) || '2026').trim();
+            const targetCycle = String(cycleYear || (originSelect ? originSelect.value : '') || (typeof getPlatformActiveCycle === 'function' ? getPlatformActiveCycle() : (window.STATE && window.STATE.activeCycle)) || String(new Date().getFullYear())).trim();
 
             const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
             const attendance = (window.STATE && window.STATE.attendanceRecords) ? window.STATE.attendanceRecords : {};

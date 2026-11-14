@@ -165,15 +165,17 @@ assert.strictEqual(typeof window.canAccessBackup, 'function', 'canAccessBackup d
 assert.strictEqual(window.canAccessBackup('director'), true, 'Director debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('direccion'), true, 'Dirección debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('directora'), true, 'Directora debe tener acceso a backup');
+assert.strictEqual(window.canAccessBackup('secretaria'), true, 'Secretaria debe tener acceso a backup');
+assert.strictEqual(window.canAccessBackup('secretario'), true, 'Secretario debe tener acceso a backup');
+assert.strictEqual(window.canAccessBackup('secretaria_general'), true, 'Secretaria General debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('admin'), true, 'Admin debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('superadmin'), true, 'Superadmin debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('super_usuario'), true, 'Superusuario debe tener acceso a backup');
 
 // Roles estrictamente bloqueados:
 assert.strictEqual(window.canAccessBackup('docente'), false, 'Docente NO debe tener acceso a backup');
-assert.strictEqual(window.canAccessBackup('secretaria'), false, 'Secretaria NO debe tener acceso a backup');
-assert.strictEqual(window.canAccessBackup('secretario'), false, 'Secretario NO debe tener acceso a backup');
-assert.strictEqual(window.canAccessBackup('secretaria_general'), false, 'Secretaria General NO debe tener acceso a backup');
+assert.strictEqual(window.canAccessBackup('profesor'), false, 'Profesor NO debe tener acceso a backup');
+assert.strictEqual(window.canAccessBackup('maestro'), false, 'Maestro NO debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('auxiliar'), false, 'Auxiliar NO debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('profesor_auxiliar'), false, 'Profesor auxiliar NO debe tener acceso a backup');
 assert.strictEqual(window.canAccessBackup('estudiante'), false, 'Estudiante NO debe tener acceso a backup');
@@ -195,7 +197,7 @@ modalBackupEl.classList.remove('active');
 window.STATE.currentRole = 'secretaria';
 window.STATE.currentUser.role = 'secretaria';
 window.openUniversalBackupModal();
-assert.strictEqual(modalBackupEl.classList.contains('active'), false, 'openUniversalBackupModal NO debe abrirse para secretaria');
+assert.strictEqual(modalBackupEl.classList.contains('active'), true, 'openUniversalBackupModal DEBE abrirse para secretaria');
 
 modalBackupEl.classList.remove('active');
 window.STATE.currentRole = 'director';
@@ -233,8 +235,8 @@ assert.strictEqual(btnExportHeader.style.display, 'none', 'btnExportSafeBackupHe
 // Secretaría
 window.STATE.currentRole = 'secretaria';
 window.updateTopRoleBar();
-assert.strictEqual(btnMasterBackup.style.display, 'none', 'btnHeaderMasterBackup debe estar oculto para secretaria');
-assert.strictEqual(btnExportHeader.style.display, 'none', 'btnExportSafeBackupHeader debe estar oculto para secretaria');
+assert.strictEqual(btnMasterBackup.style.display, 'inline-flex', 'btnHeaderMasterBackup debe ser visible para secretaria');
+assert.strictEqual(btnExportHeader.style.display, 'inline-flex', 'btnExportSafeBackupHeader debe ser visible para secretaria');
 
 // Director
 window.STATE.currentRole = 'director';
