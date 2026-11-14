@@ -107,10 +107,25 @@ const createMockElem = (tag = 'div') => ({
     querySelector: () => null
 });
 
-const todayDate = new Date();
-const testYear = todayDate.getFullYear();
-const testMonth = todayDate.getMonth() + 1;
-const testDay = todayDate.getDate();
+// Fecha canónica escolar para pruebas de aislamiento (Miércoles 14 de Octubre de 2026 - Día hábil lectivo)
+// Garantiza consistencia independientemente del día de la semana en que se ejecute la suite
+const fixedTestDate = new Date(2026, 9, 14, 8, 0, 0);
+const testYear = fixedTestDate.getFullYear();
+const testMonth = fixedTestDate.getMonth() + 1;
+const testDay = fixedTestDate.getDate();
+
+class MockDate extends Date {
+    constructor(...args) {
+        if (args.length === 0) {
+            super(fixedTestDate.getTime());
+        } else {
+            super(...args);
+        }
+    }
+    static now() {
+        return fixedTestDate.getTime();
+    }
+}
 
 const domMock = {
     createElement: createMockElem,
@@ -142,7 +157,7 @@ const context = vm.createContext({
     navigator: mockWindow.navigator,
     STATE: mockWindow.STATE,
     console: { log: () => {}, warn: () => {}, error: () => {} },
-    Date: Date,
+    Date: MockDate,
     Set: Set,
     Map: Map,
     Array: Array,

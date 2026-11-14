@@ -16026,10 +16026,13 @@ function checkStudentDuplicateEnrollment(data, excludeId = null) {
 }
 
 // 🔤 NORMALIZACIÓN INSTITUCIONAL DE CÓDIGO PERSONAL MINEDUC
-// Siempre en mayúsculas aunque se ingrese en minúsculas
+// Formato oficial: 1 letra, 3 dígitos, 3 letras (ej. C142XYZ, J844LBE).
+// Elimina espacios al principio, al final o intermedios y garantiza mayúsculas.
 function normalizePersonalCode(code) {
     if (!code) return '';
-    return String(code).trim().toUpperCase();
+    const cleaned = String(code).trim().replace(/\s+/g, '').toUpperCase();
+    const tokenMatch = cleaned.match(/([A-Z]\d{3}[A-Z]{3})/);
+    return tokenMatch ? tokenMatch[1] : cleaned;
 }
 window.normalizePersonalCode = normalizePersonalCode;
 
@@ -39948,6 +39951,8 @@ function exportGradebookOfficialExcel() {
     const cleanGrade = (targetPensum.grade || 'Grado').replace(/[\\/:*?"<>|]/g, '_');
     const cleanSection = (targetPensum.section || 'Sec').replace(/[\\/:*?"<>|]/g, '_');
     const fileName = `Cuadro_Notas_${cleanGrade}_${cleanSection}_${cleanSubject}_B${currentUnit}_${cycle}.xlsx`;
+    const classCode = targetPensum.code || targetPensum.classCode || targetPensum.id || '';
+    const dynamicTeacher = targetPensum.teacher || (currentUser && currentUser.name ? currentUser.name : 'Claustro Docente');
 
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
 
@@ -39955,10 +39960,11 @@ function exportGradebookOfficialExcel() {
         try {
             const aoa = [
                 [`${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} - ENCCO JUTIAPA`],
-                [`CUADRO OFICIAL DE REGISTRO DE CALIFICACIONES - CICLO ESCOLAR ${cycle}`],
+                [`CUADRO OFICIAL DE REGISTRO Y EVALUACIÓN DE CALIFICACIONES - CICLO ESCOLAR ${cycle}`],
                 [
+                    'Codigo de Clase:', classCode,
                     'Catedra:', targetPensum.subject,
-                    'Catedratico:', targetPensum.teacher,
+                    'Catedratico:', dynamicTeacher,
                     'Ciclo Escolar:', cycle
                 ],
                 [
@@ -39991,7 +39997,7 @@ function exportGradebookOfficialExcel() {
 
             colHeaders.push('Total Zona');
             colHeaders.push('Examen');
-            colHeaders.push('Total Bimestre');
+            colHeaders.push('Total');
             colHeaders.push('Resultado');
 
             aoa.push(colHeaders);
@@ -40009,9 +40015,11 @@ function exportGradebookOfficialExcel() {
                 else if (isBimAus) displayName += ' [AUSENTE]';
                 else if (isBimExon) displayName += ` [EXONERADO B${currentUnit}]`;
 
+                const normPCode = (typeof normalizePersonalCode === 'function') ? normalizePersonalCode(s.personalCode) : String(s.personalCode || '').trim().toUpperCase();
+
                 const row = [
                     s.clave || (idx + 1),
-                    s.personalCode || '',
+                    normPCode,
                     s.cui || '',
                     displayName
                 ];
@@ -40033,7 +40041,7 @@ function exportGradebookOfficialExcel() {
                 const totalVal = sumZona + examVal;
                 const resultVal = totalVal >= 60 ? 'APROBADO' : 'NO APROBADO';
 
-                // Fórmulas de Excel en mayúsculas estándar
+                // Fórmulas de Excel en mayúsculas estándar: Total = Zona + Examen
                 row.push({ t: 'n', f: `SUM(E${rowNum}:N${rowNum})`, v: sumZona });
                 row.push(examVal);
                 row.push({ t: 'n', f: `O${rowNum}+P${rowNum}`, v: totalVal });
@@ -40054,16 +40062,17 @@ function exportGradebookOfficialExcel() {
 
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
 
+            // CUI / DPI queda oculto en Excel (hidden: true, wch: 0)
             ws['!cols'] = [
                 { wch: 6 },  // No.
-                { wch: 16 }, // Codigo Personal
-                { wch: 18 }, // CUI
+                { wch: 18 }, // Codigo Personal (1 letra + 3 digitos + 3 letras)
+                { wch: 0, hidden: true }, // CUI / DPI (Oculto)
                 { wch: 38 }, // Estudiante
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
                 { wch: 13 }, // Total Zona
                 { wch: 13 }, // Examen
-                { wch: 15 }, // Total Bimestre
+                { wch: 13 }, // Total (Zona + Examen)
                 { wch: 15 }  // Resultado
             ];
 
@@ -40093,6 +40102,8 @@ window.exportGradebookOfficialCSV = exportGradebookOfficialExcel;
 function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConfig, cfg, fileName) {
     const cycle = STATE.activeCycle || '2026';
     const h = STATE.schoolHeader || {};
+    const classCode = targetPensum.code || targetPensum.classCode || targetPensum.id || '';
+    const dynamicTeacher = targetPensum.teacher || 'Claustro Docente';
 
     let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
     <head><meta charset="utf-8">
@@ -40103,13 +40114,14 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
     </head>
     <body>
     <table>
-        <tr><th colspan="18" style="font-size:14pt; background:#166534; color:#fff;">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')} - ENCCO JUTIAPA</th></tr>
+        <tr><th colspan="18" style="font-size:14pt; background:#1e3a8a; color:#fff;">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')} - ENCCO JUTIAPA</th></tr>
         <tr><th colspan="18" style="font-size:12pt; background:#0f172a; color:#fff;">CUADRO OFICIAL DE CALIFICACIONES - CICLO ESCOLAR ${escapeHtml(cycle)}</th></tr>
         <tr>
-            <td colspan="3"><strong>Cátedra:</strong> ${escapeHtml(targetPensum.subject)}</td>
-            <td colspan="6"><strong>Catedrático:</strong> ${escapeHtml(targetPensum.teacher)}</td>
-            <td colspan="4"><strong>Grado y Sección:</strong> ${escapeHtml(targetPensum.grade)} "${escapeHtml(targetPensum.section || 'A')}"</td>
-            <td colspan="5"><strong>Bimestre:</strong> ${unit}o. Bimestre</td>
+            <td colspan="3"><strong>Código de Clase:</strong> ${escapeHtml(classCode)}</td>
+            <td colspan="4"><strong>Cátedra:</strong> ${escapeHtml(targetPensum.subject)}</td>
+            <td colspan="5"><strong>Catedrático:</strong> ${escapeHtml(dynamicTeacher)}</td>
+            <td colspan="3"><strong>Grado y Sección:</strong> ${escapeHtml(targetPensum.grade)} "${escapeHtml(targetPensum.section || 'A')}"</td>
+            <td colspan="3"><strong>Bimestre:</strong> ${unit}o. Bimestre</td>
         </tr>
         <tr>
             <td colspan="3"><strong>Ponderación Oficial:</strong></td>
@@ -40118,9 +40130,9 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
             <td colspan="5">Total: 100 pts</td>
         </tr>
         <tr>
-            <th>No.</th><th>Código Personal</th><th>CUI / DPI</th><th>Apellidos y Nombres</th>
+            <th>No.</th><th>Código Personal</th><th style="display:none; mso-width-source:userset; mso-width-alt:0; width:0px;">CUI / DPI</th><th>Apellidos y Nombres</th>
             ${actsConfig.map((a, i) => `<th>Act ${i+1}: ${escapeHtml(a.name)} (${a.max} pts)</th>`).join('')}
-            <th>Total Zona</th><th>Examen</th><th>Total Bimestre</th><th>Resultado</th>
+            <th>Total Zona</th><th>Examen</th><th>Total</th><th>Resultado</th>
         </tr>`;
 
     students.forEach((s, idx) => {
@@ -40400,6 +40412,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     let detectedGrade = '';
     let detectedSection = '';
     let detectedTeacher = '';
+    let detectedClassCode = '';
     let detectedUnit = fallbackUnit || 1;
     let hasExplicitUnit = false;
     let detectedFormat = 'Plantilla Estándar';
@@ -40438,6 +40451,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // Reconocimiento de formatos oficiales de la plataforma ENCCO
         if (rowStr.includes('cuadro oficial') || rowStr.includes('catedra:') || rowStr.includes('cátedra:') || rowStr.includes('asignatura / materia:') || rowStr.includes('lista de cotejo')) {
             detectedFormat = 'Plantilla Oficial ENCCO';
+        }
+
+        const classCodeCand = extractMetaField(row, /(?:c[oó]digo\s*de\s*clase|c[oó]d\.?\s*clase|id\s*clase|c[oó]digo\s*c[aá]tedra)\s*:/i);
+        if (classCodeCand && !detectedClassCode) {
+            detectedClassCode = classCodeCand.trim();
         }
 
         const subjCand = extractMetaField(row, /(?:c[aá]tedra|asignatura\s*\/?\s*materia|asignatura|materia)\s*:/i);
@@ -40609,6 +40627,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         for (const pool of candidatePools) {
             if (autoPensum) break;
 
+            // 0. Coincidencia prioritaria por Código de Clase / Cátedra
+            if (detectedClassCode) {
+                autoPensum = pool.find(p => p && (p.id === detectedClassCode || p.code === detectedClassCode || p.classCode === detectedClassCode));
+            }
+
             // 1. Coincidencia completa: DOCENTE + CLASE + SECCIÓN + GRADO
             if (detectedTeacher && detectedSubject && secFile && gNumFile) {
                 autoPensum = pool.find(p => 
@@ -40716,6 +40739,15 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
             localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
         } catch(e) {}
+    }
+
+    // REGLA DE ORO: Verificación estricta de Código de Clase / Cátedra
+    if (detectedClassCode && activePensum) {
+        const activeClassCode = activePensum.code || activePensum.classCode || activePensum.id || '';
+        if (activeClassCode && detectedClassCode !== activeClassCode && detectedClassCode !== activePensum.id) {
+            showToast(`¡Código de Clase Incorrecto! El archivo cargado corresponde al código "${detectedClassCode}", pero la clase activa seleccionada es "${activeClassCode}". Importación cancelada para proteger sus calificaciones.`, "danger");
+            return;
+        }
     }
 
     // REGLA 2 y 5: Verificación estricta de Cátedra/Clase
@@ -41108,54 +41140,52 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         if (cName.includes('promedio') || cName.includes('totalgeneral') || cName.includes('observaciones')) continue;
         if (typeof claveVal === 'number' && claveVal > 100) continue;
 
-        // Búsqueda quirúrgica con confirmación obligatoria de nombre coincidente
+        // Búsqueda quirúrgica con prioridad absoluta en Código Personal MINEDUC (100% Exacto)
         let matched = null;
+        const normPCode = (typeof normalizePersonalCode === 'function')
+            ? normalizePersonalCode(codeVal)
+            : String(codeVal || '').trim().replace(/\s+/g, '').toUpperCase();
 
-        // Si no se proporciona un nombre válido en la fila, no colocar nada
-        if (!nameVal || nameVal.replace(/[^a-zA-Z\u00C0-\u017F]/g, '').length < 3) {
-            omittedCount++;
-            continue;
+        // 1. 🛡️ LLAVE PRIMARIA INSTITUCIONAL: Búsqueda estricta por Código Personal (1 letra + 3 dígitos + 3 letras)
+        if (normPCode) {
+            matched = courseStudents.find(s => {
+                if (!s) return false;
+                const sCode = (typeof normalizePersonalCode === 'function')
+                    ? normalizePersonalCode(s.personalCode)
+                    : String(s.personalCode || '').trim().replace(/\s+/g, '').toUpperCase();
+                const sCarne = (typeof normalizePersonalCode === 'function')
+                    ? normalizePersonalCode(s.carne)
+                    : String(s.carne || '').trim().replace(/\s+/g, '').toUpperCase();
+                return sCode === normPCode || sCarne === normPCode;
+            });
         }
 
-        // 1. Por No. de lista SIRE / Clave CON verificación de coincidencia de identidad
-        if (claveVal !== null && claveVal !== undefined && claveVal !== '') {
+        // 2. Respaldo por CUI / DPI si no vino Código Personal en la celda
+        if (!matched && cuiVal) {
+            matched = courseStudents.find(s => s && s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
+        }
+
+        // 3. Respaldo por Clave / No. de lista SIRE si no hay Código Personal
+        if (!matched && !normPCode && claveVal !== null && claveVal !== undefined && claveVal !== '') {
             let byClave = courseStudents.find(s => Number(s.no !== undefined ? s.no : s.clave) === Number(claveVal));
             if (!byClave && Number(claveVal) >= 1 && Number(claveVal) <= courseStudents.length) {
                 byClave = courseStudents[Number(claveVal) - 1];
             }
             if (byClave) {
-                const fullTarget = `${byClave.lastName || ''} ${byClave.firstName || ''} ${byClave.name || ''}`;
-                const tRow = normalizeTokens(nameVal);
-                const tTarget = normalizeTokens(fullTarget);
-                const hasOverlap = tRow.some(t => tTarget.includes(t));
-                if (hasOverlap || areNamesMatching(nameVal, byClave)) {
+                if (nameVal && areNamesMatching(nameVal, byClave)) {
+                    matched = byClave;
+                } else if (!nameVal) {
                     matched = byClave;
                 }
             }
         }
 
-        // 2. Por coincidencia fonética y de tokens de Nombre completo si no coincidió clave
-        if (!matched) {
+        // 4. Respaldo por Nombre completo únicamente si no se proporcionó Código Personal
+        if (!matched && !normPCode && nameVal && nameVal.replace(/[^a-zA-Z\u00C0-\u017F]/g, '').length >= 3) {
             matched = courseStudents.find(s => areNamesMatching(nameVal, s));
         }
 
-        // 3. Por CUI / DPI verificando también coincidencia estricta de nombre
-        if (!matched && cuiVal) {
-            const byCui = courseStudents.find(s => s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
-            if (byCui) {
-                matched = byCui;
-            }
-        }
-
-        // 4. Por Código Personal / Carné verificando también coincidencia estricta de nombre
-        if (!matched && codeVal) {
-            const byCode = courseStudents.find(s => (s.personalCode && cleanStr(s.personalCode) === cleanStr(codeVal)) || (s.carne && cleanStr(s.carne) === cleanStr(codeVal)));
-            if (byCode) {
-                matched = byCode;
-            }
-        }
-
-        // Si no hay nombres coincidentes, no colocar nada (se omite la fila)
+        // Si no se encontró ningún estudiante coincidente, se omite la fila
         if (!matched) {
             omittedCount++;
             continue;
@@ -41314,7 +41344,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     if (updatedCount === 0) {
-        showToast(`No se encontraron estudiantes coincidentes por nombre para ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}). No se modificó ninguna nota.`, "warning");
+        showToast(`No se encontraron estudiantes coincidentes por código personal o datos en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}). No se modificó ninguna nota.`, "warning");
         return;
     }
 
@@ -41355,7 +41385,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         renderTeacherCourseCards();
     }
 
-    const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s) por no coincidir el nombre)` : '';
+    const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s))` : '';
     showToast(`¡Notas importadas con éxito (${detectedFormat})! Se sincronizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
 
     // 9. 🛡️ Sincronización atómica en la nube de ÚNICAMENTE los estudiantes procesados en el Excel
