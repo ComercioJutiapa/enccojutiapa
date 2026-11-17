@@ -1401,20 +1401,34 @@
                             <!-- 4. SELECTOR OPCIONAL DE MATERIA -->
                             <div>
                                 <label style="font-size:0.72rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">
-                                    <i class="fa-solid fa-book"></i> Materia (Opcional):
+                                    <i class="fa-solid fa-book"></i> 4. Materia (Opcional):
                                 </label>
                                 <select class="form-control" id="studentSubjectFilterSelect" style="height:36px; font-weight:500; font-size:0.83rem; border-radius:7px;">
                                     <option value="">-- En blanco (a mano) --</option>
                                 </select>
                             </div>
 
+                            <!-- 5. SELECTOR DINÁMICO DE BIMESTRE -->
+                            <div>
+                                <label style="font-size:0.72rem; font-weight:800; color:var(--brand-green-dark); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">
+                                    <i class="fa-solid fa-calendar-check"></i> 5. Bimestre:
+                                </label>
+                                <select class="form-control" id="studentBimestreFilterSelect" onchange="filterStudentsTable(true)" aria-label="Filtrar por bimestre académico" style="height:36px; font-weight:700; font-size:0.83rem; border-radius:7px; color:#0f172a;">
+                                    <option value="AUTO" selected>⚡ Bimestre Activo Oficial</option>
+                                    <option value="1">1º Bimestre</option>
+                                    <option value="2">2º Bimestre</option>
+                                    <option value="3">3º Bimestre</option>
+                                    <option value="4">4º Bimestre</option>
+                                </select>
+                            </div>
+
                             <!-- Campo oculto para compatibilidad total con funciones que lean gradeFilterSelect -->
                             <input type="hidden" id="gradeFilterSelect" value="" aria-label="Filtrar estudiantes por grado y sección">
 
-                            <!-- 5. FILTRO DE ESTADO -->
+                            <!-- 6. FILTRO DE ESTADO -->
                             <div>
                                 <label style="font-size:0.72rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">
-                                    <i class="fa-solid fa-user-check"></i> Estado:
+                                    <i class="fa-solid fa-user-check"></i> 6. Estado:
                                 </label>
                                 <select class="form-control" id="statusFilterSelect" onchange="filterStudentsTable()" aria-label="Filtrar estudiantes por estado de matrícula" style="height:36px; font-weight:600; font-size:0.83rem; border-radius:7px;">
                                     <option value="ALL" selected>⭐ Todos los Estados</option>

@@ -11430,6 +11430,61 @@ function loadDefaults(autoSave = false) {
 //      SISTEMA MAESTRO DE SINCRONIZACIÓN EN TIEMPO REAL TOTAL (TRIPLE CAPA)
 // ======================================================================
 
+/**
+ * ⚡ Resolución Dinámica y Canónica del Bimestre Académico Efectivo:
+ * Permite que cualquier nómina, cuadro o reporte refleje con exactitud el bimestre
+ * que el usuario está consultando o el bimestre activo institucional en tiempo real.
+ * 
+ * Jerarquía de resolución:
+ * 1. requestedBim explícito (1, 2, 3 o 4) pasado por parámetro.
+ * 2. Valor del selector de bimestre en Nómina de Estudiantes (#studentBimestreFilterSelect).
+ * 3. Si está en Modo Histórico (ej. Ciclo 2026), por defecto es 4 (ciclo completo cerrado).
+ * 4. Valor configurado en STATE.config.bimestreActivoOficial o STATE.config.activeBimestre.
+ * 5. Valor del selector de bimestre en Calificaciones / Gradebook (#gradebookBimestreSelect).
+ * 6. Fallback seguro a 1.
+ */
+function getEffectiveActiveBimestre(requestedBim = null) {
+    if (requestedBim && [1, 2, 3, 4, '1', '2', '3', '4'].includes(requestedBim)) {
+        return parseInt(requestedBim, 10);
+    }
+    
+    // 1. Selector explícito de la barra de nómina de estudiantes
+    if (typeof document !== 'undefined') {
+        const selStudent = document.getElementById('studentBimestreFilterSelect');
+        if (selStudent && selStudent.value && selStudent.value !== 'AUTO' && selStudent.value !== '') {
+            const v = parseInt(selStudent.value, 10);
+            if (v >= 1 && v <= 4) return v;
+        }
+    }
+    
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const isHist = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle);
+    
+    // 2. Si está en consulta de ciclo histórico (ej. 2026 cerrado), la condición final es de 4to Bimestre (salvo que haya seleccionado otro)
+    if (isHist) {
+        return 4;
+    }
+    
+    // 3. Configuración oficial guardada en el estado (Firebase RTDB / RAM)
+    const cfgBim = parseInt(st.config?.bimestreActivoOficial || st.config?.activeBimestre, 10);
+    if (cfgBim && cfgBim >= 1 && cfgBim <= 4) {
+        return cfgBim;
+    }
+    
+    // 4. Selector del libro de calificaciones / gradebook si está activo
+    if (typeof document !== 'undefined') {
+        const selGradebook = document.getElementById('gradebookBimestreSelect');
+        if (selGradebook && selGradebook.value && ['1', '2', '3', '4', 1, 2, 3, 4].includes(selGradebook.value)) {
+            const vGb = parseInt(selGradebook.value, 10);
+            if (vGb >= 1 && vGb <= 4) return vGb;
+        }
+    }
+    
+    // 5. Fallback canónico seguro
+    return 1;
+}
+window.getEffectiveActiveBimestre = getEffectiveActiveBimestre;
+
 // ==========================================================================
 // 🛡️ MOTOR CANÓNICO DE CONFIGURACIÓN DE BIMESTRES Y BLOQUEO EN TIEMPO REAL
 // ==========================================================================
@@ -15063,6 +15118,7 @@ function resetStudentFilters() {
     const gradeOnlySelect = document.getElementById('studentGradeOnlyFilterSelect');
     const sectionSelect = document.getElementById('studentSectionFilterSelect');
     const subjSelect = document.getElementById('studentSubjectFilterSelect');
+    const bimSelect = document.getElementById('studentBimestreFilterSelect');
     const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
     const statusSelect = document.getElementById('statusFilterSelect');
     const searchInput = document.getElementById('studentSearchInput');
@@ -15074,6 +15130,7 @@ function resetStudentFilters() {
         subjSelect.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
         subjSelect.value = '';
     }
+    if (bimSelect) bimSelect.value = 'AUTO';
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
     if (statusSelect) statusSelect.value = 'ALL';
     if (searchInput) searchInput.value = '';
@@ -15348,7 +15405,7 @@ function renderStudentsTable() {
     tbody.innerHTML = list.map(s => {
         const rawAvg = calculateStudentAvg(s);
         const formattedAvg = (typeof rawAvg === 'number') ? rawAvg.toFixed(1) : (!isNaN(parseFloat(rawAvg)) ? parseFloat(rawAvg).toFixed(1) : (rawAvg || '0'));
-        const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+        const activeBim = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : (parseInt(STATE.config?.activeBimestre) || 1);
         let statusBadge = '';
         const isRetBim = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
@@ -20873,7 +20930,8 @@ function generateOfficialPrintList(opts = null) {
     const subjectSelect = document.getElementById('printModelSubjectSelect');
     let rawSubVal = opts?.subjectName || (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
     let teacherName = opts?.teacherName || (document.getElementById('printModelTeacherName')?.value || '').trim();
-    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || '1';
+    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || (typeof getEffectiveActiveBimestre === 'function' ? getEffectiveActiveBimestre() : '1');
+    if (bimestreNum === 'AUTO') bimestreNum = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : 1;
 
     let targetPensum = opts?.targetPensum || null;
 
@@ -21180,9 +21238,9 @@ function generateOfficialPrintList(opts = null) {
                         <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${claveVal}</td>
                         <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.cui || s.dpi || '-'}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:normal; word-break:break-word; line-height:1.15; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${genderShort}</td>
-                        <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${guardianName}</td>
+                        <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:normal; word-break:break-word; line-height:1.15; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${guardianName}</td>
                         <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${guardianDpi}</td>
                         <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; ${rowBg}">${statusText}</td>
                         <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8; ${rowBg}"></td>
@@ -21242,7 +21300,7 @@ function generateOfficialPrintList(opts = null) {
                     <tr class="${rowClass}" style="height:18px; ${rowBg}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:normal; word-break:break-word; line-height:1.15; width:180px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${daysCells}
                         <td style="width:22px; text-align:center; font-weight:700; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'}">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
                         <td style="width:22px; text-align:center; font-weight:700; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'}">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
@@ -21323,7 +21381,7 @@ function generateOfficialPrintList(opts = null) {
                     <tr class="${rowClass}" style="height:${rowHeight}; ${rowBg}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:normal; word-break:break-word; line-height:1.15; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${actCells}
                         <td style="width:40px; ${isInactive || isExon ? rowBg : 'background:#f0fdf4;'} padding:${cellPadding}; text-align:center; font-weight:800; font-size:${rowFontSize}; color:${isInactive || isExon ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#15803d'};">${zonaText}</td>
                         <td style="width:65px; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; ${rowBg}">${complianceBadge}</td>
@@ -21432,7 +21490,7 @@ function generateOfficialPrintList(opts = null) {
                     <tr class="${rowClass}" style="height:${rowHeight}; ${rowBg}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:normal; word-break:break-word; line-height:1.15; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${actCells}
                         <td style="width:32px; ${isInactive || isExonerated ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize}; color:${isInactive || isExonerated ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#0f172a'};">${zonaVal}</td>
                         <td style="width:32px; ${isInactive || isExonerated ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize}; color:${isInactive || isExonerated ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#0f172a'};">${examVal}</td>
@@ -21717,7 +21775,7 @@ function printGradebookOfficialList() {
         return;
     }
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     generateOfficialPrintList({
         targetPensum: targetPensum,
@@ -21743,7 +21801,8 @@ function generateOfficialExcelList(opts = null) {
     const subjectSelect = document.getElementById('printModelSubjectSelect');
     let rawSubVal = opts?.subjectName || (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
     let teacherName = opts?.teacherName || (document.getElementById('printModelTeacherName')?.value || '').trim();
-    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || '1';
+    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || (typeof getEffectiveActiveBimestre === 'function' ? getEffectiveActiveBimestre() : '1');
+    if (bimestreNum === 'AUTO') bimestreNum = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : 1;
     let targetPensum = opts?.targetPensum || null;
 
     if (!targetPensum && (!career || !gradeCode)) {
@@ -21905,17 +21964,17 @@ function generateOfficialExcelList(opts = null) {
     let docHeaderTitle = '';
 
     if (modelType === 'NOMINA_OFICIAL') {
-        fileBaseName = `Nomina_Oficial_${cleanGrade}_${fillSuffix}_2026.xlsx`;
-        docHeaderTitle = 'NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR 2026';
+        fileBaseName = `Nomina_Oficial_${cleanGrade}_${fillSuffix}_${cycle}.xlsx`;
+        docHeaderTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR ${cycle}`;
     } else if (modelType === 'ASISTENCIA_MENSUAL') {
-        fileBaseName = `Control_Asistencia_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
-        docHeaderTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (BIMESTRE ${bNum}) - CICLO 2026`;
+        fileBaseName = `Control_Asistencia_${cleanGrade}_B${bNum}_${fillSuffix}_${cycle}.xlsx`;
+        docHeaderTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (BIMESTRE ${bNum}) - CICLO ${cycle}`;
     } else if (modelType === 'LISTA_COTEJO') {
-        fileBaseName = `Lista_Cotejo_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
-        docHeaderTitle = `LISTA DE COTEJO DE ACTIVIDADES DE ZONA (${cfgZonaMax} PTS - BIMESTRE ${bNum}) - CICLO 2026`;
+        fileBaseName = `Lista_Cotejo_${cleanGrade}_B${bNum}_${fillSuffix}_${cycle}.xlsx`;
+        docHeaderTitle = `LISTA DE COTEJO DE ACTIVIDADES DE ZONA (${cfgZonaMax} PTS - BIMESTRE ${bNum}) - CICLO ${cycle}`;
     } else {
-        fileBaseName = `Cuadro_Calificaciones_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
-        docHeaderTitle = `CUADRO DE CONTROL DE ZONA Y EVALUACIONES (BIMESTRE ${bNum}) - CICLO 2026`;
+        fileBaseName = `Cuadro_Calificaciones_${cleanGrade}_B${bNum}_${fillSuffix}_${cycle}.xlsx`;
+        docHeaderTitle = `CUADRO DE CONTROL DE ZONA Y EVALUACIONES (BIMESTRE ${bNum}) - CICLO ${cycle}`;
     }
 
     const countMale = students.filter(s => {
@@ -23399,7 +23458,7 @@ function printStudentsOfficialList(targetGrade = null) {
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const activeBim = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : (parseInt(STATE.config?.activeBimestre) || 1);
     const rowsHtml = list.map((s, idx) => {
         const isRetBim = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
@@ -23431,7 +23490,7 @@ function printStudentsOfficialList(targetGrade = null) {
             <td style="text-align:center; font-weight:bold; width:35px; border:1px solid #334155; padding:5px;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:85px; border:1px solid #334155; padding:5px;">${s.carne || '-'}</td>
             <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}</td>
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px; white-space:normal; word-break:break-word; line-height:1.2;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}</td>
             <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
             <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${guardianDisplay} (${escapeHtml(phoneDisplay)})</td>
             <td style="text-align:center; width:75px; border:1px solid #334155; padding:5px;">${statusBadge}</td>
@@ -23451,7 +23510,7 @@ function printStudentsOfficialList(targetGrade = null) {
                 </div>
                 <div style="text-align:right;">
                     <div style="background:#0284c7; color:#fff; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid #7dd3fc; text-transform:uppercase;">
-                        ${STATE.config?.activeBimestre || 1}º BIMESTRE ACTIVO
+                        ${activeBim}º BIMESTRE OFICIAL
                     </div>
                 </div>
             </div>
@@ -23494,6 +23553,27 @@ function printStudentsOfficialList(targetGrade = null) {
                 ${rowsHtml}
             </tbody>
         </table>
+
+        <!-- BLOQUE DE FIRMAS INSTITUCIONALES ENCCO -->
+        <div style="margin-top:35px; page-break-inside:avoid; font-family:'Segoe UI', Arial, sans-serif;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; text-align:center; font-size:8pt; color:#1e293b;">
+                <div>
+                    <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                    <strong>${escapeHtml(guideTeacher)}</strong><br>
+                    <span>Catedrático(a) Guía / Titular</span>
+                </div>
+                <div>
+                    <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                    <strong>Secretaría Académica</strong><br>
+                    <span>Registro y Control Escolar</span>
+                </div>
+                <div>
+                    <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                    <strong>Vo. Bo. Dirección General</strong><br>
+                    <span>${escapeHtml(h.name || 'ENCCO Jutiapa')}</span>
+                </div>
+            </div>
+        </div>
 
         <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; font-size:7.5pt; color:#64748b; font-family:'Segoe UI', Arial, sans-serif; border-top:1px solid #cbd5e1; padding-top:4px;">
             <span>ENCCO Jutiapa • Sistema Oficial de Control Académico • Nómina Oficial de Estudiantes</span>
@@ -23645,7 +23725,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
     const loggedTeacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : '';
 
     // Bimestre activo en el sistema
-    const activeBimestre = Number(STATE.config?.activeBimestre || 1);
+    const activeBimestre = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : Number(STATE.config?.activeBimestre || 1);
     const bimCheck = (b) => (b === activeBimestre ? '[ <b>X</b> ]' : '[ &nbsp; ]');
 
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : null) || {};
@@ -23690,20 +23770,20 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
         <tr style="height:22px; background:${rowBg};">
             <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt; background:${rowBg};">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 5px; font-size:8pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px;">
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 4px; font-size:7.8pt; white-space:normal; word-break:break-word; line-height:1.15;">
                 ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}
             </td>
             <td style="text-align:center; width:22px; font-weight:600; border:1px solid #334155; padding:2px 1px; font-size:7.5pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
             <td style="border:1px solid #334155; width:44px; text-align:center;">${zonaContent}</td>
         </tr>`;
     }).join('');
@@ -23799,16 +23879,16 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
                         <th rowspan="2" style="padding:3px 1px; width:44px; border:1px solid #064e3b; background:#14532d;">TOTAL<br><span style="font-size:6pt; font-weight:normal;">ZONA</span></th>
                     </tr>
                     <tr style="background:#16a34a; color:#ffffff; font-weight:700; font-size:6.5pt; text-align:center;">
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-1<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-2<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-3<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-4<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-5<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-6<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-7<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-8<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-9<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-10<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-1<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-2<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-3<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-4<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-5<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-6<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-7<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-8<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-9<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-10<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30168,7 +30248,7 @@ function openGradingConfigModal() {
         return;
     }
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     const cfg = getGradingConfig(targetPensum, currentUnit);
 
@@ -30380,7 +30460,7 @@ function triggerGradingConfigAutoSave(immediate = false) {
     }
     if (!targetPensum || !targetPensum.id) return;
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     const zVal = parseInt(document.getElementById('cfgFormZonaMax')?.value) || 0;
     const eVal = parseInt(document.getElementById('cfgFormExamMax')?.value) || 0;
@@ -30541,7 +30621,7 @@ async function saveGradingConfigForm(e) {
         return;
     }
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     const editCheck = isGradebookEditableForUser(targetPensum?.id, currentUnit);
     if (!editCheck.editable) {
@@ -31946,7 +32026,7 @@ async function saveGradebookChanges(e) {
     }
 
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
 
     if (STATE.currentRole === 'docente' && targetPensum && typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(targetPensum, STATE.currentUser)) {
@@ -32175,7 +32255,7 @@ function renderTeacherCourseCards() {
     if (bar && bar.style) bar.style.display = 'block';
 
     const currentSelectedId = document.getElementById('teacherCourseSelect')?.value || STATE.selectedGradebookCourseId;
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     let totalCompleted = 0;
 
@@ -40115,7 +40195,7 @@ function exportGradebookOfficialExcel() {
         return;
     }
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     const gradeCode = targetPensum.gradeCode || targetPensum.grade;
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
@@ -40433,7 +40513,7 @@ async function handleGradebookExcelImport(e) {
         targetPensum = (STATE.pensum || [])[0];
     }
 
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
 
     showToast("Analizando y validando archivo de calificaciones...", "info");
 
@@ -41685,11 +41765,17 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
 
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
             
-            if (colWidths && colWidths.length > 0) {
-                ws['!cols'] = colWidths.map(w => ({ wch: w }));
-            } else {
-                ws['!cols'] = headers.map(h => ({ wch: Math.max(String(h).length + 4, 15) }));
-            }
+            // Auto-ajuste dinámico de ancho de columnas para garantizar que ningún dato, carné o nombre quede truncado
+            const dynamicCols = headers.map((h, colIdx) => {
+                let maxLen = String(h || '').length;
+                dataRows.forEach(r => {
+                    const rawVal = (r && r[colIdx] !== undefined && r[colIdx] !== null) ? (typeof r[colIdx] === 'object' && r[colIdx].v !== undefined ? String(r[colIdx].v) : String(r[colIdx])) : '';
+                    if (rawVal.length > maxLen) maxLen = rawVal.length;
+                });
+                const baseW = (colWidths && colWidths[colIdx]) ? colWidths[colIdx] : 14;
+                return { wch: Math.max(maxLen + 4, baseW) };
+            });
+            ws['!cols'] = dynamicCols;
 
             const wb = xlsxLib.utils.book_new();
             xlsxLib.utils.book_append_sheet(wb, ws, "Nómina Oficial");
@@ -41723,7 +41809,11 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
                 ${dataRows.map(row => {
                     const meta = row._meta || {};
                     const rowBg = meta.isRet ? 'background:#fef2f2; color:#b91c1c;' : (meta.isAus ? 'background:#fffbeb; color:#b45309;' : (meta.isExon ? 'background:#f0f9ff; color:#0369a1;' : ''));
-                    return `<tr style="${rowBg}">${row.map(c => `<td>${escapeHtml(String(c !== undefined && c !== null ? c : ''))}</td>`).join('')}</tr>`;
+                    return `<tr style="${rowBg}">${row.map((c, colIdx) => {
+                        const isCodeCol = (colIdx === 1 || colIdx === 2 || colIdx === 3 || colIdx === 9);
+                        const styleFmt = isCodeCol ? "mso-number-format:'\\@'; text-align:center;" : (colIdx === 0 ? "text-align:center;" : "white-space:normal; word-break:break-word;");
+                        return `<td style="${styleFmt}">${escapeHtml(String(c !== undefined && c !== null ? c : ''))}</td>`;
+                    }).join('')}</tr>`;
                 }).join('')}
             </table>
             </body>
@@ -41964,7 +42054,7 @@ function exportStudentsOfficialExcel() {
             "Estado"
         ];
 
-        const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+        const activeBim = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : (parseInt(STATE.config?.activeBimestre) || 1);
         const dataRows = students.map((s, idx) => {
             let lName = (s.lastName || s.apellidos || '').trim();
             let fName = (s.firstName || s.nombres || '').trim();
@@ -42031,8 +42121,8 @@ function exportStudentsOfficialExcel() {
             return row;
         });
 
-        const colWidths = [6, 15, 18, 18, 25, 25, 12, 20, 25, 14, 18];
-        exportDataToExcelFile(fileName, reportTitle, `CICLO ESCOLAR ${cycle}`, headers, dataRows, colWidths);
+        const colWidths = [6, 15, 18, 18, 28, 28, 12, 22, 28, 15, 20];
+        exportDataToExcelFile(fileName, reportTitle, `CICLO ESCOLAR ${cycle} — ${activeBim}º BIMESTRE OFICIAL`, headers, dataRows, colWidths);
     } catch (err) {
         console.error("Error al exportar estudiantes:", err);
         showToast("Error al exportar nómina de estudiantes.", "danger");
@@ -42899,7 +42989,7 @@ function printSectionStudentsList(gradeCode, section) {
         return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
-    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const activeBim = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre() : (parseInt(STATE.config?.activeBimestre) || 1);
     let rows = students.map((s, idx) => {
         const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
@@ -42926,8 +43016,8 @@ function printSectionStudentsList(gradeCode, section) {
         return `
         <tr style="background:${rowBg};">
             <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:5px;">${idx + 1}</td>
-            <td style="border:1px solid #cbd5e1; padding:5px;"><code>${s.carne || s.personalCode || '---'}</code></td>
-            <td style="border:1px solid #cbd5e1; padding:5px;"><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>${nameTag}</td>
+            <td style="border:1px solid #cbd5e1; padding:5px; text-align:center; font-family:monospace;"><code>${s.carne || s.personalCode || '---'}</code></td>
+            <td style="border:1px solid #cbd5e1; padding:5px; white-space:normal; word-break:break-word; line-height:1.2;"><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>${nameTag}</td>
             <td style="text-align:center; border:1px solid #cbd5e1; padding:5px;">${s.gender || 'M'}</td>
             <td style="text-align:center; border:1px solid #cbd5e1; padding:5px;">${statusBadge}</td>
         </tr>`;
@@ -42938,30 +43028,79 @@ function printSectionStudentsList(gradeCode, section) {
     }
 
     const html = `
-        <div style="font-family:Arial, sans-serif; padding:15px; color:#0f172a;">
-            <div style="text-align:center; margin-bottom:14px; border-bottom:2px solid #0369a1; padding-bottom:8px;">
-                <h3 style="margin:0; color:#0369a1; text-transform:uppercase;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h3>
-                <h4 style="margin:2px 0; color:#475569;">ENCCO JUTIAPA - JORNADA MATUTINA</h4>
-                <p style="margin:0; font-size:0.85rem; font-weight:700;">NÓMINA OFICIAL DE ESTUDIANTES - CICLO ${cycle}</p>
-                <p style="margin:2px 0 0; font-size:0.82rem; color:#64748b;"><strong>Grado y Sección:</strong> ${gradeObj.name} Sección "${gradeObj.section || section}" | <strong>Carrera:</strong> ${gradeObj.career} | <strong>Docente Guía:</strong> ${(typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Sin asignar'))}</p>
+        <div style="font-family:'Segoe UI', Arial, sans-serif; padding:15px; color:#0f172a;">
+            <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:12px;">
+                <div style="background:linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%); color:#ffffff; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:44px; width:auto; object-fit:contain;">
+                        <div>
+                            <h2 style="margin:0; font-size:1.05rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h2>
+                            <div style="font-size:0.75rem; font-weight:600; color:#bae6fd;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="background:#0284c7; color:#fff; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid #7dd3fc; text-transform:uppercase;">
+                            ${activeBim}º BIMESTRE OFICIAL
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background:#f0f9ff; border-top:2px solid #0284c7; padding:8px 14px; font-size:9pt; color:#0f172a;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <div style="font-size:10.5pt; font-weight:900; color:#0369a1; text-transform:uppercase;">
+                                NÓMINA OFICIAL DE ESTUDIANTES — ${gradeObj.name} (${gradeObj.section || section})
+                            </div>
+                            <div style="color:#334155; font-size:8.5pt; margin-top:2px;">
+                                <strong>Carrera:</strong> ${gradeObj.career} &nbsp;|&nbsp; 👨‍🏫 <strong>Docente Guía:</strong> <span style="color:#166534; font-weight:bold;">${(typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Sin asignar'))}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right; font-size:8.5pt; color:#475569;">
+                            <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
+                    </div>
+                </div>
             </div>
-            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            
+            <table style="width:100%; border-collapse:collapse; font-size:8.5pt;">
                 <thead>
-                    <tr style="background:#0369a1; color:#fff;">
-                        <th style="border:1px solid #cbd5e1; padding:6px 8px; width:40px; text-align:center;">No.</th>
-                        <th style="border:1px solid #cbd5e1; padding:6px 8px; width:100px;">Carné</th>
-                        <th style="border:1px solid #cbd5e1; padding:6px 8px;">Apellidos y Nombres</th>
-                        <th style="border:1px solid #cbd5e1; padding:6px 8px; width:70px; text-align:center;">Género</th>
-                        <th style="border:1px solid #cbd5e1; padding:6px 8px; width:80px; text-align:center;">Estado</th>
+                    <tr style="background:#0369a1; color:#fff; text-transform:uppercase; font-size:8pt; text-align:center;">
+                        <th style="border:1px solid #0f172a; padding:6px 4px; width:35px;">No.</th>
+                        <th style="border:1px solid #0f172a; padding:6px 6px; width:110px;">Carné / Cód. Personal</th>
+                        <th style="border:1px solid #0f172a; padding:6px 8px; text-align:left;">Apellidos y Nombres</th>
+                        <th style="border:1px solid #0f172a; padding:6px 4px; width:60px;">Género</th>
+                        <th style="border:1px solid #0f172a; padding:6px 6px; width:90px;">Estado</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rows}
                 </tbody>
             </table>
-            <div style="margin-top:20px; display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; padding-top:10px; border-top:1px dashed #cbd5e1;">
-                <span>Total de Estudiantes Matriculados: <strong>${students.length}</strong></span>
-                <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+
+            <!-- BLOQUE DE FIRMAS INSTITUCIONALES ENCCO -->
+            <div style="margin-top:35px; page-break-inside:avoid;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; text-align:center; font-size:8pt; color:#1e293b;">
+                    <div>
+                        <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                        <strong>${escapeHtml(typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Catedrático Guía'))}</strong><br>
+                        <span>Catedrático(a) Guía / Titular</span>
+                    </div>
+                    <div>
+                        <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                        <strong>Secretaría Académica</strong><br>
+                        <span>Registro y Control Escolar</span>
+                    </div>
+                    <div>
+                        <div style="border-bottom:1.5px solid #334155; margin-bottom:5px; height:35px;"></div>
+                        <strong>Vo. Bo. Dirección General</strong><br>
+                        <span>ENCCO Jutiapa</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:16px; display:flex; justify-content:space-between; font-size:7.5pt; color:#64748b; padding-top:4px; border-top:1px dashed #cbd5e1;">
+                <span>ENCCO Jutiapa • Sistema Oficial de Control Académico • Nómina de Sección</span>
+                <span>Total Alumnos: ${students.length}</span>
             </div>
         </div>
     `;
