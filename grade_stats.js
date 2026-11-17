@@ -3036,6 +3036,31 @@ function evaluateStudentPostRecovery(studentObj, cycle) {
 }
 window.evaluateStudentPostRecovery = evaluateStudentPostRecovery;
 
+/**
+ * 🔒 Validador de Control de Acceso (RBAC):
+ * El listado de alumnos que ganaron su recuperación es exclusivo para:
+ * - Dirección (director, directora, direccion, director_general)
+ * - Secretaría (secretaria, secretario)
+ * - Auxiliatura (profesor_auxiliar, auxiliar, auxiliatura)
+ * - Super Administrador (admin, superadmin, super_usuario)
+ * Los docentes/catedráticos y estudiantes NO tienen autorización para ver este módulo.
+ */
+function canViewGanaronRecuperacion(role = null) {
+    const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
+    const r = String(role || st.currentRole || (st.currentUser && st.currentUser.role) || '').toLowerCase().trim();
+    if (!r || r === 'docente' || r === 'catedratico' || r === 'profesor' || r === 'estudiante' || r === 'guest') {
+        return false;
+    }
+    const allowed = [
+        'admin', 'superadmin', 'super_admin', 'super_usuario',
+        'director', 'directora', 'direccion', 'director_general',
+        'secretaria', 'secretario',
+        'profesor_auxiliar', 'auxiliar', 'auxiliatura'
+    ];
+    return allowed.includes(r);
+}
+window.canViewGanaronRecuperacion = canViewGanaronRecuperacion;
+
 function canEditRecoveryGrade(courseTeacher = '', cycle = '') {
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
     const role = String(st.currentRole || (st.currentUser && st.currentUser.role) || '').toLowerCase().trim();
@@ -3397,6 +3422,14 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
     const totalPromovidos = rawStudentsList.filter(s => s.isPromovido).length;
     const totalConDerecho = rawStudentsList.filter(s => s.isConDerecho).length;
     const totalSinDerecho = rawStudentsList.filter(s => s.isSinDerecho).length;
+    const totalPromovidosRecup = rawStudentsList.filter(s => s.isConDerecho && s.postRecup && s.postRecup.isPromovidoRecup).length;
+    const totalConMateriasGanadas = rawStudentsList.filter(s => s.isConDerecho && s.postRecup && s.postRecup.ganadas > 0).length;
+    const canSeeGanaron = (typeof canViewGanaronRecuperacion === 'function') ? canViewGanaronRecuperacion() : false;
+
+    // Redirigir a 'materias' si el rol actual no tiene autorización para 'ganaron'
+    if (!canSeeGanaron && window._reprobadosSubView === 'ganaron') {
+        window._reprobadosSubView = 'materias';
+    }
 
     // Extraer lista única de Catedráticos que tienen alumnos reprobados
     const uniqueTeachersSet = new Set();
@@ -3547,6 +3580,16 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                 <div style="font-size:1.6rem; font-weight:900; color:#6b21a8; margin-top:2px;">${totalMateriasAfectadas}</div>
                 <div style="font-size:0.72rem; color:#7e22ce; margin-top:2px;">Catedráticos Evaluadores Asignados</div>
             </div>
+            ${canSeeGanaron ? `
+            <div onclick="switchReprobadosSubView('ganaron')" style="cursor:pointer; background:#f0fdf4; border:1px solid #86efac; border-left:4px solid #16a34a; border-radius:8px; padding:14px 16px; transition:all 0.2s;" title="Clic para ver el listado oficial de alumnos que ganaron su recuperación">
+                <div style="font-size:0.75rem; font-weight:700; color:#15803d; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Ganaron Recuperación</span>
+                    <i class="fa-solid fa-award" style="color:#16a34a; font-size:0.95rem;"></i>
+                </div>
+                <div style="font-size:1.6rem; font-weight:900; color:#166534; margin-top:2px;">${totalPromovidosRecup}</div>
+                <div style="font-size:0.72rem; color:#15803d; margin-top:2px;">${totalConDerecho > 0 ? Math.round((totalPromovidosRecup / totalConDerecho) * 100) : 0}% Éxito (${totalConMateriasGanadas} c/materias)</div>
+            </div>
+            ` : ''}
         </div>
 
         <!-- BARRA DE SUB-PESTAÑAS Y ACCIONES DE EXPORTACIÓN / IMPRESIÓN -->
@@ -3561,6 +3604,11 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                 <button type="button" onclick="switchReprobadosSubView('sin_derecho')" style="padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.83rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; ${activeSubView === 'sin_derecho' ? 'background:#dc2626; color:#fff; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:transparent; color:#475569;'}">
                     <i class="fa-solid fa-user-xmark"></i> 3. Reprobados Definitivos - Sin Derecho (${totalSinDerecho})
                 </button>
+                ${canSeeGanaron ? `
+                <button type="button" onclick="switchReprobadosSubView('ganaron')" style="padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.83rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; ${activeSubView === 'ganaron' ? 'background:#16a34a; color:#fff; box-shadow:0 1px 3px rgba(22,163,74,0.3);' : 'background:transparent; color:#15803d;'}">
+                    <i class="fa-solid fa-award"></i> 4. Ganaron Recuperación (${totalPromovidosRecup})
+                </button>
+                ` : ''}
             </div>
             <div style="display:flex; gap:8px;">
                 <button type="button" onclick="exportReprobadosRecuperacionExcel()" class="btn btn-sm" style="background:#16a34a; color:#ffffff; font-weight:700; border-radius:6px; padding:7px 14px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(22,163,74,0.3);">
@@ -3842,6 +3890,121 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                     </td>
                 </tr>
                 `;
+            });
+        }
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+
+    // SUB-VISTA 4: GANARON RECUPERACIÓN (PROMOVIDOS) - EXCLUSIVO DIRECCIÓN, SECRETARÍA Y AUXILIATURA
+    else if (activeSubView === 'ganaron' && canSeeGanaron) {
+        const ganaronScope = window._reprobadosGanaronScope || 'promovidos';
+        const allGanaron = (ganaronScope === 'todas_aprobadas')
+            ? filteredStudents.filter(s => s.isConDerecho && s.postRecup && s.postRecup.ganadas > 0)
+            : filteredStudents.filter(s => s.isConDerecho && s.postRecup && s.postRecup.isPromovidoRecup);
+
+        html += `
+        <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <div style="font-size:0.98rem; font-weight:800; color:#166534; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-award" style="font-size:1.15rem; color:#15803d;"></i> Nómina Oficial de Estudiantes que Ganaron Recuperación (${allGanaron.length} alumnos)
+                </div>
+                <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">
+                    Calificaciones aprobatorias (&ge;60 pts) asentadas en Exámenes de Recuperación &bull; Ciclo Escolar <strong>${escapeHtml(viewingCycle)}</strong>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <div style="display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #86efac; padding:4px; border-radius:8px;">
+                    <span style="font-size:0.76rem; font-weight:800; color:#166534; padding:0 6px;">Alcance:</span>
+                    <button type="button" onclick="switchReprobadosGanaronScope('promovidos')" style="padding:5px 12px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${ganaronScope === 'promovidos' ? 'background:#16a34a; color:#ffffff; box-shadow:0 1px 2px rgba(22,163,74,0.3);' : 'background:transparent; color:#166534;'}">
+                        <i class="fa-solid fa-user-graduate"></i> Solo Promovidos Totales (${totalPromovidosRecup})
+                    </button>
+                    <button type="button" onclick="switchReprobadosGanaronScope('todas_aprobadas')" style="padding:5px 12px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${ganaronScope === 'todas_aprobadas' ? 'background:#16a34a; color:#ffffff; box-shadow:0 1px 2px rgba(22,163,74,0.3);' : 'background:transparent; color:#166534;'}">
+                        <i class="fa-solid fa-book-bookmark"></i> Desglose Materias Aprobadas (${totalConMateriasGanadas})
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.92rem; text-align:left;">
+                <thead>
+                    <tr style="background:#15803d; color:#ffffff;">
+                        <th style="padding:9px 8px; border:1px solid #166534; width:40px; text-align:center;">No.</th>
+                        <th style="padding:9px 10px; border:1px solid #166534; width:95px; text-align:center;">Código</th>
+                        <th style="padding:9px 10px; border:1px solid #166534;">Estudiante</th>
+                        <th style="padding:9px 8px; border:1px solid #166534; width:50px; text-align:center;">Sexo</th>
+                        <th style="padding:9px 10px; border:1px solid #166534; width:95px; text-align:center;">Grado / Secc</th>
+                        <th style="padding:9px 10px; border:1px solid #166534;">Asignatura(s) Recuperada(s)</th>
+                        <th style="padding:9px 8px; border:1px solid #166534; width:65px; text-align:center;">Ord.</th>
+                        <th style="padding:9px 10px; border:1px solid #166534; width:85px; text-align:center;">Recup.</th>
+                        <th style="padding:9px 10px; border:1px solid #166534;">Catedrático Evaluador</th>
+                        <th style="padding:9px 10px; border:1px solid #166534; width:160px; text-align:center;">Condición Final</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        if (allGanaron.length === 0) {
+            html += `<tr><td colspan="10" style="padding:28px; text-align:center; color:#64748b; font-weight:600;"><i class="fa-solid fa-circle-info" style="font-size:1.6rem; color:#16a34a; margin-bottom:8px; display:block;"></i>No se encontraron alumnos que hayan ganado recuperación para los filtros seleccionados en el ciclo ${escapeHtml(viewingCycle)}.</td></tr>`;
+        } else {
+            let rowCounter = 1;
+            allGanaron.forEach((st, sIdx) => {
+                const passedSubjects = st.reprobadas.filter(r => {
+                    const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, viewingCycle);
+                    return rec && rec.aprobada;
+                });
+                if (passedSubjects.length === 0) return;
+
+                const rowSpan = passedSubjects.length;
+                const baseBg = (sIdx % 2 === 0) ? '#ffffff' : '#f0fdf4';
+
+                passedSubjects.forEach((r, mIdx) => {
+                    const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, viewingCycle);
+                    const ordNote = (rec && rec.notaOriginal !== undefined) ? rec.notaOriginal : r.nota;
+                    const recNote = rec ? rec.notaRecup : 0;
+                    const isFullyProm = (st.postRecup && st.postRecup.isPromovidoRecup);
+                    const condBadge = isFullyProm
+                        ? `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#dcfce7; color:#166534; font-weight:800; font-size:0.75rem; border:1px solid #86efac; box-shadow:0 1px 2px rgba(22,163,74,0.15);"><i class="fa-solid fa-circle-check"></i> PROMOVIDO</span>`
+                        : `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#fef3c7; color:#92400e; font-weight:800; font-size:0.75rem; border:1px solid #fcd34d;"><i class="fa-solid fa-clock"></i> CURSO APROBADO</span>`;
+
+                    html += `<tr style="background:${baseBg}; border-bottom:1px solid #bbf7d0;">`;
+                    if (mIdx === 0) {
+                        html += `
+                            <td rowspan="${rowSpan}" style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:800; vertical-align:middle;">${rowCounter++}</td>
+                            <td rowspan="${rowSpan}" style="padding:8px 8px; border:1px solid #e2e8f0; font-family:monospace; font-weight:900; color:#0369a1; text-align:center; vertical-align:middle;">${escapeHtml(st.code)}</td>
+                            <td rowspan="${rowSpan}" style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:800; color:#0f172a; vertical-align:middle;">${escapeHtml(st.name)}</td>
+                            <td rowspan="${rowSpan}" style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:700; vertical-align:middle;">${escapeHtml(st.sex)}</td>
+                            <td rowspan="${rowSpan}" style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:800; color:#0369a1; vertical-align:middle;">${st.grade.substring(0, 4)} "${escapeHtml(st.section)}"</td>
+                        `;
+                    }
+                    html += `
+                        <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:700; color:#0f172a;">
+                            <i class="fa-solid fa-book" style="color:#16a34a; margin-right:5px;"></i> ${escapeHtml(resolveCanonicalSubjectNameForSheet(r.materia, st.grade))}
+                        </td>
+                        <td style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:800; color:#dc2626;">
+                            ${ordNote}
+                        </td>
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center;">
+                            <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#dcfce7; color:#166534; font-weight:900; border:1px solid #86efac;">${recNote} pts</span>
+                        </td>
+                        <td style="padding:8px 10px; border:1px solid #e2e8f0; color:#334155; font-weight:600;">
+                            <i class="fa-solid fa-user-tie" style="color:#64748b; margin-right:5px;"></i> ${escapeHtml(r.maestro)}
+                        </td>
+                    `;
+                    if (mIdx === 0) {
+                        html += `
+                            <td rowspan="${rowSpan}" style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; vertical-align:middle;">
+                                ${condBadge}
+                            </td>
+                        `;
+                    }
+                    html += `</tr>`;
+                });
             });
         }
 
@@ -4192,10 +4355,20 @@ function buildConDerechoLayoutContent(conDerechoList, layout = 'horizontal', mod
 
 // CONTROLADORES DE EVENTOS DE SUB-VISTAS Y FILTROS
 function switchReprobadosSubView(subView) {
+    if (subView === 'ganaron' && typeof canViewGanaronRecuperacion === 'function' && !canViewGanaronRecuperacion()) {
+        if (typeof showToast === 'function') showToast('Acceso Restringido: Vista exclusiva para Dirección, Secretaría y Auxiliatura.', 'warning');
+        return;
+    }
     window._reprobadosSubView = subView;
     renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.switchReprobadosSubView = switchReprobadosSubView;
+
+function switchReprobadosGanaronScope(scope) {
+    window._reprobadosGanaronScope = scope;
+    renderReprobadosRecuperacionView({ reuseData: true });
+}
+window.switchReprobadosGanaronScope = switchReprobadosGanaronScope;
 
 function onReprobadosGradeChange(val) {
     window._reprobadosGradeFilter = val;
@@ -4280,14 +4453,96 @@ function printReprobadosRecuperacionView() {
     });
 
     const isConDerechoPrint = (subView === 'con_derecho');
-    const isPortrait = (isConDerechoPrint && layout === 'vertical');
+    const isGanaronPrint = (subView === 'ganaron');
+    const isPortrait = ((isConDerechoPrint || isGanaronPrint) && layout === 'vertical');
     const pageSizeCss = isPortrait ? 'letter portrait' : 'letter landscape';
-    const pageMarginCss = isConDerechoPrint ? '7mm' : '10mm';
+    const pageMarginCss = (isConDerechoPrint || isGanaronPrint) ? '7mm' : '10mm';
 
     let bodyTableHtml = '';
     let docSubtitle = 'INFORME OFICIAL DE ALUMNOS REPROBADOS, MATERIAS, CATEDRÁTICOS Y DERECHO A RECUPERACIÓN';
 
-    if (isConDerechoPrint) {
+    if (isGanaronPrint) {
+        if (typeof canViewGanaronRecuperacion === 'function' && !canViewGanaronRecuperacion()) {
+            if (typeof showToast === 'function') showToast('Acceso Restringido: Este informe es exclusivo para Dirección, Secretaría y Auxiliatura.', 'warning');
+            return;
+        }
+        const ganaronScope = window._reprobadosGanaronScope || 'promovidos';
+        const ganaronList = (ganaronScope === 'todas_aprobadas')
+            ? filtered.filter(s => s.isConDerecho && s.postRecup && s.postRecup.ganadas > 0)
+            : filtered.filter(s => s.isConDerecho && s.postRecup && s.postRecup.isPromovidoRecup);
+
+        docSubtitle = (ganaronScope === 'todas_aprobadas')
+            ? 'ACTA OFICIAL DE ASIGNATURAS APROBADAS EN RECUPERACIÓN'
+            : 'ACTA Y NÓMINA OFICIAL DE ESTUDIANTES PROMOVIDOS EN RECUPERACIÓN';
+
+        let rowsHtml = '';
+        let counter = 1;
+        ganaronList.forEach(st => {
+            const passedSubjects = st.reprobadas.filter(r => {
+                const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, d.cycle);
+                return rec && rec.aprobada;
+            });
+            if (passedSubjects.length === 0) return;
+
+            const rowSpan = passedSubjects.length;
+            passedSubjects.forEach((r, mIdx) => {
+                const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, d.cycle);
+                const ordNote = (rec && rec.notaOriginal !== undefined) ? rec.notaOriginal : r.nota;
+                const recNote = rec ? rec.notaRecup : 0;
+                const condText = (st.postRecup && st.postRecup.isPromovidoRecup)
+                    ? 'PROMOVIDO EN RECUPERACIÓN'
+                    : 'CURSO APROBADO (PENDIENTE)';
+
+                rowsHtml += `<tr style="page-break-inside:avoid;">`;
+                if (mIdx === 0) {
+                    rowsHtml += `
+                        <td rowspan="${rowSpan}" style="text-align:center; font-weight:bold;">${counter++}</td>
+                        <td rowspan="${rowSpan}" style="text-align:center; font-family:monospace; font-weight:bold;">${escapeHtml(st.code)}</td>
+                        <td rowspan="${rowSpan}" style="font-weight:bold;">${escapeHtml(st.name)}</td>
+                        <td rowspan="${rowSpan}" style="text-align:center;">${escapeHtml(st.sex)}</td>
+                        <td rowspan="${rowSpan}" style="text-align:center; font-weight:bold;">${st.grade.substring(0, 4)} "${escapeHtml(st.section)}"</td>
+                    `;
+                }
+                rowsHtml += `
+                    <td>${escapeHtml(resolveCanonicalSubjectNameForSheet(r.materia, st.grade))}</td>
+                    <td style="text-align:center; font-weight:bold; color:#b91c1c;">${ordNote}</td>
+                    <td style="text-align:center; font-weight:900; color:#15803d; background:#f0fdf4;">${recNote} pts</td>
+                    <td>${escapeHtml(r.maestro)}</td>
+                `;
+                if (mIdx === 0) {
+                    rowsHtml += `
+                        <td rowspan="${rowSpan}" style="text-align:center; font-weight:bold; color:#166534; background:#f0fdf4;">${condText}</td>
+                    `;
+                }
+                rowsHtml += `</tr>`;
+            });
+        });
+
+        bodyTableHtml = `
+        <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9.5pt;">
+            <thead style="display:table-header-group;">
+                <tr style="background:#e2e8f0;">
+                    <th style="width:4%;">No.</th>
+                    <th style="width:10%;">Código</th>
+                    <th style="width:23%;">Nombre del Estudiante</th>
+                    <th style="width:4%;">Sexo</th>
+                    <th style="width:8%;">Grado/Secc</th>
+                    <th style="width:23%;">Asignatura Recuperada</th>
+                    <th style="width:5%;">Ord.</th>
+                    <th style="width:7%;">Recup.</th>
+                    <th style="width:16%;">Catedrático Evaluador</th>
+                    <th style="width:14%;">Condición Final</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml || '<tr><td colspan="10" style="text-align:center; padding:18px;">No se registraron alumnos con recuperación ganada.</td></tr>'}</tbody>
+        </table>
+        <div style="margin-top:28px; display:flex; justify-content:space-around; text-align:center; font-size:9pt; page-break-inside:avoid;">
+            <div style="width:200px; border-top:1px solid #000; padding-top:4px;">Catedrático(a) Evaluador(a)</div>
+            <div style="width:200px; border-top:1px solid #000; padding-top:4px;">Secretaria Contador</div>
+            <div style="width:200px; border-top:1px solid #000; padding-top:4px;">Dirección del Plantel</div>
+        </div>
+        `;
+    } else if (isConDerechoPrint) {
         const { activeMode, list: conDerechoList } = _filterConDerechoForOutput(filtered, d.cycle);
         docSubtitle = (activeMode === 'con_notas')
             ? 'NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN — CON NOTAS ASENTADAS'
@@ -4468,14 +4723,83 @@ function exportReprobadosRecuperacionExcel() {
     });
 
     const isConDerechoExcel = (subView === 'con_derecho');
-    const isPortraitExcel = (isConDerechoExcel && layout === 'vertical');
+    const isGanaronExcel = (subView === 'ganaron');
+    const isPortraitExcel = ((isConDerechoExcel || isGanaronExcel) && layout === 'vertical');
     const orientationXml = isPortraitExcel ? 'Portrait' : 'Landscape';
-    const headerColspan = isConDerechoExcel ? (layout === 'vertical' ? 8 : 15) : 10;
+    const headerColspan = isGanaronExcel ? 11 : (isConDerechoExcel ? (layout === 'vertical' ? 8 : 15) : 10);
 
     let bodyExcelHtml = '';
     let docSubtitle = `NÓMINA DE ALUMNOS REPROBADOS Y SITUACIÓN DE RECUPERACIÓN - CICLO ${d.cycle}`;
 
-    if (isConDerechoExcel) {
+    if (isGanaronExcel) {
+        if (typeof canViewGanaronRecuperacion === 'function' && !canViewGanaronRecuperacion()) {
+            if (typeof showToast === 'function') showToast('Acceso Restringido: Este informe es exclusivo para Dirección, Secretaría y Auxiliatura.', 'warning');
+            return;
+        }
+        const ganaronScope = window._reprobadosGanaronScope || 'promovidos';
+        const ganaronList = (ganaronScope === 'todas_aprobadas')
+            ? filtered.filter(s => s.isConDerecho && s.postRecup && s.postRecup.ganadas > 0)
+            : filtered.filter(s => s.isConDerecho && s.postRecup && s.postRecup.isPromovidoRecup);
+
+        docSubtitle = (ganaronScope === 'todas_aprobadas')
+            ? `NÓMINA OFICIAL DE ASIGNATURAS APROBADAS EN RECUPERACIÓN - CICLO ${d.cycle}`
+            : `NÓMINA OFICIAL DE ESTUDIANTES PROMOVIDOS EN RECUPERACIÓN - CICLO ${d.cycle}`;
+
+        let rowsHtml = '';
+        let counter = 1;
+        ganaronList.forEach(st => {
+            const passedSubjects = st.reprobadas.filter(r => {
+                const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, d.cycle);
+                return rec && rec.aprobada;
+            });
+            if (passedSubjects.length === 0) return;
+
+            passedSubjects.forEach(r => {
+                const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, d.cycle);
+                const ordNote = (rec && rec.notaOriginal !== undefined) ? rec.notaOriginal : r.nota;
+                const recNote = rec ? rec.notaRecup : 0;
+                const condText = (st.postRecup && st.postRecup.isPromovidoRecup)
+                    ? 'PROMOVIDO EN RECUPERACIÓN'
+                    : 'CURSO APROBADO (PENDIENTE)';
+
+                rowsHtml += `
+                    <tr style="height:24pt;">
+                        <td style="text-align:center;">${counter++}</td>
+                        <td style="text-align:center; mso-number-format:'\\@';">${escapeHtml(st.code)}</td>
+                        <td>${escapeHtml(st.name)}</td>
+                        <td style="text-align:center;">${escapeHtml(st.genderLabel)}</td>
+                        <td style="text-align:center;">${escapeHtml(st.grade)}</td>
+                        <td style="text-align:center;">${escapeHtml(st.section)}</td>
+                        <td>${escapeHtml(resolveCanonicalSubjectNameForSheet(r.materia, st.grade))}</td>
+                        <td style="text-align:center; color:#dc2626; font-weight:bold;">${ordNote}</td>
+                        <td style="text-align:center; color:#15803d; font-weight:bold; background:#dcfce7;">${recNote}</td>
+                        <td>${escapeHtml(r.maestro)}</td>
+                        <td style="text-align:center; font-weight:bold; color:#166534; background:#dcfce7;">${condText}</td>
+                    </tr>
+                `;
+            });
+        });
+
+        bodyExcelHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:10.5pt;">
+            <thead>
+                <tr>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">No.</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Código Personal</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Nombre Completo del Estudiante</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Género</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Grado</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Sección</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Asignatura Recuperada</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Nota Ord.</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Nota Recup.</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Catedrático Evaluador</th>
+                    <th style="background:#15803d; color:#ffffff; padding:8px;">Condición Final</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml || '<tr><td colspan="11" style="text-align:center; padding:18px;">No se registraron alumnos con recuperación ganada.</td></tr>'}</tbody>
+        </table>`;
+    } else if (isConDerechoExcel) {
         const { activeMode, list: conDerechoList } = _filterConDerechoForOutput(filtered, d.cycle);
         docSubtitle = (activeMode === 'con_notas')
             ? `NÓMINA OFICIAL DE ALUMNOS CON DERECHO A RECUPERACIÓN — CON NOTAS ASENTADAS - CICLO ${d.cycle}`
@@ -4578,9 +4902,11 @@ function exportReprobadosRecuperacionExcel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = isConDerechoExcel
-        ? `Con_Derecho_Recuperacion_${layout}_${d.cycle}.xls`
-        : `Alumnos_Reprobados_Recuperacion_${d.cycle}.xls`;
+    a.download = isGanaronExcel
+        ? `Alumnos_Promovidos_Recuperacion_${d.cycle}.xls`
+        : (isConDerechoExcel
+            ? `Con_Derecho_Recuperacion_${layout}_${d.cycle}.xls`
+            : `Alumnos_Reprobados_Recuperacion_${d.cycle}.xls`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
