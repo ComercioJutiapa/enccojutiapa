@@ -47,7 +47,8 @@ const CRITICAL_SUITES = [
     'tests/test_dynamic_roles_and_permissions.js',
     'tests/test_exam_schedules_multicycle_and_enhancements.js',
     'tests/test_excel_institutional_export_and_personal_code_import.js',
-    'tests/test_student_guardian_and_phone_cascade.js'
+    'tests/test_student_guardian_and_phone_cascade.js',
+    'tests/test_cycle_2026_to_2027_transition_isolation.js'
 ];
 
 console.log('================================================================================');

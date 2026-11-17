@@ -12571,12 +12571,13 @@ function changeAcademicCycle(cycle) {
             EnccoCycleArchiver.loadHistoricalCycle(cycleYear);
             return;
         } else if (window.STATE.isHistoricalReadOnlyMode) {
-            EnccoCycleArchiver.exitHistoricalView();
-            return;
+            EnccoCycleArchiver.exitHistoricalView(cycleYear);
+            // El flujo continúa para fijar y sanitizar el ciclo activo seleccionado sin retornar prematuramente
         }
     }
 
-    STATE.activeCycle = cycle;
+    STATE.activeCycle = cycleYear;
+    STATE.academicCycle = cycleYear;
     if (typeof sanitizeCycle2027PristineState === 'function') sanitizeCycle2027PristineState();
     saveStateToLocalStorage();
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
@@ -55464,6 +55465,14 @@ function sanitizeCycle2027PristineState() {
     );
     if (activeCycleNum >= 2027) archivedYears.add('2026');
 
+    // 0. Si el padrón quedó vacío o contaminado con alumnos de 2026, rehidratar desde el respaldo inmutable de 2027 en RAM
+    if (activeCycleNum >= 2027 && Array.isArray(window._active2027StudentsBackup) && window._active2027StudentsBackup.length > 0) {
+        const hasValid2027 = Array.isArray(STATE.students) && STATE.students.some(s => s && (s.cycle === activeCycle || s.academicCycle === activeCycle));
+        if (!hasValid2027) {
+            STATE.students = JSON.parse(JSON.stringify(window._active2027StudentsBackup));
+        }
+    }
+
     // 1. Filtrar alumnos egresados o residuales de ciclos cerrados/archivados (nunca borrar datos reales del ciclo activo)
     if (Array.isArray(STATE.students)) {
         const initialLen = STATE.students.length;
@@ -55487,6 +55496,11 @@ function sanitizeCycle2027PristineState() {
             return true;
         });
 
+        // Guardar copia limpia de respaldo de estudiantes de 2027 para restauraciones instantáneas
+        if (activeCycleNum >= 2027 && STATE.students.length > 0) {
+            window._active2027StudentsBackup = JSON.parse(JSON.stringify(STATE.students));
+        }
+
         // Saneamiento no destructivo de caracteres UTF-8 corruptos en nombres de estudiantes activos
         STATE.students.forEach(s => {
             if (!s) return;
@@ -55508,6 +55522,15 @@ function sanitizeCycle2027PristineState() {
             const yearPrefix = (String(k).match(/^(20\d{2})_/) || [])[1];
             if (yearPrefix && archivedYears.has(yearPrefix)) {
                 delete STATE.attendanceRecords[k];
+            }
+        });
+    }
+
+    // 3. Depurar calificaciones residuales de ciclos cerrados en memoria activa
+    if (activeCycleNum >= 2027 && STATE.calificaciones && typeof STATE.calificaciones === 'object') {
+        Object.keys(STATE.calificaciones).forEach(k => {
+            if (k.includes('_2026_') || k.endsWith('_2026')) {
+                delete STATE.calificaciones[k];
             }
         });
     }

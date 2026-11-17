@@ -741,9 +741,16 @@
         },
 
         /**
+         * Alias para activar o alternar hacia un ciclo histórico
+         */
+        async switchToHistoricalCycle(cycleYear, dataOverride = null) {
+            return this.loadHistoricalCycle(cycleYear, dataOverride);
+        },
+
+        /**
          * Carga bajo demanda y activa el Modo de Consulta Histórica (Solo Lectura) para un ciclo pasado
          */
-        async loadHistoricalCycle(cycleYear) {
+        async loadHistoricalCycle(cycleYear, dataOverride = null) {
             const targetCycle = String(cycleYear || '').trim();
             if (!targetCycle) return false;
 
@@ -753,10 +760,10 @@
             }
 
             try {
-                let archivedData = null;
+                let archivedData = dataOverride || null;
 
                 // 1. Intentar desde memoria de sesión volátil (RAM / sessionStorage) primero
-                if (this._sessionCache && this._sessionCache[targetCycle]) {
+                if (!archivedData && this._sessionCache && this._sessionCache[targetCycle]) {
                     const memData = this._sessionCache[targetCycle];
                     const stList = (memData && (memData.studentsSnapshot || memData.students));
                     if (Array.isArray(stList) && stList.length > 0) {
@@ -840,9 +847,11 @@
 
                 // Guardar respaldo íntegro del estado activo antes de entrar a modo histórico (memoria + sessionStorage)
                 if (!this._originalStateBeforeHistory && window.STATE && !window.STATE.isHistoricalReadOnlyMode) {
+                    const currentActive = String(window.STATE.activeCycle || '2027').trim();
+                    const cleanActiveCycle = (currentActive !== targetCycle) ? currentActive : '2027';
                     this._originalStateBeforeHistory = {
-                        activeCycle: window.STATE.activeCycle,
-                        academicCycle: window.STATE.academicCycle,
+                        activeCycle: cleanActiveCycle,
+                        academicCycle: cleanActiveCycle,
                         students: JSON.parse(JSON.stringify(window.STATE.students || [])),
                         attendanceRecords: JSON.parse(JSON.stringify(window.STATE.attendanceRecords || {})),
                         disciplineReports: JSON.parse(JSON.stringify(window.STATE.disciplineReports || [])),
@@ -860,6 +869,14 @@
                             sessionStorage.setItem('ENCCO_STATE_BEFORE_HISTORICAL', JSON.stringify(this._originalStateBeforeHistory));
                         }
                     } catch(e) {}
+                }
+
+                // Preservar en RAM un respaldo inmutable de los estudiantes activos de 2027 para retorno instantáneo
+                if (window.STATE && Array.isArray(window.STATE.students)) {
+                    const active27 = window.STATE.students.filter(s => s && (s.cycle === '2027' || s.academicCycle === '2027' || (!s.cycle && targetCycle !== '2027')));
+                    if (active27.length > 0) {
+                        window._active2027StudentsBackup = JSON.parse(JSON.stringify(active27));
+                    }
                 }
 
                 // Inyectar datos históricos en memoria de solo lectura
@@ -937,10 +954,12 @@
         /**
          * Sale del modo histórico y restaura la base de datos del ciclo activo
          */
-        exitHistoricalView() {
+        exitHistoricalView(targetCycleParam = null) {
             if (!window.STATE || !window.STATE.isHistoricalReadOnlyMode) return { success: false, message: 'No en modo histórico' };
 
-            console.log("🔙 [Consulta Histórica] Regresando al ciclo lectivo activo...");
+            const targetCycle = String(targetCycleParam || (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && this._originalStateBeforeHistory.activeCycle !== '2026' ? this._originalStateBeforeHistory.activeCycle : '2027')).trim();
+            console.log(`🔙 [Consulta Histórica] Regresando al ciclo lectivo activo (${targetCycle})...`);
+
             let restoredState = this._originalStateBeforeHistory;
             if (!restoredState && typeof sessionStorage !== 'undefined') {
                 try {
@@ -949,58 +968,86 @@
                 } catch(e) {}
             }
 
-            if (restoredState && Array.isArray(restoredState.students) && restoredState.students.length > 0) {
-                window.STATE.activeCycle = restoredState.activeCycle || '2027';
-                window.STATE.academicCycle = restoredState.academicCycle || restoredState.activeCycle || '2027';
-                window.STATE.students = restoredState.students;
-                window.STATE.attendanceRecords = restoredState.attendanceRecords || {};
-                window.STATE.disciplineReports = restoredState.disciplineReports || [];
-                window.STATE.studentPermissions = restoredState.studentPermissions || [];
-                window.STATE.pensum = restoredState.pensum || [];
-                window.STATE.calificaciones = restoredState.calificaciones || {};
-                window.STATE.gradingConfigs = restoredState.gradingConfigs || {};
-                window.STATE.academicExonerations = restoredState.academicExonerations || [];
-                window.STATE.exoneraciones = restoredState.exoneraciones || {};
-                window.STATE.recuperaciones = restoredState.recuperaciones || {};
-                if (restoredState.config) {
-                    window.STATE.config = restoredState.config;
-                }
-                this._originalStateBeforeHistory = null;
-                if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ENCCO_STATE_BEFORE_HISTORICAL');
-            } else {
-                const fbUrl = this.getFirebaseUrl();
-                Promise.all([
-                    fetch(`${fbUrl}/encc_school_state/students.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${fbUrl}/encc_school_state/calificaciones.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${fbUrl}/encc_school_state/attendanceRecords.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${fbUrl}/encc_school_state/recuperaciones.json`).then(r => r.json()).catch(() => null)
-                ]).then(([cloudStudents, cloudCalif, cloudAtt, cloudRecup]) => {
-                    if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-                        window.STATE.students = cloudStudents;
-                    }
-                    window.STATE.calificaciones = cloudCalif || {};
-                    window.STATE.attendanceRecords = cloudAtt || {};
-                    window.STATE.recuperaciones = (cloudRecup && typeof cloudRecup === 'object') ? cloudRecup : {};
-                    if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                    if (typeof renderBoletasTable === 'function') renderBoletasTable();
-                    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
-                    if (typeof renderDashboard === 'function') renderDashboard();
-                }).catch(() => {});
-                window.STATE.activeCycle = '2027';
-                window.STATE.academicCycle = '2027';
-            }
-
+            // 1. Restaurar propiedades de estado y salir de Solo Lectura
             window.STATE.isHistoricalReadOnlyMode = false;
             window.STATE.historicalViewingCycle = null;
             window.STATE.viewingHistoricalCycle = null;
+            window.STATE.activeCycle = targetCycle;
+            window.STATE.academicCycle = targetCycle;
 
-            // Remover banner
+            // 2. Restaurar estudiantes activos de 2027 garantizando 0% mezcla con 2026
+            let activeStudents = null;
+            if (restoredState && Array.isArray(restoredState.students)) {
+                // Filtrar para que NUNCA entren estudiantes con cycle === '2026'
+                const filtered = restoredState.students.filter(s => {
+                    if (!s) return false;
+                    const c = String(s.cycle || s.academicCycle || '').trim();
+                    return c !== '2026';
+                });
+                if (filtered.length > 0) {
+                    activeStudents = filtered;
+                }
+            }
+
+            if (!activeStudents && Array.isArray(window._active2027StudentsBackup) && window._active2027StudentsBackup.length > 0) {
+                activeStudents = JSON.parse(JSON.stringify(window._active2027StudentsBackup));
+            }
+
+            if (activeStudents) {
+                window.STATE.students = activeStudents;
+                window.STATE.calificaciones = (restoredState && restoredState.calificaciones) ? restoredState.calificaciones : {};
+                window.STATE.attendanceRecords = (restoredState && restoredState.attendanceRecords) ? restoredState.attendanceRecords : {};
+                window.STATE.disciplineReports = (restoredState && restoredState.disciplineReports) ? restoredState.disciplineReports : [];
+                window.STATE.studentPermissions = (restoredState && restoredState.studentPermissions) ? restoredState.studentPermissions : [];
+                window.STATE.pensum = (restoredState && restoredState.pensum) ? restoredState.pensum : (window.STATE.pensum || []);
+                window.STATE.recuperaciones = (restoredState && restoredState.recuperaciones) ? restoredState.recuperaciones : {};
+                if (restoredState && restoredState.config) window.STATE.config = restoredState.config;
+            } else {
+                if (typeof fetch === 'function') {
+                    try {
+                        const fbUrl = this.getFirebaseUrl();
+                        fetch(`${fbUrl}/encc_school_state/students.json?t=${Date.now()}`)
+                            .then(r => r.json())
+                            .then(cloudStudents => {
+                                const stArr = Array.isArray(cloudStudents) ? cloudStudents : Object.values(cloudStudents || {});
+                                if (stArr.length > 0) {
+                                    window.STATE.students = stArr;
+                                    window._active2027StudentsBackup = JSON.parse(JSON.stringify(stArr));
+                                    if (typeof window.sanitizeCycle2027PristineState === 'function') window.sanitizeCycle2027PristineState();
+                                    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                                    if (typeof renderCurrentView === 'function') renderCurrentView();
+                                }
+                            }).catch(netErr => {
+                                console.error("Error al rehidratar estudiantes de 2027:", netErr);
+                            });
+                    } catch(e) {}
+                }
+                window.STATE.calificaciones = {};
+                window.STATE.attendanceRecords = {};
+                window.STATE.recuperaciones = {};
+            }
+
+            this._originalStateBeforeHistory = null;
+            if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ENCCO_STATE_BEFORE_HISTORICAL');
+
+            // 3. Ejecutar saneamiento prístino de 2027
+            if (typeof window.sanitizeCycle2027PristineState === 'function') {
+                window.sanitizeCycle2027PristineState();
+            }
+
+            // 4. Remover banner de modo histórico
             const banner = (typeof document !== 'undefined') ? document.getElementById('enccoHistoricalBanner') : null;
             if (banner) banner.remove();
 
-            // Desbloquear controles
+            // 5. Desbloquear controles de edición
             this.enforceReadOnlyControls(false);
 
+            // 6. Sincronizar activeCycle en la nube si está conectado
+            if (typeof window.EnccoCloudSync !== 'undefined' && window.EnccoCloudSync.syncNode) {
+                window.EnccoCloudSync.syncNode('activeCycle', targetCycle);
+            }
+
+            // 7. Redibujar todas las vistas
             if (typeof updateCycleSelects === 'function') updateCycleSelects();
             if (typeof renderCycleList === 'function') renderCycleList();
             if (typeof renderStudentsTable === 'function') renderStudentsTable();
@@ -1039,9 +1086,9 @@
                 }
             }
 
-            const origCycleLabel = (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle)
+            const origCycleLabel = (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && this._originalStateBeforeHistory.activeCycle !== '2026')
                 ? this._originalStateBeforeHistory.activeCycle
-                : (window.STATE ? window.STATE.activeCycle : '2026');
+                : (window.STATE && window.STATE.activeCycle && window.STATE.activeCycle !== '2026' ? window.STATE.activeCycle : '2027');
             banner.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div style="width:34px; height:34px; border-radius:50%; background:#f59e0b; color:#0f172a; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:900;">
@@ -1057,7 +1104,7 @@
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <button type="button" class="btn btn-sm btn-warning" onclick="EnccoCycleArchiver.exitHistoricalView()" style="font-weight:800; border-radius:6px; padding:6px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
+                    <button type="button" class="btn btn-sm btn-warning" onclick="EnccoCycleArchiver.exitHistoricalView('${origCycleLabel}')" style="font-weight:800; border-radius:6px; padding:6px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
                         <i class="fa-solid fa-arrow-left"></i> Salir y Volver al Ciclo Activo (${origCycleLabel})
                     </button>
                 </div>
