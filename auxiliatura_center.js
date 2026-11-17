@@ -225,8 +225,9 @@
                             const gLabel = gradeObj ? `${gradeObj.name} ${gradeObj.section ? ('- ' + gradeObj.section) : ''}` : (student ? (student.grade || student.section || recGrade) : recGrade);
                             const cName = course ? course.name : (recCourse ? recCourse : 'Asistencia en Aula');
                             const tName = course ? (course.teacherName || course.teacher || 'Catedrático') : 'Docente Titular';
-                            const tutor = student ? (student.tutorName || student.tutor || 'No registrado') : 'No registrado';
-                            const phone = student ? (student.tutorPhone || student.phone || '') : '';
+                            const gInfo = (typeof window.getStudentAssignedGuardianInfo === 'function' && student) ? window.getStudentAssignedGuardianInfo(student) : null;
+                            const tutor = (gInfo && gInfo.isAssigned) ? gInfo.name : (student ? (student.tutorName || student.tutor || 'No registrado') : 'No registrado');
+                            const phone = (gInfo && gInfo.phone) ? gInfo.phone : (student ? (student.tutorPhone || student.phone || '') : '');
                             const studentName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
                             const carne = student ? (student.carne || student.personalCode || '---') : '---';
 

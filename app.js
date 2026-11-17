@@ -7300,6 +7300,177 @@ function getStudentAssignment(s) {
 window.getStudentAssignment = getStudentAssignment;
 
 /**
+ * Resuelve de forma dinámica, coherente e integral el encargado/contacto asignado del estudiante.
+ * Jerarquía de Asignación Inteligente (sin pérdida de datos):
+ * 1. Encargado / Tutor titular específico (guardianName, tutorName, tutor, etc.)
+ * 2. Madre registrada (motherName, etc.)
+ * 3. Padre registrado (fatherName, etc.)
+ * Si ambos padres están registrados (sin tutor externo), prioriza al que tenga teléfono disponible.
+ * Fallback a teléfono del estudiante o de emergencia.
+ */
+function getStudentAssignedGuardianInfo(student) {
+    if (!student) {
+        return {
+            name: 'No registrado',
+            phone: '',
+            phoneDisplay: 'Sin tel.',
+            secondaryPhone: '',
+            relationship: '',
+            label: 'No registrado',
+            dpi: '-',
+            source: 'none',
+            isAssigned: false
+        };
+    }
+
+    const cleanStr = (val) => {
+        if (!val || typeof val !== 'string') return '';
+        const t = val.trim();
+        const lower = t.toLowerCase();
+        if (['', 'n/a', 'na', 'no asignado', 'no registrado', 'no registra', 'ninguno', '-', '--', 'null', 'undefined', 's/t', 'sin telefono', 'sin tel.'].includes(lower)) {
+            return '';
+        }
+        return t;
+    };
+
+    const cleanPhone = (val) => {
+        const cleaned = cleanStr(val);
+        if (!cleaned) return '';
+        return cleaned;
+    };
+
+    // 1. Encargado / Tutor titular específico
+    const guardianName = cleanStr(student.guardianName) || cleanStr(student.tutorName) || cleanStr(student.tutor) || cleanStr(student.guardian) || cleanStr(student.encargado);
+    const guardianPhone = cleanPhone(student.guardianPhone1) || cleanPhone(student.guardianPhone) || cleanPhone(student.guardianPhone2) || cleanPhone(student.tutorPhone);
+    const guardianPhone2 = cleanPhone(student.guardianPhone2);
+    const guardianDpi = cleanStr(student.guardianDpi) || cleanStr(student.tutorDpi);
+    const guardianRel = cleanStr(student.guardianRelationship) || 'Encargado(a)';
+
+    // 2. Madre
+    const motherName = cleanStr(student.motherName) || cleanStr(student.madre);
+    const motherPhone = cleanPhone(student.motherPhone1) || cleanPhone(student.motherPhone) || cleanPhone(student.motherPhone2);
+    const motherPhone2 = cleanPhone(student.motherPhone2);
+    const motherDpi = cleanStr(student.motherDpi);
+
+    // 3. Padre
+    const fatherName = cleanStr(student.fatherName) || cleanStr(student.padre);
+    const fatherPhone = cleanPhone(student.fatherPhone1) || cleanPhone(student.fatherPhone) || cleanPhone(student.fatherPhone2);
+    const fatherPhone2 = cleanPhone(student.fatherPhone2);
+    const fatherDpi = cleanStr(student.fatherDpi);
+
+    // 4. Teléfono del estudiante / emergencia
+    const fallbackPhone = cleanPhone(student.phone) || cleanPhone(student.emergencyPhone) || cleanPhone(student.telefono);
+
+    // A. Si tiene tutor o encargado titular específico
+    if (guardianName) {
+        const primaryPhone = guardianPhone || motherPhone || fatherPhone || fallbackPhone;
+        const secondary = (guardianPhone2 && guardianPhone2 !== primaryPhone) ? guardianPhone2 : (motherPhone && motherPhone !== primaryPhone ? motherPhone : '');
+        return {
+            name: guardianName,
+            phone: primaryPhone,
+            phoneDisplay: primaryPhone || 'Sin tel.',
+            secondaryPhone: secondary,
+            relationship: guardianRel,
+            label: guardianRel,
+            dpi: guardianDpi || motherDpi || fatherDpi || '-',
+            source: 'guardian',
+            isAssigned: true
+        };
+    }
+
+    // B. Si están registrados ambos padres (sin tutor específico)
+    if (motherName && fatherName) {
+        // Si solo uno tiene teléfono, priorizar a ese responsable para comunicación efectiva
+        if (motherPhone && !fatherPhone) {
+            return {
+                name: motherName,
+                phone: motherPhone,
+                phoneDisplay: motherPhone,
+                secondaryPhone: motherPhone2 || fallbackPhone,
+                relationship: 'Madre',
+                label: 'Madre',
+                dpi: motherDpi || '-',
+                source: 'mother',
+                isAssigned: true
+            };
+        }
+        if (fatherPhone && !motherPhone) {
+            return {
+                name: fatherName,
+                phone: fatherPhone,
+                phoneDisplay: fatherPhone,
+                secondaryPhone: fatherPhone2 || fallbackPhone,
+                relationship: 'Padre',
+                label: 'Padre',
+                dpi: fatherDpi || '-',
+                source: 'father',
+                isAssigned: true
+            };
+        }
+        // Si ambos tienen o ninguno tiene teléfono: Priorizar Madre (estándar institucional MINEDUC)
+        const primaryPhone = motherPhone || fatherPhone || fallbackPhone;
+        const secondary = (fatherPhone && fatherPhone !== primaryPhone) ? fatherPhone : (motherPhone2 || '');
+        return {
+            name: motherName,
+            phone: primaryPhone,
+            phoneDisplay: primaryPhone || 'Sin tel.',
+            secondaryPhone: secondary,
+            relationship: 'Madre',
+            label: 'Madre',
+            dpi: motherDpi || '-',
+            source: 'mother',
+            isAssigned: true
+        };
+    }
+
+    // C. Solo Madre registrada
+    if (motherName) {
+        const primaryPhone = motherPhone || fallbackPhone;
+        return {
+            name: motherName,
+            phone: primaryPhone,
+            phoneDisplay: primaryPhone || 'Sin tel.',
+            secondaryPhone: motherPhone2 || '',
+            relationship: 'Madre',
+            label: 'Madre',
+            dpi: motherDpi || '-',
+            source: 'mother',
+            isAssigned: true
+        };
+    }
+
+    // D. Solo Padre registrado
+    if (fatherName) {
+        const primaryPhone = fatherPhone || fallbackPhone;
+        return {
+            name: fatherName,
+            phone: primaryPhone,
+            phoneDisplay: primaryPhone || 'Sin tel.',
+            secondaryPhone: fatherPhone2 || '',
+            relationship: 'Padre',
+            label: 'Padre',
+            dpi: fatherDpi || '-',
+            source: 'father',
+            isAssigned: true
+        };
+    }
+
+    // E. Ningún familiar registrado
+    return {
+        name: 'No registrado',
+        phone: fallbackPhone || '',
+        phoneDisplay: fallbackPhone || 'Sin tel.',
+        secondaryPhone: '',
+        relationship: '',
+        label: 'No registrado',
+        dpi: '-',
+        source: 'none',
+        isAssigned: false
+    };
+}
+window.getStudentAssignedGuardianInfo = getStudentAssignedGuardianInfo;
+
+/**
  * Sanitiza recursivamente objetos destinados a Firebase Firestore eliminando valores undefined
  * que causarían excepciones irreversibles en SDK modular/compat.
  */
@@ -13640,7 +13811,9 @@ function renderDashboard() {
                         <tbody>
                             ${criticalAbsenceStudents.length > 0 ? criticalAbsenceStudents.map(item => {
                                 const st = item.student;
-                                const tel = st.tutorPhone || st.phone;
+                                const gInfo = getStudentAssignedGuardianInfo(st);
+                                const tel = gInfo.phone;
+                                const roleBadge = gInfo.isAssigned ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700; margin-left:4px;">${escapeHtml(gInfo.label)}</span>` : '';
                                 return `
                                     <tr>
                                         <td><strong>${escapeHtml(formatStudentDisplayName(st, 'lastFirst'))}</strong><br><small style="color:#64748b;">Carné: ${st.carne}</small></td>
@@ -13649,13 +13822,13 @@ function renderDashboard() {
                                             <span class="badge badge-danger" style="font-weight:800; font-size:0.82rem;">${item.absences} faltas</span>
                                         </td>
                                         <td>
-                                            ${escapeHtml(st.tutor || 'No registrado')}<br>
-                                            <small style="color:#64748b;"><i class="fa-solid fa-phone"></i> ${escapeHtml(tel || 'Sin tel.')}</small>
+                                            ${escapeHtml(gInfo.name)}${roleBadge}<br>
+                                            <small style="color:#64748b;"><i class="fa-solid fa-phone"></i> ${escapeHtml(gInfo.phoneDisplay)}</small>
                                         </td>
                                         <td style="text-align:center;">
                                             <div style="display:inline-flex; gap:6px;">
                                                 ${(tel && canRoleUseWhatsApp()) ? `
-                                                    <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${st.id}')" title="Avisar a encargado por WhatsApp" style="background:#25D366; color:#fff; border:none; padding:3px 8px; font-weight:700; border-radius:4px;">
+                                                    <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${st.id}')" title="Avisar a ${escapeHtml(gInfo.label || 'encargado')} (${escapeHtml(gInfo.name)}) por WhatsApp" style="background:#25D366; color:#fff; border:none; padding:3px 8px; font-weight:700; border-radius:4px;">
                                                         <i class="fa-brands fa-whatsapp"></i> WhatsApp
                                                     </button>
                                                 ` : ''}
@@ -14919,7 +15092,8 @@ function openStudentWhatsAppChat(studentId) {
     }
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student) return;
-    const phone = student.tutorPhone || student.guardianPhone || student.phone || student.motherPhone || student.fatherPhone || '';
+    const gInfo = (typeof getStudentAssignedGuardianInfo === 'function') ? getStudentAssignedGuardianInfo(student) : null;
+    const phone = (gInfo && gInfo.phone) ? gInfo.phone : (student.tutorPhone || student.guardianPhone1 || student.guardianPhone || student.motherPhone1 || student.motherPhone || student.fatherPhone1 || student.fatherPhone || student.phone || '');
     const cleanPhone = String(phone).replace(/\D/g, '');
     const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : `${student.firstName || ''} ${student.lastName || ''}`;
     const gradeLabel = student.grade || student.gradeLabel || '';
@@ -14932,7 +15106,8 @@ function openStudentWhatsAppChat(studentId) {
     }
     
     const formattedPhone = cleanPhone.length === 8 ? `502${cleanPhone}` : cleanPhone;
-    const msg = `Estimado(a) padre/madre de familia o encargado de ${sName} (${gradeLabel}): Le saluda la Dirección / Auxiliatura / Secretaría de la Escuela Nacional de Ciencias Comerciales (ENCCO Jutiapa) para tratar asuntos del estudiante.`;
+    const guardianSalutation = (gInfo && gInfo.isAssigned) ? `${gInfo.label} (${gInfo.name})` : 'padre/madre de familia o encargado';
+    const msg = `Estimado(a) ${guardianSalutation} de ${sName} (${gradeLabel}): Le saluda la Dirección / Auxiliatura / Secretaría de la Escuela Nacional de Ciencias Comerciales (ENCCO Jutiapa) para tratar asuntos del estudiante.`;
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 window.openStudentWhatsAppChat = openStudentWhatsAppChat;
@@ -15201,7 +15376,9 @@ function renderStudentsTable() {
             `<span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.75rem; border:1px solid #cbd5e1;" title="El récord general de notas es de acceso reservado a Dirección y Secretaría"><i class="fa-solid fa-lock"></i> Dirección</span>` :
             `<strong style="color:var(--brand-green-dark); font-size:0.88rem;">${formattedAvg} pts</strong>`;
 
-        const tutorTel = s.tutorPhone || s.phone;
+        const guardianInfo = getStudentAssignedGuardianInfo(s);
+        const tutorTel = guardianInfo.phone;
+        const roleBadge = guardianInfo.isAssigned ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700; margin-left:4px;">${escapeHtml(guardianInfo.label)}</span>` : '';
 
         // Cálculo de iniciales para avatar elegante sin imágenes rotas
         const fName = (s.firstName || s.name || '').trim();
@@ -15253,11 +15430,11 @@ function renderStudentsTable() {
                     </span>
                 </td>
                 <td style="padding:8px 10px;">
-                    <span style="font-size:0.82rem; color:#334155; font-weight:600;">${escapeHtml(s.tutor || 'No registrado')}</span><br>
+                    <span style="font-size:0.82rem; color:#334155; font-weight:600;">${escapeHtml(guardianInfo.name)}</span>${roleBadge}<br>
                     <div style="display:inline-flex; align-items:center; gap:5px; margin-top:2px;">
-                        <small style="color:#64748b; font-size:0.76rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(tutorTel || 'Sin tel.')}</small>
+                        <small style="color:#64748b; font-size:0.76rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(guardianInfo.phoneDisplay)}</small>
                         ${(tutorTel && canRoleUseWhatsApp()) ? `
-                            <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
+                            <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar a ${escapeHtml(guardianInfo.label || 'encargado')} (${escapeHtml(guardianInfo.name)}) vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
                                 <i class="fa-brands fa-whatsapp"></i> Chat
                             </button>
                         ` : ''}
@@ -18763,17 +18940,43 @@ function openStudentProfileModal(id) {
         emailDisp.readOnly = !canEdit;
     }
 
-    // Datos familiares estructurados
+    // Datos familiares estructurados y Encargado Asignado
     const familyBox = document.getElementById('profFamilyDetailsBox');
     if (familyBox) {
+        const assignedGuardian = getStudentAssignedGuardianInfo(student);
         const momInfo = student.motherName ? `👩 <strong>Madre:</strong> ${student.motherName} (DPI: ${student.motherDpi || 'N/A'}) - Tel: <strong>${student.motherPhone1 || 'Sin teléfono'}</strong> ${student.motherPhone2 ? ' / ' + student.motherPhone2 : ''}` : '👩 <strong>Madre:</strong> No registrada';
         const dadInfo = student.fatherName ? `👨 <strong>Padre:</strong> ${student.fatherName} (DPI: ${student.fatherDpi || 'N/A'}) - Tel: <strong>${student.fatherPhone1 || 'Sin teléfono'}</strong> ${student.fatherPhone2 ? ' / ' + student.fatherPhone2 : ''}` : '👨 <strong>Padre:</strong> No registrado';
-        const guardianInfo = student.guardianName ? `🛡️ <strong>Encargado / Tutor:</strong> ${student.guardianName} (DPI: ${student.guardianDpi || 'N/A'}) - Tel: <strong>${student.guardianPhone1 || 'Sin teléfono'}</strong> ${student.guardianPhone2 ? ' / ' + student.guardianPhone2 : ''}` : `🛡️ <strong>Encargado:</strong> ${student.tutor || 'No registrado'}`;
         
+        let guardianLine = '';
+        if (student.guardianName || student.tutor || student.tutorName) {
+            guardianLine = `🛡️ <strong>Encargado / Tutor Titular:</strong> ${student.guardianName || student.tutor || student.tutorName} (DPI: ${student.guardianDpi || student.tutorDpi || 'N/A'}) - Tel: <strong>${student.guardianPhone1 || student.tutorPhone || 'Sin teléfono'}</strong> ${student.guardianPhone2 ? ' / ' + student.guardianPhone2 : ''}`;
+        } else if (assignedGuardian.isAssigned) {
+            guardianLine = `🛡️ <strong>Encargado(a) Asignado(a):</strong> ${escapeHtml(assignedGuardian.name)} <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.75rem; padding:1px 6px; border-radius:4px;">Asume como ${escapeHtml(assignedGuardian.label)}</span> - Tel: <strong>${escapeHtml(assignedGuardian.phoneDisplay)}</strong>`;
+        } else {
+            guardianLine = `🛡️ <strong>Encargado:</strong> No registrado`;
+        }
+        
+        const assignedBadgeCard = assignedGuardian.isAssigned ? `
+            <div style="margin-bottom:10px; padding:8px 12px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <span style="font-weight:800; color:#15803d; font-size:0.80rem;"><i class="fa-solid fa-user-shield"></i> CONTACTO / ENCARGADO PRINCIPAL ASIGNADO:</span><br>
+                    <strong style="color:#0f172a; font-size:0.92rem;">${escapeHtml(assignedGuardian.name)}</strong>
+                    <span class="badge" style="background:#dcfce7; color:#166534; font-weight:700; font-size:0.74rem; padding:2px 7px; border-radius:4px; margin-left:6px;">${escapeHtml(assignedGuardian.label)}</span>
+                    <span style="color:#475569; font-size:0.82rem; margin-left:10px;"><i class="fa-solid fa-phone"></i> <strong>${escapeHtml(assignedGuardian.phoneDisplay)}</strong></span>
+                </div>
+                ${(assignedGuardian.phone && canRoleUseWhatsApp()) ? `
+                    <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${student.id}')" title="Contactar a ${escapeHtml(assignedGuardian.label || 'encargado')} (${escapeHtml(assignedGuardian.name)}) vía WhatsApp" style="padding:4px 10px; font-size:0.76rem; background:#25D366; color:#fff; border:none; border-radius:5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+                        <i class="fa-brands fa-whatsapp"></i> Chat WhatsApp
+                    </button>
+                ` : ''}
+            </div>
+        ` : '';
+
         familyBox.innerHTML = `
+            ${assignedBadgeCard}
             <div style="margin-bottom:4px;">${momInfo}</div>
             <div style="margin-bottom:4px;">${dadInfo}</div>
-            <div>${guardianInfo}</div>
+            <div>${guardianLine}</div>
         `;
     }
 
@@ -20966,8 +21169,9 @@ function generateOfficialPrintList(opts = null) {
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const claveVal = s.clave || (startNo + idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
-                    const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
-                    const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
+                    const gInfo = isVacio ? null : getStudentAssignedGuardianInfo(s);
+                    const guardianName = isVacio ? '' : (gInfo && gInfo.isAssigned ? (gInfo.relationship && gInfo.relationship !== 'Encargado(a)' ? `${gInfo.name} (${gInfo.relationship})` : gInfo.name) : 'No registrado');
+                    const guardianDpi = isVacio ? '' : (gInfo ? gInfo.dpi : '-');
                     const statusText = isVacio ? '' : (isRet ? '<span style="color:#b91c1c; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">RETIRADO</span>' : (isAus ? '<span style="color:#b45309; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">AUSENTE</span>' : (isExon ? `<span style="color:#0284c7; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXONERADO B${bNum}</span>` : `<span style="color:#15803d; font-weight:700; font-size:6.8px;">${(s.status || 'Inscrito').toUpperCase()}</span>`)));
 
                     return `
@@ -21811,8 +22015,9 @@ function generateOfficialExcelList(opts = null) {
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagTxt}`;
                     const claveVal = s.clave || (idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
-                    const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
-                    const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
+                    const gInfo = isVacio ? null : getStudentAssignedGuardianInfo(s);
+                    const guardianName = isVacio ? '' : (gInfo && gInfo.isAssigned ? (gInfo.relationship && gInfo.relationship !== 'Encargado(a)' ? `${gInfo.name} (${gInfo.relationship})` : gInfo.name) : 'No registrado');
+                    const guardianDpi = isVacio ? '' : (gInfo ? gInfo.dpi : '-');
                     const statusText = isVacio ? '' : (isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : (isExon ? `EXONERADO B${bNum}` : (s.status || 'Inscrito').toUpperCase())));
 
                     aoa.push([
@@ -23198,6 +23403,9 @@ function printStudentsOfficialList(targetGrade = null) {
         const isRetBim = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isExonBim = !isRetBim && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
+        const gInfo = getStudentAssignedGuardianInfo(s);
+        const guardianDisplay = gInfo.isAssigned ? (gInfo.relationship && gInfo.relationship !== 'Encargado(a)' ? `${escapeHtml(gInfo.name)} (${escapeHtml(gInfo.relationship)})` : escapeHtml(gInfo.name)) : 'No reg.';
+        const phoneDisplay = gInfo.phoneDisplay;
 
         let rowBg = '#ffffff';
         let statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#15803d; background:#dcfce7; border:1px solid #86efac; padding:1px 6px; border-radius:4px;">Activo</span>';
@@ -23224,7 +23432,7 @@ function printStudentsOfficialList(targetGrade = null) {
             <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
             <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}</td>
             <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
-            <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${s.tutor || s.tutorName || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
+            <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${guardianDisplay} (${escapeHtml(phoneDisplay)})</td>
             <td style="text-align:center; width:75px; border:1px solid #334155; padding:5px;">${statusBadge}</td>
         </tr>
         `;
@@ -41799,6 +42007,12 @@ function exportStudentsOfficialExcel() {
                 statusTxt = String(s.status).toUpperCase();
             }
 
+            const gInfo = getStudentAssignedGuardianInfo(s);
+            const guardianDisplay = gInfo.isAssigned
+                ? (gInfo.relationship && gInfo.relationship !== 'Encargado(a)' ? `${gInfo.name} (${gInfo.relationship})` : gInfo.name)
+                : '-';
+            const guardianPhoneDisplay = gInfo.phone || '-';
+
             const row = [
                 idx + 1,
                 s.carne || '-',
@@ -41808,8 +42022,8 @@ function exportStudentsOfficialExcel() {
                 (fName || '-').toUpperCase(),
                 s.gender || 'Masculino',
                 formatStudentGradeAndSection(s),
-                s.tutorName || s.tutor || '-',
-                s.tutorPhone || s.phone || '-',
+                guardianDisplay,
+                guardianPhoneDisplay,
                 statusTxt
             ];
             row._meta = { isRet, isAus, isExon };
@@ -49720,8 +49934,14 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
         time: timeStr,
         timestamp: timestamp,
         status: 'pendiente', // 'pendiente', 'justificada', 'citacion', 'verificada', 'corregida'
-        guardianName: (student && (student.tutorName || student.tutor)) ? (student.tutorName || student.tutor) : 'No registrado',
-        guardianPhone: (student && (student.tutorPhone || student.phone)) ? (student.tutorPhone || student.phone) : '',
+        guardianName: (() => {
+            const g = (typeof getStudentAssignedGuardianInfo === 'function' && student) ? getStudentAssignedGuardianInfo(student) : null;
+            return (g && g.isAssigned) ? g.name : ((student && (student.tutorName || student.tutor)) ? (student.tutorName || student.tutor) : 'No registrado');
+        })(),
+        guardianPhone: (() => {
+            const g = (typeof getStudentAssignedGuardianInfo === 'function' && student) ? getStudentAssignedGuardianInfo(student) : null;
+            return (g && g.phone) ? g.phone : ((student && (student.tutorPhone || student.phone)) ? (student.tutorPhone || student.phone) : '');
+        })(),
         notes: ''
     };
 
@@ -53132,9 +53352,10 @@ function promptIncidentWhatsAppNotification(options) {
     const sectionLabel = student.section || '';
     const fullGrade = `${gradeLabel} ${sectionLabel ? 'Sec. ' + sectionLabel : ''}`.trim();
 
-    // Buscar teléfonos y nombres de tutores/encargados
-    const rawPhone = student.tutorPhone || student.guardianPhone1 || student.guardianPhone || student.motherPhone1 || student.motherPhone || student.fatherPhone1 || student.fatherPhone || student.phone || '';
-    const parentName = student.tutor || student.tutorName || student.guardianName || student.motherName || student.fatherName || 'Padre de Familia / Encargado';
+    // Buscar teléfonos y nombres de tutores/encargados con cascada oficial
+    const gInfo = (typeof getStudentAssignedGuardianInfo === 'function' && student) ? getStudentAssignedGuardianInfo(student) : null;
+    const rawPhone = (gInfo && gInfo.phone) ? gInfo.phone : (student.tutorPhone || student.guardianPhone1 || student.guardianPhone || student.motherPhone1 || student.motherPhone || student.fatherPhone1 || student.fatherPhone || student.phone || '');
+    const parentName = (gInfo && gInfo.isAssigned) ? gInfo.name : (student.tutor || student.tutorName || student.guardianName || student.motherName || student.fatherName || 'Padre de Familia / Encargado');
 
     let cleanPhone = String(rawPhone || '').replace(/\D/g, '');
     if (cleanPhone.length === 8) {

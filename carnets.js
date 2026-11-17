@@ -317,6 +317,15 @@
          */
         resolveStudentGuardian(student) {
             if (!student) return { name: 'Padre de Familia', phone: 'No reg.' };
+            if (typeof window.getStudentAssignedGuardianInfo === 'function') {
+                const info = window.getStudentAssignedGuardianInfo(student);
+                if (info && info.isAssigned) {
+                    return {
+                        name: info.name,
+                        phone: info.phoneDisplay
+                    };
+                }
+            }
 
             const clean = (val) => {
                 if (!val || typeof val !== 'string') return '';
