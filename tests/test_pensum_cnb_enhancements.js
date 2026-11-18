@@ -58,11 +58,12 @@ restoreOfficialCnbPensumForGrade('4to');
 const subjects4to = STATE.pensumCatalog.filter(p => getPensumItemGradeKey(p) === '4to');
 assert.strictEqual(subjects4to.length, 9, "Se deben haber creado exactamente 9 materias oficiales para 4to");
 assert.strictEqual(subjects4to[0].name, 'Contabilidad de Sociedades', "La materia 1 debe ser Contabilidad de Sociedades como en 2026");
-assert.strictEqual(subjects4to[0].code, '04-01-01', "El código de la materia 1 debe ser 04-01-01");
+assert.strictEqual(subjects4to[0].code, '338', "El código de la materia 1 debe ser el código MINEDUC de 3 dígitos 338");
 assert.strictEqual(subjects4to[0].order, 1);
 assert.strictEqual(subjects4to[8].name, 'Computación I', "La materia 9 debe ser Computación I como en 2026");
+assert.strictEqual(subjects4to[8].code, '346', "El código de Computación I debe ser 346");
 assert.strictEqual(subjects4to[8].order, 9);
-console.log("  ✅ Malla de 4to restaurada fielmente con la secuencia institucional de 2026 (Orden 1 al 9).");
+console.log("  ✅ Malla de 4to restaurada fielmente con la secuencia institucional y códigos MINEDUC de 3 dígitos (338-346).");
 
 // 3. Restauración de Malla Oficial en 1 clic para 6to (Alineada 100% al orden y códigos oficiales 2026)
 console.log("➡️  Prueba 3: Restauración de Malla en 1 clic (6to)...");
@@ -70,7 +71,7 @@ restoreOfficialCnbPensumForGrade('6to');
 const subjects6to = STATE.pensumCatalog.filter(p => getPensumItemGradeKey(p) === '6to');
 assert.strictEqual(subjects6to.length, 10, "Se deben haber creado exactamente 10 materias oficiales para 6to");
 assert.strictEqual(subjects6to[0].name, 'Contabilidad Bancaria', "La materia 1 de 6to debe ser Contabilidad Bancaria como en 2026");
-assert.strictEqual(subjects6to[0].code, '06-01-01');
+assert.strictEqual(subjects6to[0].code, '356', "El código MINEDUC de Contabilidad Bancaria debe ser 356");
 assert.strictEqual(subjects6to[9].name, 'Seminario sobre Problemas Socioeconómicos de Guatemala');
 assert.strictEqual(subjects6to[9].order, 10);
 assert.ok(subjects6to.some(s => s.name === 'Práctica Supervisada'), "Debe incluir Práctica Supervisada");

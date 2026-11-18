@@ -63,20 +63,20 @@ assert.strictEqual(p6to.length, 10, "6to debe tener 10 asignaturas");
 
 // Verificar orden y códigos 2026
 assert.strictEqual(p4to[0].name, 'Contabilidad de Sociedades');
-assert.strictEqual(p4to[0].code, '04-01-01');
+assert.strictEqual(p4to[0].code, '338', 'Código MINEDUC de Contabilidad de Sociedades debe ser 338');
 assert.strictEqual(p4to[0].order, 1);
 assert.strictEqual(p5to[0].name, 'Contabilidad de Costos');
-assert.strictEqual(p5to[0].code, '05-01-01');
+assert.strictEqual(p5to[0].code, '347', 'Código MINEDUC de Contabilidad de Costos debe ser 347');
 assert.strictEqual(p6to[0].name, 'Contabilidad Bancaria');
-assert.strictEqual(p6to[0].code, '06-01-01');
-console.log("  ✅ Prueba 1 Superada: Catálogo del Pensum garantizado con 28 asignaturas oficiales.");
+assert.strictEqual(p6to[0].code, '356', 'Código MINEDUC de Contabilidad Bancaria debe ser 356');
+console.log("  ✅ Prueba 1 Superada: Catálogo del Pensum garantizado con 28 asignaturas oficiales y códigos MINEDUC de 3 dígitos.");
 
 // 2. Prueba de No Duplicación en Pensum Catalog
 console.log("\n➡️  Prueba 2: Garantía Anti-Duplicados en Pensum Catalog...");
 // Intentar inyectar materias duplicadas arbitrariamente
 STATE.pensumCatalog.push({
     id: 'dup-1',
-    code: '04-01-01',
+    code: '338',
     name: 'Contabilidad de Sociedades',
     subject: 'Contabilidad de Sociedades',
     grade: 'Cuarto Perito Contador',
@@ -84,7 +84,7 @@ STATE.pensumCatalog.push({
 });
 STATE.pensumCatalog.push({
     id: 'dup-2',
-    code: '04-01-02',
+    code: '339',
     name: 'matemática comercial',
     subject: 'Matemática Comercial',
     grade: '4to Grado',
@@ -140,7 +140,7 @@ const asgEconA = STATE.pensum.find(a => getPensumItemGradeKey(a) === '4to' && a.
 assert.ok(asgEconA, "Debe existir la cátedra de Economía en Sección A");
 assert.strictEqual(asgEconA.teacher, 'Williams Esmely Gudiel Paredes', "El docente Williams Gudiel debe preservarse intacto");
 assert.strictEqual(asgEconA.teacherId, 'usr-doc-04');
-assert.strictEqual(asgEconA.code, '04-01-06', "Debe adoptar el código oficial del pensum 04-01-06");
+assert.strictEqual(asgEconA.code, '343', "Debe adoptar el código oficial de 3 dígitos de MINEDUC 343");
 
 // Verificar que no hay duplicados de Economía en Sección A
 const countEconA = STATE.pensum.filter(a => getPensumItemGradeKey(a) === '4to' && a.section.includes('A') && a.subject.includes('Economía')).length;
