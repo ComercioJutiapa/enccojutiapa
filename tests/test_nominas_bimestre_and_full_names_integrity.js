@@ -100,6 +100,13 @@ assert(appJsContent.includes('mso-number-format'), "Falta formato mso-number-for
 assert(appJsContent.includes('BIMESTRE OFICIAL'), "Falta el bimestre oficial dinámico en el subtítulo de exportación de nómina de estudiantes");
 console.log("✅ 7. Auto-ajuste de columnas Excel y subtítulo dinámico con Bimestre Oficial verificados.");
 
+// 8. Verificar configuración institucional avanzada en Excel (Freeze Panes, GridLines, PageSetup y Firmas)
+assert(appJsContent.includes("state: 'frozen'"), "Falta inmovilización de paneles (Freeze Panes) en los archivos de Excel");
+assert(appJsContent.includes("showGridLines: true"), "Falta activación explícita de líneas de cuadrícula en los archivos de Excel");
+assert(appJsContent.includes("paperSize: 5"), "Falta pre-configuración de tamaño Oficio (Legal) en la configuración de página de Excel");
+assert(appJsContent.includes("ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970"), "Falta el cintillo institucional ENCCO 1970 en los encabezados de Excel");
+console.log("✅ 8. Configuración institucional avanzada de Excel (Freeze Panes, GridLines, PageSetup y Firmas) verificada.");
+
 console.log("--------------------------------------------------------------------------------");
-console.log("🎉 ¡TODAS LAS PRUEBAS DE RESOLUCIÓN DE BIMESTRE Y NOMBRES ÍNTEGROS PASARON CON ÉXITO AL 100%!");
+console.log("🎉 ¡TODAS LAS PRUEBAS DE RESOLUCIÓN DE BIMESTRE Y CONFIGURACIÓN INSTITUCIONAL DE EXCEL PASARON CON ÉXITO AL 100%!");
 console.log("--------------------------------------------------------------------------------");

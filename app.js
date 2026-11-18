@@ -22255,8 +22255,56 @@ function generateOfficialExcelList(opts = null) {
                 });
             }
 
+            // Bloque oficial de firmas institucionales al pie
+            aoa.push([]);
+            aoa.push([]);
+            const numH = headers.length;
+            const c1 = 1;
+            const c2 = Math.max(2, Math.floor(numH / 2) - 1);
+            const c3 = Math.max(3, numH - 2);
+
+            const sLine = new Array(numH).fill('');
+            sLine[c1] = "_______________________________";
+            sLine[c2] = "_______________________________";
+            sLine[c3] = "_______________________________";
+            aoa.push(sLine);
+
+            const sName = new Array(numH).fill('');
+            sName[c1] = effectiveTeacher;
+            sName[c2] = "Secretaría Académica";
+            sName[c3] = "Vo.Bo. Dirección General";
+            aoa.push(sName);
+
+            const sSub = new Array(numH).fill('');
+            sSub[c1] = "Catedrático(a) Titular / Guía";
+            sSub[c2] = "Registro y Control Escolar";
+            sSub[c3] = "ENCCO Jutiapa";
+            aoa.push(sSub);
+
             const ws = XLSX.utils.aoa_to_sheet(aoa);
-            ws['!cols'] = colWidths;
+
+            // Ajuste dinámico de columnas para que ningún dato o nombre quede cortado
+            const dynamicColWidths = headers.map((h, colIdx) => {
+                let maxLen = String(h || '').length;
+                aoa.slice(6, 6 + students.length).forEach(r => {
+                    const rawVal = (r && r[colIdx] !== undefined && r[colIdx] !== null) ? (typeof r[colIdx] === 'object' && r[colIdx].v !== undefined ? String(r[colIdx].v) : String(r[colIdx])) : '';
+                    if (rawVal.length > maxLen) maxLen = rawVal.length;
+                });
+                const baseW = (colWidths && colWidths[colIdx] && colWidths[colIdx].wch) ? colWidths[colIdx].wch : 14;
+                return { wch: Math.max(maxLen + 4, baseW) };
+            });
+            ws['!cols'] = dynamicColWidths;
+
+            // Merges institucionales en el encabezado
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: headers.length - 1 } }
+            ];
+
+            // Inmovilizar paneles en la fila de títulos y activar cuadrícula visible
+            ws['!views'] = [{ showGridLines: true, state: 'frozen', ySplit: 6, xSplit: 0 }];
+
             // Configurar tamaño Oficio (Legal = 5) y orientación exacta
             ws['!pageSetup'] = {
                 paperSize: 5,
@@ -22264,7 +22312,6 @@ function generateOfficialExcelList(opts = null) {
                 fitToWidth: 1,
                 fitToHeight: 0
             };
-            ws['!views'] = [{ showGridLines: true }];
 
             XLSX.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
             XLSX.writeFile(wb, fileBaseName);
@@ -35996,7 +36043,8 @@ function exportAttendanceOfficialExcel() {
             return;
         }
     }
-    const year = 2026;
+    const year = STATE.activeCycle ? parseInt(STATE.activeCycle) : 2026;
+    const cycle = String(year);
     const daysInMonth = new Date(year, month, 0).getDate();
 
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
@@ -36010,12 +36058,134 @@ function exportAttendanceOfficialExcel() {
 
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
+    const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
+    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const monthLabel = monthNames[month - 1] || `Mes ${month}`;
+    const subjectTitle = currentCourseObj ? (currentCourseObj.subject || 'Cátedra Asignada') : 'Registro General de Asistencia';
+    const teacherName = currentCourseObj ? (currentCourseObj.teacher || 'Catedrático Titular') : (STATE.currentUser?.name || 'Claustro Docente');
 
+    // 1. Exportación oficial binaria en formato Excel (.xlsx) con SheetJS
+    if (xlsxLib && xlsxLib.utils) {
+        try {
+            const aoa = [
+                ["ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970"],
+                [`JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`],
+                [`CONTROL OFICIAL DE ASISTENCIA Y PUNTUALIDAD — ${gradeText.toUpperCase()} (${monthLabel.toUpperCase()})`],
+                [`ASIGNATURA: ${subjectTitle} | CATEDRÁTICO(A): ${teacherName} | BIMESTRE: ${attBim}º | TOTAL ALUMNOS: ${students.length}`],
+                []
+            ];
+
+            const headers = ['No.', 'Código Personal', 'Apellidos y Nombres'];
+            for (let d = 1; d <= daysInMonth; d++) headers.push(String(d));
+            headers.push('P', 'A', 'J', 'T', '% Asistencia');
+            aoa.push(headers);
+
+            students.forEach((s, idx) => {
+                const sRecords = monthData[s.id] || {};
+                let p = 0, a = 0, j = 0, t = 0;
+                const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+                const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+                const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, attBim) : false);
+                let sName = formatStudentDisplayName(s, 'lastFirst');
+                if (isRet) sName += ' [RETIRADO]';
+                else if (isAus) sName += ' [AUSENTE]';
+                else if (isExon) sName += ` [EXONERADO B${attBim}]`;
+
+                const row = [
+                    idx + 1,
+                    { t: 's', v: s.personalCode || s.cui || s.carne || '' },
+                    sName
+                ];
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dObj = new Date(year, month - 1, d);
+                    const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+                    if (isWeekend) {
+                        row.push('-');
+                    } else {
+                        let val = sRecords[d] || '';
+                        if (val === 'P') p++;
+                        else if (val === 'A') a++;
+                        else if (val === 'J') j++;
+                        else if (val === 'T') t++;
+                        row.push(val);
+                    }
+                }
+                const tot = p + a + j + t;
+                const pct = tot > 0 ? Math.round(((p + j + (t * 0.5)) / tot) * 100) : 100;
+                row.push(p, a, j, t, `${pct}%`);
+                aoa.push(row);
+            });
+
+            // Bloque oficial de firmas al pie
+            aoa.push([]);
+            aoa.push([]);
+            const sigCols = headers.length;
+            const sigLine = new Array(sigCols).fill('');
+            sigLine[2] = "_______________________________";
+            sigLine[Math.floor(sigCols / 2)] = "_______________________________";
+            sigLine[sigCols - 3] = "_______________________________";
+            aoa.push(sigLine);
+
+            const sigTitle = new Array(sigCols).fill('');
+            sigTitle[2] = teacherName;
+            sigTitle[Math.floor(sigCols / 2)] = "Profesor Auxiliar / Auxiliatura";
+            sigTitle[sigCols - 3] = "Vo.Bo. Dirección General";
+            aoa.push(sigTitle);
+
+            const sigSub = new Array(sigCols).fill('');
+            sigSub[2] = "Catedrático(a) Titular / Guía";
+            sigSub[Math.floor(sigCols / 2)] = "Control y Registro de Asistencia";
+            sigSub[sigCols - 3] = "ENCCO Jutiapa";
+            aoa.push(sigSub);
+
+            const ws = xlsxLib.utils.aoa_to_sheet(aoa);
+
+            // Anchos de columna dinámicos
+            const colWidths = [
+                { wch: 6 },  // No.
+                { wch: 18 }, // Código Personal
+                { wch: 38 }  // Apellidos y Nombres
+            ];
+            for (let d = 1; d <= daysInMonth; d++) colWidths.push({ wch: 4 });
+            colWidths.push({ wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 14 });
+            ws['!cols'] = colWidths;
+
+            // Merges institucionales
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: headers.length - 1 } },
+                { s: { r: 3, c: 0 }, e: { r: 3, c: headers.length - 1 } }
+            ];
+
+            // Inmovilizar paneles en la fila de títulos y activar cuadrícula visible
+            ws['!views'] = [{ showGridLines: true, state: 'frozen', ySplit: 5, xSplit: 0 }];
+
+            // Configuración de página horizontal en tamaño Oficio
+            ws['!pageSetup'] = {
+                paperSize: 5,
+                orientation: 'landscape',
+                fitToWidth: 1,
+                fitToHeight: 0
+            };
+
+            const wb = xlsxLib.utils.book_new();
+            const fileNameXlsx = `Asistencia_${gradeCode}_Mes_${month}_${cycle}.xlsx`;
+            xlsxLib.utils.book_append_sheet(wb, ws, `Asistencia Mes ${month}`);
+            xlsxLib.writeFile(wb, fileNameXlsx);
+            showToast(`Planilla oficial de asistencia descargada en Excel: "${fileNameXlsx}".`, "success");
+            return;
+        } catch (err) {
+            console.warn("SheetJS export error en asistencia, usando respaldo CSV:", err);
+        }
+    }
+
+    // 2. Respaldo CSV estándar si SheetJS no está presente
     let csv = `\uFEFFNo,Codigo_Personal,Apellidos y Nombres,`;
     for (let d = 1; d <= daysInMonth; d++) csv += `Dia_${d},`;
     csv += `Total_P,Total_A,Total_J,Total_T,Porcentaje_Asistencia\n`;
-
-    const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
 
     students.forEach((s, idx) => {
         const sRecords = monthData[s.id] || {};
@@ -36053,7 +36223,7 @@ function exportAttendanceOfficialExcel() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Asistencia_${gradeCode}_Mes_${month}_2026.csv`;
+    link.download = `Asistencia_${gradeCode}_Mes_${month}_${cycle}.csv`;
     link.click();
     showToast("Planilla descargada exitosamente en formato CSV / Excel.", "success");
 }
@@ -40349,14 +40519,42 @@ function exportGradebookOfficialExcel() {
             summaryRow.push('');
             aoa.push(summaryRow);
 
+            // Bloque oficial de firmas institucionales al pie
+            aoa.push([]);
+            aoa.push([]);
+            const sigLine = new Array(18).fill('');
+            sigLine[3] = "_______________________________";
+            sigLine[11] = "_______________________________";
+            sigLine[16] = "_______________________________";
+            aoa.push(sigLine);
+
+            const sigTitle = new Array(18).fill('');
+            sigTitle[3] = dynamicTeacher;
+            sigTitle[11] = "Secretaría Académica";
+            sigTitle[16] = "Vo.Bo. Dirección General";
+            aoa.push(sigTitle);
+
+            const sigSub = new Array(18).fill('');
+            sigSub[3] = "Catedrático(a) Titular";
+            sigSub[11] = "Registro y Control Escolar";
+            sigSub[16] = "ENCCO Jutiapa";
+            aoa.push(sigSub);
+
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
+
+            // Cálculo dinámico de ancho para que ningún nombre de estudiante quede truncado
+            const maxStudentNameLen = Math.max(...students.map(s => {
+                const name = formatStudentDisplayName(s, 'lastFirst');
+                return name ? name.length : 20;
+            }), 25);
+            const dynamicNameWidth = Math.max(maxStudentNameLen + 4, 38);
 
             // CUI / DPI queda oculto en Excel (hidden: true, wch: 0)
             ws['!cols'] = [
                 { wch: 6 },  // No.
                 { wch: 18 }, // Codigo Personal (1 letra + 3 digitos + 3 letras)
                 { wch: 0, hidden: true }, // CUI / DPI (Oculto)
-                { wch: 38 }, // Estudiante
+                { wch: dynamicNameWidth }, // Estudiante (Auto-ajustado sin cortes)
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
                 { wch: 13 }, // Total Zona
@@ -40369,6 +40567,17 @@ function exportGradebookOfficialExcel() {
                 { s: { r: 0, c: 0 }, e: { r: 0, c: 17 } },
                 { s: { r: 1, c: 0 }, e: { r: 1, c: 17 } }
             ];
+
+            // Inmovilizar paneles en encabezados y habilitar líneas de cuadrícula
+            ws['!views'] = [{ showGridLines: true, state: 'frozen', ySplit: 6, xSplit: 0 }];
+
+            // Configuración de página de impresión oficial (Horizontal / Hoja Oficio)
+            ws['!pageSetup'] = {
+                paperSize: 5,
+                orientation: 'landscape',
+                fitToWidth: 1,
+                fitToHeight: 0
+            };
 
             const wb = xlsxLib.utils.book_new();
             const sheetTitle = `${(targetPensum.grade || 'Grado').slice(0, 10)} ${targetPensum.section || ''} - B${currentUnit}`.replace(/[\\/:*?"<>|]/g, '_');
@@ -41738,30 +41947,69 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
     const cleanFileName = filename.replace(/\.[^/.]+$/, "") + ".xlsx";
     const cycle = STATE.activeCycle || '2026';
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+    const numCols = (headers && headers.length) ? headers.length : 9;
 
     // 1. Intentar con SheetJS nativo si está disponible
     if (xlsxLib && xlsxLib.utils) {
         try {
             const rawRows = dataRows.map(r => {
                 const meta = r._meta;
-                if (!meta || (!meta.isRet && !meta.isAus && !meta.isExon)) return r;
-                const fgRgb = meta.isRet ? "FEF2F2" : (meta.isAus ? "FFFBEB" : "F0F9FF");
-                return r.map(cell => {
+                const fgRgb = meta?.isRet ? "FEF2F2" : (meta?.isAus ? "FFFBEB" : (meta?.isExon ? "F0F9FF" : null));
+                return r.map((cell, colIdx) => {
+                    const isCodeCol = (colIdx === 1 || colIdx === 2 || colIdx === 3 || colIdx === 9);
+                    let val = cell;
+                    let cellType = typeof cell === 'number' ? 'n' : 's';
                     if (typeof cell === 'object' && cell !== null && cell.v !== undefined) {
-                        return { ...cell, s: { fill: { fgColor: { rgb: fgRgb } } } };
+                        val = cell.v;
+                        if (cell.t) cellType = cell.t;
+                        if (cell.f) return { ...cell, s: fgRgb ? { fill: { fgColor: { rgb: fgRgb } } } : undefined };
                     }
-                    return { v: cell, t: typeof cell === 'number' ? 'n' : 's', s: { fill: { fgColor: { rgb: fgRgb } } } };
+                    if (isCodeCol) {
+                        cellType = 's';
+                        val = (val !== undefined && val !== null && val !== '') ? String(val) : '';
+                    }
+                    const cellObj = { v: val, t: cellType };
+                    if (fgRgb) {
+                        cellObj.s = { fill: { fgColor: { rgb: fgRgb } } };
+                    }
+                    return cellObj;
                 });
             });
 
             const aoa = [
-                ["ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA"],
-                [title + (subtitle ? " - " + subtitle : "")],
-                [`Ciclo Escolar: ${cycle} | Generado el: ${new Date().toLocaleDateString('es-GT')}`],
+                ["ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970"],
+                [`JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`],
+                [title + (subtitle ? " — " + subtitle : "")],
+                [`EMISIÓN OFICIAL: ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}`],
                 [],
                 headers,
                 ...rawRows
             ];
+
+            // Bloque oficial de firmas institucionales al pie
+            aoa.push([]);
+            aoa.push([]);
+            const col1 = 1;
+            const col2 = Math.max(2, Math.floor(numCols / 2) - 1);
+            const col3 = Math.max(3, numCols - 2);
+
+            const sigLineRow = new Array(numCols).fill('');
+            sigLineRow[col1] = "_______________________________";
+            sigLineRow[col2] = "_______________________________";
+            sigLineRow[col3] = "_______________________________";
+            aoa.push(sigLineRow);
+
+            const sigTitleRow = new Array(numCols).fill('');
+            sigTitleRow[col1] = "Catedrático(a) Guía / Titular";
+            sigTitleRow[col2] = "Secretaría Académica";
+            sigTitleRow[col3] = "Vo.Bo. Dirección General";
+            aoa.push(sigTitleRow);
+
+            const sigSubRow = new Array(numCols).fill('');
+            sigSubRow[col1] = "Control y Registro Docente";
+            sigSubRow[col2] = "Registro y Control Escolar";
+            sigSubRow[col3] = "ENCCO Jutiapa";
+            aoa.push(sigSubRow);
 
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
             
@@ -41777,11 +42025,31 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
             });
             ws['!cols'] = dynamicCols;
 
+            // Merges institucionales en el encabezado
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: numCols - 1 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: numCols - 1 } },
+                { s: { r: 3, c: 0 }, e: { r: 3, c: numCols - 1 } }
+            ];
+
+            // Inmovilizar paneles en la fila de títulos (fila 6) y activar cuadrícula visible
+            ws['!views'] = [{ showGridLines: true, state: 'frozen', ySplit: 6, xSplit: 0 }];
+
+            // Configuración de página de impresión directa en Excel (Oficio / Carta, ajuste a 1 página de ancho)
+            const isLandscape = numCols > 7;
+            ws['!pageSetup'] = {
+                paperSize: 5, // Legal / Oficio (o 1 = Letter)
+                orientation: isLandscape ? 'landscape' : 'portrait',
+                fitToWidth: 1,
+                fitToHeight: 0
+            };
+
             const wb = xlsxLib.utils.book_new();
-            xlsxLib.utils.book_append_sheet(wb, ws, "Nómina Oficial");
+            xlsxLib.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
 
             xlsxLib.writeFile(wb, cleanFileName);
-            if (typeof showToast === 'function') showToast(`Archivo "${cleanFileName}" descargado exitosamente.`, "success");
+            if (typeof showToast === 'function') showToast(`Archivo "${cleanFileName}" descargado exitosamente con formato institucional.`, "success");
             return true;
         } catch (err) {
             console.warn("SheetJS export error, usando respaldo HTML enriquecido:", err);
@@ -41791,19 +42059,23 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
     // 2. Respaldo HTML enriquecido compatible con Excel (.xls) conservando el 100% de los colores institucionales
     try {
         const htmlFileName = filename.replace(/\.[^/.]+$/, "") + ".xls";
+        const colThird = Math.max(1, Math.floor(headers.length / 3));
+        const colRest = headers.length - (2 * colThird);
+
         let htmlContent = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
             <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
             <style>
-                th { background:#0369a1; color:#ffffff; font-weight:bold; border:1px solid #cbd5e1; padding:6px; font-family:Arial; }
-                td { border:1px solid #cbd5e1; padding:5px; font-family:Arial; }
+                th { background:#15803d; color:#ffffff; font-weight:bold; border:1px solid #cbd5e1; padding:6px; font-family:'Segoe UI', Arial, sans-serif; }
+                td { border:1px solid #cbd5e1; padding:5px; font-family:'Segoe UI', Arial, sans-serif; font-size:9pt; }
             </style>
             </head>
             <body>
             <table>
-                <tr><th colspan="${headers.length}" style="font-size:14pt; background:#0f2b5c; color:#fff;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA</th></tr>
-                <tr><th colspan="${headers.length}" style="font-size:12pt; background:#0369a1; color:#fff;">${title} ${subtitle ? ' - ' + subtitle : ''}</th></tr>
-                <tr><td colspan="${headers.length}" style="color:#64748b; font-size:9pt;">Ciclo Escolar: ${cycle} | Generado el: ${new Date().toLocaleDateString('es-GT')}</td></tr>
+                <tr><th colspan="${headers.length}" style="font-size:14pt; background:#064e3b; color:#fff; text-align:center;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970</th></tr>
+                <tr><th colspan="${headers.length}" style="font-size:11pt; background:#15803d; color:#fff; text-align:center;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</th></tr>
+                <tr><th colspan="${headers.length}" style="font-size:12pt; background:#0369a1; color:#fff; text-align:center;">${title} ${subtitle ? ' — ' + subtitle : ''}</th></tr>
+                <tr><td colspan="${headers.length}" style="color:#64748b; font-size:9pt; text-align:center;">Emisión Oficial: ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
                 <tr></tr>
                 <tr>${headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join('')}</tr>
                 ${dataRows.map(row => {
@@ -41815,6 +42087,28 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
                         return `<td style="${styleFmt}">${escapeHtml(String(c !== undefined && c !== null ? c : ''))}</td>`;
                     }).join('')}</tr>`;
                 }).join('')}
+                <tr></tr>
+                <tr></tr>
+                <tr>
+                    <td colspan="${colThird}" style="text-align:center; padding-top:25px; border:none;">
+                        <div style="border-top:1.5px solid #000; display:inline-block; width:85%; padding-top:4px;">
+                            <strong>Catedrático(a) Guía / Titular</strong><br>
+                            <span style="font-size:7.5pt; color:#64748b;">Control Docente</span>
+                        </div>
+                    </td>
+                    <td colspan="${colThird}" style="text-align:center; padding-top:25px; border:none;">
+                        <div style="border-top:1.5px solid #000; display:inline-block; width:85%; padding-top:4px;">
+                            <strong>Secretaría Académica</strong><br>
+                            <span style="font-size:7.5pt; color:#64748b;">Registro y Control Escolar</span>
+                        </div>
+                    </td>
+                    <td colspan="${colRest}" style="text-align:center; padding-top:25px; border:none;">
+                        <div style="border-top:1.5px solid #000; display:inline-block; width:85%; padding-top:4px;">
+                            <strong>Vo.Bo. Dirección General</strong><br>
+                            <span style="font-size:7.5pt; color:#64748b;">ENCCO Jutiapa</span>
+                        </div>
+                    </td>
+                </tr>
             </table>
             </body>
             </html>
