@@ -53,7 +53,8 @@ const CRITICAL_SUITES = [
     'tests/test_nominas_bimestre_and_full_names_integrity.js',
     'tests/test_excel_vibrant_institutional_styling.js',
     'tests/test_download_excel_button_robustness.js',
-    'tests/test_cycle_2027_clean_slate_and_history_isolation.js'
+    'tests/test_cycle_2027_clean_slate_and_history_isolation.js',
+    'tests/test_pensum_cnb_enhancements.js'
 ];
 
 console.log('================================================================================');

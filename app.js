@@ -44177,10 +44177,244 @@ function normalizePensumCatalogCodes() {
     });
 }
 
-function onPensumSubjectCareerOrGradeChange() {
-    // REGLA ESTRICTA 2: No auto-generar códigos al cambiar de carrera o grado.
-    // El usuario asigna o deja en blanco el código manualmente.
+const OFFICIAL_CNB_PENSUM_COURSES = {
+    '4to': [
+        { code: '04-01-01', name: 'Matemática Comercial', periods: 5, order: 1 },
+        { code: '04-01-02', name: 'Introducción a la Economía', periods: 4, order: 2 },
+        { code: '04-01-03', name: 'Administración y Organización de Empresas', periods: 4, order: 3 },
+        { code: '04-01-04', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 4 },
+        { code: '04-01-05', name: 'Contabilidad de Sociedades', periods: 5, order: 5 },
+        { code: '04-01-06', name: 'Inglés Comercial I', periods: 4, order: 6 },
+        { code: '04-01-07', name: 'Fundamentos de Derecho', periods: 4, order: 7 },
+        { code: '04-01-08', name: 'Computación I', periods: 4, order: 8 },
+        { code: '04-01-09', name: 'Caligrafía y Ortografía', periods: 2, order: 9 }
+    ],
+    '5to': [
+        { code: '05-01-01', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 1 },
+        { code: '05-01-02', name: 'Mecanografía', periods: 4, order: 2 },
+        { code: '05-01-03', name: 'Contabilidad de Costos', periods: 5, order: 3 },
+        { code: '05-01-04', name: 'Geografía Económica', periods: 4, order: 4 },
+        { code: '05-01-05', name: 'Catalogación y Archivo', periods: 4, order: 5 },
+        { code: '05-01-06', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 6 },
+        { code: '05-01-07', name: 'Finanzas Públicas', periods: 4, order: 7 },
+        { code: '05-01-08', name: 'Computación II', periods: 4, order: 8 },
+        { code: '05-01-09', name: 'Inglés Comercial II', periods: 4, order: 9 }
+    ],
+    '6to': [
+        { code: '06-01-01', name: 'Auditoría', periods: 5, order: 1 },
+        { code: '06-01-02', name: 'Computación III', periods: 4, order: 2 },
+        { code: '06-01-03', name: 'Contabilidad Bancaria', periods: 5, order: 3 },
+        { code: '06-01-04', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 4 },
+        { code: '06-01-05', name: 'Derecho Mercantil y Laboral', periods: 4, order: 5 },
+        { code: '06-01-06', name: 'Estadística Comercial', periods: 4, order: 6 },
+        { code: '06-01-07', name: 'Organización de Empresas y Técnicas de Oficina', periods: 4, order: 7 },
+        { code: '06-01-08', name: 'Práctica Supervisada', periods: 4, order: 8 },
+        { code: '06-01-09', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 9 },
+        { code: '06-01-10', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 10 }
+    ]
+};
+window.OFFICIAL_CNB_PENSUM_COURSES = OFFICIAL_CNB_PENSUM_COURSES;
+
+function getGradeKeyFromInput(gradeInput) {
+    const raw = String(gradeInput || '').toUpperCase();
+    if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return '6to';
+    if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return '5to';
+    return '4to';
 }
+
+function updatePensumCnbDatalist(targetGrade = null) {
+    const datalist = document.getElementById('cnbOfficialSubjectsDatalist');
+    if (!datalist) return;
+    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
+    const gradeVal = targetGrade || (gradeSelect ? gradeSelect.value : (typeof currentPensumActiveGradeTab !== 'undefined' ? currentPensumActiveGradeTab : '4to'));
+    const gradeKey = getGradeKeyFromInput(gradeVal);
+    const courses = OFFICIAL_CNB_PENSUM_COURSES[gradeKey] || [];
+    datalist.innerHTML = courses.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)} (${c.code})</option>`).join('');
+}
+window.updatePensumCnbDatalist = updatePensumCnbDatalist;
+
+function onPensumSubjectCareerOrGradeChange() {
+    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
+    if (gradeSelect) {
+        updatePensumCnbDatalist(gradeSelect.value);
+    }
+    const nameInput = document.getElementById('pensumSubjectFormName');
+    if (nameInput) {
+        onPensumSubjectNameInput(nameInput.value);
+    }
+}
+window.onPensumSubjectCareerOrGradeChange = onPensumSubjectCareerOrGradeChange;
+
+function onPensumSubjectNameInput(val) {
+    const noticeEl = document.getElementById('pensumSubjectDuplicateNotice');
+    const codeInput = document.getElementById('pensumSubjectFormCode');
+    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
+    const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
+    const currentId = idInput ? idInput.value : '';
+    const gradeVal = gradeSelect ? gradeSelect.value : (typeof currentPensumActiveGradeTab !== 'undefined' ? currentPensumActiveGradeTab : '4to');
+    const gradeKey = getGradeKeyFromInput(gradeVal);
+
+    const cleanInput = (val || '').trim().toLowerCase();
+    if (!cleanInput) {
+        if (noticeEl) { noticeEl.style.display = 'none'; noticeEl.textContent = ''; }
+        return;
+    }
+
+    // Sugerir código oficial del CNB si está disponible y el campo de código está vacío
+    const courses = OFFICIAL_CNB_PENSUM_COURSES[gradeKey] || [];
+    const matchedCnb = courses.find(c => c.name.toLowerCase() === cleanInput || c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === cleanInput.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    if (matchedCnb && codeInput && !codeInput.value.trim()) {
+        codeInput.value = matchedCnb.code;
+    }
+
+    // Verificar si ya existe en el pensum actual de este grado
+    const existing = (STATE.pensumCatalog || []).find(p => {
+        if (!p || (currentId && p.id === currentId)) return false;
+        const pGradeKey = getPensumItemGradeKey(p);
+        if (pGradeKey !== gradeKey) return false;
+        const pName = (p.name || p.subject || '').trim().toLowerCase();
+        return pName === cleanInput;
+    });
+
+    if (existing && noticeEl) {
+        noticeEl.style.display = 'block';
+        noticeEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Aviso: Ya existe una asignatura con el nombre "<strong>${escapeHtml(existing.name || existing.subject)}</strong>" en ${PENSUM_GRADE_CONFIG[gradeKey].shortName}.`;
+    } else if (noticeEl) {
+        noticeEl.style.display = 'none';
+        noticeEl.textContent = '';
+    }
+}
+window.onPensumSubjectNameInput = onPensumSubjectNameInput;
+
+function normalizePensumSortOrderForGrade(gradeKey = null) {
+    const targetKey = gradeKey || currentPensumActiveGradeTab || '4to';
+    if (targetKey === 'all') {
+        ['4to', '5to', '6to'].forEach(k => normalizePensumSortOrderForGrade(k));
+        return;
+    }
+    const conf = PENSUM_GRADE_CONFIG[targetKey] || PENSUM_GRADE_CONFIG['4to'];
+    if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
+
+    const gradeSubjects = STATE.pensumCatalog.filter(p => getPensumItemGradeKey(p) === targetKey);
+    if (gradeSubjects.length === 0) {
+        showToast(`No hay asignaturas registradas para ${conf.shortName}.`, 'warning');
+        return;
+    }
+
+    gradeSubjects.sort((a, b) => (parseInt(a.order || a.sortOrder || 99) - parseInt(b.order || b.sortOrder || 99)));
+
+    gradeSubjects.forEach((p, idx) => {
+        const newOrd = idx + 1;
+        p.order = newOrd;
+        p.sortOrder = newOrd;
+        p.lastModified = Date.now();
+    });
+
+    // Mantener también el catálogo general ordenado por grado y correlativo
+    STATE.pensumCatalog.sort((a, b) => {
+        const ga = getPensumItemGradeKey(a);
+        const gb = getPensumItemGradeKey(b);
+        if (ga !== gb) return ga.localeCompare(gb);
+        return (parseInt(a.order || a.sortOrder || 99) - parseInt(b.order || b.sortOrder || 99));
+    });
+
+    saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+    }
+    renderPensumCatalogTable();
+    showToast(`✅ Orden normalizado correlativamente (1 al ${gradeSubjects.length}) para ${conf.shortName}.`, 'success');
+}
+window.normalizePensumSortOrderForGrade = normalizePensumSortOrderForGrade;
+
+async function restoreOfficialCnbPensumForGrade(gradeKey = null) {
+    const targetKey = gradeKey || currentPensumActiveGradeTab || '4to';
+    const conf = PENSUM_GRADE_CONFIG[targetKey] || PENSUM_GRADE_CONFIG['4to'];
+    const officialCourses = OFFICIAL_CNB_PENSUM_COURSES[targetKey];
+    if (!officialCourses || officialCourses.length === 0) {
+        showToast('Malla oficial no disponible para la selección actual.', 'warning');
+        return;
+    }
+
+    const confirmMsg = `¿Desea restaurar la malla curricular oficial del CNB / MINEDUC para ${conf.name} (${officialCourses.length} asignaturas)? Se mantendrán las asignaciones y se garantizará el orden oficial normativo.`;
+
+    const doRestore = () => {
+        if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
+        let updatedCount = 0;
+        let createdCount = 0;
+
+        officialCourses.forEach(ofCourse => {
+            const cleanOfName = ofCourse.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            let existing = STATE.pensumCatalog.find(p => {
+                if (getPensumItemGradeKey(p) !== targetKey) return false;
+                const cleanP = (p.name || p.subject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+                return cleanP === cleanOfName || (p.code && p.code === ofCourse.code);
+            });
+
+            if (existing) {
+                existing.name = ofCourse.name;
+                existing.subject = ofCourse.name;
+                existing.order = ofCourse.order;
+                existing.sortOrder = ofCourse.order;
+                existing.periods = ofCourse.periods;
+                existing.hours = ofCourse.periods;
+                existing.weeklyHours = ofCourse.periods;
+                if (!existing.code) existing.code = ofCourse.code;
+                existing.lastModified = Date.now();
+                updatedCount++;
+            } else {
+                const targetId = ofCourse.code ? ('pen-' + ofCourse.code.toLowerCase().replace(/[^a-z0-9]/g, '')) : ('pen-' + Date.now() + '-' + Math.floor(Math.random()*1000));
+                STATE.pensumCatalog.push({
+                    id: targetId,
+                    code: ofCourse.code,
+                    name: ofCourse.name,
+                    subject: ofCourse.name,
+                    career: 'Perito Contador',
+                    grade: conf.name,
+                    order: ofCourse.order,
+                    sortOrder: ofCourse.order,
+                    hours: ofCourse.periods,
+                    periods: ofCourse.periods,
+                    weeklyHours: ofCourse.periods,
+                    lastModified: Date.now()
+                });
+                createdCount++;
+            }
+        });
+
+        normalizePensumSortOrderForGrade(targetKey);
+
+        saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+        }
+        renderPensumCatalogTable();
+        showToast(`🏛️ Malla oficial del CNB restaurada para ${conf.shortName} (${officialCourses.length} asignaturas verificadas).`, 'success');
+    };
+
+    if (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function') {
+        window.EnccoDialog.confirm({
+            title: `Restaurar Malla Oficial CNB (${conf.shortName})`,
+            message: confirmMsg,
+            confirmText: 'Sí, Restaurar Malla Oficial',
+            cancelText: 'Cancelar',
+            type: 'primary',
+            onConfirm: doRestore
+        });
+    } else if (typeof Swal !== 'undefined' && Swal.fire) {
+        Swal.fire({
+            title: `Restaurar Malla Oficial CNB (${conf.shortName})`,
+            text: confirmMsg,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, Restaurar Malla Oficial',
+            cancelButtonText: 'Cancelar'
+        }).then(r => { if (r.isConfirmed) doRestore(); });
+    } else {
+        if (confirm(confirmMsg)) doRestore();
+    }
+}
+window.restoreOfficialCnbPensumForGrade = restoreOfficialCnbPensumForGrade;
 
 // ──────────────────────────────────────────────────────────────────────────
 // 🎓 CONTROLADOR DEL EDITOR DE PENSUM: PESTAÑAS POR GRADO Y HERO BANNER (OPCIÓN 1)
@@ -44341,15 +44575,30 @@ function renderPensumByGradeView(gradeKey, list = []) {
         ? careerFilterEl.value
         : (gradeSubjects[0]?.career || 'Perito Contador');
 
+    const expectedCount = (gradeKey === '6to') ? 10 : (gradeKey === 'all' ? 28 : 9);
+    let semaforoBadge = '';
+    if (gradeKey !== 'all') {
+        if (totalSubjects === expectedCount) {
+            semaforoBadge = `<span class="badge" style="background:#dcfce7; color:#15803d; border:1.5px solid #86efac; font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Carga curricular completa conforme al Currículum Nacional Base"><i class="fa-solid fa-circle-check"></i> Carga Oficial CNB Completa (${totalSubjects}/${expectedCount})</span>`;
+        } else if (totalSubjects < expectedCount) {
+            const missing = expectedCount - totalSubjects;
+            semaforoBadge = `<span class="badge" style="background:#fef9c3; color:#854d0e; border:1.5px solid #fde047; font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Faltan ${missing} asignatura(s) según la malla oficial CNB de Perito Contador"><i class="fa-solid fa-triangle-exclamation"></i> Incompleto (${totalSubjects}/${expectedCount} CNB &bull; Faltan ${missing})</span>`;
+        } else {
+            const excess = totalSubjects - expectedCount;
+            semaforoBadge = `<span class="badge" style="background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Tiene ${excess} asignatura(s) adicionales respecto a la malla oficial"><i class="fa-solid fa-circle-exclamation"></i> Carga Excedida (${totalSubjects}/${expectedCount} CNB)</span>`;
+        }
+    }
+
     // Hero Banner HTML
     const heroBannerHtml = `
         <div class="pensum-grade-hero" style="background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border:1.5px solid ${conf.border}; border-left:5px solid ${conf.color}; border-radius:12px; padding:16px 20px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
                         <span class="badge" style="background:${conf.bg}; color:${conf.color}; border:1px solid ${conf.border}; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:6px;">
                             <i class="fa-solid ${conf.icon}"></i> ${conf.shortName}
                         </span>
+                        ${semaforoBadge}
                         <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Plan Oficial de Estudios MINEDUC / CNB</span>
                     </div>
                     <h2 style="font-size:1.25rem; font-weight:800; color:#0f172a; margin:0 0 4px 0;">
@@ -44375,6 +44624,14 @@ function renderPensumByGradeView(gradeKey, list = []) {
                         <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Cód. MINEDUC</div>
                     </div>
                     <!-- Botones rápidos dentro del banner -->
+                    ${gradeKey !== 'all' ? `
+                    <button type="button" class="btn btn-sm" onclick="restoreOfficialCnbPensumForGrade('${gradeKey}')" style="background:#f0fdf4; border:1px solid #86efac; color:#15803d; font-weight:700; font-size:0.78rem; padding:7px 11px; border-radius:8px;" title="Restaurar las ${expectedCount} materias oficiales de este grado según la malla oficial del CNB">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Malla Oficial CNB
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="normalizePensumSortOrderForGrade('${gradeKey}')" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155; font-weight:700; font-size:0.78rem; padding:7px 11px; border-radius:8px;" title="Reordenar las materias correlativamente del 1 al N sin duplicados">
+                        <i class="fa-solid fa-arrow-down-1-9"></i> Normalizar Orden
+                    </button>
+                    ` : ''}
                     <button type="button" class="btn btn-sm" onclick="openPensumSubjectModalForActiveGrade()" style="background:${conf.color}; color:#ffffff; border-radius:8px; font-weight:700; font-size:0.8rem; padding:8px 14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                         <i class="fa-solid fa-plus"></i> Agregar a ${conf.shortName}
                     </button>
@@ -44394,9 +44651,12 @@ function renderPensumByGradeView(gradeKey, list = []) {
                 <i class="fa-solid fa-book-open" style="font-size:2.4rem; color:#94a3b8; margin-bottom:12px; display:block;"></i>
                 <h4 style="font-size:1.05rem; font-weight:700; color:#334155; margin-bottom:6px;">No se encontraron asignaturas para ${conf.shortName}</h4>
                 <p style="font-size:0.84rem; color:#64748b; max-width:480px; margin:0 auto 16px auto;">
-                    Puede registrar las asignaturas correspondientes a este grado académico o importar la malla oficial del SIRE.
+                    Puede registrar las asignaturas correspondientes a este grado académico o restaurar la malla oficial del CNB en 1 clic.
                 </p>
-                <div style="display:flex; justify-content:center; gap:8px;">
+                <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="restoreOfficialCnbPensumForGrade('${gradeKey}')" style="font-weight:700;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Cargar Malla Oficial CNB (${expectedCount} Asignaturas)
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm" onclick="openPensumSubjectModalForActiveGrade()">
                         <i class="fa-solid fa-plus"></i> Registrar Asignatura en ${conf.shortName}
                     </button>
@@ -45942,6 +46202,10 @@ function openPensumSubjectModal(defaultGrade = null) {
         codeInput.value = suggestNextPensumCourseCode(career, grade);
     }
 
+    updatePensumCnbDatalist(grade);
+    const noticeEl = document.getElementById('pensumSubjectDuplicateNotice');
+    if (noticeEl) { noticeEl.style.display = 'none'; noticeEl.textContent = ''; }
+
     showModalById('pensumSubjectModal');
 }
 
@@ -45972,6 +46236,10 @@ function openEditPensumSubjectModal(subjectId) {
     if (gradeSelect && s.grade) gradeSelect.value = s.grade;
     if (orderInput) orderInput.value = s.order || s.sortOrder || 1;
     if (hoursInput) hoursInput.value = s.hours || s.periods || 4;
+
+    updatePensumCnbDatalist(s.grade);
+    const noticeEl = document.getElementById('pensumSubjectDuplicateNotice');
+    if (noticeEl) { noticeEl.style.display = 'none'; noticeEl.textContent = ''; }
 
     const titleEl = document.getElementById('pensumSubjectModalTitle');
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Asignatura "${subjectName}"`;
