@@ -44179,38 +44179,38 @@ function normalizePensumCatalogCodes() {
 
 const OFFICIAL_CNB_PENSUM_COURSES = {
     '4to': [
-        { code: '04-01-01', name: 'Matemática Comercial', periods: 5, order: 1 },
-        { code: '04-01-02', name: 'Introducción a la Economía', periods: 4, order: 2 },
-        { code: '04-01-03', name: 'Administración y Organización de Empresas', periods: 4, order: 3 },
-        { code: '04-01-04', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 4 },
-        { code: '04-01-05', name: 'Contabilidad de Sociedades', periods: 5, order: 5 },
-        { code: '04-01-06', name: 'Inglés Comercial I', periods: 4, order: 6 },
-        { code: '04-01-07', name: 'Fundamentos de Derecho', periods: 4, order: 7 },
-        { code: '04-01-08', name: 'Computación I', periods: 4, order: 8 },
-        { code: '04-01-09', name: 'Caligrafía y Ortografía', periods: 2, order: 9 }
+        { code: '04-01-01', name: 'Contabilidad de Sociedades', periods: 5, order: 1 },
+        { code: '04-01-02', name: 'Matemática Comercial', periods: 5, order: 2 },
+        { code: '04-01-03', name: 'Fundamentos de Derecho', periods: 4, order: 3 },
+        { code: '04-01-04', name: 'Inglés Comercial I', periods: 4, order: 4 },
+        { code: '04-01-05', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 5 },
+        { code: '04-01-06', name: 'Introducción a la Economía', periods: 4, order: 6 },
+        { code: '04-01-07', name: 'Ortografía y Caligrafía', periods: 2, order: 7 },
+        { code: '04-01-08', name: 'Administración y Organización de Empresas', periods: 4, order: 8 },
+        { code: '04-01-09', name: 'Computación I', periods: 4, order: 9 }
     ],
     '5to': [
-        { code: '05-01-01', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 1 },
-        { code: '05-01-02', name: 'Mecanografía', periods: 4, order: 2 },
-        { code: '05-01-03', name: 'Contabilidad de Costos', periods: 5, order: 3 },
-        { code: '05-01-04', name: 'Geografía Económica', periods: 4, order: 4 },
-        { code: '05-01-05', name: 'Catalogación y Archivo', periods: 4, order: 5 },
-        { code: '05-01-06', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 6 },
-        { code: '05-01-07', name: 'Finanzas Públicas', periods: 4, order: 7 },
-        { code: '05-01-08', name: 'Computación II', periods: 4, order: 8 },
-        { code: '05-01-09', name: 'Inglés Comercial II', periods: 4, order: 9 }
+        { code: '05-01-01', name: 'Contabilidad de Costos', periods: 5, order: 1 },
+        { code: '05-01-02', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 2 },
+        { code: '05-01-03', name: 'Inglés Comercial II', periods: 4, order: 3 },
+        { code: '05-01-04', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 4 },
+        { code: '05-01-05', name: 'Finanzas Públicas', periods: 4, order: 5 },
+        { code: '05-01-06', name: 'Geografía Económica', periods: 4, order: 6 },
+        { code: '05-01-07', name: 'Catalogación y Archivo', periods: 4, order: 7 },
+        { code: '05-01-08', name: 'Mecanografía', periods: 4, order: 8 },
+        { code: '05-01-09', name: 'Computación II', periods: 4, order: 9 }
     ],
     '6to': [
-        { code: '06-01-01', name: 'Auditoría', periods: 5, order: 1 },
-        { code: '06-01-02', name: 'Computación III', periods: 4, order: 2 },
-        { code: '06-01-03', name: 'Contabilidad Bancaria', periods: 5, order: 3 },
-        { code: '06-01-04', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 4 },
-        { code: '06-01-05', name: 'Derecho Mercantil y Laboral', periods: 4, order: 5 },
-        { code: '06-01-06', name: 'Estadística Comercial', periods: 4, order: 6 },
-        { code: '06-01-07', name: 'Organización de Empresas y Técnicas de Oficina', periods: 4, order: 7 },
-        { code: '06-01-08', name: 'Práctica Supervisada', periods: 4, order: 8 },
-        { code: '06-01-09', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 9 },
-        { code: '06-01-10', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 10 }
+        { code: '06-01-01', name: 'Contabilidad Bancaria', periods: 5, order: 1 },
+        { code: '06-01-02', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 2 },
+        { code: '06-01-03', name: 'Estadística Comercial', periods: 4, order: 3 },
+        { code: '06-01-04', name: 'Organización de Empresas', periods: 4, order: 4 },
+        { code: '06-01-05', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 5 },
+        { code: '06-01-06', name: 'Práctica Supervisada', periods: 4, order: 6 },
+        { code: '06-01-07', name: 'Auditoría', periods: 5, order: 7 },
+        { code: '06-01-08', name: 'Derecho Mercantil y Laboral', periods: 4, order: 8 },
+        { code: '06-01-09', name: 'Computación III', periods: 4, order: 9 },
+        { code: '06-01-10', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 10 }
     ]
 };
 window.OFFICIAL_CNB_PENSUM_COURSES = OFFICIAL_CNB_PENSUM_COURSES;
