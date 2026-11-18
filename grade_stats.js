@@ -1888,7 +1888,14 @@ window.exportGradeStatsOfficialExcel = function() {
         </body>
         </html>`;
 
-        const blob = new Blob(["﻿", excelContent], { type: "application/vnd.ms-excel;charset=utf-8" });
+        if (typeof downloadFormattedExcelWorkbook === 'function') {
+            const xlsxName = `Cuadro_Resumen_Estadistico_Oficial_${d.cycle}.xlsx`;
+            downloadFormattedExcelWorkbook(excelContent, xlsxName);
+            if (typeof showToast === 'function') showToast(`Cuadro Estadístico Oficial exportado en Microsoft Excel (.xlsx): "${xlsxName}".`, "success");
+            return;
+        }
+
+        const blob = new Blob(["\uFEFF", excelContent], { type: "application/vnd.ms-excel;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -4898,6 +4905,18 @@ function exportReprobadosRecuperacionExcel() {
     `;
 
     window._lastReprobadosExcelHtml = excelContent;
+
+    if (typeof downloadFormattedExcelWorkbook === 'function') {
+        const xlsxFileName = isGanaronExcel
+            ? `Alumnos_Promovidos_Recuperacion_${d.cycle}.xlsx`
+            : (isConDerechoExcel
+                ? `Con_Derecho_Recuperacion_${layout}_${d.cycle}.xlsx`
+                : `Alumnos_Reprobados_Recuperacion_${d.cycle}.xlsx`);
+        downloadFormattedExcelWorkbook(excelContent, xlsxFileName);
+        if (typeof showToast === 'function') showToast(`Archivo oficial exportado en Microsoft Excel (.xlsx): "${xlsxFileName}".`, "success");
+        return;
+    }
+
     const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

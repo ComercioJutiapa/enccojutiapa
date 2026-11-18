@@ -22741,6 +22741,164 @@ function downloadAdminStaffTemplate() {
     showToast("Plantilla oficial de Personal Administrativo descargada en Microsoft Excel (.xlsx).", "info");
 }
 
+function autoApplyInstitutionalStyles(ws) {
+    if (!ws || !ws['!ref'] || typeof XLSX === 'undefined') return;
+    const range = XLSX.utils.decode_range(ws['!ref']);
+
+    const borderThin = {
+        top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+    };
+    const headerBorder = {
+        top: { style: 'thin', color: { rgb: '064E3B' } },
+        bottom: { style: 'medium', color: { rgb: '064E3B' } },
+        left: { style: 'thin', color: { rgb: '064E3B' } },
+        right: { style: 'thin', color: { rgb: '064E3B' } }
+    };
+
+    let headerRowIdx = -1;
+
+    // 1. Escanear para identificar la fila de encabezados
+    for (let r = range.s.r; r <= Math.min(range.e.r, 8); r++) {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            const val = cell ? String(cell.v || '').trim().toUpperCase() : '';
+            if (val === 'NO.' || val === 'CLAVE' || val === 'CÓDIGO' || val === 'CÓD. PERSONAL' || val === 'CÓDIGO PERSONAL' || val === 'ESTUDIANTE' || val === 'ALUMNO' || val === 'APELLIDOS Y NOMBRES' || val === 'CONCEPTO') {
+                headerRowIdx = r;
+                break;
+            }
+        }
+        if (headerRowIdx !== -1) break;
+    }
+
+    // 2. Estilizar filas de banner superior y títulos
+    for (let r = range.s.r; r <= range.e.r; r++) {
+        if (headerRowIdx !== -1 && r < headerRowIdx) {
+            const isFirst = (r === 0);
+            const isSecond = (r === 1);
+            const isMeta = (r >= 3);
+            const bg = isFirst ? '064E3B' : (isSecond ? '15803D' : (isMeta ? 'F1F5F9' : '0369A1'));
+            const fontColor = isMeta ? '334155' : 'FFFFFF';
+            const sz = isFirst ? 13 : (isSecond ? 10 : (isMeta ? 9 : 11));
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ r, c });
+                if (ws[addr] && ws[addr].v) {
+                    ws[addr].s = {
+                        fill: { fgColor: { rgb: bg } },
+                        font: { name: 'Arial', sz: sz, bold: true, color: { rgb: fontColor } },
+                        border: isMeta ? borderThin : undefined,
+                        alignment: { horizontal: isMeta ? 'left' : 'center', vertical: 'center' }
+                    };
+                }
+            }
+            continue;
+        }
+
+        // 3. Fila de Encabezados de Columna
+        if (r === headerRowIdx) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ r, c });
+                if (ws[addr]) {
+                    ws[addr].s = {
+                        fill: { fgColor: { rgb: '15803D' } },
+                        font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                        border: headerBorder,
+                        alignment: { horizontal: 'center', vertical: 'center', wrapText: true }
+                    };
+                }
+            }
+            continue;
+        }
+
+        // 4. Filas de Datos de Estudiantes
+        const dataRowIdx = headerRowIdx !== -1 ? (r - headerRowIdx - 1) : r;
+        const isEven = dataRowIdx % 2 === 1;
+        let rowBg = isEven ? 'F8FAFC' : 'FFFFFF';
+        let rowFontColor = '1E293B';
+        let rowBold = false;
+        let rowBorder = borderThin;
+
+        // Detección de estados en la fila
+        let isRet = false;
+        let isAus = false;
+        let isExon = false;
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            const val = cell ? String(cell.v || '').toUpperCase() : '';
+            if (val.includes('RETIRADO')) isRet = true;
+            if (val.includes('AUSENTE')) isAus = true;
+            if (val.includes('EXONERADO')) isExon = true;
+        }
+
+        if (isRet) {
+            rowBg = 'FEE2E2';
+            rowFontColor = 'B91C1C';
+            rowBold = true;
+        } else if (isAus) {
+            rowBg = 'FEF3C7';
+            rowFontColor = 'B45309';
+            rowBold = true;
+        } else if (isExon) {
+            rowBg = 'E0F2FE';
+            rowFontColor = '0369A1';
+            rowBold = true;
+        }
+
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            const cell = ws[addr];
+            if (!cell) continue;
+
+            let cellBg = rowBg;
+            let cellFontColor = rowFontColor;
+            let cellBold = rowBold;
+            const strVal = String(cell.v || '').trim().toUpperCase();
+
+            // Resaltado condicional individual para resultados y notas
+            if (strVal === 'APROBADO' || strVal === 'PROMOVIDO' || strVal.includes('PROMOVIDO EN RECUPERACIÓN')) {
+                cellBg = 'DCFCE7';
+                cellFontColor = '166534';
+                cellBold = true;
+            } else if (strVal === 'REPROBADO' || strVal === 'NO APROBADO' || strVal.includes('SIN DERECHO')) {
+                cellBg = 'FEE2E2';
+                cellFontColor = 'B91C1C';
+                cellBold = true;
+            }
+
+            // Identificación de códigos (Carné, Código Personal, CUI, Teléfono)
+            const isCode = (/^[A-Z0-9]{7,9}$/i.test(cell.v) && !/^[0-9]+$/.test(cell.v)) ||
+                           (typeof cell.v === 'string' && (cell.v.startsWith('ENCCO-') || /^\d{13}$/.test(cell.v.replace(/\s+/g, ''))));
+
+            const isNumericCol = typeof cell.v === 'number';
+            const isCenter = (c === 0 || isCode || strVal === 'M' || strVal === 'F' || strVal.length <= 4);
+
+            cell.s = {
+                fill: { fgColor: { rgb: cellBg } },
+                font: { name: 'Arial', sz: 9, color: { rgb: cellFontColor }, bold: cellBold },
+                border: rowBorder,
+                alignment: {
+                    horizontal: isCenter ? 'center' : (isNumericCol ? 'right' : 'left'),
+                    vertical: 'center',
+                    wrapText: !isCode
+                }
+            };
+
+            if (isCode) {
+                cell.t = 's';
+                cell.z = '@';
+            }
+        }
+    }
+
+    // 5. Inmovilizar paneles en la fila de encabezado
+    if (headerRowIdx !== -1) {
+        ws['!views'] = [{ showGridLines: true, state: 'frozen', ySplit: headerRowIdx + 1, xSplit: 0 }];
+    }
+}
+window.autoApplyInstitutionalStyles = autoApplyInstitutionalStyles;
+
 function downloadFormattedExcelWorkbook(htmlContent, filename) {
     let cleanFileName = filename.replace(/\.xls[x]?$/i, '') + '.xlsx';
 
@@ -22758,6 +22916,11 @@ function downloadFormattedExcelWorkbook(htmlContent, filename) {
                 // Configurar tamaño Oficio (Legal = 5) y ajuste a 1 sola página horizontal
                 ws['!pageSetup'] = { paperSize: 5, orientation: 'landscape', fitToWidth: 1, fitToHeight: 1, scale: 70 };
                 ws['!views'] = [{ showGridLines: true }];
+
+                // Aplicar estilos institucionales completos a la hoja generada
+                if (typeof autoApplyInstitutionalStyles === 'function') {
+                    autoApplyInstitutionalStyles(ws);
+                }
             }
             XLSX.writeFile(wb, cleanFileName);
             return;
