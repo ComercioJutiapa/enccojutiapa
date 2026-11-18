@@ -21792,6 +21792,167 @@ function executePrintModalToExcel() {
     generateOfficialExcelList(params);
 }
 
+function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, dataRowCount = 0) {
+    if (!ws || typeof XLSX === 'undefined') return;
+    const borderThin = {
+        top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+        right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+    };
+    const headerBorder = {
+        top: { style: 'thin', color: { rgb: '064E3B' } },
+        bottom: { style: 'medium', color: { rgb: '064E3B' } },
+        left: { style: 'thin', color: { rgb: '064E3B' } },
+        right: { style: 'thin', color: { rgb: '064E3B' } }
+    };
+
+    for (let c = 0; c < numCols; c++) {
+        // Fila 0: Banner Institucional Principal
+        const addr0 = XLSX.utils.encode_cell({ r: 0, c });
+        if (!ws[addr0]) ws[addr0] = { v: '', t: 's' };
+        ws[addr0].s = {
+            fill: { fgColor: { rgb: '064E3B' } },
+            font: { name: 'Arial', sz: 13, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+
+        // Fila 1: Subtítulo Institucional
+        const addr1 = XLSX.utils.encode_cell({ r: 1, c });
+        if (!ws[addr1]) ws[addr1] = { v: '', t: 's' };
+        ws[addr1].s = {
+            fill: { fgColor: { rgb: '15803D' } },
+            font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+
+        // Fila 2: Título del Formato
+        const addr2 = XLSX.utils.encode_cell({ r: 2, c });
+        if (!ws[addr2]) ws[addr2] = { v: '', t: 's' };
+        ws[addr2].s = {
+            fill: { fgColor: { rgb: '0369A1' } },
+            font: { name: 'Arial', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+
+        // Filas 3 & 4: Metadatos
+        for (let r = 3; r <= 4; r++) {
+            const addrM = XLSX.utils.encode_cell({ r, c });
+            if (ws[addrM] && ws[addrM].v) {
+                ws[addrM].s = {
+                    fill: { fgColor: { rgb: 'F1F5F9' } },
+                    font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '334155' } },
+                    border: borderThin,
+                    alignment: { vertical: 'center' }
+                };
+            }
+        }
+
+        // Fila Encabezados de Columna
+        const addrH = XLSX.utils.encode_cell({ r: headerRowIdx, c });
+        if (ws[addrH]) {
+            ws[addrH].s = {
+                fill: { fgColor: { rgb: '15803D' } },
+                font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                border: headerBorder,
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true }
+            };
+        }
+    }
+
+    // Filas de datos
+    const startR = headerRowIdx + 1;
+    const endR = dataRowCount > 0 ? (startR + dataRowCount - 1) : 1000;
+    for (let r = startR; r <= endR; r++) {
+        const firstCell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+        if (!firstCell && dataRowCount === 0) break;
+
+        const isEven = (r - startR) % 2 === 1;
+        let rowBg = isEven ? 'F8FAFC' : 'FFFFFF';
+        let fontColor = '1E293B';
+        let isBold = false;
+        let border = borderThin;
+
+        // Detección de estado en la fila
+        let isRet = false;
+        let isAus = false;
+        let isExon = false;
+        for (let c = 0; c < numCols; c++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            const strVal = cell ? String(cell.v || '').toUpperCase() : '';
+            if (strVal.includes('RETIRADO')) isRet = true;
+            if (strVal.includes('AUSENTE')) isAus = true;
+            if (strVal.includes('EXONERADO')) isExon = true;
+        }
+
+        if (isRet) {
+            rowBg = 'FEE2E2';
+            fontColor = 'B91C1C';
+            isBold = true;
+            border = {
+                top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+            };
+        } else if (isAus) {
+            rowBg = 'FEF3C7';
+            fontColor = 'B45309';
+            isBold = true;
+            border = {
+                top: { style: 'thin', color: { rgb: 'FCD34D' } },
+                bottom: { style: 'thin', color: { rgb: 'FCD34D' } },
+                left: { style: 'thin', color: { rgb: 'FCD34D' } },
+                right: { style: 'thin', color: { rgb: 'FCD34D' } }
+            };
+        } else if (isExon) {
+            rowBg = 'E0F2FE';
+            fontColor = '0369A1';
+            isBold = true;
+            border = {
+                top: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                bottom: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                left: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                right: { style: 'thin', color: { rgb: 'BAE6FD' } }
+            };
+        }
+
+        for (let c = 0; c < numCols; c++) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            const cell = ws[addr];
+            if (!cell) continue;
+
+            const isCodeCol = (c === 1 || c === 2 || c === 6);
+            const isCenterCol = (c === 0 || c === 4 || c === 7 || isCodeCol);
+
+            cell.s = {
+                fill: { fgColor: { rgb: rowBg } },
+                font: { name: 'Arial', sz: 9, color: { rgb: fontColor }, bold: isBold },
+                border: border,
+                alignment: {
+                    horizontal: isCenterCol ? 'center' : 'left',
+                    vertical: 'center',
+                    wrapText: !isCodeCol
+                }
+            };
+            if (isCodeCol) {
+                cell.t = 's';
+                cell.z = '@';
+            }
+        }
+    }
+
+    // Configuración de altura de filas
+    if (!ws['!rows']) ws['!rows'] = [];
+    ws['!rows'][0] = { hpt: 28 };
+    ws['!rows'][1] = { hpt: 20 };
+    ws['!rows'][2] = { hpt: 22 };
+    ws['!rows'][3] = { hpt: 18 };
+    ws['!rows'][4] = { hpt: 18 };
+    ws['!rows'][headerRowIdx] = { hpt: 26 };
+}
+window.applyInstitutionalStylesToWorksheet = applyInstitutionalStylesToWorksheet;
+
 function generateOfficialExcelList(opts = null) {
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
     let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
@@ -22312,6 +22473,11 @@ function generateOfficialExcelList(opts = null) {
                 fitToWidth: 1,
                 fitToHeight: 0
             };
+
+            // Aplicar colores y estilos institucionales oficiales para Microsoft Excel
+            if (typeof applyInstitutionalStylesToWorksheet === 'function') {
+                applyInstitutionalStylesToWorksheet(ws, headers.length, 6, students.length);
+            }
 
             XLSX.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
             XLSX.writeFile(wb, fileBaseName);
@@ -36171,6 +36337,11 @@ function exportAttendanceOfficialExcel() {
                 fitToHeight: 0
             };
 
+            // Aplicar colores y estilos institucionales oficiales para Microsoft Excel (Asistencia)
+            if (typeof applyInstitutionalStylesToWorksheet === 'function') {
+                applyInstitutionalStylesToWorksheet(ws, headers.length, 4, students.length);
+            }
+
             const wb = xlsxLib.utils.book_new();
             const fileNameXlsx = `Asistencia_${gradeCode}_Mes_${month}_${cycle}.xlsx`;
             xlsxLib.utils.book_append_sheet(wb, ws, `Asistencia Mes ${month}`);
@@ -40579,6 +40750,11 @@ function exportGradebookOfficialExcel() {
                 fitToHeight: 0
             };
 
+            // Aplicar colores y estilos institucionales oficiales para Microsoft Excel (Cuadro de Calificaciones)
+            if (typeof applyInstitutionalStylesToWorksheet === 'function') {
+                applyInstitutionalStylesToWorksheet(ws, colHeaders.length, 6, students.length);
+            }
+
             const wb = xlsxLib.utils.book_new();
             const sheetTitle = `${(targetPensum.grade || 'Grado').slice(0, 10)} ${targetPensum.section || ''} - B${currentUnit}`.replace(/[\\/:*?"<>|]/g, '_');
             xlsxLib.utils.book_append_sheet(wb, ws, sheetTitle);
@@ -41949,70 +42125,216 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
     const numCols = (headers && headers.length) ? headers.length : 9;
 
-    // 1. Intentar con SheetJS nativo si está disponible
+    // 1. Intentar con SheetJS nativo con soporte de estilos institucionales
     if (xlsxLib && xlsxLib.utils) {
         try {
-            const rawRows = dataRows.map(r => {
-                const meta = r._meta;
-                const fgRgb = meta?.isRet ? "FEF2F2" : (meta?.isAus ? "FFFBEB" : (meta?.isExon ? "F0F9FF" : null));
+            const borderThin = {
+                top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+            };
+            const headerBorder = {
+                top: { style: 'thin', color: { rgb: '064E3B' } },
+                bottom: { style: 'medium', color: { rgb: '064E3B' } },
+                left: { style: 'thin', color: { rgb: '064E3B' } },
+                right: { style: 'thin', color: { rgb: '064E3B' } }
+            };
+
+            // Fila 0: Banner Institucional Principal (Verde Esmeralda Obscuro #064E3B)
+            const r0 = new Array(numCols).fill(null).map(() => ({
+                v: '',
+                t: 's',
+                s: {
+                    fill: { fgColor: { rgb: '064E3B' } },
+                    font: { name: 'Arial', sz: 13, bold: true, color: { rgb: 'FFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                }
+            }));
+            r0[0].v = 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970';
+
+            // Fila 1: Subtítulo Institucional y Ciclo (Verde Esmeralda Medio #15803D)
+            const r1 = new Array(numCols).fill(null).map(() => ({
+                v: '',
+                t: 's',
+                s: {
+                    fill: { fgColor: { rgb: '15803D' } },
+                    font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                }
+            }));
+            r1[0].v = `JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`;
+
+            // Fila 2: Título Oficial de la Nómina (Azul Marino Institucional #0369A1)
+            const r2 = new Array(numCols).fill(null).map(() => ({
+                v: '',
+                t: 's',
+                s: {
+                    fill: { fgColor: { rgb: '0369A1' } },
+                    font: { name: 'Arial', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                }
+            }));
+            r2[0].v = (title || 'DOCUMENTO OFICIAL') + (subtitle ? ' — ' + subtitle : '');
+
+            // Fila 3: Fecha y Hora de Emisión (Pizarra Suave #F1F5F9)
+            const r3 = new Array(numCols).fill(null).map(() => ({
+                v: '',
+                t: 's',
+                s: {
+                    fill: { fgColor: { rgb: 'F1F5F9' } },
+                    font: { name: 'Arial', sz: 9, italic: true, color: { rgb: '475569' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                }
+            }));
+            r3[0].v = `EMISIÓN OFICIAL: ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}`;
+
+            // Fila 4: Espacio en blanco separador
+            const r4 = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
+
+            // Fila 5: Encabezados de Columna (Verde Institucional con texto blanco y bordes)
+            const r5 = headers.map(h => ({
+                v: String(h || ''),
+                t: 's',
+                s: {
+                    fill: { fgColor: { rgb: '15803D' } },
+                    font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                    border: headerBorder
+                }
+            }));
+
+            // Filas de Datos con Cebrado Alterno, Bordes y Destacado de Estados
+            const styledDataRows = dataRows.map((r, rowIdx) => {
+                const meta = r._meta || {};
+                const isRet = !!meta.isRet;
+                const isAus = !!meta.isAus;
+                const isExon = !!meta.isExon;
+
+                let rowBg = rowIdx % 2 === 1 ? 'F8FAFC' : 'FFFFFF';
+                let fontColor = '1E293B';
+                let isBold = false;
+                let cellBorder = borderThin;
+
+                if (isRet) {
+                    rowBg = 'FEE2E2';
+                    fontColor = 'B91C1C';
+                    isBold = true;
+                    cellBorder = {
+                        top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                        bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                        left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                        right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+                    };
+                } else if (isAus) {
+                    rowBg = 'FEF3C7';
+                    fontColor = 'B45309';
+                    isBold = true;
+                    cellBorder = {
+                        top: { style: 'thin', color: { rgb: 'FCD34D' } },
+                        bottom: { style: 'thin', color: { rgb: 'FCD34D' } },
+                        left: { style: 'thin', color: { rgb: 'FCD34D' } },
+                        right: { style: 'thin', color: { rgb: 'FCD34D' } }
+                    };
+                } else if (isExon) {
+                    rowBg = 'E0F2FE';
+                    fontColor = '0369A1';
+                    isBold = true;
+                    cellBorder = {
+                        top: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        bottom: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        left: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        right: { style: 'thin', color: { rgb: 'BAE6FD' } }
+                    };
+                }
+
                 return r.map((cell, colIdx) => {
                     const isCodeCol = (colIdx === 1 || colIdx === 2 || colIdx === 3 || colIdx === 9);
+                    const isCenterCol = (colIdx === 0 || colIdx === 6 || colIdx === 10 || isCodeCol);
                     let val = cell;
                     let cellType = typeof cell === 'number' ? 'n' : 's';
+                    let formula = undefined;
+
                     if (typeof cell === 'object' && cell !== null && cell.v !== undefined) {
                         val = cell.v;
                         if (cell.t) cellType = cell.t;
-                        if (cell.f) return { ...cell, s: fgRgb ? { fill: { fgColor: { rgb: fgRgb } } } : undefined };
+                        if (cell.f) formula = cell.f;
                     }
                     if (isCodeCol) {
                         cellType = 's';
                         val = (val !== undefined && val !== null && val !== '') ? String(val) : '';
                     }
-                    const cellObj = { v: val, t: cellType };
-                    if (fgRgb) {
-                        cellObj.s = { fill: { fgColor: { rgb: fgRgb } } };
-                    }
+
+                    const cellObj = {
+                        v: (val !== undefined && val !== null) ? val : '',
+                        t: cellType,
+                        s: {
+                            fill: { fgColor: { rgb: rowBg } },
+                            font: { name: 'Arial', sz: 9, color: { rgb: fontColor }, bold: isBold },
+                            border: cellBorder,
+                            alignment: {
+                                horizontal: isCenterCol ? 'center' : 'left',
+                                vertical: 'center',
+                                wrapText: !isCodeCol
+                            }
+                        }
+                    };
+                    if (formula) cellObj.f = formula;
+                    if (isCodeCol) cellObj.z = '@';
                     return cellObj;
                 });
             });
 
-            const aoa = [
-                ["ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970"],
-                [`JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`],
-                [title + (subtitle ? " — " + subtitle : "")],
-                [`EMISIÓN OFICIAL: ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}`],
-                [],
-                headers,
-                ...rawRows
-            ];
+            // Firmas Institucionales Oficiales al Pie
+            const blankRow1 = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
+            const blankRow2 = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
 
-            // Bloque oficial de firmas institucionales al pie
-            aoa.push([]);
-            aoa.push([]);
             const col1 = 1;
             const col2 = Math.max(2, Math.floor(numCols / 2) - 1);
             const col3 = Math.max(3, numCols - 2);
 
-            const sigLineRow = new Array(numCols).fill('');
-            sigLineRow[col1] = "_______________________________";
-            sigLineRow[col2] = "_______________________________";
-            sigLineRow[col3] = "_______________________________";
-            aoa.push(sigLineRow);
+            const sigLineRow = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
+            sigLineRow[col1] = { v: "_______________________________", t: 's', s: { font: { bold: true }, alignment: { horizontal: 'center' } } };
+            sigLineRow[col2] = { v: "_______________________________", t: 's', s: { font: { bold: true }, alignment: { horizontal: 'center' } } };
+            sigLineRow[col3] = { v: "_______________________________", t: 's', s: { font: { bold: true }, alignment: { horizontal: 'center' } } };
 
-            const sigTitleRow = new Array(numCols).fill('');
-            sigTitleRow[col1] = "Catedrático(a) Guía / Titular";
-            sigTitleRow[col2] = "Secretaría Académica";
-            sigTitleRow[col3] = "Vo.Bo. Dirección General";
-            aoa.push(sigTitleRow);
+            const sigTitleRow = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
+            sigTitleRow[col1] = { v: "Catedrático(a) Guía / Titular", t: 's', s: { font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '0F172A' } }, alignment: { horizontal: 'center' } } };
+            sigTitleRow[col2] = { v: "Secretaría Académica", t: 's', s: { font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '0F172A' } }, alignment: { horizontal: 'center' } } };
+            sigTitleRow[col3] = { v: "Vo.Bo. Dirección General", t: 's', s: { font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '0F172A' } }, alignment: { horizontal: 'center' } } };
 
-            const sigSubRow = new Array(numCols).fill('');
-            sigSubRow[col1] = "Control y Registro Docente";
-            sigSubRow[col2] = "Registro y Control Escolar";
-            sigSubRow[col3] = "ENCCO Jutiapa";
-            aoa.push(sigSubRow);
+            const sigSubRow = new Array(numCols).fill(null).map(() => ({ v: '', t: 's', s: {} }));
+            sigSubRow[col1] = { v: "Control y Registro Docente", t: 's', s: { font: { name: 'Arial', sz: 8, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } } };
+            sigSubRow[col2] = { v: "Registro y Control Escolar", t: 's', s: { font: { name: 'Arial', sz: 8, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } } };
+            sigSubRow[col3] = { v: "ENCCO Jutiapa", t: 's', s: { font: { name: 'Arial', sz: 8, color: { rgb: '64748B' } }, alignment: { horizontal: 'center' } } };
+
+            const aoa = [
+                r0,
+                r1,
+                r2,
+                r3,
+                r4,
+                r5,
+                ...styledDataRows,
+                blankRow1,
+                blankRow2,
+                sigLineRow,
+                sigTitleRow,
+                sigSubRow
+            ];
 
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
-            
+
+            // Altura oficial de filas
+            ws['!rows'] = [
+                { hpt: 28 }, // Fila 0
+                { hpt: 20 }, // Fila 1
+                { hpt: 22 }, // Fila 2
+                { hpt: 18 }, // Fila 3
+                { hpt: 10 }, // Fila 4
+                { hpt: 26 }  // Fila 5
+            ];
+
             // Auto-ajuste dinámico de ancho de columnas para garantizar que ningún dato, carné o nombre quede truncado
             const dynamicCols = headers.map((h, colIdx) => {
                 let maxLen = String(h || '').length;
@@ -42049,7 +42371,7 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
             xlsxLib.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
 
             xlsxLib.writeFile(wb, cleanFileName);
-            if (typeof showToast === 'function') showToast(`Archivo "${cleanFileName}" descargado exitosamente con formato institucional.`, "success");
+            if (typeof showToast === 'function') showToast(`Archivo "${cleanFileName}" descargado exitosamente con formato y colores institucionales.`, "success");
             return true;
         } catch (err) {
             console.warn("SheetJS export error, usando respaldo HTML enriquecido:", err);
