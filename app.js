@@ -7839,21 +7839,20 @@ function renderEnrollmentSectionsDistribution() {
     // Copiar la lista base de grados y deduplicarla
     let rawGrades = (STATE.gradesList && STATE.gradesList.length > 0) ? [...STATE.gradesList] : [];
 
-    // Garantizar que en 2027 o superior exista la Sección E de 4to si no existe aún
-    if (targetCycle === '2027' || String(STATE.activeCycle || '').trim() === '2027') {
-        const has4E = rawGrades.some(g => (typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) === '4to_e' : (g.code === '4to E')));
-        if (!has4E) {
-            rawGrades.push({
-                id: "grd-4e",
-                code: "4to E",
-                name: "4to Perito Contador",
-                section: "Sección E",
-                career: "Perito Contador",
-                shift: "Matutina",
-                guideTeacher: "Sin asignar",
-                guideTeacherId: null
-            });
-        }
+    // Garantizar que la Sección E de 4to exista y se mantenga activa
+    const has4E = rawGrades.some(g => (typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) === '4to_e' : (g.code === '4to E')));
+    if (!has4E) {
+        rawGrades.push({
+            id: "grd-4e",
+            code: "4to E",
+            name: "4to Perito Contador",
+            section: "Sección E",
+            career: "Perito Contador",
+            shift: "Matutina",
+            guideTeacher: "Sin asignar",
+            guideTeacherId: null,
+            active: true
+        });
     }
 
     // Si hay estudiantes en el ciclo con secciones adicionales creadas dinámicamente, incluirlas
@@ -8815,14 +8814,14 @@ const OFFICIAL_CNB_PENSUM_COURSES = {
         { code: '342', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 5 },
         { code: '343', name: 'Introducción a la Economía', periods: 4, order: 6 },
         { code: '344', name: 'Ortografía y Caligrafía', periods: 2, order: 7 },
-        { code: '345', name: 'Administración y Organización de Empresas', periods: 4, order: 8 },
+        { code: '345', name: 'Administración y Organización de Oficina', periods: 4, order: 8 },
         { code: '346', name: 'Computación I', periods: 4, order: 9 }
     ],
     '5to': [
         { code: '347', name: 'Contabilidad de Costos', periods: 5, order: 1 },
         { code: '348', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 2 },
         { code: '349', name: 'Inglés Comercial II', periods: 4, order: 3 },
-        { code: '366', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 4 },
+        { code: '366', name: 'Legislación Fiscal y Aduanal', periods: 4, order: 4 },
         { code: '367', name: 'Finanzas Públicas', periods: 4, order: 5 },
         { code: '352', name: 'Geografía Económica', periods: 4, order: 6 },
         { code: '368', name: 'Catalogación y Archivo', periods: 4, order: 7 },
@@ -8831,18 +8830,56 @@ const OFFICIAL_CNB_PENSUM_COURSES = {
     ],
     '6to': [
         { code: '356', name: 'Contabilidad Bancaria', periods: 5, order: 1 },
-        { code: '369', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 2 },
+        { code: '369', name: 'Contabilidad Gubernamental Integrada', periods: 4, order: 2 },
         { code: '357', name: 'Estadística Comercial', periods: 4, order: 3 },
         { code: '359', name: 'Organización de Empresas', periods: 4, order: 4 },
         { code: '550', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 5 },
         { code: '361', name: 'Práctica Supervisada', periods: 4, order: 6 },
         { code: '362', name: 'Auditoría', periods: 5, order: 7 },
-        { code: '363', name: 'Derecho Mercantil y Laboral', periods: 4, order: 8 },
+        { code: '363', name: 'Derecho Mercantil y Nociones de Derecho Laboral', periods: 4, order: 8 },
         { code: '364', name: 'Computación III', periods: 4, order: 9 },
         { code: '365', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 10 }
     ]
 };
 window.OFFICIAL_CNB_PENSUM_COURSES = OFFICIAL_CNB_PENSUM_COURSES;
+
+var OFFICIAL_CNB_PENSUM_ORDER = {
+    "4": [
+        { order: 1, name: "Contabilidad de Sociedades", aliases: ["contabilidad", "contabilidad de sociedades"] },
+        { order: 2, name: "Matemática Comercial", aliases: ["matematica", "matematica comercial"] },
+        { order: 3, name: "Fundamentos de Derecho", aliases: ["fundamentos derecho", "fundamentos de derecho", "derecho"] },
+        { order: 4, name: "Inglés Comercial I", aliases: ["ingles", "ingles comercial 1", "ingles comercial i", "ingles 1"] },
+        { order: 5, name: "Redacción y Correspondencia Mercantil", aliases: ["redaccion", "redaccion y correspondencia", "redaccion correspondencia mercantil", "redaccion y correspondencia mercantil"] },
+        { order: 6, name: "Introducción a la Economía", aliases: ["economia", "introduccion a la economia", "introduccion economia"] },
+        { order: 7, name: "Ortografía y Caligrafía", aliases: ["caligrafia", "ortografia", "caligrafia y ortografia", "ortografia y caligrafia"] },
+        { order: 8, name: "Administración y Organización de Oficina", aliases: ["administracion y organizacion de oficina", "administracion", "organizacion de oficina", "administracion y organizacion", "administracion y organizacion de empresas", "admon"] },
+        { order: 9, name: "Computación I", aliases: ["computacion", "computacion 1", "computacion i"] }
+    ],
+    "5": [
+        { order: 1, name: "Contabilidad de Costos", aliases: ["costos", "contabilidad costos", "contabilidad de costos"] },
+        { order: 2, name: "Cálculo Mercantil y Financiero", aliases: ["calculo", "calculo mercantil", "calculo mercantil y financiero"] },
+        { order: 3, name: "Inglés Comercial II", aliases: ["ingles ii", "ingles 2", "ingles comercial ii", "ingles comercial 2"] },
+        { order: 4, name: "Legislación Fiscal y Aduanal", aliases: ["legislacion fiscal y aduanal", "legislacion", "legislacion fiscal", "legislacion fiscal y aduanera", "fiscal y aduanal", "fiscal y aduanera"] },
+        { order: 5, name: "Finanzas Públicas", aliases: ["finanzas", "finanzas publicas"] },
+        { order: 6, name: "Geografía Económica", aliases: ["geografia", "geografia economica"] },
+        { order: 7, name: "Catalogación y Archivo", aliases: ["catalogacion", "archivo", "catalogacion y archivo"] },
+        { order: 8, name: "Mecanografía", aliases: ["mecanografia"] },
+        { order: 9, name: "Computación II", aliases: ["computacion ii", "computacion 2"] }
+    ],
+    "6": [
+        { order: 1, name: "Contabilidad Bancaria", aliases: ["bancaria", "contabilidad bancaria"] },
+        { order: 2, name: "Contabilidad Gubernamental Integrada", aliases: ["contabilidad gubernamental integrada", "gubernamental", "contabilidad gubernamental", "contabilidad gubernamental e integrada", "conta gubernamental"] },
+        { order: 3, name: "Estadística Comercial", aliases: ["estadistica", "estadistica comercial", "estadistica descriptiva"] },
+        { order: 4, name: "Organización de Empresas", aliases: ["organizacion de empresas", "organizacion empresas", "organizacion de empresas y tecnicas de oficina", "organizacion y metodos", "organización y métodos"] },
+        { order: 5, name: "Ética Profesional y Relaciones Humanas", aliases: ["etica", "etica profesional", "etica profesional y relaciones humanas"] },
+        { order: 6, name: "Práctica Supervisada", aliases: ["practica", "practica supervisada"] },
+        { order: 7, name: "Auditoría", aliases: ["auditoria"] },
+        { order: 8, name: "Derecho Mercantil y Nociones de Derecho Laboral", aliases: ["derecho mercantil y nociones de derecho laboral", "derecho mercantil", "derecho mercantil y laboral", "derecho laboral", "nociones de derecho laboral"] },
+        { order: 9, name: "Computación III", aliases: ["computacion iii", "computacion 3"] },
+        { order: 10, name: "Seminario sobre Problemas Socioeconómicos de Guatemala", aliases: ["seminario", "seminario problemas socioeconomicos", "seminario sobre problemas socioeconomicos de guatemala"] }
+    ]
+};
+window.OFFICIAL_CNB_PENSUM_ORDER = OFFICIAL_CNB_PENSUM_ORDER;
 
 
 function getPensumItemGradeKey(p) {
@@ -8920,6 +8957,37 @@ function ensureCanonicalPensumCatalogCoherence() {
 
     let changed = false;
 
+    const resolveToOfficialCourse = (item, gKey) => {
+        if (!item) return null;
+        const officialCourses = OFFICIAL_CNB_PENSUM_COURSES[gKey] || [];
+        const itemCode = String(item.code || '').trim();
+        if (itemCode) {
+            const byCode = officialCourses.find(c => String(c.code).trim() === itemCode);
+            if (byCode) return byCode;
+        }
+        const rawName = (item.name || item.subject || '').trim();
+        const cleanRaw = cleanStr(rawName);
+        if (!cleanRaw) return null;
+
+        const byName = officialCourses.find(c => cleanStr(c.name) === cleanRaw);
+        if (byName) return byName;
+
+        const gNum = (gKey === '4to') ? '4' : (gKey === '5to') ? '5' : '6';
+        const orderList = (typeof OFFICIAL_CNB_PENSUM_ORDER !== 'undefined' && OFFICIAL_CNB_PENSUM_ORDER[gNum]) ? OFFICIAL_CNB_PENSUM_ORDER[gNum] : [];
+        const orderMatch = orderList.find(o => {
+            if (cleanStr(o.name) === cleanRaw) return true;
+            return Array.isArray(o.aliases) && o.aliases.some(a => {
+                const ca = cleanStr(a);
+                return ca === cleanRaw || cleanRaw.includes(ca) || ca.includes(cleanRaw);
+            });
+        });
+        if (orderMatch) {
+            const byOrder = officialCourses.find(c => cleanStr(c.name) === cleanStr(orderMatch.name));
+            if (byOrder) return byOrder;
+        }
+        return null;
+    };
+
     // 2. Garantizar que cada grado tenga las asignaturas normativas oficiales de 2026
     ['4to', '5to', '6to'].forEach(gKey => {
         const officialCourses = OFFICIAL_CNB_PENSUM_COURSES[gKey] || [];
@@ -8930,8 +8998,11 @@ function ensureCanonicalPensumCatalogCoherence() {
 
             let existing = deduplicated.find(item => {
                 if (getPensumItemGradeKey(item) !== gKey) return false;
+                if (item.code && String(item.code).trim() === String(ofCourse.code).trim()) return true;
                 const iNameKey = cleanStr(item.name || item.subject);
-                return iNameKey === ofNameKey || (item.code && item.code === ofCourse.code);
+                if (iNameKey === ofNameKey) return true;
+                const resolved = resolveToOfficialCourse(item, gKey);
+                return resolved && resolved.code === ofCourse.code;
             });
 
             if (existing) {
@@ -8982,9 +9053,12 @@ window.ensureCanonicalPensumCatalogCoherence = ensureCanonicalPensumCatalogCoher
 
 function syncClassAssignmentsWithPensumAndGrades(options = { showNotification: true }) {
     ensureCanonicalPensumCatalogCoherence();
-
-    if (typeof purifySchoolStructure === 'function' && (!STATE.gradesList || STATE.gradesList.length === 0)) {
-        purifySchoolStructure();
+    if (!STATE.gradesList || STATE.gradesList.length === 0) {
+        if (typeof ensureOfficialGradesList === 'function') {
+            ensureOfficialGradesList();
+        } else if (typeof purifySchoolStructure === 'function') {
+            purifySchoolStructure();
+        }
     }
     const gradesList = deduplicateGradesCollection(STATE.gradesList || []);
 
@@ -9000,13 +9074,50 @@ function syncClassAssignmentsWithPensumAndGrades(options = { showNotification: t
         return m ? m[1] : (raw.replace(/[^A-Z0-9]/g, '').slice(0, 1) || 'A');
     };
 
+    const resolveToOfficialCourse = (item, gKey) => {
+        if (!item) return null;
+        const officialCourses = OFFICIAL_CNB_PENSUM_COURSES[gKey] || [];
+        const itemCode = String(item.code || '').trim();
+        if (itemCode) {
+            const byCode = officialCourses.find(c => String(c.code).trim() === itemCode);
+            if (byCode) return byCode;
+        }
+        const rawName = (item.name || item.subject || '').trim();
+        const cleanRaw = cleanStr(rawName);
+        if (!cleanRaw) return null;
+
+        const byName = officialCourses.find(c => cleanStr(c.name) === cleanRaw);
+        if (byName) return byName;
+
+        const gNum = (gKey === '4to') ? '4' : (gKey === '5to') ? '5' : '6';
+        const orderList = (typeof OFFICIAL_CNB_PENSUM_ORDER !== 'undefined' && OFFICIAL_CNB_PENSUM_ORDER[gNum]) ? OFFICIAL_CNB_PENSUM_ORDER[gNum] : [];
+        const orderMatch = orderList.find(o => {
+            if (cleanStr(o.name) === cleanRaw) return true;
+            return Array.isArray(o.aliases) && o.aliases.some(a => {
+                const ca = cleanStr(a);
+                return ca === cleanRaw || cleanRaw.includes(ca) || ca.includes(cleanRaw);
+            });
+        });
+        if (orderMatch) {
+            const byOrder = officialCourses.find(c => cleanStr(c.name) === cleanStr(orderMatch.name));
+            if (byOrder) return byOrder;
+        }
+        return null;
+    };
+
     // 1. Mapear y deduplicar asignaciones preexistentes SIN PERDER DOCENTES NI DATOS
     const existingMap = new Map();
     STATE.pensum.forEach(asg => {
         if (!asg) return;
         const gKey = getPensumItemGradeKey(asg);
         const sKey = cleanSec(asg.section || asg.gradeCode || asg.grade);
-        const subName = asg.subject || asg.name || '';
+        const officialMatch = resolveToOfficialCourse(asg, gKey);
+        if (officialMatch) {
+            asg.subject = officialMatch.name;
+            asg.name = officialMatch.name;
+            asg.code = officialMatch.code;
+        }
+        const subName = officialMatch ? officialMatch.name : (asg.subject || asg.name || '');
         const mKey = cleanStr(subName);
         if (!mKey) return;
         const canonicalKey = `${gKey}_${sKey}_${mKey}`;
@@ -9272,7 +9383,8 @@ function purifySchoolStructure() {
                 career: ex.career || 'Perito Contador',
                 shift: ex.shift || 'Matutina',
                 guideTeacher: ex.guideTeacher || def.teacher || 'Sin asignar',
-                guideTeacherId: ex.guideTeacherId || def.id || null
+                guideTeacherId: ex.guideTeacherId || def.id || null,
+                active: true
             });
         }
     });
@@ -9286,7 +9398,8 @@ function purifySchoolStructure() {
             mergedList.push({
                 ...tmpl,
                 guideTeacher: def.teacher || 'Sin asignar',
-                guideTeacherId: def.id || null
+                guideTeacherId: def.id || null,
+                active: true
             });
         }
     });
@@ -9307,8 +9420,8 @@ function purifySchoolStructure() {
 window.purifySchoolStructure = purifySchoolStructure;
 
 function ensureOfficialGradesList() {
-    const baseOfficialKeys = ["4to_a","4to_b","4to_c","4to_d","5to_a","5to_b","5to_c","5to_d","6to_a","6to_b","6to_c","6to_d"];
-    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12) {
+    const baseOfficialKeys = ["4to_a","4to_b","4to_c","4to_d","4to_e","5to_a","5to_b","5to_c","5to_d","6to_a","6to_b","6to_c","6to_d"];
+    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 13) {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
     } else {
         const currentKeys = new Set(STATE.gradesList.map(getGradeSectionCanonicalKey));
@@ -20941,35 +21054,35 @@ const CANONICAL_CNB_28_DICTIONARY = [
     { grade: 4, full: "Contabilidad de Sociedades", aliases: ["sociedades", "conta sociedades", "contabilidad de sociedades", "contabilidad sociedades", "conta 1", "conta i"] },
     { grade: 4, full: "Matemática Comercial", aliases: ["matematica comercial", "mate comercial", "matematica", "mate 1", "mate i"] },
     { grade: 4, full: "Fundamentos de Derecho", aliases: ["fundamentos de derecho", "fundamentos derecho", "derecho 1", "derecho i"] },
-    { grade: 4, full: "Administración y Organización de Oficina", aliases: ["administracion y organizacion de oficina", "administracion", "organizacion de oficina", "admon", "admon de oficina"] },
+    { grade: 4, full: "Administración y Organización de Oficina", aliases: ["administracion y organizacion de oficina", "administracion y organizacion de empresas", "administracion", "organizacion de oficina", "admon", "admon de oficina", "administracion y organizacion"] },
     { grade: 4, full: "Inglés Comercial I", aliases: ["ingles comercial i", "ingles comercial 1", "ingles 1", "ingles i"] },
     { grade: 4, full: "Redacción y Correspondencia Mercantil", aliases: ["redaccion y correspondencia mercantil", "redaccion y correspondencia", "redaccion", "correspondencia", "correspondencia mercantil"] },
     { grade: 4, full: "Introducción a la Economía", aliases: ["introduccion a la economia", "introduccion economia", "economia", "intro economia"] },
-    { grade: 4, full: "Ortografía y Caligrafía", aliases: ["ortografia y caligrafia", "ortografia", "caligrafia", "orto y cali"] },
+    { grade: 4, full: "Ortografía y Caligrafía", aliases: ["ortografia y caligrafia", "caligrafia y ortografia", "ortografia", "caligrafia", "orto y cali"] },
     { grade: 4, full: "Computación I", aliases: ["computacion i", "computacion 1", "compu 1", "compu i", "computacion"] },
 
     // 5to Perito Contador
     { grade: 5, full: "Contabilidad de Costos", aliases: ["contabilidad de costos", "contabilidad costos", "costos", "conta costos", "conta 2", "conta ii"] },
-    { grade: 5, full: "Cálculo Mercantil", aliases: ["calculo mercantil", "calculo", "cálculo", "calculo merc", "calc"] },
-    { grade: 5, full: "Estadística Descriptiva", aliases: ["estadistica descriptiva", "estadistica", "estadística"] },
+    { grade: 5, full: "Cálculo Mercantil y Financiero", aliases: ["calculo mercantil y financiero", "calculo mercantil", "calculo", "cálculo", "calculo merc", "calc"] },
     { grade: 5, full: "Inglés Comercial II", aliases: ["ingles comercial ii", "ingles comercial 2", "ingles 2", "ingles ii"] },
-    { grade: 5, full: "Legislación Fiscal y Aduanera", aliases: ["legislacion fiscal y aduanera", "legislacion fiscal", "legislacion", "fiscal y aduanera", "fiscal", "aduanera"] },
+    { grade: 5, full: "Legislación Fiscal y Aduanal", aliases: ["legislacion fiscal y aduanal", "legislacion fiscal y aduanera", "legislacion fiscal", "legislacion", "fiscal y aduanera", "fiscal y aduanal", "fiscal", "aduanera", "aduanal"] },
     { grade: 5, full: "Finanzas Públicas", aliases: ["finanzas publicas", "finanzas públicas", "finanzas"] },
     { grade: 5, full: "Geografía Económica", aliases: ["geografia economica", "geografía económica", "geografia", "geografía"] },
+    { grade: 5, full: "Catalogación y Archivo", aliases: ["catalogacion y archivo", "catalogacion", "archivo"] },
     { grade: 5, full: "Mecanografía", aliases: ["mecanografia", "mecanografía", "meca"] },
     { grade: 5, full: "Computación II", aliases: ["computacion ii", "computacion 2", "compu 2", "compu ii"] },
 
     // 6to Perito Contador
     { grade: 6, full: "Contabilidad Bancaria", aliases: ["contabilidad bancaria", "conta bancaria", "bancaria", "conta 3", "conta iii"] },
-    { grade: 6, full: "Contabilidad Gubernamental Integrada", aliases: ["contabilidad gubernamental integrada", "contabilidad gubernamental", "conta gubernamental", "gubernamental", "guber", "conta guber"] },
-    { grade: 6, full: "Auditoría", aliases: ["auditoria", "auditoría"] },
+    { grade: 6, full: "Contabilidad Gubernamental Integrada", aliases: ["contabilidad gubernamental integrada", "contabilidad gubernamental e integrada", "contabilidad gubernamental", "conta gubernamental", "gubernamental", "guber", "conta guber"] },
+    { grade: 6, full: "Estadística Comercial", aliases: ["estadistica comercial", "estadistica", "estadística", "estadistica descriptiva"] },
+    { grade: 6, full: "Organización de Empresas", aliases: ["organizacion de empresas", "organizacion empresas", "organizacion de empresas y tecnicas de oficina", "organizacion y metodos", "organización y métodos", "oym", "o y m"] },
     { grade: 6, full: "Ética Profesional y Relaciones Humanas", aliases: ["etica profesional y relaciones humanas", "etica profesional", "relaciones humanas", "etica", "ética"] },
     { grade: 6, full: "Práctica Supervisada", aliases: ["practica supervisada", "práctica supervisada", "practica", "práctica"] },
-    { grade: 6, full: "Derecho Mercantil y Nociones de Derecho Laboral", aliases: ["derecho mercantil y nociones de derecho laboral", "derecho mercantil", "derecho laboral", "nociones de derecho laboral", "laboral y mercantil"] },
-    { grade: 6, full: "Organización y Métodos", aliases: ["organizacion y metodos", "organización y métodos", "oym", "o y m"] },
-    { grade: 6, full: "Seminario sobre Problemas de la Educación Socioeconómica de Guatemala", aliases: ["seminario sobre problemas de la educacion socioeconomica de guatemala", "seminario de graduacion", "seminario", "socioeconomica"] },
-    { grade: 6, full: "Inglés Comercial III", aliases: ["ingles comercial iii", "ingles comercial 3", "ingles 3", "ingles iii"] },
-    { grade: 6, full: "Computación III", aliases: ["computacion iii", "computacion 3", "compu 3", "compu iii"] }
+    { grade: 6, full: "Auditoría", aliases: ["auditoria", "auditoría"] },
+    { grade: 6, full: "Derecho Mercantil y Nociones de Derecho Laboral", aliases: ["derecho mercantil y nociones de derecho laboral", "derecho mercantil y laboral", "derecho mercantil", "derecho laboral", "nociones de derecho laboral", "laboral y mercantil"] },
+    { grade: 6, full: "Computación III", aliases: ["computacion iii", "computacion 3", "compu 3", "compu iii"] },
+    { grade: 6, full: "Seminario sobre Problemas Socioeconómicos de Guatemala", aliases: ["seminario sobre problemas socioeconomicos de guatemala", "seminario sobre problemas de la educacion socioeconomica de guatemala", "seminario de graduacion", "seminario", "socioeconomica"] }
 ];
 
 function getFullOfficialSubjectName(rawSubjectName, gradeNum = 0) {
@@ -27819,42 +27932,6 @@ function onReportOnlyFailingToggleChange() {
 }
 window.onReportOnlyFailingToggleChange = onReportOnlyFailingToggleChange;
 
-const OFFICIAL_CNB_PENSUM_ORDER = {
-    "4": [
-        { order: 1, name: "Contabilidad de Sociedades", aliases: ["contabilidad", "contabilidad de sociedades"] },
-        { order: 2, name: "Matemática Comercial", aliases: ["matematica", "matematica comercial"] },
-        { order: 3, name: "Fundamentos de Derecho", aliases: ["fundamentos derecho", "fundamentos de derecho", "derecho"] },
-        { order: 4, name: "Inglés Comercial I", aliases: ["ingles", "ingles comercial 1", "ingles comercial i", "ingles 1"] },
-        { order: 5, name: "Redacción y Correspondencia Mercantil", aliases: ["redaccion", "redaccion y correspondencia", "redaccion correspondencia mercantil", "redaccion y correspondencia mercantil"] },
-        { order: 6, name: "Introducción a la Economía", aliases: ["economia", "introduccion a la economia", "introduccion economia"] },
-        { order: 7, name: "Ortografía y Caligrafía", aliases: ["caligrafia", "ortografia", "caligrafia y ortografia", "ortografia y caligrafia"] },
-        { order: 8, name: "Administración y Organización de Empresas", aliases: ["administracion", "organizacion de oficina", "administracion y organizacion", "administracion y organizacion de oficina", "administracion y organizacion de empresas"] },
-        { order: 9, name: "Computación I", aliases: ["computacion", "computacion 1", "computacion i"] }
-    ],
-    "5": [
-        { order: 1, name: "Contabilidad de Costos", aliases: ["costos", "contabilidad costos", "contabilidad de costos"] },
-        { order: 2, name: "Cálculo Mercantil y Financiero", aliases: ["calculo", "calculo mercantil", "calculo mercantil y financiero"] },
-        { order: 3, name: "Inglés Comercial II", aliases: ["ingles ii", "ingles 2", "ingles comercial ii", "ingles comercial 2"] },
-        { order: 4, name: "Legislación Fiscal y Aduanera", aliases: ["legislacion", "legislacion fiscal", "legislacion fiscal y aduanal", "legislacion fiscal y aduanera"] },
-        { order: 5, name: "Finanzas Públicas", aliases: ["finanzas", "finanzas publicas"] },
-        { order: 6, name: "Geografía Económica", aliases: ["geografia", "geografia economica"] },
-        { order: 7, name: "Catalogación y Archivo", aliases: ["catalogacion", "archivo", "catalogacion y archivo"] },
-        { order: 8, name: "Mecanografía", aliases: ["mecanografia"] },
-        { order: 9, name: "Computación II", aliases: ["computacion ii", "computacion 2"] }
-    ],
-    "6": [
-        { order: 1, name: "Contabilidad Bancaria", aliases: ["bancaria", "contabilidad bancaria"] },
-        { order: 2, name: "Contabilidad Gubernamental e Integrada", aliases: ["gubernamental", "contabilidad gubernamental", "contabilidad gubernamental integrada", "contabilidad gubernamental e integrada"] },
-        { order: 3, name: "Estadística Comercial", aliases: ["estadistica", "estadistica comercial"] },
-        { order: 4, name: "Organización de Empresas", aliases: ["organizacion empresas", "organizacion de empresas", "organizacion de empresas y tecnicas de oficina"] },
-        { order: 5, name: "Ética Profesional y Relaciones Humanas", aliases: ["etica", "etica profesional", "etica profesional y relaciones humanas"] },
-        { order: 6, name: "Práctica Supervisada", aliases: ["practica", "practica supervisada"] },
-        { order: 7, name: "Auditoría", aliases: ["auditoria"] },
-        { order: 8, name: "Derecho Mercantil y Laboral", aliases: ["derecho mercantil", "derecho mercantil y laboral", "derecho mercantil y nociones de derecho laboral"] },
-        { order: 9, name: "Computación III", aliases: ["computacion iii", "computacion 3"] },
-        { order: 10, name: "Seminario sobre Problemas Socioeconómicos de Guatemala", aliases: ["seminario", "seminario problemas socioeconomicos", "seminario sobre problemas socioeconomicos de guatemala"] }
-    ]
-};
 
 function getPensumCatalogOrder(subjectName, studentGrade = '') {
     const cleanStr = s => (s || '').toLowerCase()
@@ -44173,13 +44250,21 @@ window.closeSectionStudentsModal = closeSectionStudentsModal;
 window.closeSectionStudentsModal = closeSectionStudentsModal;
 
 function printSectionStudentsList(gradeCode, section) {
+    if (!gradeCode && STATE.activeSectionModalGrade) {
+        gradeCode = STATE.activeSectionModalGrade;
+    }
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.name === gradeCode || g.id === gradeCode) || { name: gradeCode || '4to Perito Contador', section: section || 'Sección A', career: 'Perito Contador' };
+    if (!section && gradeObj && gradeObj.section) {
+        section = gradeObj.section;
+    }
+
     const isDocente = (STATE.currentRole === 'docente');
     const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
     if (isDocente && currentDocenteUser) {
         const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
             if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
-            const matchGrade = (a.gradeCode === gradeCode || a.grade === gradeCode || (a.gradeLabel && a.gradeLabel.includes(gradeCode)));
-            const matchSec = (!section || a.section === section);
+            const matchGrade = (a.gradeCode === gradeCode || a.grade === gradeCode || (a.gradeLabel && a.gradeLabel.includes(gradeCode)) || (gradeObj && (a.grade === gradeObj.name || a.gradeCode === gradeObj.code)));
+            const matchSec = (!section || a.section === section || (gradeObj && a.section === gradeObj.section));
             return matchGrade && matchSec;
         });
         if (!hasAssignedClassInGrade) {
@@ -44189,7 +44274,6 @@ function printSectionStudentsList(gradeCode, section) {
     }
 
     const cycle = STATE.activeCycle || '2026';
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.name === gradeCode) || { name: gradeCode, section: section || 'A', career: 'Ciclo Diversificado' };
     const baseStudents = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], cycle)
         : (STATE.students || []);
