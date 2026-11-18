@@ -21150,8 +21150,8 @@ function generateOfficialPrintList(opts = null) {
         let headerDocTitle = '';
         let docTitle = '';
         if (modelType === 'NOMINA_OFICIAL') {
-            headerDocTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR ${cycle}`;
-            docTitle = `Nómina Oficial - ${gradeTitle}`;
+            headerDocTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS — CICLO ESCOLAR ${cycle} — ${bNum}º BIMESTRE OFICIAL`;
+            docTitle = `Nómina Oficial - ${gradeTitle} - ${bNum}º Bimestre`;
         } else if (modelType === 'ASISTENCIA_MENSUAL') {
             headerDocTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (${bimestreDisplay} BIMESTRE)`;
             docTitle = `Control de Asistencia - ${gradeTitle} - ${finalSubjectName}`;
@@ -21793,7 +21793,8 @@ function executePrintModalToExcel() {
 }
 
 function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, dataRowCount = 0) {
-    if (!ws || typeof XLSX === 'undefined') return;
+    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+    if (!ws || !xlsxLib || !xlsxLib.utils) return;
     const borderThin = {
         top: { style: 'thin', color: { rgb: 'CBD5E1' } },
         bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
@@ -21809,7 +21810,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
 
     for (let c = 0; c < numCols; c++) {
         // Fila 0: Banner Institucional Principal
-        const addr0 = XLSX.utils.encode_cell({ r: 0, c });
+        const addr0 = xlsxLib.utils.encode_cell({ r: 0, c });
         if (!ws[addr0]) ws[addr0] = { v: '', t: 's' };
         ws[addr0].s = {
             fill: { fgColor: { rgb: '064E3B' } },
@@ -21818,7 +21819,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         };
 
         // Fila 1: Subtítulo Institucional
-        const addr1 = XLSX.utils.encode_cell({ r: 1, c });
+        const addr1 = xlsxLib.utils.encode_cell({ r: 1, c });
         if (!ws[addr1]) ws[addr1] = { v: '', t: 's' };
         ws[addr1].s = {
             fill: { fgColor: { rgb: '15803D' } },
@@ -21827,7 +21828,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         };
 
         // Fila 2: Título del Formato
-        const addr2 = XLSX.utils.encode_cell({ r: 2, c });
+        const addr2 = xlsxLib.utils.encode_cell({ r: 2, c });
         if (!ws[addr2]) ws[addr2] = { v: '', t: 's' };
         ws[addr2].s = {
             fill: { fgColor: { rgb: '0369A1' } },
@@ -21837,7 +21838,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
 
         // Filas 3 & 4: Metadatos
         for (let r = 3; r <= 4; r++) {
-            const addrM = XLSX.utils.encode_cell({ r, c });
+            const addrM = xlsxLib.utils.encode_cell({ r, c });
             if (ws[addrM] && ws[addrM].v) {
                 ws[addrM].s = {
                     fill: { fgColor: { rgb: 'F1F5F9' } },
@@ -21849,7 +21850,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         }
 
         // Fila Encabezados de Columna
-        const addrH = XLSX.utils.encode_cell({ r: headerRowIdx, c });
+        const addrH = xlsxLib.utils.encode_cell({ r: headerRowIdx, c });
         if (ws[addrH]) {
             ws[addrH].s = {
                 fill: { fgColor: { rgb: '15803D' } },
@@ -21864,7 +21865,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
     const startR = headerRowIdx + 1;
     const endR = dataRowCount > 0 ? (startR + dataRowCount - 1) : 1000;
     for (let r = startR; r <= endR; r++) {
-        const firstCell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+        const firstCell = ws[xlsxLib.utils.encode_cell({ r, c: 0 })];
         if (!firstCell && dataRowCount === 0) break;
 
         const isEven = (r - startR) % 2 === 1;
@@ -21878,7 +21879,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         let isAus = false;
         let isExon = false;
         for (let c = 0; c < numCols; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            const cell = ws[xlsxLib.utils.encode_cell({ r, c })];
             const strVal = cell ? String(cell.v || '').toUpperCase() : '';
             if (strVal.includes('RETIRADO')) isRet = true;
             if (strVal.includes('AUSENTE')) isAus = true;
@@ -21918,7 +21919,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         }
 
         for (let c = 0; c < numCols; c++) {
-            const addr = XLSX.utils.encode_cell({ r, c });
+            const addr = xlsxLib.utils.encode_cell({ r, c });
             const cell = ws[addr];
             if (!cell) continue;
 
@@ -22125,8 +22126,8 @@ function generateOfficialExcelList(opts = null) {
     let docHeaderTitle = '';
 
     if (modelType === 'NOMINA_OFICIAL') {
-        fileBaseName = `Nomina_Oficial_${cleanGrade}_${fillSuffix}_${cycle}.xlsx`;
-        docHeaderTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR ${cycle}`;
+        fileBaseName = `Nomina_Oficial_${cleanGrade}_B${bNum}_${fillSuffix}_${cycle}.xlsx`;
+        docHeaderTitle = `NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS — CICLO ESCOLAR ${cycle} — ${bNum}º BIMESTRE OFICIAL`;
     } else if (modelType === 'ASISTENCIA_MENSUAL') {
         fileBaseName = `Control_Asistencia_${cleanGrade}_B${bNum}_${fillSuffix}_${cycle}.xlsx`;
         docHeaderTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (BIMESTRE ${bNum}) - CICLO ${cycle}`;
@@ -42707,6 +42708,12 @@ function exportStudentsOfficialCSV() {
 }
 
 function exportStudentsOfficialExcel() {
+    if (typeof window !== 'undefined' && typeof window._ensureXLSXLoaded === 'function' && typeof XLSX === 'undefined') {
+        window._ensureXLSXLoaded(function() {
+            exportStudentsOfficialExcel();
+        });
+        return;
+    }
     try {
         const gradeFilterSel = document.getElementById('gradeFilterSelect');
         const gradeVal = gradeFilterSel ? gradeFilterSel.value : '';
