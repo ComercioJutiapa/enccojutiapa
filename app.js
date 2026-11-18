@@ -16627,7 +16627,7 @@ async function saveStudentForm(e) {
     }
 }
 
-function getStudentExonerationsList(student) {
+function getStudentExonerationsList(student, targetCycle = null) {
     if (!student) return [];
     const list = [];
     const seen = new Set();
@@ -16635,8 +16635,23 @@ function getStudentExonerationsList(student) {
         ? new Set(STATE.deletedExonerationIds) 
         : ((window.STATE && Array.isArray(window.STATE.deletedExonerationIds)) ? new Set(window.STATE.deletedExonerationIds) : new Set());
 
+    const activeCycle = String(targetCycle || (typeof STATE !== 'undefined' ? (STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle) : (window.STATE ? (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle) : '2026')) || '2026').trim();
+
     const addEx = ex => {
         if (!ex || ex.active === false || ex.deletedAt || (ex.id && deletedExons.has(ex.id))) return;
+
+        // 🛡️ AISLAMIENTO ESTRICTO DE CICLO LECTIVO:
+        // Una exoneración otorgada en un ciclo (ej: 2026) NUNCA debe aplicar ni interferir en otro ciclo (ej: 2027).
+        let exCycle = String(ex.cycle || ex.academicCycle || '').trim();
+        if (!exCycle) {
+            if (ex.date && String(ex.date).includes('2026')) exCycle = '2026';
+            else if (ex.date && String(ex.date).includes('2027')) exCycle = '2027';
+            else if (ex.createdAt && String(ex.createdAt).includes('2026')) exCycle = '2026';
+            else if (ex.createdAt && String(ex.createdAt).includes('2027')) exCycle = '2027';
+            else exCycle = '2026'; // Por defecto, registros previos pertenecen a 2026
+        }
+        if (exCycle !== activeCycle) return;
+
         const key = `${ex.id || ''}_${(ex.subject || '').toLowerCase()}_${String(ex.bimestre || '').toLowerCase()}`;
         if (!seen.has(key)) {
             seen.add(key);
@@ -16672,13 +16687,66 @@ function getStudentExonerationsList(student) {
         });
     }
 
-    // Mantener ambos arrays en memoria sincronizados para el estudiante
-    student.academicExceptions = list;
-    student.exoneraciones = list;
-
     return list;
 }
 window.getStudentExonerationsList = getStudentExonerationsList;
+
+function getStudentAllHistoricalExonerations(student) {
+    if (!student) return [];
+    const list = [];
+    const seen = new Set();
+    const deletedExons = (typeof STATE !== 'undefined' && Array.isArray(STATE.deletedExonerationIds)) 
+        ? new Set(STATE.deletedExonerationIds) 
+        : ((window.STATE && Array.isArray(window.STATE.deletedExonerationIds)) ? new Set(window.STATE.deletedExonerationIds) : new Set());
+
+    const addEx = ex => {
+        if (!ex || ex.active === false || ex.deletedAt || (ex.id && deletedExons.has(ex.id))) return;
+        let exCycle = String(ex.cycle || ex.academicCycle || '').trim();
+        if (!exCycle) {
+            if (ex.date && String(ex.date).includes('2026')) exCycle = '2026';
+            else if (ex.date && String(ex.date).includes('2027')) exCycle = '2027';
+            else if (ex.createdAt && String(ex.createdAt).includes('2026')) exCycle = '2026';
+            else if (ex.createdAt && String(ex.createdAt).includes('2027')) exCycle = '2027';
+            else exCycle = '2026';
+        }
+        const key = `${ex.id || ''}_${exCycle}_${(ex.subject || '').toLowerCase()}_${String(ex.bimestre || '').toLowerCase()}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            list.push({ ...ex, cycle: exCycle });
+        }
+    };
+
+    if (Array.isArray(student.academicExceptions)) {
+        student.academicExceptions.forEach(addEx);
+    }
+    if (Array.isArray(student.exoneraciones)) {
+        student.exoneraciones.forEach(addEx);
+    }
+
+    const globalExons = (typeof STATE !== 'undefined' && STATE.exoneraciones) || (window.STATE && window.STATE.exoneraciones) || {};
+    if (globalExons && typeof globalExons === 'object') {
+        const sId = String(student.id || '').trim();
+        const pCode = String(student.personalCode || '').trim().toLowerCase();
+        const carne = String(student.carne || '').trim().toLowerCase();
+
+        Object.values(globalExons).forEach(ex => {
+            if (!ex || ex.active === false || ex.deletedAt || (ex.id && deletedExons.has(ex.id))) return;
+            const exId = String(ex.studentId || '').trim();
+            const exCode = String(ex.personalCode || '').trim().toLowerCase();
+            const exCarne = String(ex.carne || '').trim().toLowerCase();
+
+            const matchId = exId && (exId === sId);
+            const matchCode = pCode && exCode && (exCode === pCode);
+            const matchCarne = carne && exCarne && (exCarne === carne);
+            if (matchId || matchCode || matchCarne) {
+                addEx(ex);
+            }
+        });
+    }
+
+    return list;
+}
+window.getStudentAllHistoricalExonerations = getStudentAllHistoricalExonerations;
 
 function cleanExoneratedStudentGrades(student) {
     // 🛡️ REGLA ESTRICTA DE INTEGRIDAD ACADÉMICA Y AUDITORÍA:
@@ -17782,12 +17850,15 @@ async function saveAcademicExoneration(e) {
         if (!STATE.exoneraciones) STATE.exoneraciones = {};
 
         const cleanStr = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-        const exonId = `exon_${student.id}_${cleanStr(subject)}_${bimestre}`;
+        const curCycle = String((typeof STATE !== 'undefined' ? (STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle) : (window.STATE ? (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle) : '2026')) || '2026').trim();
+        const exonId = `exon_${student.id}_${curCycle}_${cleanStr(subject)}_${bimestre}`;
         const newEx = {
             id: exonId,
             studentId: student.id,
             personalCode: student.personalCode || '',
             carne: student.carne || '',
+            cycle: curCycle,
+            academicCycle: curCycle,
             subject: subject,
             bimestre: bimestre,
             type: type,
@@ -37731,7 +37802,17 @@ function renderPermissionsHistoryTable() {
     }
 
     const q = (document.getElementById('permHistorySearchInput')?.value || '').trim().toLowerCase();
-    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+    let perms = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions.filter(p => {
+        if (!p) return false;
+        let pCycle = String(p.cycle || p.academicCycle || '').trim();
+        if (!pCycle) {
+            const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+            if (startD.startsWith('2027')) pCycle = '2027';
+            else if (startD.startsWith('2026')) pCycle = '2026';
+            else pCycle = '2026';
+        }
+        return pCycle === cycle;
+    }) : [];
 
     if (q) {
         perms = perms.filter(p => {
@@ -38579,9 +38660,14 @@ function loadHonorRoll() {
     const periodBadgeText = _getHonorRollPeriodTitleBadge(periodMode);
     const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
 
-    const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
+    const activeCycle = String((typeof STATE !== 'undefined' ? (STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle) : (window.STATE ? (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle) : '2026')) || '2026').trim();
+    const rawStudents = (isDocente && typeof getAuthorizedStudents === 'function')
         ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
         : (STATE.students || []);
+
+    const baseStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(rawStudents, activeCycle)
+        : rawStudents;
 
     let list = baseStudents.filter(s => isStudentActive(s));
 
@@ -38664,13 +38750,25 @@ function loadHonorRoll() {
     }
 
     if (evaluatedList.length === 0) {
+        const isFreshCycleNoGrades = activeCycle === '2027' || !list.some(s => {
+            const inf = getStudentAcademicInfo(s, periodMode);
+            return inf && inf.totalPoints > 0;
+        });
+        const emptyIcon = isFreshCycleNoGrades ? 'fa-award' : 'fa-users';
+        const emptyTitle = isFreshCycleNoGrades
+            ? `Ciclo Escolar ${activeCycle}: En Espera de Calificaciones Oficiales`
+            : `No se encontraron estudiantes elegibles en este período o grado`;
+        const emptyDesc = isFreshCycleNoGrades
+            ? `En el ciclo lectivo ${activeCycle} aún no se han asentado notas oficiales. El Cuadro de Honor se calculará automáticamente al ingresar las notas oficiales del 1º Bimestre. Los registros de ciclos anteriores están resguardados en sus respectivos archivos históricos.`
+            : `Desmarque la casilla "Solo Estudiantes Elegibles" superior o cambie el Período/Bimestre si desea visualizar estudiantes con notas pendientes en este corte.`;
+
         tbody.innerHTML = `
             <tr>
                 <td colspan="${5 + honorSubjectCols.length + 3}" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
-                    <i class="fa-solid fa-users" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-blue); opacity:0.8;"></i>
-                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">No se encontraron estudiantes elegibles en este período o grado</strong>
+                    <i class="fa-solid ${emptyIcon}" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-blue); opacity:0.8;"></i>
+                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">${escapeHtml(emptyTitle)}</strong>
                     <span style="font-size:0.88rem; max-width:550px; display:inline-block; line-height:1.4;">
-                        Desmarque la casilla "Solo Estudiantes Elegibles" superior o cambie el Período/Bimestre si desea visualizar estudiantes con notas pendientes en este corte.
+                        ${escapeHtml(emptyDesc)}
                     </span>
                 </td>
             </tr>
@@ -38819,9 +38917,14 @@ function printHonorRoll() {
     }
 
     const periodMode = (periodSelect && periodSelect.value) ? periodSelect.value : 'CONSOLIDATED_100';
-    const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
+    const activeCycle = String((typeof STATE !== 'undefined' ? (STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle) : (window.STATE ? (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle) : '2026')) || '2026').trim();
+    const rawStudents = (isDocente && typeof getAuthorizedStudents === 'function')
         ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
         : (STATE.students || []);
+
+    const baseStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(rawStudents, activeCycle)
+        : rawStudents;
 
     let list = baseStudents.filter(s => isStudentActive(s));
 
@@ -55576,7 +55679,19 @@ function renderPermissionsHistoryView() {
         effectiveTo = dateFrom;
     }
 
-    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+    const activeCycle = String((typeof STATE !== 'undefined' ? (STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle) : (window.STATE ? (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle) : '2026')) || '2026').trim();
+
+    let perms = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions.filter(p => {
+        if (!p) return false;
+        let pCycle = String(p.cycle || p.academicCycle || '').trim();
+        if (!pCycle) {
+            const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+            if (startD.startsWith('2027')) pCycle = '2027';
+            else if (startD.startsWith('2026')) pCycle = '2026';
+            else pCycle = '2026';
+        }
+        return pCycle === activeCycle;
+    }) : [];
     const totalCount = perms.length;
 
     // Filtro por rango de fechas dinámico (intersección exacta de intervalos)
@@ -55748,7 +55863,17 @@ function printPermissionsLog() {
         effectiveTo = dateFrom;
     }
 
-    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+    let perms = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions.filter(p => {
+        if (!p) return false;
+        let pCycle = String(p.cycle || p.academicCycle || '').trim();
+        if (!pCycle) {
+            const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+            if (startD.startsWith('2027')) pCycle = '2027';
+            else if (startD.startsWith('2026')) pCycle = '2026';
+            else pCycle = '2026';
+        }
+        return pCycle === cycle;
+    }) : [];
 
     // Filtro por fecha en impresión
     if (effectiveFrom || effectiveTo) {

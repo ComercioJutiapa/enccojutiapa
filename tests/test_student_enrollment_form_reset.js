@@ -152,7 +152,7 @@ const resetFnCode = appCode.slice(
 );
 const saveFnCode = appCode.slice(
     appCode.indexOf('async function saveStudentForm(e)'),
-    appCode.indexOf('function getStudentExonerationsList(student)')
+    appCode.indexOf('function getStudentExonerationsList')
 );
 
 vm.runInContext(resetFnCode, sandbox);

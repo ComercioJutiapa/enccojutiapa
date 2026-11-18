@@ -966,10 +966,23 @@
 
     // Pestaña: Permisos e Inasistencias
     function renderAuxPermissionsTab(container) {
-        const studentPermissions = window.STATE ? (window.STATE.studentPermissions || []) : [];
+        const currentCycle = String((window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026').trim();
+        const rawPermissions = window.STATE ? (window.STATE.studentPermissions || []) : [];
+        const studentPermissions = rawPermissions.filter(p => {
+            if (!p) return false;
+            let pCycle = String(p.cycle || p.academicCycle || '').trim();
+            if (!pCycle) {
+                const sDate = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+                if (sDate.startsWith('2027')) pCycle = '2027';
+                else if (sDate.startsWith('2026')) pCycle = '2026';
+                else pCycle = '2026';
+            }
+            return pCycle === currentCycle;
+        });
+
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <strong style="color:#0f172a;">Historial Oficial de Permisos y Justificaciones (${studentPermissions.length})</strong>
+                <strong style="color:#0f172a;">Historial de Permisos del Ciclo Escolar ${currentCycle} (${studentPermissions.length})</strong>
                 <button type="button" class="btn btn-sm btn-primary" onclick="openCreatePermissionModal()" style="font-weight:700;">
                     <i class="fa-solid fa-plus"></i> Emitir Nuevo Permiso
                 </button>
@@ -987,7 +1000,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${studentPermissions.map(p => `
+                        ${studentPermissions.length === 0 ? `
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:35px 20px; color:#64748b;">
+                                <i class="fa-solid fa-clipboard-check" style="font-size:2rem; margin-bottom:8px; display:block; color:#0284c7; opacity:0.7;"></i>
+                                <strong>No hay permisos ni pases de salida emitidos en el Ciclo Escolar ${currentCycle}.</strong><br>
+                                <span style="font-size:0.82rem;">Los registros de años anteriores se conservan resguardados en el historial acumulativo de cada estudiante.</span>
+                            </td>
+                        </tr>
+                        ` : studentPermissions.map(p => `
                         <tr>
                             <td>
                                 <strong style="cursor:pointer; color:#0284c7;" onclick="openStudent360Drawer('${p.studentId}')">
@@ -1007,7 +1028,7 @@
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
                             </td>
-                        </tr>
+                        </tr>`).join('')}
                         `).join('')}
                     </tbody>
                 </table>
@@ -1299,15 +1320,24 @@
                 </div>
             `).join('');
         } else if (tabKey === 'permissions') {
-            const permissions = (window.STATE?.studentPermissions || []).filter(p => p.studentId === student.id || p.personalCode === student.personalCode);
-            if (permissions.length === 0) {
+            const rawPerms = (window.STATE?.studentPermissions || []).filter(p => p.studentId === student.id || (student.personalCode && p.personalCode === student.personalCode));
+            if (rawPerms.length === 0) {
                 content.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">No hay permisos de ausencia emitidos para este estudiante.</div>`;
                 return;
             }
-            content.innerHTML = permissions.map(p => `
+            content.innerHTML = rawPerms.map(p => {
+                let pCycle = String(p.cycle || p.academicCycle || '').trim();
+                if (!pCycle) {
+                    const sDate = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+                    pCycle = sDate.startsWith('2027') ? '2027' : '2026';
+                }
+                return `
                 <div style="border:1px solid #bfdbfe; background:#eff6ff; border-radius:8px; padding:12px; margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <span class="aux-chip aux-chip-blue">${p.reasonCategory || 'Permiso'}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
+                        <div>
+                            <span class="aux-chip aux-chip-blue">${p.reasonCategory || 'Permiso'}</span>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.73rem; border:1px solid #bae6fd; margin-left:4px;">Ciclo ${escapeHtml(pCycle)}</span>
+                        </div>
                         <span style="font-size:0.75rem; font-weight:700; color:#1d4ed8;">${p.startDate} al ${p.endDate || p.startDate}</span>
                     </div>
                     <div style="font-size:0.85rem; color:#1e293b; margin-bottom:4px;">${p.reasonDetail}</div>
@@ -1315,17 +1345,23 @@
                         <strong>Autorizado por:</strong> ${p.authorizedBy || 'Auxiliatura / Secretaría'} ${p.docRef ? `&bull; Ref: ${p.docRef}` : ''}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         } else if (tabKey === 'exceptions') {
-            const exceptions = student.academicExceptions || [];
+            const exceptions = (typeof window.getStudentAllHistoricalExonerations === 'function')
+                ? window.getStudentAllHistoricalExonerations(student)
+                : (student.academicExceptions || []);
             if (exceptions.length === 0) {
                 content.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">No hay exoneraciones académicas registradas.</div>`;
                 return;
             }
             content.innerHTML = exceptions.map(e => `
                 <div style="border:1px solid #e9d5ff; background:#faf5ff; border-radius:8px; padding:12px; margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <strong style="color:#7e22ce;">Exoneración: ${e.subject || 'Todas las materias'}</strong>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
+                        <div>
+                            <strong style="color:#7e22ce;">Exoneración: ${e.subject || 'Todas las materias'}</strong>
+                            <span class="badge" style="background:#f3e8ff; color:#6b21a8; font-weight:700; font-size:0.73rem; border:1px solid #d8b4fe; margin-left:4px;">Ciclo ${escapeHtml(e.cycle || '2026')}</span>
+                        </div>
                         <span style="font-size:0.75rem; color:#64748b;">Bimestre ${e.bimestre || 'Todos'}</span>
                     </div>
                     <div style="font-size:0.83rem; color:#334155;">Motivo: ${e.reason || 'Consideración especial'}</div>
@@ -1518,12 +1554,15 @@
         } else {
             // Permiso / Justificación
             if (!Array.isArray(window.STATE.studentPermissions)) window.STATE.studentPermissions = [];
+            const currentActiveCycle = String((window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026').trim();
             const newPerm = {
                 id: 'perm-' + Date.now(),
                 studentId: student.id,
                 studentName: student.name,
                 personalCode: student.personalCode || '',
                 carne: student.carne || '',
+                cycle: currentActiveCycle,
+                academicCycle: currentActiveCycle,
                 grade: student.grade || student.gradeCode,
                 gradeCode: student.gradeCode,
                 section: student.section || 'Sección A',
@@ -1531,7 +1570,7 @@
                 endDate: todayIso,
                 reasonCategory: 'Permiso Oficial Autorizado',
                 reasonDetail: reason,
-                docRef: 'ENCCO-AUX-' + new Date().getFullYear(),
+                docRef: 'ENCCO-AUX-' + currentActiveCycle,
                 authorizedBy: author,
                 createdAt: new Date().toISOString(),
                 status: 'autorizado'
