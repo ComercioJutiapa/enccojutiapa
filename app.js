@@ -8803,6 +8803,329 @@ function ensureSireOfficialStudents() {
 }
 window.ensureSireOfficialStudents = ensureSireOfficialStudents;
 
+// ======================================================================
+// 🏛️ MALLA OFICIAL CNB Y SINCRONIZADOR DINÁMICO PENSUM-GRADOS-ASIGNACIONES
+// ======================================================================
+const OFFICIAL_CNB_PENSUM_COURSES = {
+    '4to': [
+        { code: '04-01-01', name: 'Contabilidad de Sociedades', periods: 5, order: 1 },
+        { code: '04-01-02', name: 'Matemática Comercial', periods: 5, order: 2 },
+        { code: '04-01-03', name: 'Fundamentos de Derecho', periods: 4, order: 3 },
+        { code: '04-01-04', name: 'Inglés Comercial I', periods: 4, order: 4 },
+        { code: '04-01-05', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 5 },
+        { code: '04-01-06', name: 'Introducción a la Economía', periods: 4, order: 6 },
+        { code: '04-01-07', name: 'Ortografía y Caligrafía', periods: 2, order: 7 },
+        { code: '04-01-08', name: 'Administración y Organización de Empresas', periods: 4, order: 8 },
+        { code: '04-01-09', name: 'Computación I', periods: 4, order: 9 }
+    ],
+    '5to': [
+        { code: '05-01-01', name: 'Contabilidad de Costos', periods: 5, order: 1 },
+        { code: '05-01-02', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 2 },
+        { code: '05-01-03', name: 'Inglés Comercial II', periods: 4, order: 3 },
+        { code: '05-01-04', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 4 },
+        { code: '05-01-05', name: 'Finanzas Públicas', periods: 4, order: 5 },
+        { code: '05-01-06', name: 'Geografía Económica', periods: 4, order: 6 },
+        { code: '05-01-07', name: 'Catalogación y Archivo', periods: 4, order: 7 },
+        { code: '05-01-08', name: 'Mecanografía', periods: 4, order: 8 },
+        { code: '05-01-09', name: 'Computación II', periods: 4, order: 9 }
+    ],
+    '6to': [
+        { code: '06-01-01', name: 'Contabilidad Bancaria', periods: 5, order: 1 },
+        { code: '06-01-02', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 2 },
+        { code: '06-01-03', name: 'Estadística Comercial', periods: 4, order: 3 },
+        { code: '06-01-04', name: 'Organización de Empresas', periods: 4, order: 4 },
+        { code: '06-01-05', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 5 },
+        { code: '06-01-06', name: 'Práctica Supervisada', periods: 4, order: 6 },
+        { code: '06-01-07', name: 'Auditoría', periods: 5, order: 7 },
+        { code: '06-01-08', name: 'Derecho Mercantil y Laboral', periods: 4, order: 8 },
+        { code: '06-01-09', name: 'Computación III', periods: 4, order: 9 },
+        { code: '06-01-10', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 10 }
+    ]
+};
+window.OFFICIAL_CNB_PENSUM_COURSES = OFFICIAL_CNB_PENSUM_COURSES;
+
+
+function getPensumItemGradeKey(p) {
+    if (!p) return '4to';
+    const raw = (typeof p === 'string') ? p.toUpperCase() : `${p.grade || ''} ${p.gradeCode || ''} ${p.name || ''}`.toUpperCase();
+    if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return '6to';
+    if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return '5to';
+    if (raw.includes('4') || raw.includes('CUARTO') || raw.includes('4TO')) return '4to';
+    return '4to';
+}
+window.getPensumItemGradeKey = getPensumItemGradeKey;
+
+function getOfficialCnbPensumCatalogDefaults() {
+    const list = [];
+    const grades = [
+        { key: '4to', gradeName: 'Cuarto Perito Contador' },
+        { key: '5to', gradeName: 'Quinto Perito Contador' },
+        { key: '6to', gradeName: 'Sexto Perito Contador' }
+    ];
+    grades.forEach(g => {
+        const courses = (typeof OFFICIAL_CNB_PENSUM_COURSES !== 'undefined' && OFFICIAL_CNB_PENSUM_COURSES[g.key]) ? OFFICIAL_CNB_PENSUM_COURSES[g.key] : [];
+        courses.forEach(c => {
+            list.push({
+                id: 'pen-' + c.code.toLowerCase().replace(/[^a-z0-9]/g, ''),
+                code: c.code,
+                name: c.name,
+                subject: c.name,
+                career: 'Perito Contador',
+                grade: g.gradeName,
+                order: c.order,
+                sortOrder: c.order,
+                hours: c.periods,
+                periods: c.periods,
+                weeklyHours: c.periods,
+                lastModified: Date.now()
+            });
+        });
+    });
+    return list;
+}
+window.getOfficialCnbPensumCatalogDefaults = getOfficialCnbPensumCatalogDefaults;
+
+function ensureCanonicalPensumCatalogCoherence() {
+    if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
+
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    const seenMap = new Map();
+    const deduplicated = [];
+
+    // 1. Filtrar duplicados preexistentes en pensumCatalog (conservando el que tenga ID y código válido)
+    STATE.pensumCatalog.forEach(item => {
+        if (!item || (!item.name && !item.subject)) return;
+        const gKey = getPensumItemGradeKey(item);
+        const nameKey = cleanStr(item.name || item.subject);
+        const fullKey = `${gKey}_${nameKey}`;
+
+        if (!seenMap.has(fullKey)) {
+            seenMap.set(fullKey, item);
+            deduplicated.push(item);
+        } else {
+            const existing = seenMap.get(fullKey);
+            if (!existing.code && item.code) existing.code = item.code;
+            if (!existing.periods && (item.periods || item.hours)) existing.periods = item.periods || item.hours;
+        }
+    });
+
+    const gradeNamesMap = {
+        '4to': 'Cuarto Perito Contador',
+        '5to': 'Quinto Perito Contador',
+        '6to': 'Sexto Perito Contador'
+    };
+
+    let changed = false;
+
+    // 2. Garantizar que cada grado tenga las asignaturas normativas oficiales de 2026
+    ['4to', '5to', '6to'].forEach(gKey => {
+        const officialCourses = OFFICIAL_CNB_PENSUM_COURSES[gKey] || [];
+        const fullGradeName = gradeNamesMap[gKey] || `${gKey} Grado`;
+
+        officialCourses.forEach(ofCourse => {
+            const ofNameKey = cleanStr(ofCourse.name);
+
+            let existing = deduplicated.find(item => {
+                if (getPensumItemGradeKey(item) !== gKey) return false;
+                const iNameKey = cleanStr(item.name || item.subject);
+                return iNameKey === ofNameKey || (item.code && item.code === ofCourse.code);
+            });
+
+            if (existing) {
+                if (existing.name !== ofCourse.name) { existing.name = ofCourse.name; existing.subject = ofCourse.name; changed = true; }
+                if (existing.code !== ofCourse.code) { existing.code = ofCourse.code; changed = true; }
+                if (existing.order !== ofCourse.order) { existing.order = ofCourse.order; existing.sortOrder = ofCourse.order; changed = true; }
+                if (existing.periods !== ofCourse.periods) {
+                    existing.periods = ofCourse.periods;
+                    existing.hours = ofCourse.periods;
+                    existing.weeklyHours = ofCourse.periods;
+                    changed = true;
+                }
+                if (!existing.career) existing.career = 'Perito Contador';
+                if (!existing.grade) existing.grade = fullGradeName;
+            } else {
+                const targetId = 'pen-' + ofCourse.code.toLowerCase().replace(/[^a-z0-9]/g, '');
+                deduplicated.push({
+                    id: targetId,
+                    code: ofCourse.code,
+                    name: ofCourse.name,
+                    subject: ofCourse.name,
+                    career: 'Perito Contador',
+                    grade: fullGradeName,
+                    order: ofCourse.order,
+                    sortOrder: ofCourse.order,
+                    hours: ofCourse.periods,
+                    periods: ofCourse.periods,
+                    weeklyHours: ofCourse.periods,
+                    lastModified: Date.now()
+                });
+                changed = true;
+            }
+        });
+    });
+
+    // 3. Orden correlativo normativo estricto
+    deduplicated.sort((a, b) => {
+        const ga = getPensumItemGradeKey(a);
+        const gb = getPensumItemGradeKey(b);
+        if (ga !== gb) return ga.localeCompare(gb);
+        return (parseInt(a.order || a.sortOrder || 99) - parseInt(b.order || b.sortOrder || 99));
+    });
+
+    STATE.pensumCatalog = deduplicated;
+    return changed;
+}
+window.ensureCanonicalPensumCatalogCoherence = ensureCanonicalPensumCatalogCoherence;
+
+function syncClassAssignmentsWithPensumAndGrades(options = { showNotification: true }) {
+    ensureCanonicalPensumCatalogCoherence();
+
+    if (typeof purifySchoolStructure === 'function' && (!STATE.gradesList || STATE.gradesList.length === 0)) {
+        purifySchoolStructure();
+    }
+    const gradesList = deduplicateGradesCollection(STATE.gradesList || []);
+
+    if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
+
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    const cleanSec = s => {
+        const raw = String(s || '').toUpperCase();
+        const m = raw.match(/(?:SECCI[OÓ]N\s*|\b)([A-Z])\b/);
+        return m ? m[1] : (raw.replace(/[^A-Z0-9]/g, '').slice(0, 1) || 'A');
+    };
+
+    // 1. Mapear y deduplicar asignaciones preexistentes SIN PERDER DOCENTES NI DATOS
+    const existingMap = new Map();
+    STATE.pensum.forEach(asg => {
+        if (!asg) return;
+        const gKey = getPensumItemGradeKey(asg);
+        const sKey = cleanSec(asg.section || asg.gradeCode || asg.grade);
+        const subName = asg.subject || asg.name || '';
+        const mKey = cleanStr(subName);
+        if (!mKey) return;
+        const canonicalKey = `${gKey}_${sKey}_${mKey}`;
+
+        if (existingMap.has(canonicalKey)) {
+            const current = existingMap.get(canonicalKey);
+            const currentHasTeacher = current.teacher && current.teacher !== 'Sin asignar' && current.teacherId;
+            const newHasTeacher = asg.teacher && asg.teacher !== 'Sin asignar' && asg.teacherId;
+            if (!currentHasTeacher && newHasTeacher) {
+                existingMap.set(canonicalKey, asg);
+            }
+        } else {
+            existingMap.set(canonicalKey, asg);
+        }
+    });
+
+    const synchronizedPensum = [];
+    const processedKeys = new Set();
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    // 2. Por cada sección en gradesList, garantizar todas las materias del pensumCatalog
+    gradesList.forEach(gradeObj => {
+        const gKey = getPensumItemGradeKey(gradeObj);
+        const secLetter = cleanSec(gradeObj.section || gradeObj.name || gradeObj.code);
+        const secLabel = `Sección ${secLetter}`;
+        const gName = gradeObj.name || `${gKey === '4to' ? '4to' : gKey === '5to' ? '5to' : '6to'} Perito Contador`;
+        const gCode = gradeObj.code || `${gName} ${secLabel}`;
+
+        const gradePensum = (STATE.pensumCatalog || []).filter(p => getPensumItemGradeKey(p) === gKey);
+
+        gradePensum.forEach(pCourse => {
+            const mKey = cleanStr(pCourse.name || pCourse.subject);
+            const canonicalKey = `${gKey}_${secLetter}_${mKey}`;
+            processedKeys.add(canonicalKey);
+
+            if (existingMap.has(canonicalKey)) {
+                // Ya existía: CONSERVAR CATEDRÁTICO, actualizar código y períodos del pensum oficial
+                const ex = existingMap.get(canonicalKey);
+                ex.code = pCourse.code || ex.code;
+                ex.subject = pCourse.name || ex.subject;
+                ex.name = pCourse.name || ex.name;
+                ex.periodsPerWeek = pCourse.periods || pCourse.hours || ex.periodsPerWeek || 4;
+                ex.hours = ex.periodsPerWeek;
+                ex.grade = gName;
+                ex.gradeCode = gCode;
+                ex.section = secLabel;
+                ex.career = gradeObj.career || pCourse.career || 'Perito Contador';
+                synchronizedPensum.push(ex);
+                updatedCount++;
+            } else {
+                // No existía: crear nueva cátedra oficial para esta sección
+                const newId = `pen-${gKey}-${secLetter.toLowerCase()}-${(pCourse.code || Date.now()).toString().toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+                const newAsg = {
+                    id: newId,
+                    code: pCourse.code || '',
+                    subject: pCourse.name,
+                    name: pCourse.name,
+                    career: gradeObj.career || pCourse.career || 'Perito Contador',
+                    grade: gName,
+                    gradeCode: gCode,
+                    section: secLabel,
+                    teacher: 'Sin asignar',
+                    teacherId: null,
+                    teacherName: 'Sin asignar',
+                    periodsPerWeek: pCourse.periods || pCourse.hours || 4,
+                    hours: pCourse.periods || pCourse.hours || 4,
+                    periods: pCourse.periods || pCourse.hours || 4,
+                    lastModified: Date.now()
+                };
+                synchronizedPensum.push(newAsg);
+                createdCount++;
+            }
+        });
+    });
+
+    // 3. Preservar asignaciones de secciones que no estén en gradesList para no perder ningún dato
+    existingMap.forEach((asg, k) => {
+        if (!processedKeys.has(k)) {
+            synchronizedPensum.push(asg);
+        }
+    });
+
+    const getFastOrder = (subj, gKey) => {
+        const list = (typeof OFFICIAL_CNB_PENSUM_COURSES !== 'undefined' && OFFICIAL_CNB_PENSUM_COURSES[gKey]) ? OFFICIAL_CNB_PENSUM_COURSES[gKey] : [];
+        const cSub = cleanStr(subj);
+        const itm = list.find(c => cleanStr(c.name) === cSub || (c.code && cleanStr(c.code) === cSub));
+        return itm ? itm.order : 99;
+    };
+
+    // 4. Ordenar coherentemente por Grado, Sección y Orden de Pensum
+    synchronizedPensum.sort((a, b) => {
+        const ga = getPensumItemGradeKey(a);
+        const gb = getPensumItemGradeKey(b);
+        if (ga !== gb) return ga.localeCompare(gb);
+        const sa = cleanSec(a.section || a.gradeCode);
+        const sb = cleanSec(b.section || b.gradeCode);
+        if (sa !== sb) return sa.localeCompare(sb);
+        return getFastOrder(a.subject || a.name, ga) - getFastOrder(b.subject || b.name, gb);
+    });
+
+    STATE.pensum = synchronizedPensum;
+
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+    }
+
+    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+    if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+
+    if (options && options.showNotification) {
+        showToast(`✅ Sincronización completa: ${synchronizedPensum.length} cátedras vinculadas dinámicamente con el Pensum y Secciones (Sin duplicados).`, 'success');
+    }
+    return synchronizedPensum;
+}
+window.syncClassAssignmentsWithPensumAndGrades = syncClassAssignmentsWithPensumAndGrades;
 
 // ======================================================================
 //        UTILIDADES DE DEDUPLICACIÓN Y CONTROL DE ESTADO GLOBAL
@@ -9044,7 +9367,7 @@ function getInitialData() {
         rolesConfig: [],
         careers: [],
         gradesList: [],
-        pensumCatalog: [],
+        pensumCatalog: (typeof getOfficialCnbPensumCatalogDefaults === 'function') ? getOfficialCnbPensumCatalogDefaults() : [],
         students: [],
         pensum: [],
         announcements: [],
@@ -10240,6 +10563,8 @@ async function initApp() {
 
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
+    ensureCanonicalPensumCatalogCoherence();
+    syncClassAssignmentsWithPensumAndGrades({ showNotification: false });
 
     // 📇 Sincronización garantizada de contactos y teléfonos oficiales de usuarios y maestros
     if (typeof reconcileOfficialUserContacts === 'function') {
@@ -44177,43 +44502,7 @@ function normalizePensumCatalogCodes() {
     });
 }
 
-const OFFICIAL_CNB_PENSUM_COURSES = {
-    '4to': [
-        { code: '04-01-01', name: 'Contabilidad de Sociedades', periods: 5, order: 1 },
-        { code: '04-01-02', name: 'Matemática Comercial', periods: 5, order: 2 },
-        { code: '04-01-03', name: 'Fundamentos de Derecho', periods: 4, order: 3 },
-        { code: '04-01-04', name: 'Inglés Comercial I', periods: 4, order: 4 },
-        { code: '04-01-05', name: 'Redacción y Correspondencia Mercantil', periods: 4, order: 5 },
-        { code: '04-01-06', name: 'Introducción a la Economía', periods: 4, order: 6 },
-        { code: '04-01-07', name: 'Ortografía y Caligrafía', periods: 2, order: 7 },
-        { code: '04-01-08', name: 'Administración y Organización de Empresas', periods: 4, order: 8 },
-        { code: '04-01-09', name: 'Computación I', periods: 4, order: 9 }
-    ],
-    '5to': [
-        { code: '05-01-01', name: 'Contabilidad de Costos', periods: 5, order: 1 },
-        { code: '05-01-02', name: 'Cálculo Mercantil y Financiero', periods: 5, order: 2 },
-        { code: '05-01-03', name: 'Inglés Comercial II', periods: 4, order: 3 },
-        { code: '05-01-04', name: 'Legislación Fiscal y Aduanera', periods: 4, order: 4 },
-        { code: '05-01-05', name: 'Finanzas Públicas', periods: 4, order: 5 },
-        { code: '05-01-06', name: 'Geografía Económica', periods: 4, order: 6 },
-        { code: '05-01-07', name: 'Catalogación y Archivo', periods: 4, order: 7 },
-        { code: '05-01-08', name: 'Mecanografía', periods: 4, order: 8 },
-        { code: '05-01-09', name: 'Computación II', periods: 4, order: 9 }
-    ],
-    '6to': [
-        { code: '06-01-01', name: 'Contabilidad Bancaria', periods: 5, order: 1 },
-        { code: '06-01-02', name: 'Contabilidad Gubernamental e Integrada', periods: 4, order: 2 },
-        { code: '06-01-03', name: 'Estadística Comercial', periods: 4, order: 3 },
-        { code: '06-01-04', name: 'Organización de Empresas', periods: 4, order: 4 },
-        { code: '06-01-05', name: 'Ética Profesional y Relaciones Humanas', periods: 2, order: 5 },
-        { code: '06-01-06', name: 'Práctica Supervisada', periods: 4, order: 6 },
-        { code: '06-01-07', name: 'Auditoría', periods: 5, order: 7 },
-        { code: '06-01-08', name: 'Derecho Mercantil y Laboral', periods: 4, order: 8 },
-        { code: '06-01-09', name: 'Computación III', periods: 4, order: 9 },
-        { code: '06-01-10', name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', periods: 4, order: 10 }
-    ]
-};
-window.OFFICIAL_CNB_PENSUM_COURSES = OFFICIAL_CNB_PENSUM_COURSES;
+
 
 function getGradeKeyFromInput(gradeInput) {
     const raw = String(gradeInput || '').toUpperCase();
@@ -44420,7 +44709,8 @@ window.restoreOfficialCnbPensumForGrade = restoreOfficialCnbPensumForGrade;
 // 🎓 CONTROLADOR DEL EDITOR DE PENSUM: PESTAÑAS POR GRADO Y HERO BANNER (OPCIÓN 1)
 // ──────────────────────────────────────────────────────────────────────────
 
-let currentPensumActiveGradeTab = '4to'; // '4to' (default), '5to', '6to', 'all'
+var currentPensumActiveGradeTab = '4to'; // '4to' (default), '5to', '6to', 'all'
+window.currentPensumActiveGradeTab = currentPensumActiveGradeTab;
 
 const PENSUM_GRADE_CONFIG = {
     '4to': {
@@ -45427,10 +45717,8 @@ function renderPensumCatalogTable(searchQuery = '') {
     const careerFilter = (careerFilterEl ? careerFilterEl.value : 'ALL') || 'ALL';
     const q = (typeof searchQuery === 'string' ? searchQuery : (searchInputEl ? searchInputEl.value : '')).trim().toLowerCase();
 
-    // Garantizar que STATE.pensumCatalog tenga las materias oficiales si está vacío
-    if (!Array.isArray(STATE.pensumCatalog) || STATE.pensumCatalog.length === 0) {
-        STATE.pensumCatalog = JSON.parse(JSON.stringify((typeof getInitialData === 'function' ? getInitialData().pensumCatalog : []) || []));
-    }
+    // Garantizar que STATE.pensumCatalog tenga las materias oficiales y esté coherente con el CNB
+    ensureCanonicalPensumCatalogCoherence();
 
     let list = STATE.pensumCatalog;
 
@@ -45478,10 +45766,11 @@ function renderPensumCatalogTable(searchQuery = '') {
     const tbody = document.getElementById('pensumCatalogTableBody');
 
     // 2. Si estamos en modo de grado ('4to', '5to', '6to')
-    if (currentPensumActiveGradeTab !== 'all') {
+    const activeGradeTab = window.currentPensumActiveGradeTab || '4to';
+    if (activeGradeTab !== 'all') {
         if (gradeContainer) gradeContainer.style.display = 'block';
         if (fullTableContainer) fullTableContainer.style.display = 'none';
-        renderPensumByGradeView(currentPensumActiveGradeTab, list);
+        renderPensumByGradeView(activeGradeTab, list);
         return;
     }
 
@@ -46375,11 +46664,20 @@ async function savePensumSubjectForm(e) {
         }
 
         // Cascada en STATE.pensum (clases asignadas a docentes)
+        const targetGKey = getPensumItemGradeKey({ grade });
+        const cleanStrNorm = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const targetSubNorm = cleanStrNorm(name);
+
         (STATE.pensum || []).forEach(asg => {
-            if ((asg.subject === name || asg.name === name) && (asg.grade === grade || asg.gradeCode === grade)) {
+            const asgGKey = getPensumItemGradeKey(asg);
+            const asgSubNorm = cleanStrNorm(asg.subject || asg.name);
+            if (asgGKey === targetGKey && (asgSubNorm === targetSubNorm || asg.code === code)) {
                 asg.code = code;
+                asg.subject = name;
+                asg.name = name;
                 asg.hours = hours;
                 asg.periodsPerWeek = hours;
+                asg.periods = hours;
             }
         });
 
@@ -47037,9 +47335,12 @@ async function deleteGrade(gradeId) {
 // 🎛️ CONTROLADOR INTEGRAL Y VISUAL DE ASIGNACIÓN DE CÁTEDRAS A DOCENTES (OPCIÓN 1)
 // ==========================================================================
 
-let currentAssignmentsViewMode = 'matrix'; // Opción 1: Matriz Curricular por Grado por defecto
-let currentActiveGradeTab = '4to';
-let currentAssignmentQuickFilter = 'ALL';
+var currentAssignmentsViewMode = 'matrix'; // Opción 1: Matriz Curricular por Grado por defecto
+var currentActiveGradeTab = '4to';
+var currentAssignmentQuickFilter = 'ALL';
+window.currentAssignmentsViewMode = currentAssignmentsViewMode;
+window.currentActiveGradeTab = currentActiveGradeTab;
+window.currentAssignmentQuickFilter = currentAssignmentQuickFilter;
 
 function escapeHtmlAttr(str) {
     if (!str) return '';
@@ -47801,6 +48102,7 @@ function renderVacantAssignmentsView(searchQuery = '') {
 }
 
 function renderAssignmentsTable(searchQuery = '') {
+    ensureCanonicalPensumCatalogCoherence();
     const rutaColeccion = 'pensum';
     if ((!STATE.pensum || STATE.pensum.length === 0) && typeof loadPensumFromCloudFallback === 'function') {
         loadPensumFromCloudFallback();
@@ -47823,19 +48125,20 @@ function renderAssignmentsTable(searchQuery = '') {
 
     // 2. Aplicar Filtro Rápido (Todos, 4to, 5to, 6to, Sin Asignar)
     let list = [...fullList];
-    if (currentAssignmentQuickFilter === 'UNASSIGNED') {
+    const activeQuickFilter = window.currentAssignmentQuickFilter || 'ALL';
+    if (activeQuickFilter === 'UNASSIGNED') {
         list = list.filter(a => isAssignmentUnassigned(a));
-    } else if (currentAssignmentQuickFilter === '4to') {
+    } else if (activeQuickFilter === '4to') {
         list = list.filter(a => {
             const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
             return rawG.includes('4') || rawG.includes('cuarto') || rawG.includes('4to');
         });
-    } else if (currentAssignmentQuickFilter === '5to') {
+    } else if (activeQuickFilter === '5to') {
         list = list.filter(a => {
             const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
             return rawG.includes('5') || rawG.includes('quinto') || rawG.includes('5to');
         });
-    } else if (currentAssignmentQuickFilter === '6to') {
+    } else if (activeQuickFilter === '6to') {
         list = list.filter(a => {
             const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
             return rawG.includes('6') || rawG.includes('sexto') || rawG.includes('6to');

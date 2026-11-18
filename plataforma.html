@@ -2130,7 +2130,10 @@
                                 <option value="ALL">Todos los Grados / Secciones</option>
                             </select>
                         </div>
-                        <div class="toolbar-actions">
+                        <div class="toolbar-actions" style="display:flex; gap:8px;">
+                            <button type="button" class="btn btn-outline-success" onclick="syncClassAssignmentsWithPensumAndGrades()" title="Sincronizar y generar cátedras desde el Pensum Oficial para todas las Secciones">
+                                <i class="fa-solid fa-arrows-rotate"></i> Sincronizar Cátedras con Pensum
+                            </button>
                             <button type="button" class="btn btn-primary" onclick="openClassAssignmentModal()">
                                 <i class="fa-solid fa-plus"></i> Asignar Clase a Docente
                             </button>

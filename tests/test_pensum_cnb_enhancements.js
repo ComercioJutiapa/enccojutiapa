@@ -16,6 +16,9 @@ console.log("🧪 Iniciando Test Suite: Mejoras Oficiales CNB en Editor de Pensu
 
 // Mock de entorno
 global.window = global;
+global.window.addEventListener = () => {};
+global.window.removeEventListener = () => {};
+global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 global.document = {
     getElementById: () => null
 };
@@ -26,8 +29,12 @@ global.escapeHtml = s => String(s || '');
 
 const appJsContent = fs.readFileSync('app.js', 'utf8');
 
-// Extraer constantes y funciones del Pensum
-const startDef = appJsContent.indexOf('const OFFICIAL_CNB_PENSUM_COURSES');
+// Extraer constantes oficiales y funciones del Pensum
+const startEarly = appJsContent.indexOf('const OFFICIAL_CNB_PENSUM_COURSES');
+const endEarly = appJsContent.indexOf('//        UTILIDADES DE DEDUPLICACIÓN');
+eval(appJsContent.slice(startEarly, endEarly));
+
+const startDef = appJsContent.indexOf('function getGradeKeyFromInput');
 const endDef = appJsContent.indexOf('function openPensumSubjectModal');
 eval(appJsContent.slice(startDef, endDef));
 
