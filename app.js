@@ -21955,8 +21955,14 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
 window.applyInstitutionalStylesToWorksheet = applyInstitutionalStylesToWorksheet;
 
 function generateOfficialExcelList(opts = null) {
+    const cycle = STATE.activeCycle || '2026';
+    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
-    let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
+    let gradeCode = opts?.gradeCode || opts?.gradeVal || document.getElementById('printModelGradeSelect')?.value;
+    if (!career && gradeCode) {
+        const matchedGrade = (STATE.gradesList || []).find(g => g.code === gradeCode);
+        if (matchedGrade && matchedGrade.career) career = matchedGrade.career;
+    }
     let modelType = opts?.modelType || document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
     const fillMode = opts?.fillMode || document.getElementById('printModelFillModeSelect')?.value || 'lleno';
     const isVacio = (fillMode === 'vacio');
@@ -22149,7 +22155,6 @@ function generateOfficialExcelList(opts = null) {
     }).length;
 
     const guideTeacher = gradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
-    const cycle = STATE.activeCycle || '2026';
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
@@ -22164,13 +22169,13 @@ function generateOfficialExcelList(opts = null) {
         badgeDocTitle = 'CUADRO OFICIAL DE CONTROL DE ZONA Y EVALUACIONES';
     }
 
-    if (window.XLSX) {
+    if (xlsxLib && xlsxLib.utils) {
         try {
-            const wb = XLSX.utils.book_new();
+            const wb = xlsxLib.utils.book_new();
             const aoa = [];
 
             // Fila 1: Título Institucional (Estilo Listado de 10 Casillas)
-            aoa.push([h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES']);
+            aoa.push(['ESCUELA NACIONAL DE CIENCIAS COMERCIALES — ENCCO JUTIAPA 1970']);
             // Fila 2: Subtítulo Institucional
             aoa.push([`JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`]);
             // Fila 3: Título del Formato Oficial
@@ -22317,9 +22322,9 @@ function generateOfficialExcelList(opts = null) {
                 const dataStartRow = aoa.length;
                 const actStartColIdx = 4; // Columna E (0-based)
                 const actEndColIdx = actStartColIdx + activitiesList.length - 1;
-                const actStartLetter = XLSX.utils.encode_col(actStartColIdx);
-                const actEndLetter = XLSX.utils.encode_col(actEndColIdx);
-                const totalZonaLetter = XLSX.utils.encode_col(actEndColIdx + 1);
+                const actStartLetter = xlsxLib.utils.encode_col(actStartColIdx);
+                const actEndLetter = xlsxLib.utils.encode_col(actEndColIdx);
+                const totalZonaLetter = xlsxLib.utils.encode_col(actEndColIdx + 1);
 
                 students.forEach((s, idx) => {
                     const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
@@ -22372,11 +22377,11 @@ function generateOfficialExcelList(opts = null) {
                 const dataStartRow = aoa.length;
                 const actStartColIdx = 4; // Columna E (0-based)
                 const actEndColIdx = actStartColIdx + activitiesList.length - 1;
-                const actStartLetter = XLSX.utils.encode_col(actStartColIdx);
-                const actEndLetter = XLSX.utils.encode_col(actEndColIdx);
-                const totalZonaLetter = XLSX.utils.encode_col(actEndColIdx + 1);
-                const examLetter = XLSX.utils.encode_col(actEndColIdx + 2);
-                const totalLetter = XLSX.utils.encode_col(actEndColIdx + 3);
+                const actStartLetter = xlsxLib.utils.encode_col(actStartColIdx);
+                const actEndLetter = xlsxLib.utils.encode_col(actEndColIdx);
+                const totalZonaLetter = xlsxLib.utils.encode_col(actEndColIdx + 1);
+                const examLetter = xlsxLib.utils.encode_col(actEndColIdx + 2);
+                const totalLetter = xlsxLib.utils.encode_col(actEndColIdx + 3);
 
                 students.forEach((s, idx) => {
                     const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
@@ -22443,7 +22448,7 @@ function generateOfficialExcelList(opts = null) {
             sSub[c3] = "ENCCO Jutiapa";
             aoa.push(sSub);
 
-            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            const ws = xlsxLib.utils.aoa_to_sheet(aoa);
 
             // Ajuste dinámico de columnas para que ningún dato o nombre quede cortado
             const dynamicColWidths = headers.map((h, colIdx) => {
@@ -22480,8 +22485,8 @@ function generateOfficialExcelList(opts = null) {
                 applyInstitutionalStylesToWorksheet(ws, headers.length, 6, students.length);
             }
 
-            XLSX.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
-            XLSX.writeFile(wb, fileBaseName);
+            xlsxLib.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
+            xlsxLib.writeFile(wb, fileBaseName);
             showToast(`Archivo oficial '${fileBaseName}' descargado con éxito.`, "success");
             return;
         } catch (err) {

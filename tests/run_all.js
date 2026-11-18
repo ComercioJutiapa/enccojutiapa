@@ -51,7 +51,8 @@ const CRITICAL_SUITES = [
     'tests/test_cycle_2026_to_2027_transition_isolation.js',
     'tests/test_alumnos_ganaron_recuperacion_module.js',
     'tests/test_nominas_bimestre_and_full_names_integrity.js',
-    'tests/test_excel_vibrant_institutional_styling.js'
+    'tests/test_excel_vibrant_institutional_styling.js',
+    'tests/test_download_excel_button_robustness.js'
 ];
 
 console.log('================================================================================');
