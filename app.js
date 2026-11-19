@@ -10937,7 +10937,7 @@ function ensureMasterAccount() {
             roles: ['admin'],
             email: 'nehemias.salguero1982@gmail.com',
             secondaryEmail: '22-01-0014-14@mineduc.edu.gt',
-            password: 'C@rolina1',
+            passwordHash: '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75',
             classes: '',
             phone: '42768436',
             active: true
@@ -41085,7 +41085,7 @@ function handleGlobalTeachersPensumExcelUpload(e) {
                         id: 'usr-doc-' + Date.now() + '-' + Math.floor(Math.random() * 100),
                         name: teacherName,
                         email: cleanEmail,
-                        password: 'C@rolina1',
+                        passwordHash: '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75',
                         role: 'docente',
                         title: 'PEM / Catedrático Titular',
                         classes: subjectName ? `${subjectName} (${gradeStr} ${sectionStr.replace('Sección ', '')})` : 'Cursos Varios'
@@ -44113,7 +44113,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 roles: ['admin'],
                 email: 'nehemias.salguero1982@gmail.com',
                 secondaryEmail: '22-01-0014-14@mineduc.edu.gt',
-                password: 'C@rolina1',
+                passwordHash: '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75',
                 classes: '',
                 title: 'Super Administrador del Sistema',
                 active: true
@@ -44130,7 +44130,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 username: 'nehemias.doc',
                 email: 'yalilsag@gmail.com',
                 secondaryEmail: '',
-                password: 'Nehemias12',
+                passwordHash: '8d39d8ac8bac9cd3ae4a9c6126f575e07fd17f0c74f8ff6e6f478e28a8b34211',
                 role: 'docente',
                 title: 'PEM / Catedrático Titular',
                 renglon: '021',
@@ -44141,7 +44141,13 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
     }
     // C. Si ingresa "nehemias", diferenciar estrictamente por la contraseña ingresada
     else if (uClean === 'nehemias') {
-        if (pClean === 'c@rolina1') {
+        const _isAdminHashMatch = (typeof window.EnccoAuth !== 'undefined' && typeof window.EnccoAuth.verifyPasswordSync === 'function')
+            ? window.EnccoAuth.verifyPasswordSync(pRaw, '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75')
+            : false;
+        const _isDocHashMatch = (typeof window.EnccoAuth !== 'undefined' && typeof window.EnccoAuth.verifyPasswordSync === 'function')
+            ? window.EnccoAuth.verifyPasswordSync(pRaw, '8d39d8ac8bac9cd3ae4a9c6126f575e07fd17f0c74f8ff6e6f478e28a8b34211')
+            : false;
+        if (_isAdminHashMatch) {
             matched = users.find(u => u.id === 'usr-aux-01' || u.role === 'admin') || {
                 id: 'usr-aux-01',
                 username: 'nehemias',
@@ -44149,11 +44155,11 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 role: 'admin',
                 roles: ['admin'],
                 email: 'nehemias.salguero1982@gmail.com',
-                password: 'C@rolina1',
+                passwordHash: '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75',
                 classes: '',
                 title: 'Super Administrador del Sistema'
             };
-        } else if (pClean === 'nehemias12' || pClean === 'nehemias1') {
+        } else if (_isDocHashMatch) {
             matched = users.find(u => u.id === 'usr-doc-01' || u.role === 'docente') || {
                 id: 'usr-doc-01',
                 username: 'nehemias.doc',
@@ -44161,7 +44167,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 role: 'docente',
                 email: 'yalilsag@gmail.com',
                 secondaryEmail: '',
-                password: 'Nehemias12',
+                passwordHash: '8d39d8ac8bac9cd3ae4a9c6126f575e07fd17f0c74f8ff6e6f478e28a8b34211',
                 title: 'PEM / Catedrático Titular'
             };
         } else {
@@ -44237,8 +44243,13 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
 
     let isPasswordValid = false;
 
-    // Validación exacta o por normalización de caracteres
-    if (pRaw === storedPassRaw || pClean === storedPassClean) {
+    // Validación por hash criptográfico (SHA-256 con sal) o compatibilidad con contraseña almacenada
+    if (matched.passwordHash && typeof window.EnccoAuth !== 'undefined' && typeof window.EnccoAuth.verifyPasswordSync === 'function') {
+        if (window.EnccoAuth.verifyPasswordSync(pRaw, matched.passwordHash)) {
+            isPasswordValid = true;
+        }
+    }
+    if (!isPasswordValid && storedPassRaw && (pRaw === storedPassRaw || pClean === storedPassClean)) {
         isPasswordValid = true;
     }
     // Compatibilidades oficiales específicas por usuario (tildes / variantes)

@@ -871,11 +871,23 @@
                     } catch(e) {}
                 }
 
-                // Preservar en RAM un respaldo inmutable de los estudiantes activos de 2027 para retorno instantáneo
+                // Preservar en RAM un respaldo inmutable de los estudiantes del ciclo activo (2027, 2028, 2029+) para retorno instantáneo
                 if (window.STATE && Array.isArray(window.STATE.students)) {
-                    const active27 = window.STATE.students.filter(s => s && (s.cycle === '2027' || s.academicCycle === '2027' || (!s.cycle && targetCycle !== '2027')));
-                    if (active27.length > 0) {
-                        window._active2027StudentsBackup = JSON.parse(JSON.stringify(active27));
+                    const liveCycle = String(window.STATE.activeCycle || window.STATE.academicCycle || '2027').trim();
+                    const activeLiveStudents = window.STATE.students.filter(s => s && (
+                        String(s.cycle || '') === liveCycle ||
+                        String(s.academicCycle || '') === liveCycle ||
+                        (!s.cycle && targetCycle !== liveCycle)
+                    ));
+                    if (activeLiveStudents.length > 0) {
+                        if (!window._activeCycleStudentsBackupByCycle || typeof window._activeCycleStudentsBackupByCycle !== 'object') {
+                            window._activeCycleStudentsBackupByCycle = {};
+                        }
+                        const clonedLive = JSON.parse(JSON.stringify(activeLiveStudents));
+                        window._activeCycleStudentsBackupByCycle[liveCycle] = clonedLive;
+                        if (liveCycle === '2027') {
+                            window._active2027StudentsBackup = clonedLive;
+                        }
                     }
                 }
 
@@ -989,8 +1001,14 @@
                 }
             }
 
-            if (!activeStudents && Array.isArray(window._active2027StudentsBackup) && window._active2027StudentsBackup.length > 0) {
-                activeStudents = JSON.parse(JSON.stringify(window._active2027StudentsBackup));
+            if (!activeStudents) {
+                const liveRestoreCycle = String((restoredState && restoredState.activeCycle) || (window.STATE && window.STATE.activeCycle) || '2027').trim();
+                const mapBackup = window._activeCycleStudentsBackupByCycle && window._activeCycleStudentsBackupByCycle[liveRestoreCycle];
+                if (Array.isArray(mapBackup) && mapBackup.length > 0) {
+                    activeStudents = JSON.parse(JSON.stringify(mapBackup));
+                } else if (Array.isArray(window._active2027StudentsBackup) && window._active2027StudentsBackup.length > 0) {
+                    activeStudents = JSON.parse(JSON.stringify(window._active2027StudentsBackup));
+                }
             }
 
             if (activeStudents) {
