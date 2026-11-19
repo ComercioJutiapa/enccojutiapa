@@ -7672,9 +7672,9 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
         return (qGradeNum === sGradeNum) && (!qSec || !sSec || qSec === sSec);
     });
 
-    // 2. Fallback de ultra-seguridad: si la lista está vacía pero hay estudiantes en el sistema para ese grado
-    if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0 && qGradeNum > 0) {
-        students = STATE.students.filter(s => {
+    // 2. Fallback de seguridad ESTRICTAMENTE dentro del ciclo activo/visualizado (sin mezclar ciclos ni egresados)
+    if (students.length === 0 && Array.isArray(baseList) && baseList.length > 0 && qGradeNum > 0) {
+        students = baseList.filter(s => {
             if (!s) return false;
             const text = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''} ${s.section || ''}`.toUpperCase();
             const hasNum = text.includes(String(qGradeNum)) || (qGradeNum === 4 && (text.includes('CUARTO') || text.includes('4TO'))) || (qGradeNum === 5 && (text.includes('QUINTO') || text.includes('5TO'))) || (qGradeNum === 6 && (text.includes('SEXTO') || text.includes('6TO')));
@@ -7684,13 +7684,15 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
         });
     }
 
-    // 3. Fallback de contingencia máxima: si aún está vacía, buscar cualquier coincidencia por nombre o código de grado
-    if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0) {
-        students = STATE.students.filter(s => {
+    // 3. Fallback de contingencia dentro del mismo ciclo (nunca cruzar a otros ciclos)
+    if (students.length === 0 && Array.isArray(baseList) && baseList.length > 0) {
+        students = baseList.filter(s => {
             if (!s) return false;
             const sGrade = (s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
             const target = String(gradeCode).toLowerCase();
-            return sGrade.includes(target) || (qGradeObj && qGradeObj.name && sGrade.includes(qGradeObj.name.toLowerCase()));
+            const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || '');
+            const matchesSec = !qSec || !sSec || sSec === qSec;
+            return matchesSec && (sGrade.includes(target) || (qGradeObj && qGradeObj.name && sGrade.includes(qGradeObj.name.toLowerCase())));
         });
     }
 
@@ -19914,6 +19916,155 @@ function openStudentProfileModal(id) {
     showModalById('studentProfileModal');
 }
 
+/**
+ * Calcula el porcentaje acumulado de asistencia A LA FECHA de un estudiante
+ * estrictamente aislado por ciclo escolar (2026, 2027, 2028, ...).
+ * Diseñado como métrica oficial base para constancias de Bolsas de Estudio y Becas.
+ */
+function getStudentAttendancePercentageToDate(studentOrId, targetCycle = null) {
+    const cycleStr = String(
+        targetCycle ||
+        STATE.historicalViewingCycle ||
+        STATE.viewingHistoricalCycle ||
+        STATE.activeCycle ||
+        new Date().getFullYear() ||
+        '2026'
+    ).trim();
+    const cycleYear = parseInt(cycleStr, 10) || 2026;
+    const now = new Date();
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth() + 1;
+    const todayDay = now.getDate();
+
+    const student = (typeof studentOrId === 'object' && studentOrId !== null)
+        ? studentOrId
+        : (STATE.students || []).find(s => s && (String(s.id) === String(studentOrId) || String(s.carne) === String(studentOrId) || String(s.personalCode) === String(studentOrId)));
+
+    const candidateKeys = new Set();
+    if (typeof studentOrId === 'string' && studentOrId.trim()) candidateKeys.add(studentOrId.trim());
+    if (student) {
+        [student.id, student.carne, student.personalCode, student.codigoPersonal, student.cui].forEach(k => {
+            if (k) candidateKeys.add(String(k).trim());
+        });
+    }
+
+    if (candidateKeys.size === 0) {
+        return {
+            cycle: cycleStr, percentage: null, displayText: '—',
+            present: 0, tardy: 0, justified: 0, absent: 0, suspended: 0,
+            attendedDays: 0, computableDays: 0,
+            scholarshipStatus: 'sin_registros', scholarshipLabel: 'Sin registros aún',
+            color: '#64748b', bgColor: '#f1f5f9', borderColor: '#cbd5e1'
+        };
+    }
+
+    const dailyMap = {}; // 'YYYY-MM-DD' -> status ('P' | 'T' | 'J' | 'A' | 'S')
+    const priority = { 'S': 5, 'A': 4, 'T': 3, 'J': 2, 'P': 1 };
+    const allRecords = STATE.attendanceRecords || {};
+
+    Object.keys(allRecords).forEach(recordKey => {
+        // Aislamiento estricto multi-ciclo: 2026 no se mezcla con 2027, ni 2027 con 2028...
+        const yearPrefixMatch = recordKey.match(/^(20\d{2})_/);
+        const recCycle = yearPrefixMatch ? yearPrefixMatch[1] : '2026';
+        if (recCycle !== cycleStr) return;
+
+        const tableObj = allRecords[recordKey];
+        if (!tableObj || typeof tableObj !== 'object') return;
+
+        let matchedStudentKey = null;
+        for (const k of candidateKeys) {
+            if (tableObj[k] && typeof tableObj[k] === 'object') {
+                matchedStudentKey = k;
+                break;
+            }
+        }
+        if (!matchedStudentKey) return;
+
+        const mMatch = recordKey.match(/_M(\d+)(?:_|$)/i) || recordKey.match(/_(\d{1,2})_/);
+        const monthNum = mMatch ? parseInt(mMatch[1], 10) : 0;
+        if (!monthNum || monthNum < 1 || monthNum > 12) return;
+
+        const daysObj = tableObj[matchedStudentKey];
+        const entries = Array.isArray(daysObj)
+            ? daysObj.map((v, idx) => [String(idx), v]).filter(([dStr]) => parseInt(dStr, 10) >= 1)
+            : Object.entries(daysObj);
+
+        entries.forEach(([dayStr, rawVal]) => {
+            const dayNum = parseInt(dayStr, 10);
+            if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return;
+            const val = String(rawVal || '').toUpperCase().trim();
+            if (!['P', 'A', 'T', 'J', 'S'].includes(val)) return;
+
+            // Regla "A la fecha": si es el año en curso, solo contar días hasta hoy
+            if (cycleYear === todayYear && (monthNum > todayMonth || (monthNum === todayMonth && dayNum > todayDay))) {
+                return;
+            }
+
+            const dt = new Date(cycleYear, monthNum - 1, dayNum);
+            if (isNaN(dt.getTime()) || dt.getMonth() !== (monthNum - 1)) return;
+            const dow = dt.getDay();
+            if (dow === 0 || dow === 6) return;
+
+            const isoDate = `${cycleYear}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            if (!dailyMap[isoDate] || (priority[val] || 0) > (priority[dailyMap[isoDate]] || 0)) {
+                dailyMap[isoDate] = val;
+            }
+        });
+    });
+
+    let present = 0, tardy = 0, justified = 0, absent = 0, suspended = 0;
+    Object.values(dailyMap).forEach(st => {
+        if (st === 'P') present++;
+        else if (st === 'T') tardy++;
+        else if (st === 'J') justified++;
+        else if (st === 'A') absent++;
+        else if (st === 'S') suspended++;
+    });
+
+    const attendedDays = present + tardy + justified;
+    const computableDays = attendedDays + absent;
+    const percentage = computableDays > 0 ? Math.round((attendedDays / computableDays) * 1000) / 10 : null;
+
+    let scholarshipStatus = 'sin_registros';
+    let scholarshipLabel = 'Sin registros aún';
+    let color = '#64748b', bgColor = '#f1f5f9', borderColor = '#cbd5e1';
+
+    if (percentage !== null) {
+        if (percentage >= 85) {
+            scholarshipStatus = 'apto';
+            scholarshipLabel = 'Apto Beca / Bolsa';
+            color = '#15803d'; bgColor = '#dcfce7'; borderColor = '#86efac';
+        } else if (percentage >= 75) {
+            scholarshipStatus = 'seguimiento';
+            scholarshipLabel = 'Seguimiento Beca';
+            color = '#b45309'; bgColor = '#fef3c7'; borderColor = '#fcd34d';
+        } else {
+            scholarshipStatus = 'riesgo';
+            scholarshipLabel = 'Riesgo Beca / Bolsa';
+            color = '#dc2626'; bgColor = '#fee2e2'; borderColor = '#fca5a5';
+        }
+    }
+
+    return {
+        cycle: cycleStr,
+        percentage,
+        displayText: percentage !== null ? `${percentage}%` : '—',
+        present,
+        tardy,
+        justified,
+        absent,
+        suspended,
+        attendedDays,
+        computableDays,
+        scholarshipStatus,
+        scholarshipLabel,
+        color,
+        bgColor,
+        borderColor
+    };
+}
+window.getStudentAttendancePercentageToDate = getStudentAttendancePercentageToDate;
+
 function getStudentFullAttendanceAndDisciplineData(student) {
     if (!student) {
         return {
@@ -19989,6 +20140,11 @@ function getStudentFullAttendanceAndDisciplineData(student) {
     const allMeta = STATE.attendancePermissionsMeta || {};
 
     Object.keys(allRecords).forEach(recordKey => {
+        // 🛡️ Aislamiento estricto multi-ciclo: 2026 no se mezcla con 2027, ni 2027 con 2028...
+        const yearPrefixMatch = recordKey.match(/^(20\d{2})_/);
+        const recCycleYear = yearPrefixMatch ? parseInt(yearPrefixMatch[1], 10) : 2026;
+        if (recCycleYear !== activeYear) return;
+
         const tableObj = allRecords[recordKey];
         if (!tableObj || typeof tableObj !== 'object') return;
 
@@ -20001,16 +20157,23 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         }
         if (!matchedStudentKey) return;
 
-        // Parsear mes y curso desde recordKey (<gradeCode>_<month>_<courseId>)
+        // Parsear mes y curso desde recordKey (<cycle>_M<month>_<gradeCode>_<courseId> o legacy)
         const parts = recordKey.split('_');
         let monthNum = 0;
         let courseId = 'GENERAL';
-        for (let i = 1; i < parts.length; i++) {
-            const maybeM = parseInt(parts[i], 10);
-            if (!isNaN(maybeM) && maybeM >= 1 && maybeM <= 12 && String(maybeM) === parts[i]) {
-                monthNum = maybeM;
-                courseId = parts.slice(i + 1).join('_') || 'GENERAL';
-                break;
+        const mRegexMatch = recordKey.match(/_M(\d+)(?:_|$)/i);
+        if (mRegexMatch) {
+            monthNum = parseInt(mRegexMatch[1], 10);
+            const penMatch = recordKey.match(/(pen-[a-z0-9-]+|asg-[a-z0-9-]+)/i);
+            courseId = penMatch ? penMatch[1] : 'GENERAL';
+        } else {
+            for (let i = 1; i < parts.length; i++) {
+                const maybeM = parseInt(parts[i], 10);
+                if (!isNaN(maybeM) && maybeM >= 1 && maybeM <= 12 && String(maybeM) === parts[i]) {
+                    monthNum = maybeM;
+                    courseId = parts.slice(i + 1).join('_') || 'GENERAL';
+                    break;
+                }
             }
         }
         if (!monthNum) return;
@@ -33960,8 +34123,11 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
     else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
     const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
 
-    // Identificar todos los estudiantes que pertenecen a este grado/sección
-    const gradeStudents = (STATE.students || []).filter(s => {
+    // Identificar todos los estudiantes que pertenecen a este grado/sección DENTRO del ciclo activo (sin mezclar ciclos)
+    const cycleFilteredPool = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], cycleKey)
+        : (STATE.students || []);
+    const gradeStudents = cycleFilteredPool.filter(s => {
         if (!s) return false;
         if (qGradeObj) {
             if (qGradeObj.code && s.gradeCode === qGradeObj.code) return true;
@@ -33991,6 +34157,13 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         if (s.codigoPersonal) { aliasToStudentMap[s.codigoPersonal] = s; gradeStudentIdSet.add(s.codigoPersonal); }
         if (s.cui) { aliasToStudentMap[s.cui] = s; gradeStudentIdSet.add(s.cui); }
     });
+
+    // Helper estricto de aislamiento multi-ciclo: 2026 no se mezcla con 2027, ni 2027 con 2028...
+    const isMatchingCycle = (k, targetCycleStr) => {
+        const yMatch = String(k || '').match(/^(20\d{2})_/);
+        const recCycle = yMatch ? yMatch[1] : '2026';
+        return recCycle === String(targetCycleStr || '2026').trim();
+    };
 
     // Helper tolerante para verificar coincidencia de mes en la clave
     const isMatchingMonth = (k, m) => {
@@ -34051,8 +34224,9 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             if (qGradeObj.id) courseKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
         }
 
-        // Buscar claves correspondientes al curso y mes
+        // Buscar claves correspondientes al curso, ciclo y mes (aislamiento estricto entre ciclos)
         Object.keys(STATE.attendanceRecords).forEach(k => {
+            if (!isMatchingCycle(k, cycleKey)) return;
             if (!isMatchingMonth(k, month)) return;
             // Coincidencia estricta de la cátedra
             if (!k.endsWith(`_${courseId}`) && !k.includes(`_${courseId}_`) && !k.includes(courseId)) return;
@@ -34137,6 +34311,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         }
 
         Object.keys(STATE.attendanceRecords).forEach(k => {
+            if (!isMatchingCycle(k, cycleKey)) return;
             if (!isMatchingMonth(k, month)) return;
 
             const { kNum, kSec } = parseKeyGradeAndSection(k);
@@ -34179,8 +34354,8 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                         if (isNaN(dNum) || dNum < 1 || dNum > daysInMonthGen) continue;
                         const checkDate = new Date(year, month - 1, dNum);
                         const isWk = (checkDate.getDay() === 0 || checkDate.getDay() === 6);
-                        // Salvaguarda: Para Arévalo Morán, jamás admitir 'J' en meses diferentes a septiembre o días distintos a 25 y 26
-                        const isArevalo = (canonicalId === 'stu-sire-I228WGR' || canonicalId === '2026-CB-003' || canonicalId === 'I228WGR' || (student && (student.id === 'stu-sire-I228WGR' || student.personalCode === 'I228WGR' || student.carne === '2026-CB-003')));
+                        // Salvaguarda ciclo 2026: Para Arévalo Morán, jamás admitir 'J' en meses diferentes a septiembre o días distintos a 25 y 26
+                        const isArevalo = (year === 2026) && (canonicalId === 'stu-sire-I228WGR' || canonicalId === '2026-CB-003' || canonicalId === 'I228WGR' || (student && (student.id === 'stu-sire-I228WGR' || student.personalCode === 'I228WGR' || student.carne === '2026-CB-003')));
                         if (isWk && !(isArevalo && month === 9 && dNum === 26)) {
                             continue;
                         }
@@ -34452,7 +34627,7 @@ function loadAttendanceList() {
         populateAttendanceSelects(false);
     }
 
-    const gradeCode = gradeSelect.value;
+    let gradeCode = gradeSelect.value;
     if (gradeCode) {
         STATE.attendanceSelectedGrade = gradeCode;
     }
@@ -34946,6 +35121,13 @@ function loadAttendanceList() {
             statusTag = `<span class="badge" style="font-size:0.68rem; margin-left:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>`;
         }
 
+        const toDateAtt = (typeof getStudentAttendancePercentageToDate === 'function')
+            ? getStudentAttendancePercentageToDate(s, String(year))
+            : null;
+        const toDateBadgeHtml = (toDateAtt && toDateAtt.computableDays > 0)
+            ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:800; color:${toDateAtt.color}; background:${toDateAtt.bgColor}; border:1px solid ${toDateAtt.borderColor}; border-radius:4px; padding:1px 4px; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}) para Bolsas de Estudio y Becas: ${toDateAtt.displayText} (${toDateAtt.attendedDays}/${toDateAtt.computableDays} días hábiles | P:${toDateAtt.present}, T:${toDateAtt.tardy}, J:${toDateAtt.justified}, A:${toDateAtt.absent}) — ${toDateAtt.scholarshipLabel}">🎓 ${year}: ${toDateAtt.displayText}</div>`
+            : `<div style="margin-top:2px; font-size:0.62rem; font-weight:700; color:#64748b; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}): Sin registros aún">🎓 ${year}: —</div>`;
+
         const pctColumnHtml = isMonthRetired ? `
             <td class="col-pct" id="pctCol_${s.id}" style="text-align:center; background:#fee2e2 !important;">
                 <span class="badge badge-danger" style="background:#dc2626; color:#ffffff; border:1px solid #b91c1c; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
@@ -34954,7 +35136,7 @@ function loadAttendanceList() {
             </td>
         ` : `
             <td class="col-pct" id="pctCol_${s.id}">
-                <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
+                <div class="att-pct-container" title="Asistencia del Mes: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
                     <div class="att-pct-bar-bg">
                         <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
                     </div>
@@ -34962,6 +35144,7 @@ function loadAttendanceList() {
                         ${pct}%
                     </span>
                 </div>
+                ${toDateBadgeHtml}
             </td>
         `;
 
@@ -35293,9 +35476,9 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     }
     let cur = (domVal !== null && domVal !== undefined && domVal !== '') ? domVal : (STATE.attendanceRecords[recordKey]?.[studentId]?.[day] || '');
 
-    // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre)
+    // 🛡️ REGLA OBLIGATORIA (EXCLUSIVA CICLO 2026): Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre 2026)
     // debe estar completamente libre de 'J' y lista para llenar por el docente.
-    const isArevalo = (studentId === 'stu-sire-I228WGR' || (targetStudent && (targetStudent.personalCode === 'I228WGR' || (targetStudent.carne && targetStudent.carne.includes('2026-CB-003')) || (targetStudent.name && targetStudent.name.toUpperCase().includes('ARÉVALO MORÁN')))));
+    const isArevalo = (cycleYear === 2026) && (studentId === 'stu-sire-I228WGR' || (targetStudent && (targetStudent.personalCode === 'I228WGR' || (targetStudent.carne && targetStudent.carne.includes('2026-CB-003')) || (targetStudent.name && targetStudent.name.toUpperCase().includes('ARÉVALO MORÁN')))));
     if (isArevalo) {
         if (month !== 9 || (day !== 25 && day !== 26)) {
             if (cur === 'J' || cur === 'A') {
@@ -35536,7 +35719,7 @@ function updateAttendanceLiveStats(targetStudentId = null) {
     if (!gradeSelect || !monthSelect) return;
 
     const month = parseInt(monthSelect.value) || 8;
-    const year = 2026;
+    const year = parseInt(STATE.activeCycle, 10) || new Date().getFullYear() || 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
 
     if (targetStudentId) {
@@ -35581,8 +35764,14 @@ function updateAttendanceLiveStats(targetStudentId = null) {
 
             const pctEl = document.getElementById(`pctCol_${targetStudentId}`);
             if (pctEl) {
+                const toDateAtt = (typeof getStudentAttendancePercentageToDate === 'function')
+                    ? getStudentAttendancePercentageToDate(targetStudentId, String(year))
+                    : null;
+                const toDateBadgeHtml = (toDateAtt && toDateAtt.computableDays > 0)
+                    ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:800; color:${toDateAtt.color}; background:${toDateAtt.bgColor}; border:1px solid ${toDateAtt.borderColor}; border-radius:4px; padding:1px 4px; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}) para Bolsas de Estudio y Becas: ${toDateAtt.displayText} (${toDateAtt.attendedDays}/${toDateAtt.computableDays} días hábiles | P:${toDateAtt.present}, T:${toDateAtt.tardy}, J:${toDateAtt.justified}, A:${toDateAtt.absent}) — ${toDateAtt.scholarshipLabel}">🎓 ${year}: ${toDateAtt.displayText}</div>`
+                    : `<div style="margin-top:2px; font-size:0.62rem; font-weight:700; color:#64748b; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}): Sin registros aún">🎓 ${year}: —</div>`;
                 pctEl.innerHTML = `
-                    <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
+                    <div class="att-pct-container" title="Asistencia del Mes: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
                         <div class="att-pct-bar-bg">
                             <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
                         </div>
@@ -35590,6 +35779,7 @@ function updateAttendanceLiveStats(targetStudentId = null) {
                             ${pct}%
                         </span>
                     </div>
+                    ${toDateBadgeHtml}
                 `;
             }
         }
@@ -35920,11 +36110,15 @@ window.markAllPresentToday = markAllPresentToday;
 let _attendanceSaveTimeout = null;
 
 function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) {
-    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
-        sanitizeArevaloAttendanceRecords();
-    }
-    if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
-        sanitizeAttendanceCalendarAndWeekends();
+    // ⚡ Optimización de velocidad: en clics rápidos (showToastMsg=false) no re-escanear toda la base histórica en cada clic
+    if (showToastMsg || !window._attendanceSanitizedOnce) {
+        if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+            sanitizeArevaloAttendanceRecords();
+        }
+        if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+            sanitizeAttendanceCalendarAndWeekends();
+        }
+        window._attendanceSanitizedOnce = true;
     }
     if (e) {
         if (e._enccoHandled) return;
@@ -35990,8 +36184,21 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
     STATE._lastSavedLocally = nowTime;
 
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
-    if (isSuperOrDir) {
-        // Guardado inmediato y definitivo en LocalStorage para evitar regresiones de caché
+    if (isSuperOrDir && !showToastMsg) {
+        // Clics rápidos de Dirección/Admin: debounce corto (220ms) en caché local + sync en nube sin micro-pausas
+        if (window._attendanceFullSaveTimeout) clearTimeout(window._attendanceFullSaveTimeout);
+        window._attendanceFullSaveTimeout = setTimeout(() => {
+            saveStateToLocalStorage();
+        }, 220);
+        if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
+        _attendanceSaveTimeout = setTimeout(() => {
+            if (typeof _syncAttendanceToFirebaseBackground === 'function') {
+                _syncAttendanceToFirebaseBackground(recordKey);
+            }
+        }, 250);
+    } else if (isSuperOrDir) {
+        // Guardado explícito inmediato y definitivo en LocalStorage para evitar regresiones de caché
+        if (window._attendanceFullSaveTimeout) clearTimeout(window._attendanceFullSaveTimeout);
         saveStateToLocalStorage();
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
@@ -36034,16 +36241,17 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             const docRef = modular.doc(modular.db, 'config', 'asistencia');
             const dataToSet = {
-                permissionsMeta: STATE.attendancePermissionsMeta || {},
-                attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
-                studentPermissions: Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions : [],
                 lastModified: Date.now()
             };
             if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
+                // 🛡️ Toma de asistencia puntual: subir SOLO la cátedra/sección modificada sin sobreescribir permisos de Auxiliatura
                 dataToSet.records = {
                     [targetRecordKey]: STATE.attendanceRecords[targetRecordKey]
                 };
             } else {
+                dataToSet.permissionsMeta = STATE.attendancePermissionsMeta || {};
+                dataToSet.attendancePermissionsMeta = STATE.attendancePermissionsMeta || {};
+                dataToSet.studentPermissions = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions : [];
                 dataToSet.records = STATE.attendanceRecords || {};
             }
             modular.setDoc(docRef, dataToSet, { merge: true }).catch(fsErr => {
@@ -36058,6 +36266,7 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
         if (typeof EnccoCloudSync !== 'undefined') {
             if (EnccoCloudSync.syncNode) {
                 if (targetRecordKey) {
+                    // 🛡️ Sincronización atómica exclusiva del curso/mes editado (cero riesgo de pisar studentPermissions concurrentes)
                     EnccoCloudSync.syncNode(`attendanceRecords/${targetRecordKey}`, (STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
                     });
@@ -36065,10 +36274,13 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
                     EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
                     });
+                    EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
+                    });
+                    if (Array.isArray(STATE.studentPermissions)) {
+                        EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+                    }
                 }
-                EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
-                    console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
-                });
             } else if (EnccoCloudSync.patchNode) {
                 if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
                     EnccoCloudSync.patchNode(`attendanceRecords/${targetRecordKey}`, STATE.attendanceRecords[targetRecordKey]).catch(rtErr => {
@@ -36078,13 +36290,10 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
                     EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
                     });
+                    EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
+                    });
                 }
-                EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
-                    console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
-                });
-            }
-            if (EnccoCloudSync.syncNode && Array.isArray(STATE.studentPermissions)) {
-                EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
             }
         }
     } catch(err) {
@@ -37816,9 +38025,13 @@ function sanitizeArevaloAttendanceRecords() {
         if (arevaloStudent.carne && !arevaloAliases.includes(arevaloStudent.carne)) arevaloAliases.push(arevaloStudent.carne);
     }
 
-    // 1. Limpieza rigurosa de attendanceRecords en memoria (sólo días 25 y 26 de septiembre pueden tener 'J')
+    // 1. Limpieza rigurosa de attendanceRecords en memoria (EXCLUSIVO CICLO 2026: sólo días 25 y 26 de septiembre 2026 pueden tener 'J')
     for (const [sheetKey, sheetObj] of Object.entries(STATE.attendanceRecords)) {
         if (!sheetObj || typeof sheetObj !== 'object') continue;
+        const yMatch = sheetKey.match(/^(20\d{2})_/);
+        const recYear = yMatch ? yMatch[1] : '2026';
+        if (recYear !== '2026') continue;
+
         const mMatch = sheetKey.match(/_M(\d+)_/);
         const m = mMatch ? parseInt(mMatch[1], 10) : 0;
 
@@ -37894,22 +38107,24 @@ function sanitizeAttendanceCalendarAndWeekends() {
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
     const cycleYear = parseInt(STATE.activeCycle) || 2026;
 
-    // 1. Limpieza de marcas automáticas 'J' en fines de semana en STATE.attendanceRecords
+    // 1. Limpieza de marcas automáticas 'J' en fines de semana en STATE.attendanceRecords respetando el AÑO REAL de cada clave (aislamiento 2026 / 2027 / 2028...)
     for (const [recKey, sheetObj] of Object.entries(STATE.attendanceRecords)) {
         if (!sheetObj || typeof sheetObj !== 'object') continue;
+        const yMatch = recKey.match(/^(20\d{2})_/);
+        const recYear = yMatch ? parseInt(yMatch[1], 10) : 2026;
         const mMatch = recKey.match(/_M(\d+)_/) || recKey.match(/_M(\d+)$/) || recKey.match(/_(\d+)_/);
         const m = mMatch ? parseInt(mMatch[1], 10) : 0;
         if (!m || m < 1 || m > 12) continue;
 
         for (const [studentId, daysObj] of Object.entries(sheetObj)) {
             if (!daysObj) continue;
-            const isArevalo = (typeof isStudentArevalo === 'function')
+            const isArevalo = (recYear === 2026) && ((typeof isStudentArevalo === 'function')
                 ? isStudentArevalo(studentId)
-                : (studentId === 'stu-sire-I228WGR' || studentId === 'I228WGR' || studentId === '2026-CB-003');
+                : (studentId === 'stu-sire-I228WGR' || studentId === 'I228WGR' || studentId === '2026-CB-003'));
 
             if (Array.isArray(daysObj)) {
                 for (let d = 1; d < daysObj.length; d++) {
-                    const dt = new Date(cycleYear, m - 1, d);
+                    const dt = new Date(recYear, m - 1, d);
                     if (isNaN(dt.getTime())) continue;
                     const dow = dt.getDay();
                     const isWeekend = (dow === 0 || dow === 6);
@@ -37921,7 +38136,7 @@ function sanitizeAttendanceCalendarAndWeekends() {
             } else if (typeof daysObj === 'object') {
                 for (const [dStr, val] of Object.entries(daysObj)) {
                     const d = parseInt(dStr, 10);
-                    const dt = new Date(cycleYear, m - 1, d);
+                    const dt = new Date(recYear, m - 1, d);
                     if (isNaN(dt.getTime())) continue;
                     const dow = dt.getDay();
                     const isWeekend = (dow === 0 || dow === 6);
