@@ -121,8 +121,8 @@ console.log('  ✅ 4. Filtros rápidos (CUI duplicados y documento específico f
 // 6. Renderizado de panel responsivo (escritorio, tablet y móvil) e Impresión en Azul Institucional Oficio Horizontal
 mockWindow.toggleStudentDocsAuditPanel(true);
 assert(domMap.studentDocsAuditPanel.innerHTML.includes('Auditoría de Documentos de Expediente y CUI'), 'Panel renderizado correctamente');
-assert(domMap.studentDocsAuditPanel.innerHTML.includes('docs-audit-sticky-col') && domMap.studentDocsAuditPanel.innerHTML.includes('docs-audit-cards'), 'Incluye columna fija para tablet y tarjetas táctiles para pantallas verticales');
-assert(injectedStyleText.includes('@media (max-width: 1100px)') && injectedStyleText.includes('@media (max-width: 768px)'), 'Reglas CSS responsivas para tablet y móvil inyectadas correctamente');
+assert(domMap.studentDocsAuditPanel.innerHTML.includes('class="col-id"') && domMap.studentDocsAuditPanel.innerHTML.includes('docs-audit-cards'), 'Incluye columnas compactas sin desborde y tarjetas táctiles para pantallas verticales');
+assert(injectedStyleText.includes('table-layout: fixed') && injectedStyleText.includes('@media (max-width: 1150px)') && injectedStyleText.includes('@media (max-width: 900px)'), 'Reglas CSS responsivas (100% ajuste sin corte horizontal, tablet y móvil) inyectadas correctamente');
 mockWindow.printStudentDocsAuditReport();
 assert.strictEqual(lastPrintedOrient, 'landscape', 'Reporte impreso en orientación horizontal');
 assert(lastPrintedHtml.includes('8.5in 13in landscape') && lastPrintedHtml.includes('#0369a1'), 'Impresión en Hoja Oficio 8.5x13 y Azul Institucional');

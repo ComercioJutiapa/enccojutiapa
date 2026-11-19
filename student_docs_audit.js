@@ -10,6 +10,15 @@
 (function (window, document) {
     'use strict';
 
+    const DOC_HEADER_TWO_LINE = {
+        certificados_primaria: 'Cert.<br>Prim.',
+        diploma_primaria: 'Dip.<br>Prim.',
+        certificados_basico: 'Cert.<br>Bás.',
+        diploma_basico: 'Dip.<br>Bás.',
+        partida_nacimiento: 'Nac./<br>Pas.',
+        dpi_encargado: 'DPI<br>Enc.'
+    };
+
     const DOC_SHORT_LABELS = {
         certificados_primaria: 'Cert. Prim.',
         diploma_primaria: 'Dip. Prim.',
@@ -122,14 +131,18 @@
             }
             .docs-audit-table-wrap {
                 width: 100%;
+                max-width: 100%;
                 max-height: 62vh;
-                overflow: auto;
+                overflow-y: auto;
+                overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
             }
             .docs-audit-table {
-                font-size: 0.79rem;
-                width: 100%;
-                min-width: 920px;
+                font-size: 0.76rem;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                table-layout: fixed;
                 border-collapse: collapse;
             }
             .docs-audit-table thead {
@@ -137,6 +150,31 @@
                 top: 0;
                 z-index: 3;
             }
+            .docs-audit-table thead th {
+                background: #0369a1 !important;
+                color: #ffffff !important;
+                font-size: 0.67rem !important;
+                font-weight: 800 !important;
+                padding: 6px 3px !important;
+                line-height: 1.15 !important;
+                vertical-align: middle !important;
+                border-bottom: 2px solid #0f2b5c !important;
+                white-space: normal !important;
+                word-break: break-word;
+            }
+            .docs-audit-table tbody td {
+                padding: 5px 4px !important;
+                vertical-align: middle !important;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+            .docs-audit-table .col-no { width: 32px; text-align: center; }
+            .docs-audit-table .col-student { width: 23%; text-align: left; }
+            .docs-audit-table .col-id { width: 17%; text-align: center; }
+            .docs-audit-table .col-doc { width: 4.8%; text-align: center; padding: 4px 1px !important; }
+            .docs-audit-table .col-avance { width: 52px; text-align: center; }
+            .docs-audit-table .col-obs { width: 17%; text-align: left; }
+            .docs-audit-table .col-act { width: 82px; text-align: center; }
             .docs-audit-cards {
                 display: none;
                 padding: 10px 12px;
@@ -185,8 +223,8 @@
                 color: #475569;
             }
 
-            /* TABLET (769px - 1100px): 3 KPIs por fila, selects táctiles, columna nombre fija */
-            @media (max-width: 1100px) {
+            /* TABLET HORIZONTAL Y VENTANA MEDIANA (901px - 1150px): 3 KPIs por fila, tabla 100% ajustada sin desbordes */
+            @media (max-width: 1150px) {
                 .docs-audit-kpis {
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                     padding: 10px 12px;
@@ -201,27 +239,19 @@
                     width: 100%;
                 }
                 .docs-audit-selects select {
-                    flex: 1 1 200px;
+                    flex: 1 1 180px;
                     min-height: 36px;
                 }
-                .docs-audit-table td.docs-audit-sticky-col,
-                .docs-audit-table th.docs-audit-sticky-col {
-                    position: sticky;
-                    left: 0;
-                    z-index: 2;
-                    box-shadow: 2px 0 6px rgba(15, 23, 42, 0.08);
+                .docs-audit-table .col-obs {
+                    display: none;
                 }
-                .docs-audit-table thead th.docs-audit-sticky-col {
-                    z-index: 4;
-                    background: #0369a1;
-                }
-                .docs-audit-table tbody td.docs-audit-sticky-col {
-                    background: inherit;
-                }
+                .docs-audit-table .col-student { width: 32%; }
+                .docs-audit-table .col-id { width: 22%; }
+                .docs-audit-table .col-doc { width: 5.5%; }
             }
 
-            /* TABLET VERTICAL Y MÓVIL (<= 768px): 2 KPIs por fila + tarjetas táctiles sin scroll horizontal */
-            @media (max-width: 768px) {
+            /* TABLET VERTICAL Y MÓVIL (<= 900px): 2 KPIs por fila + tarjetas táctiles sin corte ni scroll horizontal */
+            @media (max-width: 900px) {
                 .docs-audit-kpis {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 8px;
@@ -251,6 +281,12 @@
                 .docs-audit-cards {
                     display: flex;
                 }
+                .docs-audit-card-docs {
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 520px) {
                 .docs-audit-card-docs {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
@@ -672,25 +708,24 @@
                     </div>
                 </div>
 
-                <!-- VISTA TABLA (ESCRITORIO Y TABLET HORIZONTAL CON COLUMNA FIJA) -->
+                <!-- VISTA TABLA 100% AJUSTADA A LA VENTANA (SIN CORTE DERECHO NI SCROLL HORIZONTAL) -->
                 <div class="docs-audit-table-wrap">
                     <table class="custom-table docs-audit-table">
                         <thead>
-                            <tr style="background:#0369a1; color:#ffffff;">
-                                <th style="width:36px; text-align:center; padding:8px 4px;">No.</th>
-                                <th class="docs-audit-sticky-col" style="padding:8px 6px; text-align:left; min-width:190px;">Estudiante y Sección</th>
-                                <th style="padding:8px 6px; text-align:center;">CUI (RENAP)</th>
-                                <th style="padding:8px 6px; text-align:center;">Cód. Personal</th>
-                                ${docsCatalog.map(d => `<th style="padding:8px 4px; text-align:center; font-size:0.72rem;" title="${_esc(d.title)}">${_esc(DOC_SHORT_LABELS[d.key] || d.title)}</th>`).join('')}
-                                <th style="padding:8px 6px; text-align:center;">Avance</th>
-                                <th style="padding:8px 6px; text-align:left;">Faltantes / Observaciones</th>
-                                <th style="padding:8px 6px; text-align:center;">Acción</th>
+                            <tr>
+                                <th class="col-no">No.</th>
+                                <th class="col-student">Estudiante y Sección</th>
+                                <th class="col-id">CUI (RENAP) / Cód. Personal</th>
+                                ${docsCatalog.map(d => `<th class="col-doc" title="${_esc(d.title)}">${DOC_HEADER_TWO_LINE[d.key] || _esc(DOC_SHORT_LABELS[d.key] || d.title)}</th>`).join('')}
+                                <th class="col-avance">Avance</th>
+                                <th class="col-obs">Faltantes / Observaciones</th>
+                                <th class="col-act">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${rows.length === 0 ? `
                                 <tr>
-                                    <td colspan="${7 + docsCatalog.length}" style="text-align:center; padding:32px; color:#64748b;">
+                                    <td colspan="${6 + docsCatalog.length}" style="text-align:center; padding:32px; color:#64748b;">
                                         <i class="fa-solid fa-circle-check" style="font-size:2rem; color:#15803d; margin-bottom:8px; display:block;"></i>
                                         <strong>No hay estudiantes que coincidan con este filtro de auditoría.</strong>
                                     </td>
@@ -700,34 +735,38 @@
                                 const cleanPhone = String(r.guardianPhone || '').replace(/\D/g, '');
                                 const waMsg = encodeURIComponent(`Estimado encargado de ${r.displayName} (${r.gradeLabel}), le saludamos de Secretaría ENCCO Jutiapa. Para completar su expediente escolar ${activeCycle}, le solicitamos entregar a la brevedad: ${r.observationsText}. ¡Muchas gracias!`);
                                 const waBtn = (canWA && cleanPhone && !r.isFullyCompliant)
-                                    ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" class="btn btn-xs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 6px; border-radius:5px; text-decoration:none; font-weight:700;" title="Enviar recordatorio de faltantes por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`
+                                    ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" class="btn btn-xs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 5px; border-radius:5px; text-decoration:none; font-weight:700;" title="Enviar recordatorio de faltantes por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`
                                     : '';
 
                                 return `
                                 <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;">
-                                    <td style="text-align:center; font-weight:700; color:#475569;">${idx + 1}</td>
-                                    <td class="docs-audit-sticky-col" style="padding:6px; background:${rowBg};">
-                                        <strong style="color:#0f2b5c; cursor:pointer;" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" title="Abrir expediente del estudiante">${_esc(r.displayName)}</strong>
-                                        <div style="font-size:0.72rem; color:#64748b;">${_esc(r.gradeLabel)} &bull; ${_esc(r.status)}</div>
+                                    <td class="col-no" style="font-weight:700; color:#475569;">${idx + 1}</td>
+                                    <td class="col-student" style="background:${rowBg};">
+                                        <strong style="color:#0f2b5c; cursor:pointer; font-size:0.76rem; line-height:1.2; display:block;" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" title="Abrir expediente del estudiante">${_esc(r.displayName)}</strong>
+                                        <div style="font-size:0.69rem; color:#64748b; margin-top:1px;">${_esc(r.gradeLabel)} &bull; ${_esc(r.status)}</div>
                                     </td>
-                                    <td style="text-align:center; padding:6px 4px;">${_renderCuiBadge(r.cuiInfo, r.cuiRaw)}</td>
-                                    <td style="text-align:center; padding:6px 4px; font-family:monospace; font-weight:700; font-size:0.75rem;">
-                                        ${r.hasPersonalCode ? `<span style="color:#0f2b5c;">${_esc(r.personalCode)}</span>` : '<span style="color:#dc2626; background:#fee2e2; padding:2px 6px; border-radius:4px;">Falta</span>'}
+                                    <td class="col-id">
+                                        <div style="margin-bottom:3px;">${_renderCuiBadge(r.cuiInfo, r.cuiRaw)}</div>
+                                        <div style="font-family:monospace; font-weight:700; font-size:0.71rem;">
+                                            ${r.hasPersonalCode ? `<span style="color:#0f2b5c;">Cód: ${_esc(r.personalCode)}</span>` : '<span style="color:#dc2626; background:#fee2e2; padding:1px 5px; border-radius:4px;">Sin Cód.</span>'}
+                                        </div>
                                     </td>
-                                    ${docsCatalog.map(d => `<td style="text-align:center; padding:6px 2px;">${_renderDocStatusIcon(r.docStates[d.key])}</td>`).join('')}
-                                    <td style="text-align:center; padding:6px 4px;">
-                                        <span style="display:inline-block; padding:2px 7px; border-radius:10px; font-weight:800; font-size:0.73rem; background:${r.isDocsComplete ? '#dcfce7' : '#fef3c7'}; color:${r.isDocsComplete ? '#15803d' : '#b45309'}; border:1px solid ${r.isDocsComplete ? '#86efac' : '#fde68a'};">
+                                    ${docsCatalog.map(d => `<td class="col-doc">${_renderDocStatusIcon(r.docStates[d.key])}</td>`).join('')}
+                                    <td class="col-avance">
+                                        <span style="display:inline-block; padding:2px 6px; border-radius:10px; font-weight:800; font-size:0.72rem; background:${r.isDocsComplete ? '#dcfce7' : '#fef3c7'}; color:${r.isDocsComplete ? '#15803d' : '#b45309'}; border:1px solid ${r.isDocsComplete ? '#86efac' : '#fde68a'};">
                                             ${r.deliveredCount}/${r.totalRequired}
                                         </span>
                                     </td>
-                                    <td style="padding:6px; font-size:0.74rem; color:${r.isFullyCompliant ? '#15803d' : '#334155'}; font-weight:${r.isFullyCompliant ? '700' : '600'}; max-width:240px;">
+                                    <td class="col-obs" style="font-size:0.71rem; color:${r.isFullyCompliant ? '#15803d' : '#334155'}; font-weight:${r.isFullyCompliant ? '700' : '600'}; line-height:1.25;">
                                         ${_esc(r.observationsText)}
                                     </td>
-                                    <td style="text-align:center; white-space:nowrap; padding:6px 4px;">
-                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" style="padding:3px 7px; font-size:0.74rem; font-weight:700;" title="Revisar o actualizar documentos">
-                                            <i class="fa-solid fa-folder-open"></i> Revisar
-                                        </button>
-                                        ${waBtn}
+                                    <td class="col-act">
+                                        <div style="display:inline-flex; gap:4px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" style="padding:3px 6px; font-size:0.71rem; font-weight:700;" title="Revisar o actualizar documentos">
+                                                <i class="fa-solid fa-folder-open"></i> Revisar
+                                            </button>
+                                            ${waBtn}
+                                        </div>
                                     </td>
                                 </tr>
                                 `;
