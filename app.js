@@ -8906,10 +8906,25 @@ window.OFFICIAL_CNB_PENSUM_ORDER = OFFICIAL_CNB_PENSUM_ORDER;
 
 function getPensumItemGradeKey(p) {
     if (!p) return '4to';
-    const raw = (typeof p === 'string') ? p.toUpperCase() : `${p.grade || ''} ${p.gradeCode || ''} ${p.name || ''}`.toUpperCase();
-    if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return '6to';
-    if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return '5to';
-    if (raw.includes('4') || raw.includes('CUARTO') || raw.includes('4TO')) return '4to';
+    if (typeof p === 'string') {
+        const rawStr = p.toUpperCase();
+        if (rawStr.includes('6TO') || rawStr.includes('SEXTO') || /\b6\b/.test(rawStr)) return '6to';
+        if (rawStr.includes('5TO') || rawStr.includes('QUINTO') || /\b5\b/.test(rawStr)) return '5to';
+        if (rawStr.includes('4TO') || rawStr.includes('CUARTO') || /\b4\b/.test(rawStr)) return '4to';
+        return '4to';
+    }
+    // 1. Priorizar propiedades explícitas de grado (evitar falsos positivos con códigos MINEDUC de 3 dígitos como '346' o '356')
+    const primary = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase().trim();
+    if (primary) {
+        if (primary.includes('6') || primary.includes('SEXTO') || primary.includes('6TO')) return '6to';
+        if (primary.includes('5') || primary.includes('QUINTO') || primary.includes('5TO')) return '5to';
+        if (primary.includes('4') || primary.includes('CUARTO') || primary.includes('4TO')) return '4to';
+    }
+    // 2. Fallback para objetos de gradesList ({ code: '5to A', name: '5to Perito Contador' })
+    const secondary = `${p.name || ''} ${/^\d{3}$/.test(String(p.code || '').trim()) ? '' : (p.code || '')}`.toUpperCase();
+    if (secondary.includes('6TO') || secondary.includes('SEXTO') || /\b6\b/.test(secondary)) return '6to';
+    if (secondary.includes('5TO') || secondary.includes('QUINTO') || /\b5\b/.test(secondary)) return '5to';
+    if (secondary.includes('4TO') || secondary.includes('CUARTO') || /\b4\b/.test(secondary)) return '4to';
     return '4to';
 }
 window.getPensumItemGradeKey = getPensumItemGradeKey;
@@ -11424,18 +11439,27 @@ function populatePensumTeacherSelect() {
 }
 window.populatePensumTeacherSelect = populatePensumTeacherSelect;
 
+var _globalDynamicUiDeferredTimer = null;
 function synchronizeGlobalDynamicUI() {
     saveStateToLocalStorage();
     if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-    if (typeof updateCareerSelects === 'function') updateCareerSelects();
     if (typeof updateGradeSelects === 'function') updateGradeSelects();
-    if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
     if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
-    if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
-    if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
-    if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
-    if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
-    if (typeof renderDashboard === 'function') renderDashboard();
+
+    // ⚡ Diferir vistas y selectores secundarios fuera del frame crítico para eliminar micro-retrasos
+    if (_globalDynamicUiDeferredTimer) clearTimeout(_globalDynamicUiDeferredTimer);
+    _globalDynamicUiDeferredTimer = setTimeout(() => {
+        _globalDynamicUiDeferredTimer = null;
+        if (typeof updateCareerSelects === 'function') updateCareerSelects();
+        if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
+        if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
+        if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
+        if (typeof renderDashboard === 'function' && (!STATE.activeView || STATE.activeView === 'dashboard')) {
+            renderDashboard();
+        }
+    }, 32);
 }
 
 function updateTopRoleBar() {
@@ -21964,10 +21988,11 @@ function generateOfficialPrintList(opts = null) {
                 </table>`;
 
             } else if (modelType === 'ASISTENCIA_MENSUAL') {
+                const printYear = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || new Date().getFullYear() || 2026;
                 const monthIndex = (bNum === 1) ? 1 : (bNum === 2) ? 3 : (bNum === 3) ? 5 : 7;
                 const daysInfo = Array.from({ length: 31 }, (_, i) => {
                     const dayNum = i + 1;
-                    const dateObj = new Date(2026, monthIndex, dayNum);
+                    const dateObj = new Date(printYear, monthIndex, dayNum);
                     const dayOfWeek = dateObj.getDay();
                     const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
                     const letter = ['D', 'L', 'M', 'M', 'J', 'V', 'S'][dayOfWeek];
@@ -29710,16 +29735,16 @@ window.populateGradebookBimestreSelect = populateGradebookBimestreSelect;
 // 🛡️ CONTROL DIRECTIVO: SUPERVISIÓN Y AUDITORÍA DE INGRESO DE NOTAS POR DOCENTE (V73)
 // ==========================================================================
 
-function getTeacherAssignedCourses(teacherObj) {
-    if (!teacherObj) return [];
-    return (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, teacherObj));
-}
-window.getTeacherAssignedCourses = getTeacherAssignedCourses;
+// [getTeacherAssignedCourses unificada en definición canónica superior]
 
 function calculateClassBimesterMetrics(c, bimester) {
+    const activeCycleStr = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const fallbackPool = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], activeCycleStr)
+        : (STATE.students || []);
     const studentsInGrade = (typeof getSortedGradebookStudents === 'function') ? 
         getSortedGradebookStudents(c.gradeCode, c).filter(s => isStudentActive(s)) : 
-        (STATE.students || []).filter(s => isStudentActive(s));
+        fallbackPool.filter(s => isStudentActive(s));
     const totalStudents = studentsInGrade.length;
     if (totalStudents === 0) {
         return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
@@ -29727,8 +29752,14 @@ function calculateClassBimesterMetrics(c, bimester) {
 
     let withGrades = 0;
     studentsInGrade.forEach(s => {
-        const gVal = (s.grades && s.grades[c.subject]) ? s.grades[c.subject][bimester - 1] : 0;
-        const dVal = (s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][bimester]) ? s.gradebookDetails[c.subject][bimester] : null;
+        const stuGrades = (typeof getStudentCycleGrades === 'function')
+            ? getStudentCycleGrades(s, activeCycleStr)
+            : (s.grades || {});
+        const stuDetails = (typeof getStudentCycleGradebookDetails === 'function')
+            ? getStudentCycleGradebookDetails(s, activeCycleStr)
+            : (s.gradebookDetails || {});
+        const gVal = (stuGrades && stuGrades[c.subject]) ? stuGrades[c.subject][bimester - 1] : 0;
+        const dVal = (stuDetails && stuDetails[c.subject] && stuDetails[c.subject][bimester]) ? stuDetails[c.subject][bimester] : null;
         if (gVal > 0 || (dVal && (dVal.exam > 0 || (dVal.activities && dVal.activities.some(a => (parseInt(a) || 0) > 0))))) {
             withGrades++;
         }
@@ -36819,7 +36850,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
             return;
         }
     }
-    const year = 2026;
+    const year = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || new Date().getFullYear() || 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
@@ -45186,14 +45217,7 @@ const PENSUM_GRADE_CONFIG = {
     }
 };
 
-function getPensumItemGradeKey(p) {
-    if (!p) return '4to';
-    const raw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
-    if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return '6to';
-    if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return '5to';
-    if (raw.includes('4') || raw.includes('CUARTO') || raw.includes('4TO')) return '4to';
-    return '4to';
-}
+// [getPensumItemGradeKey unificada en definición canónica superior]
 
 function selectPensumGradeTab(gradeKey) {
     if (!PENSUM_GRADE_CONFIG[gradeKey]) gradeKey = '4to';
