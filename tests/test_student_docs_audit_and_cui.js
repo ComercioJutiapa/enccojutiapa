@@ -29,7 +29,12 @@ let lastPrintedTitle = '';
 let lastPrintedHtml = '';
 let lastPrintedOrient = '';
 
+let injectedStyleText = '';
 const mockDocument = {
+    head: {
+        appendChild(el) { if (el && el.textContent) injectedStyleText += el.textContent; }
+    },
+    createElement(tag) { return { tag, id: '', textContent: '' }; },
     getElementById(id) { return domMap[id] || null; },
     querySelector() { return { style: {} }; }
 };
@@ -113,12 +118,14 @@ assert.strictEqual(mockWindow.buildStudentDocsAuditDataset().rows.length, 2, 'Fi
 mockWindow.setStudentDocsAuditMissingDoc('ALL');
 console.log('  ✅ 4. Filtros rápidos (CUI duplicados y documento específico faltante) verificados.');
 
-// 6. Renderizado de panel e Impresión en Azul Institucional Oficio Horizontal
+// 6. Renderizado de panel responsivo (escritorio, tablet y móvil) e Impresión en Azul Institucional Oficio Horizontal
 mockWindow.toggleStudentDocsAuditPanel(true);
 assert(domMap.studentDocsAuditPanel.innerHTML.includes('Auditoría de Documentos de Expediente y CUI'), 'Panel renderizado correctamente');
+assert(domMap.studentDocsAuditPanel.innerHTML.includes('docs-audit-sticky-col') && domMap.studentDocsAuditPanel.innerHTML.includes('docs-audit-cards'), 'Incluye columna fija para tablet y tarjetas táctiles para pantallas verticales');
+assert(injectedStyleText.includes('@media (max-width: 1100px)') && injectedStyleText.includes('@media (max-width: 768px)'), 'Reglas CSS responsivas para tablet y móvil inyectadas correctamente');
 mockWindow.printStudentDocsAuditReport();
 assert.strictEqual(lastPrintedOrient, 'landscape', 'Reporte impreso en orientación horizontal');
 assert(lastPrintedHtml.includes('8.5in 13in landscape') && lastPrintedHtml.includes('#0369a1'), 'Impresión en Hoja Oficio 8.5x13 y Azul Institucional');
-console.log('  ✅ 5. Renderizado en vivo e impresión Azul Institucional Oficio verificados.');
+console.log('  ✅ 5. Renderizado responsivo (ventana, tablet, móvil) e impresión Azul Institucional Oficio verificados.');
 
 console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUDITORÍA DE DOCUMENTOS Y CUI PASARON AL 100%!');

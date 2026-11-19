@@ -33,6 +33,232 @@
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    function injectDocsAuditResponsiveStyles() {
+        if (typeof document === 'undefined' || !document.head) return;
+        if (document.getElementById('student-docs-audit-responsive-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'student-docs-audit-responsive-styles';
+        style.textContent = `
+            .docs-audit-shell {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                background: #ffffff;
+                border: 1.5px solid #bae6fd;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 14px rgba(3, 105, 161, 0.08);
+            }
+            .docs-audit-header {
+                background: linear-gradient(135deg, #0f2b5c 0%, #0369a1 65%, #0284c7 100%);
+                color: #ffffff;
+                padding: 12px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .docs-audit-actions {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .docs-audit-actions button {
+                min-height: 36px;
+                white-space: nowrap;
+            }
+            .docs-audit-kpis {
+                display: grid;
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                gap: 10px;
+                padding: 12px 16px;
+                background: #f0f9ff;
+                border-bottom: 1px solid #bae6fd;
+            }
+            .docs-audit-kpi-card {
+                background: #ffffff;
+                border-radius: 8px;
+                padding: 8px 10px;
+                min-width: 0;
+            }
+            .docs-audit-toolbar {
+                padding: 10px 16px;
+                background: #f8fafc;
+                border-bottom: 1px solid #e2e8f0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .docs-audit-chips {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                align-items: center;
+                flex: 1 1 380px;
+            }
+            .docs-audit-chips button {
+                min-height: 30px;
+                transition: transform 0.12s ease, box-shadow 0.12s ease;
+            }
+            .docs-audit-selects {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .docs-audit-selects select {
+                height: 34px;
+                padding: 0 10px;
+                border-radius: 7px;
+                border: 1px solid #cbd5e1;
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: #0f2b5c;
+                background: #ffffff;
+            }
+            .docs-audit-table-wrap {
+                width: 100%;
+                max-height: 62vh;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .docs-audit-table {
+                font-size: 0.79rem;
+                width: 100%;
+                min-width: 920px;
+                border-collapse: collapse;
+            }
+            .docs-audit-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 3;
+            }
+            .docs-audit-cards {
+                display: none;
+                padding: 10px 12px;
+                gap: 10px;
+                flex-direction: column;
+                max-height: 65vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .docs-audit-card {
+                border: 1px solid #cbd5e1;
+                border-left: 4px solid #0369a1;
+                border-radius: 10px;
+                padding: 10px 12px;
+                background: #ffffff;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+            }
+            .docs-audit-card-docs {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 6px;
+                margin: 8px 0;
+            }
+            .docs-audit-card-doc-pill {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 4px 6px;
+                font-size: 0.72rem;
+                font-weight: 700;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 4px;
+            }
+            .docs-audit-footer {
+                padding: 8px 16px;
+                background: #f8fafc;
+                border-top: 1px solid #e2e8f0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 0.74rem;
+                color: #475569;
+            }
+
+            /* TABLET (769px - 1100px): 3 KPIs por fila, selects táctiles, columna nombre fija */
+            @media (max-width: 1100px) {
+                .docs-audit-kpis {
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    padding: 10px 12px;
+                }
+                .docs-audit-header {
+                    padding: 10px 12px;
+                }
+                .docs-audit-toolbar {
+                    padding: 10px 12px;
+                }
+                .docs-audit-selects {
+                    width: 100%;
+                }
+                .docs-audit-selects select {
+                    flex: 1 1 200px;
+                    min-height: 36px;
+                }
+                .docs-audit-table td.docs-audit-sticky-col,
+                .docs-audit-table th.docs-audit-sticky-col {
+                    position: sticky;
+                    left: 0;
+                    z-index: 2;
+                    box-shadow: 2px 0 6px rgba(15, 23, 42, 0.08);
+                }
+                .docs-audit-table thead th.docs-audit-sticky-col {
+                    z-index: 4;
+                    background: #0369a1;
+                }
+                .docs-audit-table tbody td.docs-audit-sticky-col {
+                    background: inherit;
+                }
+            }
+
+            /* TABLET VERTICAL Y MÓVIL (<= 768px): 2 KPIs por fila + tarjetas táctiles sin scroll horizontal */
+            @media (max-width: 768px) {
+                .docs-audit-kpis {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 8px;
+                }
+                .docs-audit-actions {
+                    width: 100%;
+                }
+                .docs-audit-actions button {
+                    flex: 1 1 auto;
+                    justify-content: center;
+                    font-size: 0.78rem;
+                }
+                .docs-audit-chips {
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    padding-bottom: 4px;
+                    width: 100%;
+                }
+                .docs-audit-chips button {
+                    flex: 0 0 auto;
+                    min-height: 34px;
+                }
+                .docs-audit-table-wrap {
+                    display: none;
+                }
+                .docs-audit-cards {
+                    display: flex;
+                }
+                .docs-audit-card-docs {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     function getDocsAuditActiveCycle() {
         const st = window.STATE || {};
         return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || '2026').trim();
@@ -305,6 +531,7 @@
     function renderStudentDocsAuditPanel() {
         const panel = document.getElementById('studentDocsAuditPanel');
         if (!panel || !AUDIT_STATE.isOpen) return;
+        injectDocsAuditResponsiveStyles();
 
         const data = buildStudentDocsAuditDataset();
         const { activeCycle, docsCatalog, rows, kpis } = data;
@@ -314,20 +541,74 @@
             ? 'background:#0369a1; color:#ffffff; border:1.5px solid #0f2b5c; font-weight:800;'
             : 'background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight:700;';
 
+        const cardsHtml = rows.length === 0 ? `
+            <div style="text-align:center; padding:28px; color:#64748b;">
+                <i class="fa-solid fa-circle-check" style="font-size:2rem; color:#15803d; margin-bottom:8px; display:block;"></i>
+                <strong>No hay estudiantes que coincidan con este filtro de auditoría.</strong>
+            </div>
+        ` : rows.map((r, idx) => {
+            const borderAccent = r.isFullyCompliant ? '#15803d' : (r.cuiInfo.status === 'missing' || r.cuiInfo.status === 'duplicate' ? '#dc2626' : '#0369a1');
+            const cleanPhone = String(r.guardianPhone || '').replace(/\D/g, '');
+            const waMsg = encodeURIComponent(`Estimado encargado de ${r.displayName} (${r.gradeLabel}), le saludamos de Secretaría ENCCO Jutiapa. Para completar su expediente escolar ${activeCycle}, le solicitamos entregar a la brevedad: ${r.observationsText}. ¡Muchas gracias!`);
+            const waBtnMobile = (canWA && cleanPhone && !r.isFullyCompliant)
+                ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" class="btn btn-sm" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:6px 12px; border-radius:7px; text-decoration:none; font-weight:800; display:inline-flex; align-items:center; gap:5px;" title="Enviar recordatorio por WhatsApp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>`
+                : '';
+
+            return `
+            <div class="docs-audit-card" style="border-left-color:${borderAccent};">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <div style="min-width:0;">
+                        <strong style="color:#0f2b5c; font-size:0.86rem; cursor:pointer; display:block;" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')">${idx + 1}. ${_esc(r.displayName)}</strong>
+                        <div style="font-size:0.74rem; color:#64748b;">${_esc(r.gradeLabel)} &bull; ${_esc(r.status)}</div>
+                    </div>
+                    <span style="flex-shrink:0; padding:3px 8px; border-radius:10px; font-weight:800; font-size:0.75rem; background:${r.isDocsComplete ? '#dcfce7' : '#fef3c7'}; color:${r.isDocsComplete ? '#15803d' : '#b45309'}; border:1px solid ${r.isDocsComplete ? '#86efac' : '#fde68a'};">
+                        ${r.deliveredCount}/${r.totalRequired}
+                    </span>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px;">
+                    ${_renderCuiBadge(r.cuiInfo, r.cuiRaw)}
+                    <span style="font-family:monospace; font-size:0.74rem; font-weight:700; padding:2px 6px; border-radius:4px; background:${r.hasPersonalCode ? '#f1f5f9' : '#fee2e2'}; color:${r.hasPersonalCode ? '#0f2b5c' : '#dc2626'};">
+                        Cód: ${r.hasPersonalCode ? _esc(r.personalCode) : 'FALTA'}
+                    </span>
+                </div>
+
+                <div class="docs-audit-card-docs">
+                    ${docsCatalog.map(d => `
+                        <div class="docs-audit-card-doc-pill">
+                            <span style="color:#334155;">${_esc(DOC_SHORT_LABELS[d.key] || d.title)}</span>
+                            ${_renderDocStatusIcon(r.docStates[d.key])}
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div style="font-size:0.74rem; color:${r.isFullyCompliant ? '#15803d' : '#334155'}; font-weight:600; margin-bottom:8px;">
+                    ${_esc(r.observationsText)}
+                </div>
+
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" style="flex:1; min-height:34px; font-weight:800; font-size:0.78rem;">
+                        <i class="fa-solid fa-folder-open"></i> Revisar Expediente
+                    </button>
+                    ${waBtnMobile}
+                </div>
+            </div>`;
+        }).join('');
+
         panel.innerHTML = `
-            <div style="background:#ffffff; border:1.5px solid #bae6fd; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(3,105,161,0.08);">
+            <div class="docs-audit-shell">
                 <!-- ENCABEZADO AZUL INSTITUCIONAL -->
-                <div style="background:linear-gradient(135deg, #0f2b5c 0%, #0369a1 65%, #0284c7 100%); color:#ffffff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div class="docs-audit-header">
                     <div>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <strong style="font-size:1.05rem; letter-spacing:0.2px;"><i class="fa-solid fa-folder-check"></i> Auditoría de Documentos de Expediente y CUI</strong>
+                            <strong style="font-size:1.02rem; letter-spacing:0.2px;"><i class="fa-solid fa-folder-check"></i> Auditoría de Documentos de Expediente y CUI</strong>
                             <span style="background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.35); padding:2px 8px; border-radius:12px; font-size:0.74rem; font-weight:800;">Ciclo ${_esc(activeCycle)}</span>
                         </div>
-                        <div style="font-size:0.78rem; color:#e0f2fe; margin-top:2px;">
+                        <div style="font-size:0.77rem; color:#e0f2fe; margin-top:2px;">
                             Verificación en vivo de CUI (13 dígitos RENAP), Código Personal MINEDUC y los 6 documentos oficiales del expediente.
                         </div>
                     </div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <div class="docs-audit-actions">
                         <button type="button" class="btn btn-sm" onclick="printStudentDocsAuditReport()" style="background:#ffffff; color:#0f2b5c; border:1px solid #bae6fd; font-weight:800; padding:6px 12px; border-radius:7px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fa-solid fa-print"></i> Imprimir Reporte
                         </button>
@@ -341,36 +622,36 @@
                 </div>
 
                 <!-- KPIs DINÁMICOS -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; padding:12px 16px; background:#f0f9ff; border-bottom:1px solid #bae6fd;">
-                    <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#64748b; font-weight:700;">Total Evaluados</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#0f2b5c;">${kpis.total}</div>
+                <div class="docs-audit-kpis">
+                    <div class="docs-audit-kpi-card" style="border:1px solid #cbd5e1;">
+                        <div style="font-size:0.71rem; color:#64748b; font-weight:700;">Total Evaluados</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#0f2b5c;">${kpis.total}</div>
                     </div>
-                    <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#166534; font-weight:700;">✅ Expedientes Completos</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#15803d;">${kpis.completeDocsCount} <span style="font-size:0.78rem; font-weight:700;">(${kpis.compliancePct}%)</span></div>
+                    <div class="docs-audit-kpi-card" style="border:1px solid #bbf7d0;">
+                        <div style="font-size:0.71rem; color:#166534; font-weight:700;">✅ Completos (6/6)</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#15803d;">${kpis.completeDocsCount} <span style="font-size:0.76rem; font-weight:700;">(${kpis.compliancePct}%)</span></div>
                     </div>
-                    <div style="background:#ffffff; border:1px solid #fde68a; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#92400e; font-weight:700;">⚠️ Expedientes Incompletos</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#d97706;">${kpis.incompleteDocsCount}</div>
+                    <div class="docs-audit-kpi-card" style="border:1px solid #fde68a;">
+                        <div style="font-size:0.71rem; color:#92400e; font-weight:700;">⚠️ Incompletos</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#d97706;">${kpis.incompleteDocsCount}</div>
                     </div>
-                    <div style="background:#ffffff; border:1px solid #fecaca; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#991b1b; font-weight:700;">🔴 CUI Faltante / Inválido</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#dc2626;">${kpis.cuiBadCount}</div>
+                    <div class="docs-audit-kpi-card" style="border:1px solid #fecaca;">
+                        <div style="font-size:0.71rem; color:#991b1b; font-weight:700;">🔴 CUI Falt./Inv.</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#dc2626;">${kpis.cuiBadCount}</div>
                     </div>
-                    <div style="background:#ffffff; border:1px solid #fed7aa; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#9a3412; font-weight:700;">🟠 CUI Duplicados</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#ea580c;">${kpis.cuiDupCount}</div>
+                    <div class="docs-audit-kpi-card" style="border:1px solid #fed7aa;">
+                        <div style="font-size:0.71rem; color:#9a3412; font-weight:700;">🟠 CUI Duplicados</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#ea580c;">${kpis.cuiDupCount}</div>
                     </div>
-                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px;">
-                        <div style="font-size:0.72rem; color:#475569; font-weight:700;">🆔 Sin Cód. Personal</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#334155;">${kpis.noCodeCount}</div>
+                    <div class="docs-audit-kpi-card" style="border:1px solid #e2e8f0;">
+                        <div style="font-size:0.71rem; color:#475569; font-weight:700;">🆔 Sin Cód. Pers.</div>
+                        <div style="font-size:1.25rem; font-weight:900; color:#334155;">${kpis.noCodeCount}</div>
                     </div>
                 </div>
 
                 <!-- BARRA DE FILTROS RÁPIDOS -->
-                <div style="padding:10px 16px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <div class="docs-audit-toolbar">
+                    <div class="docs-audit-chips">
                         <button type="button" onclick="setStudentDocsAuditFilter('all')" style="${chipStyle(AUDIT_STATE.quickFilter === 'all')} padding:4px 10px; border-radius:16px; font-size:0.76rem; cursor:pointer;">Todos (${kpis.total})</button>
                         <button type="button" onclick="setStudentDocsAuditFilter('incomplete')" style="${chipStyle(AUDIT_STATE.quickFilter === 'incomplete')} padding:4px 10px; border-radius:16px; font-size:0.76rem; cursor:pointer;">⚠️ Incompletos / Sin CUI</button>
                         <button type="button" onclick="setStudentDocsAuditFilter('cui_bad')" style="${chipStyle(AUDIT_STATE.quickFilter === 'cui_bad')} padding:4px 10px; border-radius:16px; font-size:0.76rem; cursor:pointer;">🔴 CUI Faltante / Inválido (${kpis.cuiBadCount})</button>
@@ -379,25 +660,25 @@
                         <button type="button" onclick="setStudentDocsAuditFilter('complete')" style="${chipStyle(AUDIT_STATE.quickFilter === 'complete')} padding:4px 10px; border-radius:16px; font-size:0.76rem; cursor:pointer;">✅ Completos (${kpis.completeDocsCount})</button>
                     </div>
 
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                        <select onchange="setStudentDocsAuditScope(this.value)" style="height:30px; padding:0 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                    <div class="docs-audit-selects">
+                        <select onchange="setStudentDocsAuditScope(this.value)" aria-label="Alcance de auditoría">
                             <option value="filtered" ${AUDIT_STATE.scope === 'filtered' ? 'selected' : ''}>📌 Alcance: Filtros de Sección</option>
                             <option value="all" ${AUDIT_STATE.scope === 'all' ? 'selected' : ''}>🏫 Alcance: Toda la Escuela (${_esc(activeCycle)})</option>
                         </select>
-                        <select onchange="setStudentDocsAuditMissingDoc(this.value)" style="height:30px; padding:0 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                        <select onchange="setStudentDocsAuditMissingDoc(this.value)" aria-label="Filtrar por documento faltante">
                             <option value="ALL" ${AUDIT_STATE.missingDocKey === 'ALL' ? 'selected' : ''}>📄 Cualquier documento</option>
                             ${docsCatalog.map(d => `<option value="${_esc(d.key)}" ${AUDIT_STATE.missingDocKey === d.key ? 'selected' : ''}>⏳ Falta: ${_esc(DOC_SHORT_LABELS[d.key] || d.title)}</option>`).join('')}
                         </select>
                     </div>
                 </div>
 
-                <!-- TABLA DE AUDITORÍA -->
-                <div class="table-responsive" style="max-height:62vh; overflow-y:auto;">
-                    <table class="custom-table" style="font-size:0.8rem; width:100%; border-collapse:collapse;">
-                        <thead style="position:sticky; top:0; z-index:2;">
+                <!-- VISTA TABLA (ESCRITORIO Y TABLET HORIZONTAL CON COLUMNA FIJA) -->
+                <div class="docs-audit-table-wrap">
+                    <table class="custom-table docs-audit-table">
+                        <thead>
                             <tr style="background:#0369a1; color:#ffffff;">
                                 <th style="width:36px; text-align:center; padding:8px 4px;">No.</th>
-                                <th style="padding:8px 6px; text-align:left;">Estudiante y Sección</th>
+                                <th class="docs-audit-sticky-col" style="padding:8px 6px; text-align:left; min-width:190px;">Estudiante y Sección</th>
                                 <th style="padding:8px 6px; text-align:center;">CUI (RENAP)</th>
                                 <th style="padding:8px 6px; text-align:center;">Cód. Personal</th>
                                 ${docsCatalog.map(d => `<th style="padding:8px 4px; text-align:center; font-size:0.72rem;" title="${_esc(d.title)}">${_esc(DOC_SHORT_LABELS[d.key] || d.title)}</th>`).join('')}
@@ -425,7 +706,7 @@
                                 return `
                                 <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;">
                                     <td style="text-align:center; font-weight:700; color:#475569;">${idx + 1}</td>
-                                    <td style="padding:6px;">
+                                    <td class="docs-audit-sticky-col" style="padding:6px; background:${rowBg};">
                                         <strong style="color:#0f2b5c; cursor:pointer;" onclick="openStudentExpedienteFromAudit('${_esc(r.id)}')" title="Abrir expediente del estudiante">${_esc(r.displayName)}</strong>
                                         <div style="font-size:0.72rem; color:#64748b;">${_esc(r.gradeLabel)} &bull; ${_esc(r.status)}</div>
                                     </td>
@@ -455,8 +736,13 @@
                     </table>
                 </div>
 
+                <!-- VISTA TARJETAS TÁCTILES (TABLET VERTICAL Y MÓVIL <= 768px) -->
+                <div class="docs-audit-cards">
+                    ${cardsHtml}
+                </div>
+
                 <!-- LEYENDA -->
-                <div style="padding:8px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.74rem; color:#475569;">
+                <div class="docs-audit-footer">
                     <div><strong>Leyenda Documentos:</strong> ✅ Entregado &nbsp;|&nbsp; ⏳ Pendiente / Falta &nbsp;|&nbsp; 🔄 En Trámite &nbsp;|&nbsp; ⚪ No Aplica</div>
                     <div>Mostrando <strong>${rows.length}</strong> de <strong>${kpis.total}</strong> estudiantes del Ciclo ${_esc(activeCycle)}</div>
                 </div>
