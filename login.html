@@ -501,12 +501,11 @@
                 console.warn('Aviso al consultar usuarios en Firebase:', e);
             }
 
-            // Sanitizar cuentas oficiales en STATE
+            // Sanitizar cuentas oficiales en STATE (sin exponer contraseñas en texto plano en código fuente)
             if (window.STATE && Array.isArray(window.STATE.users)) {
                 const adminN = window.STATE.users.find(u => u.id === 'usr-aux-01' || u.role === 'admin');
                 if (adminN) {
                     adminN.email = 'nehemias.salguero1982@gmail.com';
-                    adminN.password = 'C@rolina1';
                     adminN.role = 'admin';
                     adminN.roles = ['admin'];
                     adminN.classes = '';
@@ -515,7 +514,6 @@
                 const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
                 if (docN) {
                     if (!docN.email) docN.email = 'yalilsag@gmail.com';
-                    if (!docN.password) docN.password = 'Nehemias12';
                     docN.secondaryEmail = '';
                 }
             }

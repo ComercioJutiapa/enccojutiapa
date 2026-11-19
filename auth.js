@@ -21,12 +21,14 @@
         const isAllowedDomain = isFileProtocol || 
             host === 'comerciojutiapa.github.io' || 
             host.endsWith('.github.io') || 
+            host.endsWith('.edu.gt') ||
+            host.endsWith('.edu') ||
             host === 'localhost' || 
             host === '127.0.0.1' || 
             host === '0.0.0.0';
 
         // Redirigir si está en un hosting alterno o no autorizado hacia el dominio oficial
-        if (!isAllowedDomain || host.includes('web.app') || host.includes('firebaseapp.com')) {
+        if (!isAllowedDomain || ((host.includes('web.app') || host.includes('firebaseapp.com')) && !host.endsWith('.edu.gt') && !host.endsWith('.edu'))) {
             const cleanPath = window.location.pathname.replace(/^\/+/, '');
             const targetUrl = 'https://comerciojutiapa.github.io/enccojutiapa/' + (cleanPath || 'index.html') + window.location.search + window.location.hash;
             window.location.replace(targetUrl);
@@ -917,6 +919,10 @@
     window.switchRole = switchRole;
     window.impersonateUser = impersonateUser;
     window.enccoSha256 = enccoSha256;
+    window.enccoHashPassword = function(rawPassword) {
+        const clean = String(rawPassword || '').trim();
+        return clean ? enccoSha256(clean + '::' + ENCCO_VAULT_SALT) : '';
+    };
     window.generateInstitutionalAuthToken = generateInstitutionalAuthToken;
     window.verifyInstitutionalAuthToken = verifyInstitutionalAuthToken;
     window.isSessionValid = isSessionValid;
