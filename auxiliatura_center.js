@@ -154,8 +154,71 @@
         document.head.appendChild(style);
     }
 
+    // 1.5 Helpers Multiciclo Coherentes (2026 / 2027 / 2028+ sin mezcla de años)
+    function getAuxActiveCycle() {
+        return String(
+            (window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026'
+        ).trim();
+    }
+
+    function extractAuxRecordCycle(rec, fallbackCycle = '2026') {
+        if (!rec || typeof rec !== 'object') return String(fallbackCycle || '2026');
+        const direct = String(rec.cycle || rec.academicCycle || '').trim();
+        if (/^\d{4}$/.test(direct)) return direct;
+        const dateCandidate = String(rec.startDate || rec.date || (rec.createdAt ? String(rec.createdAt).slice(0, 10) : '') || '').trim();
+        const m = dateCandidate.match(/^(\d{4})/);
+        if (m) return m[1];
+        if (rec.timestamp) {
+            const d = new Date(rec.timestamp);
+            if (!isNaN(d.getTime())) return String(d.getFullYear());
+        }
+        return String(fallbackCycle || '2026');
+    }
+
+    function getAuxCycleStudents() {
+        const activeCycle = getAuxActiveCycle();
+        if (typeof window.getStudentsForCycle === 'function') {
+            try {
+                const list = window.getStudentsForCycle(activeCycle);
+                if (Array.isArray(list)) {
+                    return list.filter(s => s && String(s.status || '') !== 'Egresado' && String(s.gradeCode || '').toUpperCase() !== 'EGRESADO');
+                }
+            } catch (e) { /* fallback seguro */ }
+        }
+        const all = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+        return all.filter(s => {
+            if (!s) return false;
+            const stStatus = String(s.status || '').trim();
+            const stGradeCode = String(s.gradeCode || '').toUpperCase();
+            if (stStatus === 'Egresado' || stGradeCode === 'EGRESADO') return false;
+            const sCycle = String(s.cycle || s.academicCycle || '2026').trim();
+            return sCycle === activeCycle;
+        });
+    }
+
+    function getAuxCycleDisciplineReports() {
+        const activeCycle = getAuxActiveCycle();
+        const raw = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
+        return raw.filter(d => d && extractAuxRecordCycle(d, '2026') === activeCycle);
+    }
+
+    function getAuxCyclePermissions() {
+        const activeCycle = getAuxActiveCycle();
+        const raw = window.STATE ? (window.STATE.studentPermissions || []) : [];
+        return raw.filter(p => p && extractAuxRecordCycle(p, '2026') === activeCycle);
+    }
+
+    function getAuxRoleLabel() {
+        const role = String((window.STATE && window.STATE.currentRole) || '').toLowerCase();
+        if (role === 'secretaria' || role === 'secretario') return 'Secretaría Académica';
+        if (role === 'director' || role === 'direccion' || role === 'directora') return 'Dirección General';
+        if (role === 'admin' || role === 'super_usuario' || role === 'superadmin') return 'Administración General';
+        return 'Auxiliatura General';
+    }
+
     // Helper: Consolidar y listar ausencias al aula del día actual
     function getTodayAbsencesList() {
+        const activeCycle = getAuxActiveCycle();
         const todayStr = new Date().toISOString().split('T')[0];
         const todayMonth = new Date().getMonth() + 1;
         const todayDay = new Date().getDate();
@@ -163,10 +226,11 @@
         const results = [];
         const seenStudentSubjectKeys = new Set();
 
-        // 1. Alertas en tiempo real enviadas desde el aula ('attendanceAlerts')
+        // 1. Alertas en tiempo real enviadas desde el aula ('attendanceAlerts') aisladas por ciclo
         const allAlerts = (window.STATE && window.STATE.attendanceAlerts) || [];
         allAlerts.forEach(alert => {
             if (!alert) return;
+            if (extractAuxRecordCycle(alert, '2026') !== activeCycle) return;
             const aDate = alert.date || (alert.timestamp ? new Date(alert.timestamp).toISOString().split('T')[0] : '');
             const aDay = alert.day || (alert.timestamp ? new Date(alert.timestamp).getDate() : null);
             const aMonth = alert.month || (alert.timestamp ? (new Date(alert.timestamp).getMonth() + 1) : null);
@@ -179,6 +243,7 @@
                     source: 'alert',
                     id: alert.id,
                     alertId: alert.id,
+                    cycle: activeCycle,
                     studentId: alert.studentId,
                     studentName: alert.studentName || 'Estudiante',
                     carne: alert.carne || '---',
@@ -198,18 +263,27 @@
             }
         });
 
-        // 2. Ausencias asentadas en planilla escolar ('attendanceRecords')
+        // 2. Ausencias asentadas en planilla escolar ('attendanceRecords') respetando prefijo multiciclo 'CICLO::GRADO_MES_CURSO'
         if (window.STATE && window.STATE.attendanceRecords) {
-            const students = window.STATE.students || [];
+            const students = getAuxCycleStudents();
             const courses = window.STATE.courses || [];
             const grades = window.STATE.gradesList || [];
 
             Object.entries(window.STATE.attendanceRecords).forEach(([recordKey, gradeMap]) => {
                 if (!gradeMap || typeof gradeMap !== 'object') return;
-                const parts = recordKey.split('_');
+                let recCycle = '2026';
+                let bareKey = String(recordKey || '');
+                if (bareKey.includes('::')) {
+                    const splitCycle = bareKey.split('::');
+                    recCycle = String(splitCycle[0] || '2026').trim();
+                    bareKey = splitCycle.slice(1).join('::');
+                }
+                if (recCycle !== activeCycle) return;
+
+                const parts = bareKey.split('_');
                 const recGrade = parts[0] || '';
                 const recMonth = parseInt(parts[1]) || todayMonth;
-                const recCourse = parts[2] || '';
+                const recCourse = parts.slice(2).join('_') || '';
 
                 if (parts.length >= 2 && !isNaN(recMonth) && recMonth !== todayMonth) return;
 
@@ -231,11 +305,13 @@
                             const studentName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
                             const carne = student ? (student.carne || student.personalCode || '---') : '---';
 
-                            const synthAlertId = 'rec_alert_' + todayDay + '_' + todayMonth + '_' + studentId + '_' + (recCourse || 'GEN');
+                            const synthAlertId = 'rec_alert_' + activeCycle + '_' + todayDay + '_' + todayMonth + '_' + studentId + '_' + (recCourse || 'GEN');
                             let existingAlert = (window.STATE.attendanceAlerts || []).find(a => a.id === synthAlertId);
                             if (!existingAlert) {
                                 existingAlert = {
                                     id: synthAlertId,
+                                    cycle: activeCycle,
+                                    academicCycle: activeCycle,
                                     studentId: studentId,
                                     studentName: studentName,
                                     carne: carne,
@@ -294,11 +370,12 @@
         const container = document.getElementById('view-auxiliatura-center');
         if (!container) return;
 
-        const students = window.STATE ? (window.STATE.students || []) : [];
-        const disciplineReports = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
-        const studentPermissions = window.STATE ? (window.STATE.studentPermissions || []) : [];
+        const activeCycle = getAuxActiveCycle();
+        const students = getAuxCycleStudents();
+        const disciplineReports = getAuxCycleDisciplineReports();
+        const studentPermissions = getAuxCyclePermissions();
 
-        // Conteo de métricas en tiempo real
+        // Conteo de métricas en tiempo real (estrictamente aisladas al ciclo activo)
         const pendingDiscipline = disciplineReports.filter(d => d.status !== 'Resuelto');
         const nowIsoDate = new Date().toISOString().split('T')[0];
         const activePermissions = studentPermissions.filter(p => {
@@ -307,23 +384,26 @@
             return (!start || start <= nowIsoDate) && (!end || end >= nowIsoDate);
         });
 
-        // Ausencias detectadas en la fecha actual (alertas en vivo + registros de planilla)
+        // Ausencias detectadas en la fecha actual (alertas en vivo + registros de planilla del ciclo activo)
         const todayAbsencesList = getTodayAbsencesList();
         const todayAbsencesCount = todayAbsencesList.length;
 
         // Usuario actual y rol
         const user = window.STATE ? window.STATE.currentUser : null;
         const userName = user ? (user.name || user.username) : 'Funcionario';
-        const roleLabel = (window.STATE && window.STATE.currentRole === 'secretaria') ? 'Secretaría Académica' : 'Auxiliatura General';
+        const roleLabel = getAuxRoleLabel();
 
         container.innerHTML = `
             <div style="padding: 4px 0 24px 0;">
                 <!-- ENCABEZADO Y ACCIONES RÁPIDAS -->
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; margin-bottom:18px;">
                     <div>
-                        <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <span class="badge" style="background:#0284c7; color:#fff; font-size:0.75rem; font-weight:800; padding:3px 8px;">
                                 <i class="fa-solid fa-shield-halved"></i> ${roleLabel}
+                            </span>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; font-weight:800; padding:3px 8px;">
+                                <i class="fa-solid fa-calendar-check"></i> Ciclo Escolar ${escapeHtml(activeCycle)}
                             </span>
                             <span style="font-size:0.8rem; color:#64748b;">Sesión activa: <strong>${userName}</strong></span>
                         </div>
@@ -662,7 +742,7 @@
 
     // Pestaña: Bandeja de Casos y Pendientes
     function renderAuxPendingTab(container) {
-        const disciplineReports = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
+        const disciplineReports = getAuxCycleDisciplineReports();
         const pending = disciplineReports.filter(d => d.status !== 'Resuelto');
 
         if (pending.length === 0) {
@@ -720,11 +800,10 @@
     }
 
     // Pestaña: Monitoreo en Vivo por Secciones
-    // Pestaña: Monitoreo en Vivo por Secciones
     function renderAuxSectionsTab(container) {
         const grades = window.STATE ? (window.STATE.gradesList || []) : [];
-        const students = window.STATE ? (window.STATE.students || []) : [];
-        const disciplineReports = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
+        const students = getAuxCycleStudents();
+        const disciplineReports = getAuxCycleDisciplineReports();
         const activeBim = parseInt(window._auxSelectedBimestre || (window.STATE?.currentBimestre || 4));
 
         container.innerHTML = `
@@ -798,7 +877,7 @@
     // Modal con Lista Oficial Completa por Grado y Sección (Incluye Retirados, Ausentes y Exonerados)
     function filterAuxByGradeCode(gradeCode, bNum = 4) {
         const grades = window.STATE ? (window.STATE.gradesList || []) : [];
-        const students = window.STATE ? (window.STATE.students || []) : [];
+        const students = getAuxCycleStudents();
         const g = grades.find(x => x.code === gradeCode || x.id === gradeCode || x.name === gradeCode) || { name: gradeCode, section: '', code: gradeCode };
 
         const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`));
@@ -904,10 +983,11 @@
 
     // Pestaña: Disciplina y Actas
     function renderAuxDisciplineTab(container) {
-        const disciplineReports = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
+        const currentCycle = getAuxActiveCycle();
+        const disciplineReports = getAuxCycleDisciplineReports();
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <strong style="color:#0f172a;">Registro General de Incidencias Disciplinarias (${disciplineReports.length})</strong>
+                <strong style="color:#0f172a;">Registro General de Incidencias Disciplinarias — Ciclo ${escapeHtml(currentCycle)} (${disciplineReports.length})</strong>
                 <button type="button" class="btn btn-sm btn-primary" onclick="openDisciplineModal()" style="font-weight:700;">
                     <i class="fa-solid fa-plus"></i> Nueva Llamada de Atención
                 </button>
@@ -966,23 +1046,12 @@
 
     // Pestaña: Permisos e Inasistencias
     function renderAuxPermissionsTab(container) {
-        const currentCycle = String((window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026').trim();
-        const rawPermissions = window.STATE ? (window.STATE.studentPermissions || []) : [];
-        const studentPermissions = rawPermissions.filter(p => {
-            if (!p) return false;
-            let pCycle = String(p.cycle || p.academicCycle || '').trim();
-            if (!pCycle) {
-                const sDate = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
-                if (sDate.startsWith('2027')) pCycle = '2027';
-                else if (sDate.startsWith('2026')) pCycle = '2026';
-                else pCycle = '2026';
-            }
-            return pCycle === currentCycle;
-        });
+        const currentCycle = getAuxActiveCycle();
+        const studentPermissions = getAuxCyclePermissions();
 
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <strong style="color:#0f172a;">Historial de Permisos del Ciclo Escolar ${currentCycle} (${studentPermissions.length})</strong>
+                <strong style="color:#0f172a;">Historial de Permisos del Ciclo Escolar ${escapeHtml(currentCycle)} (${studentPermissions.length})</strong>
                 <button type="button" class="btn btn-sm btn-primary" onclick="openCreatePermissionModal()" style="font-weight:700;">
                     <i class="fa-solid fa-plus"></i> Emitir Nuevo Permiso
                 </button>
@@ -1004,7 +1073,7 @@
                         <tr>
                             <td colspan="6" style="text-align:center; padding:35px 20px; color:#64748b;">
                                 <i class="fa-solid fa-clipboard-check" style="font-size:2rem; margin-bottom:8px; display:block; color:#0284c7; opacity:0.7;"></i>
-                                <strong>No hay permisos ni pases de salida emitidos en el Ciclo Escolar ${currentCycle}.</strong><br>
+                                <strong>No hay permisos ni pases de salida emitidos en el Ciclo Escolar ${escapeHtml(currentCycle)}.</strong><br>
                                 <span style="font-size:0.82rem;">Los registros de años anteriores se conservan resguardados en el historial acumulativo de cada estudiante.</span>
                             </td>
                         </tr>
@@ -1029,7 +1098,6 @@
                                 </button>
                             </td>
                         </tr>`).join('')}
-                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1048,7 +1116,7 @@
             return;
         }
 
-        const students = window.STATE ? (window.STATE.students || []) : [];
+        const students = getAuxCycleStudents();
         const matches = students.filter(s => {
             const raw = `${s.name || ''} ${s.carne || ''} ${s.personalCode || ''} ${s.grade || ''} ${s.section || ''} ${s.gradeCode || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             return raw.includes(q);
@@ -1129,6 +1197,21 @@
         const canUseWA = (typeof canRoleUseWhatsApp === 'function' ? canRoleUseWhatsApp() : false);
         const waLink = (cleanPhone && canUseWA) ? `https://wa.me/502${cleanPhone}?text=Estimado(a)%20padre/madre%20de%20familia%20de%20${encodeURIComponent(student.name)}:%20Le%20saludamos%20de%20Auxiliatura/Secretar%C3%ADa%20ENCCO%20Jutiapa.` : '';
 
+        const activeCycle = getAuxActiveCycle();
+        const attPctObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
+            ? window.getStudentAttendancePercentageToDate(student.id, activeCycle)
+            : null;
+        const hasAttPct = attPctObj && attPctObj.percentage !== null && typeof attPctObj.percentage !== 'undefined';
+        const attPctColor = hasAttPct
+            ? (attPctObj.percentage >= 85 ? '#15803d' : (attPctObj.percentage >= 75 ? '#b45309' : '#b91c1c'))
+            : '#475569';
+        const attPctBg = hasAttPct
+            ? (attPctObj.percentage >= 85 ? '#dcfce7' : (attPctObj.percentage >= 75 ? '#fef3c7' : '#fee2e2'))
+            : '#f1f5f9';
+        const stu360PctBadge = hasAttPct
+            ? `<span style="font-size:0.75rem; background:${attPctBg}; color:${attPctColor}; border:1px solid ${attPctColor}44; border-radius:4px; padding:2px 7px; font-weight:800; display:inline-flex; align-items:center; gap:4px;" title="Porcentaje de asistencia acumulada a la fecha en ciclo ${escapeHtml(activeCycle)} (becas/bolsas de estudio)"><i class="fa-solid fa-graduation-cap"></i> Asistencia ${escapeHtml(activeCycle)}: ${attPctObj.percentage}%</span>`
+            : '';
+
         const monthAbsences = (typeof getStudentMonthAbsenceDays === 'function') 
             ? getStudentMonthAbsenceDays(student.id, new Date().getMonth() + 1) 
             : 0;
@@ -1176,6 +1259,7 @@
                                     return `<span style="font-size:0.75rem; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; border-radius:4px; padding:2px 7px; font-weight:800;">Activo</span>`;
                                 })()}
                                 ${stu360AbsenceBadge}
+                                ${stu360PctBadge}
                             </div>
                         </div>
                     </div>
@@ -1262,12 +1346,29 @@
         if (!student) return;
 
         if (tabKey === 'summary') {
+            const activeCycle = getAuxActiveCycle();
             const discipline = (window.STATE?.disciplineReports || window.STATE?.discipline || []).filter(d => d.studentId === student.id);
             const permissions = (window.STATE?.studentPermissions || []).filter(p => p.studentId === student.id);
             const pendingDisc = discipline.filter(d => d.status !== 'Resuelto');
+            const attPctObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
+                ? window.getStudentAttendancePercentageToDate(student.id, activeCycle)
+                : null;
+            const hasAttPct = attPctObj && attPctObj.percentage !== null && typeof attPctObj.percentage !== 'undefined';
+            const attPctLabel = hasAttPct ? `${attPctObj.percentage}%` : 'S/R';
+            const attPctSub = hasAttPct
+                ? `${attPctObj.attendedDays}/${attPctObj.totalRecordedDays} días (${escapeHtml(activeCycle)})`
+                : `Sin registros (${escapeHtml(activeCycle)})`;
+            const attPctColor = hasAttPct
+                ? (attPctObj.percentage >= 85 ? '#15803d' : (attPctObj.percentage >= 75 ? '#b45309' : '#dc2626'))
+                : '#64748b';
 
             content.innerHTML = `
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:18px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin-bottom:18px;">
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;" title="Asistencia acumulada a la fecha para becas y bolsas de estudio">
+                        <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Asistencia a la Fecha</span>
+                        <h4 style="margin:4px 0 0 0; color:${attPctColor}; font-size:1.3rem;">${attPctLabel}</h4>
+                        <div style="font-size:0.68rem; color:#64748b; margin-top:2px;">${attPctSub}</div>
+                    </div>
                     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
                         <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Anotaciones</span>
                         <h4 style="margin:4px 0 0 0; color:#dc2626; font-size:1.3rem;">${discipline.length}</h4>
@@ -1326,11 +1427,7 @@
                 return;
             }
             content.innerHTML = rawPerms.map(p => {
-                let pCycle = String(p.cycle || p.academicCycle || '').trim();
-                if (!pCycle) {
-                    const sDate = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
-                    pCycle = sDate.startsWith('2027') ? '2027' : '2026';
-                }
+                const pCycle = extractAuxRecordCycle(p, '2026');
                 return `
                 <div style="border:1px solid #bfdbfe; background:#eff6ff; border-radius:8px; padding:12px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
@@ -1378,7 +1475,7 @@
         const existing = document.getElementById('auxQuickActionModal');
         if (existing) existing.remove();
 
-        const students = window.STATE ? (window.STATE.students || []) : [];
+        const students = getAuxCycleStudents();
         const role = (window.STATE && window.STATE.currentRole) || 'profesor_auxiliar';
         const defaultAuthor = window.STATE?.currentUser?.name || (role === 'secretaria' ? 'Secretaría Académica' : 'Profesor Auxiliar');
 
@@ -1526,11 +1623,14 @@
         if (!student) return;
 
         const todayIso = new Date().toISOString().split('T')[0];
+        const currentActiveCycle = getAuxActiveCycle();
 
         if (type === 'anotacion') {
             if (!Array.isArray(window.STATE.disciplineReports)) window.STATE.disciplineReports = [];
             const newRep = {
                 id: 'rep-disc-' + Date.now(),
+                cycle: currentActiveCycle,
+                academicCycle: currentActiveCycle,
                 studentId: student.id,
                 studentName: student.name,
                 grade: `${student.grade || student.gradeCode} (${student.section || 'A'})`,
@@ -1554,7 +1654,6 @@
         } else {
             // Permiso / Justificación
             if (!Array.isArray(window.STATE.studentPermissions)) window.STATE.studentPermissions = [];
-            const currentActiveCycle = String((window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026').trim();
             const newPerm = {
                 id: 'perm-' + Date.now(),
                 studentId: student.id,
@@ -1966,5 +2065,11 @@
         }, 400);
     }
     window.printAuxiliaturaDailyConsolidated = printAuxiliaturaDailyConsolidated;
+    window.getAuxActiveCycle = getAuxActiveCycle;
+    window.extractAuxRecordCycle = extractAuxRecordCycle;
+    window.getAuxCycleStudents = getAuxCycleStudents;
+    window.getAuxCycleDisciplineReports = getAuxCycleDisciplineReports;
+    window.getAuxCyclePermissions = getAuxCyclePermissions;
+    window.getTodayAbsencesList = getTodayAbsencesList;
 
 })(window, document);
