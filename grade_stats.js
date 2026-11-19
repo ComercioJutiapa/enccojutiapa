@@ -4482,23 +4482,160 @@ function canMigrateRecoveryPassedStudents(role = null) {
 }
 window.canMigrateRecoveryPassedStudents = canMigrateRecoveryPassedStudents;
 
-function _findMatchingStudentInStateForRecovery(st) {
-    const list = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+function _normRecoveryName(name) {
+    return String(name || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[,.;:]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+function _getLiveTargetCycleRoster(targetCycle = '2027') {
+    const tgtStr = String(targetCycle || '2027').trim();
+    const sources = [];
+
+    // 1. Caché fresca de la nube / migraciones en vivo
+    if (window._liveTargetCycleStudentsCache && Array.isArray(window._liveTargetCycleStudentsCache[tgtStr])) {
+        sources.push(window._liveTargetCycleStudentsCache[tgtStr]);
+    }
+    // 2. Respaldo en RAM del ciclo activo (creado al entrar en Modo Histórico)
+    if (window._activeCycleStudentsBackupByCycle && Array.isArray(window._activeCycleStudentsBackupByCycle[tgtStr])) {
+        sources.push(window._activeCycleStudentsBackupByCycle[tgtStr]);
+    }
+    if (tgtStr === '2027' && Array.isArray(window._active2027StudentsBackup) && window._active2027StudentsBackup.length > 0) {
+        sources.push(window._active2027StudentsBackup);
+    }
+    if (window.CycleArchiver && window.CycleArchiver._originalStateBeforeHistory && Array.isArray(window.CycleArchiver._originalStateBeforeHistory.students)) {
+        sources.push(window.CycleArchiver._originalStateBeforeHistory.students);
+    }
+    // 3. Respaldo de sessionStorage antes de modo histórico
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            const rawBefore = sessionStorage.getItem('ENCCO_STATE_BEFORE_HISTORICAL');
+            if (rawBefore) {
+                const parsed = JSON.parse(rawBefore);
+                if (parsed && Array.isArray(parsed.students)) sources.push(parsed.students);
+            }
+        }
+    } catch (e) {}
+    // 4. STATE.students actual
+    if (window.STATE && Array.isArray(window.STATE.students)) {
+        sources.push(window.STATE.students);
+    }
+
+    // Consolidar dando prioridad a los registros que ya pertenecen a targetCycle o son Egresados
+    const merged = [];
+    const seenIds = new Set();
+    sources.forEach(arr => {
+        arr.forEach(s => {
+            if (!s) return;
+            const sCycle = String(s.academicCycle || s.cycle || '').trim();
+            const isTgtOrEgr = (sCycle === tgtStr) || String(s.status || '').toLowerCase() === 'egresado' || String(s.gradeCode || '').toUpperCase() === 'EGRESADO';
+            const key = `${s.id || ''}|${sCycle}`;
+            if (isTgtOrEgr && !seenIds.has(key)) {
+                seenIds.add(key);
+                merged.push(s);
+            }
+        });
+    });
+
+    // Si no estamos en modo histórico y no hubo registros específicos, devolver STATE.students completo
+    if (merged.length === 0 && window.STATE && Array.isArray(window.STATE.students)) {
+        return window.STATE.students;
+    }
+    return merged;
+}
+
+function _prefetchLiveTargetCycleStudentsIfNeeded(targetCycle = '2027') {
+    const tgtStr = String(targetCycle || '2027').trim();
+    if (typeof fetch !== 'function') return;
+    if (!window._liveTargetCycleFetchState) window._liveTargetCycleFetchState = {};
+    const state = window._liveTargetCycleFetchState[tgtStr];
+    // Evitar múltiples fetches simultáneos o repetidos dentro de 60 segundos
+    if (state && (state.loading || (Date.now() - (state.fetchedAt || 0) < 60000))) return;
+
+    // Solo es necesario consultar la nube si estamos en modo histórico o si STATE.students no contiene alumnos de targetCycle
+    const inMemHasTarget = _getLiveTargetCycleRoster(tgtStr).some(s => s && String(s.academicCycle || s.cycle || '') === tgtStr);
+    if (inMemHasTarget && !(window.STATE && window.STATE.isHistoricalReadOnlyMode)) return;
+
+    const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
+        ? window.CycleArchiver.getFirebaseUrl()
+        : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+
+    window._liveTargetCycleFetchState[tgtStr] = { loading: true, fetchedAt: 0 };
+    fetch(`${fbUrl}/encc_school_state/students.json?t=${Date.now()}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(cloudData => {
+            const arr = Array.isArray(cloudData) ? cloudData : Object.values(cloudData || {}).filter(Boolean);
+            if (!window._liveTargetCycleStudentsCache) window._liveTargetCycleStudentsCache = {};
+            window._liveTargetCycleStudentsCache[tgtStr] = arr;
+            window._liveTargetCycleFetchState[tgtStr] = { loading: false, fetchedAt: Date.now() };
+            // Refrescar la vista actual si sigue en subvista 'ganaron'
+            if (window._reprobadosActiveSubView === 'ganaron' && typeof renderReprobadosRecuperacionView === 'function') {
+                renderReprobadosRecuperacionView({ reuseData: true });
+            }
+        })
+        .catch(() => {
+            window._liveTargetCycleFetchState[tgtStr] = { loading: false, fetchedAt: Date.now() };
+        });
+}
+
+function _buildInitialGradesForPromotedGrade(targetGradeNum) {
+    const gMap = {};
+    const cnb = window.CycleArchiver && window.CycleArchiver.OFFICIAL_CNB_SUBJECTS;
+    const key = targetGradeNum === 5 ? '5to' : (targetGradeNum === 6 ? '6to' : '4to');
+    if (cnb && Array.isArray(cnb[key]) && cnb[key].length > 0) {
+        cnb[key].forEach(subj => {
+            gMap[subj] = { b1: null, b2: null, b3: null, b4: null };
+        });
+        return gMap;
+    }
+    const pensum = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
+    pensum.forEach(p => {
+        if (!p) return;
+        const gRaw = String(p.grade || p.gradeCode || '').toUpperCase();
+        if ((targetGradeNum === 5 && gRaw.includes('5')) || (targetGradeNum === 6 && gRaw.includes('6'))) {
+            const subjName = p.subject || p.name;
+            if (subjName) gMap[subjName] = { b1: null, b2: null, b3: null, b4: null };
+        }
+    });
+    return gMap;
+}
+
+function _findMatchingStudentInStateForRecovery(st, targetCycle = null) {
     if (!st) return null;
     const normCode = (v) => String(v || '').trim().toUpperCase();
     const targetId = String(st.id || st.studentId || '').trim();
     const targetCode = normCode(st.code || st.personalCode || st.codigoPersonal);
     const targetCarne = normCode(st.carne);
     const targetCui = normCode(st.cui);
+    const targetNameNorm = _normRecoveryName(st.name || `${st.lastName || ''} ${st.firstName || ''}`);
 
-    return list.find(s => {
+    const matchesStudent = (s) => {
         if (!s) return false;
         if (targetId && String(s.id) === targetId) return true;
         if (targetCode && (normCode(s.personalCode) === targetCode || normCode(s.codigoPersonal) === targetCode)) return true;
         if (targetCui && normCode(s.cui) === targetCui) return true;
         if (targetCarne && normCode(s.carne) === targetCarne) return true;
+        if (targetNameNorm && targetNameNorm.length >= 6) {
+            const sNameNorm = _normRecoveryName(s.name || `${s.lastName || ''} ${s.firstName || ''}`);
+            const sRevNorm = _normRecoveryName(`${s.firstName || ''} ${s.lastName || ''}`);
+            if (sNameNorm === targetNameNorm || (sRevNorm && sRevNorm === targetNameNorm)) return true;
+        }
         return false;
-    }) || null;
+    };
+
+    // 1. Buscar primero en el listado VIVO del ciclo destino (2027 / ciclo + 1), incluso si estamos en Modo Histórico 2026
+    if (targetCycle) {
+        const liveTargetList = _getLiveTargetCycleRoster(targetCycle);
+        const foundLive = liveTargetList.find(matchesStudent);
+        if (foundLive) return foundLive;
+    }
+
+    // 2. Fallback en STATE.students actual
+    const list = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    return list.find(matchesStudent) || null;
 }
 
 function getRecoveryMigrationPreviewForStudent(st, originCycle = '2026', targetCycle = null) {
@@ -4547,8 +4684,11 @@ function getRecoveryMigrationPreviewForStudent(st, originCycle = '2026', targetC
         : ['A', 'B', 'C', 'D'];
     const defaultSection = availableSections.includes(cleanSec) ? cleanSec : availableSections[0];
 
-    // Verificación estricta Anti-Duplicidad en STATE.students
-    const existing = _findMatchingStudentInStateForRecovery(st);
+    // Disparar hidratación silenciosa desde la nube si se recargó en Modo Histórico 2026
+    _prefetchLiveTargetCycleStudentsIfNeeded(tgtStr);
+
+    // Verificación estricta Anti-Duplicidad en listado vivo de targetCycle (2027+) y STATE.students
+    const existing = _findMatchingStudentInStateForRecovery(st, tgtStr);
     let alreadyMigrated = false;
     let existingGradeLabel = '';
 
@@ -4722,9 +4862,23 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
         if (!confirmed) return { success: false, cancelled: true, migrated: 0, graduated: 0, skippedDuplicates };
     }
 
-    // 3. Ejecutar migración atómica IN-PLACE (sin crear duplicados y preservando histórico 2026)
+    // 3. Ejecutar migración atómica IN-PLACE (sin crear duplicados y preservando histórico)
     if (!window.STATE) window.STATE = {};
     if (!Array.isArray(window.STATE.students)) window.STATE.students = [];
+
+    const isHistoricalView = !!(window.STATE.isHistoricalReadOnlyMode);
+    let targetCollection = window.STATE.students;
+    if (isHistoricalView) {
+        // En Modo Histórico (ej. viendo 2026), escribir sobre el listado VIVO de targetCycle (2027) sin tocar el archivo 2026
+        const liveRoster = _getLiveTargetCycleRoster(tgtStr).filter(s => s && (
+            String(s.academicCycle || s.cycle || '') === tgtStr ||
+            String(s.status || '').toLowerCase() === 'egresado' ||
+            String(s.gradeCode || '').toUpperCase() === 'EGRESADO'
+        ));
+        if (!window._liveTargetCycleStudentsCache) window._liveTargetCycleStudentsCache = {};
+        window._liveTargetCycleStudentsCache[tgtStr] = liveRoster;
+        targetCollection = liveRoster;
+    }
 
     const nowTs = Date.now();
     const touchedStudents = [];
@@ -4732,9 +4886,14 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
     let graduatedCount = 0;
 
     plan.forEach(({ st, preview, chosenSec }) => {
-        let targetObj = preview.existingRecord || _findMatchingStudentInStateForRecovery(st);
+        let targetObj = preview.existingRecord || _findMatchingStudentInStateForRecovery(st, tgtStr);
+        // Si el registro encontrado pertenecía al snapshot histórico pero estamos escribiendo al roster vivo, clonar para no mutar el archivo 2026
+        if (isHistoricalView && targetObj && !targetCollection.includes(targetObj)) {
+            targetObj = JSON.parse(JSON.stringify(targetObj));
+            targetCollection.push(targetObj);
+        }
 
-        // Si por archivo histórico el alumno no estaba en STATE.students, crear una sola vez (ya verificado anti-duplicidad)
+        // Si por archivo histórico el alumno no estaba en la colección destino, crear una sola vez (ya verificado anti-duplicidad)
         if (!targetObj) {
             const newId = st.id || st.studentId || (`stu-recup-${nowTs}-${Math.floor(Math.random() * 1000)}`);
             targetObj = {
@@ -4754,7 +4913,7 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
                 grades: {},
                 gradebookDetails: {}
             };
-            window.STATE.students.push(targetObj);
+            targetCollection.push(targetObj);
         }
 
         // 🛡️ Resguardar histórico de originCycle antes de limpiar notas del nuevo ciclo (CERO pérdida de datos)
@@ -4808,8 +4967,8 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
             targetObj.status = 'Activo';
             targetObj.active = true;
             targetObj.academicPromotionStatus = `Promovido por Recuperación ${origStr}`;
-            // Limpiar calificaciones/exoneraciones para iniciar limpio en el nuevo ciclo (aislamiento estricto)
-            targetObj.grades = {};
+            // Inicializar materias CNB limpias (en null) para el nuevo ciclo (aislamiento estricto y compatibilidad Firebase)
+            targetObj.grades = _buildInitialGradesForPromotedGrade(preview.targetGradeNum);
             targetObj.gradebookDetails = {};
             targetObj.exoneraciones = {};
             targetObj.recoveryGrades = {};
@@ -4820,27 +4979,42 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
         touchedStudents.push(targetObj);
     });
 
-    // Garantizar cero duplicados en la colección global
+    // Garantizar cero duplicados en la colección destino
     if (typeof window.deduplicateStudentsCollection === 'function') {
-        window.STATE.students = window.deduplicateStudentsCollection(window.STATE.students);
+        targetCollection = window.deduplicateStudentsCollection(targetCollection);
     }
-
-    window.STATE.lastModified = nowTs;
-    window.STATE._lastSavedLocally = nowTs;
-    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    if (isHistoricalView) {
+        if (!window._liveTargetCycleStudentsCache) window._liveTargetCycleStudentsCache = {};
+        window._liveTargetCycleStudentsCache[tgtStr] = targetCollection;
+        if (!window._activeCycleStudentsBackupByCycle) window._activeCycleStudentsBackupByCycle = {};
+        window._activeCycleStudentsBackupByCycle[tgtStr] = JSON.parse(JSON.stringify(targetCollection));
+        if (tgtStr === '2027') window._active2027StudentsBackup = JSON.parse(JSON.stringify(targetCollection));
+        if (window.CycleArchiver && window.CycleArchiver._originalStateBeforeHistory) {
+            window.CycleArchiver._originalStateBeforeHistory.students = JSON.parse(JSON.stringify(targetCollection));
+        }
+    } else {
+        window.STATE.students = targetCollection;
+        if (!window._liveTargetCycleStudentsCache) window._liveTargetCycleStudentsCache = {};
+        window._liveTargetCycleStudentsCache[tgtStr] = targetCollection;
+        window.STATE.lastModified = nowTs;
+        window.STATE._lastSavedLocally = nowTs;
+        if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    }
 
     // Refresco reactivo inmediato de todas las vistas dependientes
     try {
         renderReprobadosRecuperacionView({ reuseData: true });
-        if (typeof renderStudentsTable === 'function') renderStudentsTable();
-        if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
-        if (typeof renderBoletasTable === 'function') renderBoletasTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
-        if (typeof renderCarnetsView === 'function' && window.STATE.activeView === 'carnets') renderCarnetsView();
+        if (!isHistoricalView) {
+            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+            if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
+            if (typeof renderBoletasTable === 'function') renderBoletasTable();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+            if (typeof renderCarnetsView === 'function' && window.STATE.activeView === 'carnets') renderCarnetsView();
+        }
     } catch (uiErr) {}
 
-    // Persistencia atómica en Firebase (Firestore + RTDB) en segundo plano
+    // Persistencia atómica en Firebase (Firestore + RTDB) en segundo plano sobre la colección destino (nunca sobreescribe con snapshot 2026)
     (async () => {
         try {
             if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.setDoc === 'function') {
@@ -4851,7 +5025,7 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
                 }));
             }
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-                await EnccoCloudSync.syncNode('students', window.STATE.students).catch(() => {});
+                await EnccoCloudSync.syncNode('students', targetCollection).catch(() => {});
             }
         } catch (cloudErr) {
             console.warn('Aviso al sincronizar migración de recuperación en Firebase:', cloudErr);

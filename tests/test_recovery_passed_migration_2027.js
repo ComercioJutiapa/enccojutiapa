@@ -122,6 +122,40 @@ eval(fs.readFileSync(path.join(__dirname, '../grade_stats.js'), 'utf8'));
     assert.strictEqual(STATE.students.length, 3, "Cero duplicados en STATE.students");
     console.log("  ✅ Prueba 3 Superada: Anti-duplicidad 100% garantizada.");
 
+    // 4. Persistencia de estado "Ya promovido en 2027" incluso al recargar el Ciclo 2026 (Modo Histórico)
+    console.log("\n➡️  Prueba 4: Recarga en Ciclo 2026 (Modo Histórico) detecta promovidos existentes en 2027...");
+    const live2027Snapshot = JSON.parse(JSON.stringify(STATE.students));
+    // Agregar además un alumno inscrito manualmente en 2027 con otro ID pero mismo nombre
+    live2027Snapshot.push({
+        id: 'stu-manual-2027-99',
+        name: 'RAMOS GARCÍA MARÍA FERNANDA',
+        grade: '5to Perito Contador',
+        section: 'Sección D',
+        gradeCode: '5to D',
+        cycle: '2027',
+        academicCycle: '2027',
+        status: 'Activo'
+    });
+    window._activeCycleStudentsBackupByCycle = { '2027': live2027Snapshot };
+    window._liveTargetCycleStudentsCache = { '2027': live2027Snapshot };
+
+    // Simular recarga en Modo Histórico 2026: STATE.students solo contiene el archivo 2026
+    STATE.isHistoricalReadOnlyMode = true;
+    STATE.activeCycle = '2026';
+    STATE.students = [
+        { id: 'stu-rec-4b', personalCode: 'R4B001', name: 'López Pérez, María', grade: '4to Perito Contador', section: 'Sección B', cycle: '2026', status: 'Activo' },
+        { id: 'stu-hist-ramos', personalCode: 'X99999', name: 'RAMOS GARCIA MARIA FERNANDA', grade: '4to Perito Contador', section: 'Sección A', cycle: '2026', status: 'Activo' }
+    ];
+
+    const prev4b = getRecoveryMigrationPreviewForStudent({ id: 'stu-rec-4b', code: 'R4B001', name: 'López Pérez, María', grade: '4to Perito Contador', section: 'B' }, '2026', '2027');
+    assert.strictEqual(prev4b.alreadyMigrated, true, "Alumno ya migrado a 2027 DEBE aparecer como ya promovido al recargar 2026");
+    assert.strictEqual(prev4b.existingGradeLabel, '5to C', "Debe mostrar su grado y sección real en 2027 (5to C)");
+
+    const prevManual = getRecoveryMigrationPreviewForStudent({ id: 'stu-hist-ramos', code: 'X99999', name: 'RAMOS GARCIA MARIA FERNANDA', grade: '4to Perito Contador', section: 'A' }, '2026', '2027');
+    assert.strictEqual(prevManual.alreadyMigrated, true, "Alumno inscrito en 2027 con otro ID pero mismo nombre normalizado DEBE detectarse como ya promovido");
+    assert.strictEqual(prevManual.existingGradeLabel, '5to D', "Debe mostrar su sección real en 2027 (5to D)");
+    console.log("  ✅ Prueba 4 Superada: Recarga de Ciclo 2026 mantiene 100% sincronizado el estado de promovidos en 2027.");
+
     console.log("\n🎯 ¡TODAS LAS PRUEBAS DE MIGRACIÓN DE RECUPERACIONES A 2027 PASARON AL 100%!\n");
     process.exit(0);
 })().catch(err => {
