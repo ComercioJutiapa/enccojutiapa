@@ -57,7 +57,8 @@ const CRITICAL_SUITES = [
     'tests/test_pensum_cnb_enhancements.js',
     'tests/test_pensum_assignments_and_grades_coherence.js',
     'tests/test_cross_module_coherence_7_modules.js',
-    'tests/test_attendance_multicycle_and_scholarship_pct.js'
+    'tests/test_attendance_multicycle_and_scholarship_pct.js',
+    'tests/test_recovery_passed_migration_2027.js'
 ];
 
 console.log('================================================================================');

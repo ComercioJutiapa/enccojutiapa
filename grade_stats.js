@@ -3914,17 +3914,52 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
             ? filteredStudents.filter(s => s.isConDerecho && s.postRecup && s.postRecup.ganadas > 0)
             : filteredStudents.filter(s => s.isConDerecho && s.postRecup && s.postRecup.isPromovidoRecup);
 
+        const originCycleNum = parseInt(viewingCycle, 10) || 2026;
+        const targetNextCycle = String(originCycleNum + 1);
+        const canMigrateRecup = (typeof canMigrateRecoveryPassedStudents === 'function') ? canMigrateRecoveryPassedStudents() : false;
+
+        // Pre-evaluar estado de migración (anti-duplicidad) para cada estudiante
+        const migrationPreviewMap = new Map();
+        let readyToMigrateCount = 0;
+        let alreadyMigratedCount = 0;
+
+        allGanaron.forEach(st => {
+            const isFullyProm = Boolean(st.postRecup && st.postRecup.isPromovidoRecup);
+            if (!isFullyProm) return;
+            const prev = (typeof getRecoveryMigrationPreviewForStudent === 'function')
+                ? getRecoveryMigrationPreviewForStudent(st, viewingCycle, targetNextCycle)
+                : null;
+            if (prev) {
+                migrationPreviewMap.set(st.code || st.id, prev);
+                if (prev.alreadyMigrated) alreadyMigratedCount++;
+                else readyToMigrateCount++;
+            }
+        });
+
+        // Cachear temporalmente la lista visible de ganaron para que el botón masivo/individual encuentre los datos exactos
+        window._lastGanaronRecupSnapshot = {
+            originCycle: String(viewingCycle),
+            targetCycle: targetNextCycle,
+            students: allGanaron
+        };
+
         html += `
         <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-                <div style="font-size:0.98rem; font-weight:800; color:#166534; display:flex; align-items:center; gap:8px;">
+                <div style="font-size:0.98rem; font-weight:800; color:#166534; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <i class="fa-solid fa-award" style="font-size:1.15rem; color:#15803d;"></i> Nómina Oficial de Estudiantes que Ganaron Recuperación (${allGanaron.length} alumnos)
+                    ${alreadyMigratedCount > 0 ? `<span style="font-size:0.72rem; background:#dcfce7; color:#166534; border:1px solid #86efac; padding:2px 8px; border-radius:999px; font-weight:800;"><i class="fa-solid fa-check-double"></i> ${alreadyMigratedCount} ya en ${escapeHtml(targetNextCycle)}</span>` : ''}
                 </div>
                 <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">
                     Calificaciones aprobatorias (&ge;60 pts) asentadas en Exámenes de Recuperación &bull; Ciclo Escolar <strong>${escapeHtml(viewingCycle)}</strong>
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                ${canMigrateRecup && readyToMigrateCount > 0 ? `
+                    <button type="button" id="btnMigrateSelectedRecup" onclick="migrateSelectedRecoveryPassedStudents('${escapeHtml(viewingCycle)}', '${escapeHtml(targetNextCycle)}')" style="padding:7px 14px; border-radius:8px; border:none; background:linear-gradient(135deg, #0b2c66, #15803d); color:#ffffff; font-size:0.80rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 3px 8px rgba(11,44,102,0.25);">
+                        <i class="fa-solid fa-rocket"></i> Migrar Seleccionados a ${escapeHtml(targetNextCycle)} (<span id="recupMigrateSelectedCount">${readyToMigrateCount}</span>)
+                    </button>
+                ` : ''}
                 <div style="display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #86efac; padding:4px; border-radius:8px;">
                     <span style="font-size:0.76rem; font-weight:800; color:#166534; padding:0 6px;">Alcance:</span>
                     <button type="button" onclick="switchReprobadosGanaronScope('promovidos')" style="padding:5px 12px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; ${ganaronScope === 'promovidos' ? 'background:#16a34a; color:#ffffff; box-shadow:0 1px 2px rgba(22,163,74,0.3);' : 'background:transparent; color:#166534;'}">
@@ -3941,6 +3976,7 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
             <table style="width:100%; border-collapse:collapse; font-size:0.92rem; text-align:left;">
                 <thead>
                     <tr style="background:#15803d; color:#ffffff;">
+                        ${canMigrateRecup ? `<th style="padding:9px 6px; border:1px solid #166534; width:34px; text-align:center;" title="Seleccionar todos los pendientes de migrar"><input type="checkbox" id="recupMigrateSelectAll" ${readyToMigrateCount > 0 ? 'checked' : 'disabled'} onchange="toggleAllRecupMigrateChecks(this.checked)"></th>` : ''}
                         <th style="padding:9px 8px; border:1px solid #166534; width:40px; text-align:center;">No.</th>
                         <th style="padding:9px 10px; border:1px solid #166534; width:95px; text-align:center;">Código</th>
                         <th style="padding:9px 10px; border:1px solid #166534;">Estudiante</th>
@@ -3950,14 +3986,15 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                         <th style="padding:9px 8px; border:1px solid #166534; width:65px; text-align:center;">Ord.</th>
                         <th style="padding:9px 10px; border:1px solid #166534; width:85px; text-align:center;">Recup.</th>
                         <th style="padding:9px 10px; border:1px solid #166534;">Catedrático Evaluador</th>
-                        <th style="padding:9px 10px; border:1px solid #166534; width:160px; text-align:center;">Condición Final</th>
+                        <th style="padding:9px 10px; border:1px solid #166534; width:135px; text-align:center;">Condición Final</th>
+                        ${canMigrateRecup ? `<th style="padding:9px 10px; border:1px solid #166534; min-width:210px; text-align:center;">Migración ${escapeHtml(targetNextCycle)} (Sección)</th>` : ''}
                     </tr>
                 </thead>
                 <tbody>
         `;
 
         if (allGanaron.length === 0) {
-            html += `<tr><td colspan="10" style="padding:28px; text-align:center; color:#64748b; font-weight:600;"><i class="fa-solid fa-circle-info" style="font-size:1.6rem; color:#16a34a; margin-bottom:8px; display:block;"></i>No se encontraron alumnos que hayan ganado recuperación para los filtros seleccionados en el ciclo ${escapeHtml(viewingCycle)}.</td></tr>`;
+            html += `<tr><td colspan="${canMigrateRecup ? 12 : 10}" style="padding:28px; text-align:center; color:#64748b; font-weight:600;"><i class="fa-solid fa-circle-info" style="font-size:1.6rem; color:#16a34a; margin-bottom:8px; display:block;"></i>No se encontraron alumnos que hayan ganado recuperación para los filtros seleccionados en el ciclo ${escapeHtml(viewingCycle)}.</td></tr>`;
         } else {
             let rowCounter = 1;
             allGanaron.forEach((st, sIdx) => {
@@ -3969,6 +4006,9 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
 
                 const rowSpan = passedSubjects.length;
                 const baseBg = (sIdx % 2 === 0) ? '#ffffff' : '#f0fdf4';
+                const stKey = st.code || st.id;
+                const safeKeyAttr = escapeHtml(String(stKey || ''));
+                const migPrev = migrationPreviewMap.get(stKey) || null;
 
                 passedSubjects.forEach((r, mIdx) => {
                     const rec = getStudentSubjectRecoveryRecord(st.code, r.materia, st.grade, viewingCycle);
@@ -3979,8 +4019,51 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                         ? `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#dcfce7; color:#166534; font-weight:800; font-size:0.75rem; border:1px solid #86efac; box-shadow:0 1px 2px rgba(22,163,74,0.15);"><i class="fa-solid fa-circle-check"></i> PROMOVIDO</span>`
                         : `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#fef3c7; color:#92400e; font-weight:800; font-size:0.75rem; border:1px solid #fcd34d;"><i class="fa-solid fa-clock"></i> CURSO APROBADO</span>`;
 
+                    let migrateCellHtml = '';
+                    if (canMigrateRecup && mIdx === 0) {
+                        if (!isFullyProm) {
+                            migrateCellHtml = `<span style="font-size:0.72rem; color:#64748b; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Pendiente otras materias</span>`;
+                        } else if (migPrev && migPrev.alreadyMigrated) {
+                            migrateCellHtml = migPrev.isGraduando
+                                ? `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.72rem; border:1px solid #7dd3fc;"><i class="fa-solid fa-user-graduate"></i> Egresado ${escapeHtml(viewingCycle)}</span>`
+                                : `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#dcfce7; color:#15803d; font-weight:800; font-size:0.72rem; border:1px solid #86efac;"><i class="fa-solid fa-check-double"></i> Ya en ${escapeHtml(targetNextCycle)} (${escapeHtml(migPrev.existingGradeLabel || migPrev.targetGradeShort)})</span>`;
+                        } else if (migPrev && migPrev.isGraduando) {
+                            migrateCellHtml = `
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                    <span style="font-size:0.72rem; font-weight:800; color:#0b2c66;">🎓 Graduando ${escapeHtml(viewingCycle)}</span>
+                                    <button type="button" onclick="migrateSingleRecoveryPassedStudent('${safeKeyAttr}', '${escapeHtml(viewingCycle)}', '${escapeHtml(targetNextCycle)}')" style="padding:3px 10px; border-radius:6px; border:none; background:#0369a1; color:#ffffff; font-size:0.72rem; font-weight:800; cursor:pointer;">
+                                        <i class="fa-solid fa-graduation-cap"></i> Marcar Egresado
+                                    </button>
+                                </div>
+                            `;
+                        } else if (migPrev) {
+                            const secOptions = (migPrev.availableSections || ['A', 'B', 'C', 'D']).map(secL =>
+                                `<option value="${secL}" ${secL === migPrev.defaultSection ? 'selected' : ''}>Sección ${secL}</option>`
+                            ).join('');
+                            migrateCellHtml = `
+                                <div style="display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap;">
+                                    <span style="font-size:0.73rem; font-weight:800; color:#0b2c66;">→ ${escapeHtml(migPrev.targetGradeShort)}</span>
+                                    <select class="recup-migrate-section-select" data-student-key="${safeKeyAttr}" style="font-size:0.74rem; font-weight:700; padding:2px 5px; border:1px solid #94a3b8; border-radius:5px; background:#ffffff; color:#0f172a;">
+                                        ${secOptions}
+                                    </select>
+                                    <button type="button" onclick="migrateSingleRecoveryPassedStudent('${safeKeyAttr}', '${escapeHtml(viewingCycle)}', '${escapeHtml(targetNextCycle)}')" style="padding:3px 9px; border-radius:6px; border:none; background:#15803d; color:#ffffff; font-size:0.72rem; font-weight:800; cursor:pointer;" title="Migrar a ${escapeHtml(targetNextCycle)} sin duplicar">
+                                        <i class="fa-solid fa-rocket"></i> Migrar
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+
                     html += `<tr style="background:${baseBg}; border-bottom:1px solid #bbf7d0;">`;
                     if (mIdx === 0) {
+                        if (canMigrateRecup) {
+                            const canCheckRow = Boolean(isFullyProm && migPrev && !migPrev.alreadyMigrated);
+                            html += `<td rowspan="${rowSpan}" style="padding:8px 4px; border:1px solid #e2e8f0; text-align:center; vertical-align:middle;">
+                                ${canCheckRow
+                                    ? `<input type="checkbox" class="recup-migrate-check" data-student-key="${safeKeyAttr}" checked onchange="updateRecupMigrateSelectedCounter()">`
+                                    : `<span style="color:#94a3b8; font-size:0.75rem;">—</span>`}
+                            </td>`;
+                        }
                         html += `
                             <td rowspan="${rowSpan}" style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:800; vertical-align:middle;">${rowCounter++}</td>
                             <td rowspan="${rowSpan}" style="padding:8px 8px; border:1px solid #e2e8f0; font-family:monospace; font-weight:900; color:#0369a1; text-align:center; vertical-align:middle;">${escapeHtml(st.code)}</td>
@@ -4009,6 +4092,13 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                                 ${condBadge}
                             </td>
                         `;
+                        if (canMigrateRecup) {
+                            html += `
+                                <td rowspan="${rowSpan}" style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; vertical-align:middle;">
+                                    ${migrateCellHtml}
+                                </td>
+                            `;
+                        }
                     }
                     html += `</tr>`;
                 });
@@ -4376,6 +4466,409 @@ function switchReprobadosGanaronScope(scope) {
     renderReprobadosRecuperacionView({ reuseData: true });
 }
 window.switchReprobadosGanaronScope = switchReprobadosGanaronScope;
+
+// ============================================================================
+// 🚀 MIGRACIÓN INTELIGENTE DE ALUMNOS QUE GANARON RECUPERACIÓN AL NUEVO CICLO
+//    (Opción 3: Directa en Tabla + Selector de Sección + Confirmación Anti-Duplicidad)
+// ============================================================================
+
+function canMigrateRecoveryPassedStudents(role = null) {
+    const r = String(
+        role ||
+        (window.STATE && (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role))) ||
+        ''
+    ).trim().toLowerCase();
+    return ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora', 'secretaria', 'secretario'].includes(r);
+}
+window.canMigrateRecoveryPassedStudents = canMigrateRecoveryPassedStudents;
+
+function _findMatchingStudentInStateForRecovery(st) {
+    const list = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    if (!st) return null;
+    const normCode = (v) => String(v || '').trim().toUpperCase();
+    const targetId = String(st.id || st.studentId || '').trim();
+    const targetCode = normCode(st.code || st.personalCode || st.codigoPersonal);
+    const targetCarne = normCode(st.carne);
+    const targetCui = normCode(st.cui);
+
+    return list.find(s => {
+        if (!s) return false;
+        if (targetId && String(s.id) === targetId) return true;
+        if (targetCode && (normCode(s.personalCode) === targetCode || normCode(s.codigoPersonal) === targetCode)) return true;
+        if (targetCui && normCode(s.cui) === targetCui) return true;
+        if (targetCarne && normCode(s.carne) === targetCarne) return true;
+        return false;
+    }) || null;
+}
+
+function getRecoveryMigrationPreviewForStudent(st, originCycle = '2026', targetCycle = null) {
+    const origStr = String(originCycle || '2026').trim();
+    const tgtStr = String(targetCycle || (parseInt(origStr, 10) + 1)).trim();
+    const rawGrade = String(st?.grade || '').toUpperCase();
+    const cleanSec = String(st?.section || 'A').replace(/^Secci[oó]n\s*/i, '').replace(/["']/g, '').trim().toUpperCase().slice(0, 1) || 'A';
+
+    let targetGrade = '5to Perito Contador';
+    let targetGradeShort = '5to';
+    let targetGradeNum = 5;
+    let isGraduando = false;
+
+    if (rawGrade.includes('6') || rawGrade.includes('SEXTO') || rawGrade.includes('6TO')) {
+        isGraduando = true;
+        targetGrade = 'Graduando / Egresado';
+        targetGradeShort = 'Egresado';
+        targetGradeNum = 6;
+    } else if (rawGrade.includes('5') || rawGrade.includes('QUINTO') || rawGrade.includes('5TO')) {
+        targetGrade = '6to Perito Contador';
+        targetGradeShort = '6to';
+        targetGradeNum = 6;
+    } else {
+        targetGrade = '5to Perito Contador';
+        targetGradeShort = '5to';
+        targetGradeNum = 5;
+    }
+
+    // Secciones disponibles dinámicamente desde STATE.gradesList para el grado destino
+    const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
+    const dynamicSecs = new Set();
+    if (!isGraduando) {
+        gradesList.forEach(g => {
+            if (!g) return;
+            const gRaw = `${g.name || ''} ${g.code || ''}`.toUpperCase();
+            const matchNum = (targetGradeNum === 5 && (gRaw.includes('5') || gRaw.includes('QUINTO'))) ||
+                             (targetGradeNum === 6 && (gRaw.includes('6') || gRaw.includes('SEXTO')));
+            if (matchNum) {
+                const l = String(g.section || g.code || '').replace(/^Secci[oó]n\s*/i, '').trim().toUpperCase().slice(-1);
+                if (/^[A-Z]$/.test(l)) dynamicSecs.add(l);
+            }
+        });
+    }
+    const availableSections = dynamicSecs.size > 0
+        ? Array.from(dynamicSecs).sort()
+        : ['A', 'B', 'C', 'D'];
+    const defaultSection = availableSections.includes(cleanSec) ? cleanSec : availableSections[0];
+
+    // Verificación estricta Anti-Duplicidad en STATE.students
+    const existing = _findMatchingStudentInStateForRecovery(st);
+    let alreadyMigrated = false;
+    let existingGradeLabel = '';
+
+    if (existing) {
+        const exStatus = String(existing.status || '').toLowerCase().trim();
+        const exCycle = String(existing.academicCycle || existing.cycle || '').trim();
+        const exGradeRaw = String(existing.grade || existing.gradeCode || '').toUpperCase();
+
+        if (isGraduando) {
+            if (exStatus === 'egresado' || existing.gradeCode === 'EGRESADO' || exGradeRaw.includes('EGRESAD') || exGradeRaw.includes('GRADUAND')) {
+                alreadyMigrated = true;
+                existingGradeLabel = `Egresado ${origStr}`;
+            }
+        } else {
+            const matchesTargetGrade = (targetGradeNum === 5 && (exGradeRaw.includes('5') || exGradeRaw.includes('QUINTO'))) ||
+                                       (targetGradeNum === 6 && (exGradeRaw.includes('6') || exGradeRaw.includes('SEXTO')));
+            if (exCycle === tgtStr && matchesTargetGrade && exStatus !== 'retirado' && exStatus !== 'inactivo') {
+                alreadyMigrated = true;
+                const exSec = String(existing.section || '').replace(/^Secci[oó]n\s*/i, '').trim().toUpperCase() || defaultSection;
+                existingGradeLabel = `${targetGradeShort} ${exSec}`;
+            }
+        }
+    }
+
+    return {
+        originCycle: origStr,
+        targetCycle: tgtStr,
+        targetGrade,
+        targetGradeShort,
+        targetGradeNum,
+        isGraduando,
+        defaultSection,
+        availableSections,
+        alreadyMigrated,
+        existingGradeLabel,
+        existingRecord: existing
+    };
+}
+window.getRecoveryMigrationPreviewForStudent = getRecoveryMigrationPreviewForStudent;
+
+function updateRecupMigrateSelectedCounter() {
+    const checks = document.querySelectorAll('.recup-migrate-check:checked');
+    const counterEl = document.getElementById('recupMigrateSelectedCount');
+    if (counterEl) counterEl.textContent = String(checks.length);
+}
+window.updateRecupMigrateSelectedCounter = updateRecupMigrateSelectedCounter;
+
+function toggleAllRecupMigrateChecks(checked) {
+    document.querySelectorAll('.recup-migrate-check').forEach(cb => {
+        cb.checked = !!checked;
+    });
+    updateRecupMigrateSelectedCounter();
+}
+window.toggleAllRecupMigrateChecks = toggleAllRecupMigrateChecks;
+
+async function migrateSingleRecoveryPassedStudent(studentKey, originCycle = '2026', targetCycle = null) {
+    if (!canMigrateRecoveryPassedStudents()) {
+        if (typeof showToast === 'function') showToast('Acceso Restringido: Solo Dirección, Secretaría o Administración pueden migrar estudiantes.', 'warning');
+        return;
+    }
+    const snap = window._lastGanaronRecupSnapshot;
+    const st = snap && Array.isArray(snap.students)
+        ? snap.students.find(s => String(s.code || s.id) === String(studentKey))
+        : null;
+    if (!st) {
+        if (typeof showToast === 'function') showToast('No se encontró el estudiante en la nómina visible.', 'warning');
+        return;
+    }
+    let chosenSec = null;
+    if (typeof document !== 'undefined') {
+        const sel = document.querySelector(`.recup-migrate-section-select[data-student-key="${studentKey}"]`);
+        if (sel && sel.value) chosenSec = sel.value;
+    }
+    return executeRecoveryMigrationBatch([{ student: st, targetSection: chosenSec }], originCycle, targetCycle);
+}
+window.migrateSingleRecoveryPassedStudent = migrateSingleRecoveryPassedStudent;
+
+async function migrateSelectedRecoveryPassedStudents(originCycle = '2026', targetCycle = null) {
+    if (!canMigrateRecoveryPassedStudents()) {
+        if (typeof showToast === 'function') showToast('Acceso Restringido: Solo Dirección, Secretaría o Administración pueden migrar estudiantes.', 'warning');
+        return;
+    }
+    const snap = window._lastGanaronRecupSnapshot;
+    const allStudents = (snap && Array.isArray(snap.students)) ? snap.students : [];
+    const selectedKeys = [];
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.recup-migrate-check:checked').forEach(cb => {
+            const k = cb.getAttribute('data-student-key');
+            if (k) selectedKeys.push(k);
+        });
+    }
+    if (selectedKeys.length === 0) {
+        if (typeof showToast === 'function') showToast('Seleccione al menos un estudiante promovido para migrar.', 'warning');
+        return;
+    }
+
+    const items = selectedKeys.map(k => {
+        const st = allStudents.find(s => String(s.code || s.id) === String(k));
+        let chosenSec = null;
+        if (typeof document !== 'undefined') {
+            const sel = document.querySelector(`.recup-migrate-section-select[data-student-key="${k}"]`);
+            if (sel && sel.value) chosenSec = sel.value;
+        }
+        return st ? { student: st, targetSection: chosenSec } : null;
+    }).filter(Boolean);
+
+    return executeRecoveryMigrationBatch(items, originCycle, targetCycle);
+}
+window.migrateSelectedRecoveryPassedStudents = migrateSelectedRecoveryPassedStudents;
+
+async function executeRecoveryMigrationBatch(items, originCycle = '2026', targetCycle = null, options = { skipConfirm: false }) {
+    if (!canMigrateRecoveryPassedStudents()) {
+        if (typeof showToast === 'function') showToast('Acceso Restringido: Solo Dirección, Secretaría o Administración pueden migrar estudiantes.', 'warning');
+        return { success: false, migrated: 0, graduated: 0, skippedDuplicates: 0 };
+    }
+
+    const origStr = String(originCycle || '2026').trim();
+    const tgtStr = String(targetCycle || (parseInt(origStr, 10) + 1)).trim();
+    if (!Array.isArray(items) || items.length === 0) {
+        return { success: false, migrated: 0, graduated: 0, skippedDuplicates: 0 };
+    }
+
+    // 1. Evaluar todos los candidatos con protección estricta anti-duplicidad
+    const plan = [];
+    let countTo5to = 0, countTo6to = 0, countGrad = 0, skippedDuplicates = 0;
+
+    items.forEach(entry => {
+        const st = entry && entry.student ? entry.student : entry;
+        if (!st) return;
+        const preview = getRecoveryMigrationPreviewForStudent(st, origStr, tgtStr);
+        if (preview.alreadyMigrated) {
+            skippedDuplicates++;
+            return;
+        }
+        const chosenSec = String(entry.targetSection || preview.defaultSection || 'A')
+            .replace(/^Secci[oó]n\s*/i, '').trim().toUpperCase().slice(0, 1) || 'A';
+
+        if (preview.isGraduando) countGrad++;
+        else if (preview.targetGradeNum === 5) countTo5to++;
+        else if (preview.targetGradeNum === 6) countTo6to++;
+
+        plan.push({ st, preview, chosenSec });
+    });
+
+    if (plan.length === 0) {
+        if (typeof showToast === 'function') {
+            showToast(`Todos los estudiantes seleccionados (${skippedDuplicates}) ya se encuentran migrados en ${tgtStr}. Cero duplicados.`, 'info');
+        }
+        return { success: true, migrated: 0, graduated: 0, skippedDuplicates };
+    }
+
+    // 2. Cuadro de confirmación claro (Opción 3 Híbrida)
+    if (!options || !options.skipConfirm) {
+        const summaryParts = [];
+        if (countTo5to > 0) summaryParts.push(`• ${countTo5to} estudiante(s) migrarán a 5to Perito Contador (Ciclo ${tgtStr})`);
+        if (countTo6to > 0) summaryParts.push(`• ${countTo6to} estudiante(s) migrarán a 6to Perito Contador (Ciclo ${tgtStr})`);
+        if (countGrad > 0) summaryParts.push(`• ${countGrad} graduando(s) de 6to pasarán a Egresado (Ciclo ${origStr})`);
+        if (skippedDuplicates > 0) summaryParts.push(`• ${skippedDuplicates} omitido(s) por ya existir en ${tgtStr} (anti-duplicidad)`);
+
+        const confirmMsg = `Se aplicará la migración oficial de promovidos por recuperación:\n\n${summaryParts.join('\n')}\n\nSus notas y recuperaciones del ciclo ${origStr} se conservarán intactas en su historial y sus notas de ${tgtStr} iniciarán limpias. ¿Desea continuar?`;
+
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: `Migrar Promovidos por Recuperación a ${tgtStr}`,
+                message: confirmMsg,
+                confirmText: `Sí, migrar (${plan.length})`,
+                cancelText: 'Cancelar',
+                type: 'info'
+            })
+            : true;
+        if (!confirmed) return { success: false, cancelled: true, migrated: 0, graduated: 0, skippedDuplicates };
+    }
+
+    // 3. Ejecutar migración atómica IN-PLACE (sin crear duplicados y preservando histórico 2026)
+    if (!window.STATE) window.STATE = {};
+    if (!Array.isArray(window.STATE.students)) window.STATE.students = [];
+
+    const nowTs = Date.now();
+    const touchedStudents = [];
+    let migratedCount = 0;
+    let graduatedCount = 0;
+
+    plan.forEach(({ st, preview, chosenSec }) => {
+        let targetObj = preview.existingRecord || _findMatchingStudentInStateForRecovery(st);
+
+        // Si por archivo histórico el alumno no estaba en STATE.students, crear una sola vez (ya verificado anti-duplicidad)
+        if (!targetObj) {
+            const newId = st.id || st.studentId || (`stu-recup-${nowTs}-${Math.floor(Math.random() * 1000)}`);
+            targetObj = {
+                id: newId,
+                name: st.name || 'Estudiante',
+                personalCode: st.code || st.personalCode || '',
+                carne: st.carne || st.code || '',
+                gender: st.sex === 'F' ? 'Femenino' : (st.sex === 'M' ? 'Masculino' : (st.gender || '')),
+                career: 'Perito Contador',
+                shift: 'Matutina',
+                grade: st.grade || '4to Perito Contador',
+                section: `Sección ${st.section || 'A'}`,
+                cycle: origStr,
+                academicCycle: origStr,
+                status: 'Activo',
+                active: true,
+                grades: {},
+                gradebookDetails: {}
+            };
+            window.STATE.students.push(targetObj);
+        }
+
+        // 🛡️ Resguardar histórico de originCycle antes de limpiar notas del nuevo ciclo (CERO pérdida de datos)
+        if (!targetObj.historicalGrades || typeof targetObj.historicalGrades !== 'object') targetObj.historicalGrades = {};
+        if (!targetObj.cycleHistory || typeof targetObj.cycleHistory !== 'object') targetObj.cycleHistory = {};
+
+        if (!targetObj.historicalGrades[origStr] && targetObj.grades && Object.keys(targetObj.grades).length > 0) {
+            targetObj.historicalGrades[origStr] = JSON.parse(JSON.stringify(targetObj.grades));
+        }
+        if (!targetObj.cycleHistory[origStr]) {
+            targetObj.cycleHistory[origStr] = {
+                cycle: origStr,
+                grade: targetObj.grade || st.grade || '',
+                section: targetObj.section || `Sección ${st.section || 'A'}`,
+                gradeCode: targetObj.gradeCode || '',
+                grades: targetObj.grades ? JSON.parse(JSON.stringify(targetObj.grades)) : {},
+                gradebookDetails: targetObj.gradebookDetails ? JSON.parse(JSON.stringify(targetObj.gradebookDetails)) : {},
+                promotionStatus: `Promovido por Recuperación ${origStr}`,
+                archivedAt: nowTs
+            };
+        }
+
+        const prevGrade = targetObj.grade || st.grade || '';
+        const prevSection = targetObj.section || `Sección ${st.section || 'A'}`;
+        targetObj.previousGrade = prevGrade;
+        targetObj.previousSection = prevSection;
+
+        if (preview.isGraduando) {
+            // Regla perpetua de graduandos: egresado en originCycle, NO entra a listados activos de targetCycle
+            targetObj.grade = 'Graduando / Egresado';
+            targetObj.gradeCode = 'EGRESADO';
+            targetObj.gradeLabel = `Graduando / Egresado (${prevSection})`;
+            targetObj.status = 'Egresado';
+            targetObj.statusSire = 'EGRESADO';
+            targetObj.active = false;
+            targetObj.graduationCycle = origStr;
+            targetObj.cycle = origStr;
+            targetObj.academicCycle = origStr;
+            targetObj.academicPromotionStatus = `Graduado por Recuperación ${origStr}`;
+            targetObj.lastModified = nowTs;
+            graduatedCount++;
+        } else {
+            const secLabel = `Sección ${chosenSec}`;
+            const gradeCode = `${preview.targetGradeShort} ${chosenSec}`;
+            targetObj.grade = preview.targetGrade;
+            targetObj.section = secLabel;
+            targetObj.gradeCode = gradeCode;
+            targetObj.gradeLabel = `${preview.targetGrade} (${secLabel})`;
+            targetObj.cycle = tgtStr;
+            targetObj.academicCycle = tgtStr;
+            targetObj.status = 'Activo';
+            targetObj.active = true;
+            targetObj.academicPromotionStatus = `Promovido por Recuperación ${origStr}`;
+            // Limpiar calificaciones/exoneraciones para iniciar limpio en el nuevo ciclo (aislamiento estricto)
+            targetObj.grades = {};
+            targetObj.gradebookDetails = {};
+            targetObj.exoneraciones = {};
+            targetObj.recoveryGrades = {};
+            targetObj.lastModified = nowTs;
+            migratedCount++;
+        }
+
+        touchedStudents.push(targetObj);
+    });
+
+    // Garantizar cero duplicados en la colección global
+    if (typeof window.deduplicateStudentsCollection === 'function') {
+        window.STATE.students = window.deduplicateStudentsCollection(window.STATE.students);
+    }
+
+    window.STATE.lastModified = nowTs;
+    window.STATE._lastSavedLocally = nowTs;
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+
+    // Refresco reactivo inmediato de todas las vistas dependientes
+    try {
+        renderReprobadosRecuperacionView({ reuseData: true });
+        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
+        if (typeof renderBoletasTable === 'function') renderBoletasTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        if (typeof renderCarnetsView === 'function' && window.STATE.activeView === 'carnets') renderCarnetsView();
+    } catch (uiErr) {}
+
+    // Persistencia atómica en Firebase (Firestore + RTDB) en segundo plano
+    (async () => {
+        try {
+            if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.setDoc === 'function') {
+                const { db, doc, setDoc } = window.FirebaseModular;
+                await Promise.all(touchedStudents.map(stu => {
+                    if (!stu || !stu.id) return Promise.resolve();
+                    return setDoc(doc(db, 'students', stu.id), { ...stu }, { merge: true }).catch(() => {});
+                }));
+            }
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                await EnccoCloudSync.syncNode('students', window.STATE.students).catch(() => {});
+            }
+        } catch (cloudErr) {
+            console.warn('Aviso al sincronizar migración de recuperación en Firebase:', cloudErr);
+        }
+    })();
+
+    if (typeof showToast === 'function') {
+        const msgParts = [];
+        if (migratedCount > 0) msgParts.push(`${migratedCount} migrado(s) a ${tgtStr}`);
+        if (graduatedCount > 0) msgParts.push(`${graduatedCount} graduado(s) de 6to`);
+        if (skippedDuplicates > 0) msgParts.push(`${skippedDuplicates} ya existente(s) omitido(s)`);
+        showToast(`✅ Migración completada: ${msgParts.join(' | ')}.`, 'success');
+    }
+
+    return { success: true, migrated: migratedCount, graduated: graduatedCount, skippedDuplicates };
+}
+window.executeRecoveryMigrationBatch = executeRecoveryMigrationBatch;
 
 function onReprobadosGradeChange(val) {
     window._reprobadosGradeFilter = val;
