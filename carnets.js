@@ -36,6 +36,81 @@
 
     const EnccoCarnets = {
         activeTab: 'students', // 'students' | 'teachers'
+        visibleLimit: 24,
+        _searchDebounceTimer: null,
+
+        /**
+         * Devuelve el ciclo escolar activo o visualizado (aislamiento 2026 / 2027 / 2028...)
+         */
+        getActiveCycle() {
+            const st = window.STATE || {};
+            return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || new Date().getFullYear() || '2026').trim();
+        },
+
+        /**
+         * Devuelve la URL base oficial activa (preparada automáticamente para futuro dominio .edu / .edu.gt)
+         */
+        getPublicBaseUrl() {
+            try {
+                if (typeof window !== 'undefined' && window.location && window.location.origin && /^https?:/i.test(window.location.origin)) {
+                    const host = (window.location.hostname || '').toLowerCase();
+                    if (host.endsWith('.edu.gt') || host.endsWith('.edu') || host === 'comerciojutiapa.github.io') {
+                        const basePath = window.location.pathname.replace(/\/[^\/]*$/, '/');
+                        return `${window.location.origin}${basePath}`;
+                    }
+                }
+            } catch (e) {}
+            return 'https://comerciojutiapa.github.io/enccojutiapa/';
+        },
+
+        /**
+         * Normaliza cualquier valor de sección ("Sección E", "Sec. E", "E") a su letra canónica ("E")
+         */
+        formatCleanSection(rawSection) {
+            if (!rawSection) return 'A';
+            if (typeof window.getCleanSectionLetter === 'function') {
+                const l = window.getCleanSectionLetter(rawSection);
+                if (l) return l;
+            }
+            const clean = String(rawSection).replace(/^secci[oó]n\s*/i, '').replace(/^sec\.?\s*/i, '').replace(/["']/g, '').trim().toUpperCase();
+            return clean ? clean.slice(0, 2) : 'A';
+        },
+
+        /**
+         * Obtiene los estudiantes estrictamente filtrados por el ciclo escolar activo (sin mezclar ciclos ni egresados)
+         */
+        getCycleStudentsList() {
+            const raw = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+            const cycle = this.getActiveCycle();
+            if (typeof window.getCycleFilteredStudents === 'function') {
+                return window.getCycleFilteredStudents(raw, cycle);
+            }
+            return raw.filter(s => {
+                if (!s) return false;
+                const stLower = String(s.status || '').toLowerCase().trim();
+                if (stLower === 'egresado') return false;
+                const sCycle = String(s.cycle || s.academicCycle || '').trim();
+                return !sCycle || sCycle === cycle;
+            });
+        },
+
+        loadMoreCards() {
+            this.visibleLimit += 24;
+            updateCarnetsGridOnly();
+        },
+
+        onFilterChange(resetLimit = true) {
+            if (resetLimit) this.visibleLimit = 24;
+            updateCarnetsGridOnly();
+        },
+
+        onSearchInput() {
+            if (this._searchDebounceTimer) clearTimeout(this._searchDebounceTimer);
+            this._searchDebounceTimer = setTimeout(() => {
+                this.visibleLimit = 24;
+                updateCarnetsGridOnly();
+            }, 150);
+        },
 
         /**
          * Obtiene la instancia o función de generación de QR
@@ -155,156 +230,155 @@
          * ====================================================================== */
 
         /**
-         * Frente del carné estudiantil horizontal (Recreación exacta del modelo oficial)
+         * Frente del carné estudiantil horizontal (Diseño Premium CR80 ENCCO 1970)
          */
         renderStudentCardFrontHtml(student) {
-            const cycle = student.academicCycle || (window.STATE && window.STATE.activeCycle) || '2026';
+            const cycle = this.getActiveCycle();
             const name = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : null) || student.name || `${student.lastName || student.apellidos || ''}, ${student.firstName || student.nombres || ''}`.trim() || 'Estudiante';
-            const carne = student.personalCode || student.carne || 'ENCCO-2026';
-            const grade = student.grade || student.gradeLabel || '4TO PERITO';
-            const section = student.section || 'A';
+            const personalCode = (student.personalCode || student.codigoPersonal || '').trim().toUpperCase();
+            const carneNo = (student.carne || '').trim();
+            const primaryCode = personalCode || carneNo || `ENCCO-${cycle}`;
+            const grade = student.grade || student.gradeLabel || '4to Perito Contador';
+            const secLetter = this.formatCleanSection(student.section || student.gradeCode || 'A');
+            const shift = student.shift || student.jornada || 'Matutina';
 
-            const barcodeSvg = this.generateBarcodeSvg(carne, 22);
-            const qrText = `https://comerciojutiapa.github.io/enccojutiapa/?carne=${encodeURIComponent(carne)}&student=${encodeURIComponent(name)}`;
-            const qrSvg = this.generateQrSvg(qrText, 32);
+            const barcodeSvg = this.generateBarcodeSvg(primaryCode, 21);
+            const baseUrl = this.getPublicBaseUrl();
+            const qrText = `${baseUrl}?verify=student&code=${encodeURIComponent(primaryCode)}&cycle=${encodeURIComponent(cycle)}`;
+            const qrSvg = this.generateQrSvg(qrText, 31);
 
             const photoInner = student.photoUrl || student.photo
                 ? `<img src="${student.photoUrl || student.photo}" alt="${name}" style="width:100%; height:100%; object-fit:cover; display:block;">`
                 : this.generateStudentAvatarSvg(name, 74, 94);
 
             return `
-                <div class="encco-carnet-card encco-carnet-student encco-carnet-front" style="width:336px; height:212px; background:#ffffff; border-radius:12px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; box-sizing:border-box; text-align:left; user-select:none;">
+                <div class="encco-carnet-card encco-carnet-student encco-carnet-front" style="width:336px; height:212px; background:linear-gradient(155deg, #ffffff 0%, #f8fafc 68%, #f1f5f9 100%); border-radius:13px; border:1.5px solid #cbd5e1; box-shadow:0 10px 24px rgba(11,44,102,0.16), 0 2px 6px rgba(0,0,0,0.06); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; box-sizing:border-box; text-align:left; user-select:none;">
                     
-                    <!-- FONDO DE SEGURIDAD GUILLOCHÉ VECTORIAL Y MARCA DE AGUA INSTITUCIONAL -->
+                    <!-- FONDO DE SEGURIDAD GUILLOCHÉ VECTORIAL + MARCA DE AGUA -->
                     <div style="position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden; opacity:0.065;">
                         <svg width="100%" height="100%" viewBox="0 0 336 212" xmlns="http://www.w3.org/2000/svg">
                             <defs>
-                                <pattern id="guillocheStudent_${student.id || 'def'}" width="40" height="40" patternUnits="userSpaceOnUse">
-                                    <path d="M 0,20 Q 10,0 20,20 T 40,20" fill="none" stroke="#003882" stroke-width="0.6"/>
-                                    <path d="M 0,20 Q 10,40 20,20 T 40,20" fill="none" stroke="#007a3d" stroke-width="0.6"/>
-                                    <circle cx="20" cy="20" r="14" fill="none" stroke="#ea580c" stroke-width="0.4" stroke-dasharray="2,2"/>
+                                <pattern id="guillocheStudent_${student.id || 'def'}" width="38" height="38" patternUnits="userSpaceOnUse">
+                                    <path d="M 0,19 Q 9.5,0 19,19 T 38,19" fill="none" stroke="#0b2c66" stroke-width="0.6"/>
+                                    <path d="M 0,19 Q 9.5,38 19,19 T 38,19" fill="none" stroke="#006837" stroke-width="0.6"/>
+                                    <circle cx="19" cy="19" r="13" fill="none" stroke="#d4af37" stroke-width="0.55" stroke-dasharray="2,2"/>
                                 </pattern>
                             </defs>
                             <rect width="100%" height="100%" fill="url(#guillocheStudent_${student.id || 'def'})"/>
-                            <!-- Silueta arquitectónica de la ENCCO -->
-                            <g transform="translate(180, 40) scale(0.65)" opacity="0.4">
-                                <rect x="0" y="20" width="160" height="70" rx="3" fill="#003882"/>
-                                <rect x="15" y="35" width="20" height="28" fill="#ffffff"/>
-                                <rect x="45" y="35" width="20" height="28" fill="#ffffff"/>
-                                <rect x="75" y="35" width="20" height="28" fill="#ffffff"/>
-                                <rect x="105" y="35" width="20" height="28" fill="#ffffff"/>
-                                <polygon points="80,0 0,20 160,20" fill="#007a3d"/>
-                            </g>
                         </svg>
                     </div>
 
-                    <!-- CINTAS POLIGONALES VECTORIALES MODERNAS (AZUL, VERDE, PLATEADO Y NARANJA) -->
-                    <svg style="position:absolute; top:0; left:0; width:110px; height:85px; pointer-events:none; z-index:1;" viewBox="0 0 110 85">
-                        <path d="M 0,0 L 88,0 C 84,26 66,56 0,70 Z" fill="#003882" />
-                        <path d="M 88,0 C 84,26 66,56 0,70 L 0,75 C 70,61 88,28 93,0 Z" fill="#007a3d" />
-                        <path d="M 93,0 C 88,28 70,61 0,75 L 0,79 C 74,65 92,30 98,0 Z" fill="#cbd5e1" />
-                        <path d="M 98,0 C 92,30 74,65 0,79 L 0,83 C 78,68 96,32 103,0 Z" fill="#ea580c" />
+                    <!-- CINTAS POLIGONALES EJECUTIVAS (AZUL MARINO, ESMERALDA, DORADO CHAMPÁN Y NARANJA) -->
+                    <svg style="position:absolute; top:0; left:0; width:114px; height:86px; pointer-events:none; z-index:1;" viewBox="0 0 114 86">
+                        <defs>
+                            <linearGradient id="enccoNavyGrad_${student.id || 'def'}" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#071e47"/>
+                                <stop offset="100%" stop-color="#0b3b8c"/>
+                            </linearGradient>
+                            <linearGradient id="enccoGoldGrad_${student.id || 'def'}" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f3d87d"/>
+                                <stop offset="50%" stop-color="#d4af37"/>
+                                <stop offset="100%" stop-color="#a8811c"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M 0,0 L 89,0 C 85,26 67,56 0,70 Z" fill="url(#enccoNavyGrad_${student.id || 'def'})" />
+                        <path d="M 89,0 C 85,26 67,56 0,70 L 0,75 C 71,61 89,28 94,0 Z" fill="#006837" />
+                        <path d="M 94,0 C 89,28 71,61 0,75 L 0,79 C 75,65 93,30 99,0 Z" fill="url(#enccoGoldGrad_${student.id || 'def'})" />
+                        <path d="M 99,0 C 93,30 75,65 0,79 L 0,82.5 C 78,68 96,32 103,0 Z" fill="#ea580c" />
                     </svg>
 
                     <!-- ESCUDO OFICIAL ENCCO SUPERIOR IZQUIERDO -->
-                    <div style="position:absolute; top:6px; left:8px; width:34px; height:40px; z-index:4; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">
+                    <div style="position:absolute; top:6px; left:8px; width:34px; height:40px; z-index:4; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
                         <img src="logo.png" style="width:100%; height:100%; object-fit:contain; display:block;" alt="Escudo ENCCO">
                     </div>
 
-                    <!-- ENCABEZADO INSTITUCIONAL DERECHA DEL ESCUDO -->
-                    <div style="margin-left:58px; padding:5px 6px 0 0; text-align:center; position:relative; z-index:2;">
-                        <div style="font-family:'Outfit', sans-serif; font-size:0.62rem; font-weight:900; color:#003882; letter-spacing:0.3px; line-height:1.15; text-transform:uppercase;">
+                    <!-- ENCABEZADO INSTITUCIONAL -->
+                    <div style="margin-left:58px; padding:5px 8px 0 0; text-align:center; position:relative; z-index:2;">
+                        <div style="font-family:'Outfit', sans-serif; font-size:0.61rem; font-weight:900; color:#0b2c66; letter-spacing:0.35px; line-height:1.15; text-transform:uppercase;">
                             ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                         </div>
-                        <div style="font-family:'Outfit', sans-serif; font-size:0.52rem; font-weight:800; color:#007a3d; letter-spacing:0.8px; line-height:1.15; margin-top:1px;">
-                            JUTIAPA 1970 <span style="color:#ea580c;">•</span> GUATEMALA
-                        </div>
-                        <div style="display:flex; align-items:center; justify-content:center; gap:3px; margin-top:2px;">
-                            <span style="flex:1; height:1.2px; background:linear-gradient(90deg, rgba(0,56,130,0), #003882); max-width:32px;"></span>
-                            <span style="color:#ea580c; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#007a3d; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#cbd5e1; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#003882; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="flex:1; height:1.2px; background:linear-gradient(90deg, #003882, rgba(0,56,130,0)); max-width:32px;"></span>
+                        <div style="font-family:'Outfit', sans-serif; font-size:0.50rem; font-weight:800; color:#006837; letter-spacing:0.9px; line-height:1.15; margin-top:1px;">
+                            JUTIAPA 1970 <span style="color:#d4af37;">◆</span> GUATEMALA
                         </div>
                     </div>
 
-                    <!-- CINTA HORIZONTAL MODERNA: CARNET ESTUDIANTIL -->
-                    <div style="position:relative; z-index:2; background:linear-gradient(90deg, #003882 0%, #004fb0 65%, #007a3d 100%); color:#ffffff; font-family:'Outfit', sans-serif; font-size:0.74rem; font-weight:900; letter-spacing:1.6px; text-transform:uppercase; padding:3px 12px 3px 94px; margin-top:4px; box-shadow:0 2px 5px rgba(0,56,130,0.25); display:flex; align-items:center; justify-content:space-between;">
+                    <!-- CINTA HORIZONTAL PREMIUM CON FILETE DORADO -->
+                    <div style="position:relative; z-index:2; background:linear-gradient(90deg, #0b2c66 0%, #0e4a9e 58%, #006837 100%); color:#ffffff; font-family:'Outfit', sans-serif; font-size:0.71rem; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; padding:3px 10px 3px 94px; margin-top:4px; border-bottom:1.5px solid #d4af37; box-shadow:0 2px 6px rgba(11,44,102,0.22); display:flex; align-items:center; justify-content:space-between;">
                         <span>CARNET ESTUDIANTIL</span>
-                        <span style="font-size:0.46rem; background:#ea580c; color:#ffffff; font-weight:900; padding:1px 6px; border-radius:3px; letter-spacing:0.8px;">OFICIAL</span>
+                        <span style="font-size:0.45rem; background:linear-gradient(135deg,#f3d87d,#d4af37); color:#0b2c66; font-weight:900; padding:1px 6px; border-radius:3px; letter-spacing:0.8px;">CICLO ${cycle}</span>
                     </div>
 
-                    <!-- FOTO CON MARCO PLATEADO PLATINO BISELADO (NOTCHED CORNERS) -->
-                    <div style="position:absolute; left:12px; top:46px; width:74px; height:94px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${student.id}', 'student')" title="Haga clic para tomar o cambiar la fotografía">
-                        <div class="encco-gold-frame-outer" style="width:100%; height:100%;">
-                            <div class="encco-gold-frame-middle">
-                                <div class="encco-gold-frame-inner" id="carnetPhotoFrame_${student.id}">
-                                    ${photoInner}
-                                </div>
-                            </div>
+                    <!-- FOTO CON MARCO METÁLICO DORADO-PLATINO -->
+                    <div style="position:absolute; left:12px; top:45px; width:74px; height:94px; z-index:4; cursor:pointer; border-radius:7px; padding:2px; background:linear-gradient(135deg, #f3d87d 0%, #d4af37 45%, #cbd5e1 100%); box-shadow:0 4px 10px rgba(11,44,102,0.22);" onclick="EnccoCarnets.openPhotoModal('${student.id}', 'student')" title="Haga clic para tomar o cambiar la fotografía">
+                        <div id="carnetPhotoFrame_${student.id}" style="width:100%; height:100%; border-radius:5px; overflow:hidden; background:#ffffff; border:1px solid #ffffff;">
+                            ${photoInner}
                         </div>
                     </div>
 
-                    <!-- CHIP ELECTRÓNICO SIMULADO EN TONOS PLATEADOS -->
-                    <div style="position:absolute; left:88px; top:52px; width:18px; height:14px; z-index:2; border-radius:3px; background:linear-gradient(135deg, #f8fafc, #cbd5e1); border:0.8px solid #94a3b8; display:flex; align-items:center; justify-content:center; opacity:0.85;" title="Chip Electrónico de Seguridad">
-                        <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                            <rect x="1" y="1" width="12" height="8" rx="1.5" stroke="#64748b" stroke-width="0.5"/>
-                            <line x1="1" y1="5" x2="13" y2="5" stroke="#64748b" stroke-width="0.5"/>
-                            <line x1="5" y1="1" x2="5" y2="9" stroke="#64748b" stroke-width="0.5"/>
-                            <line x1="9" y1="1" x2="9" y2="9" stroke="#64748b" stroke-width="0.5"/>
+                    <!-- CHIP METÁLICO DORADO-PLATINO -->
+                    <div style="position:absolute; left:92px; top:55px; width:17px; height:13px; z-index:2; border-radius:3px; background:linear-gradient(135deg, #fef3c7 0%, #d4af37 55%, #e2e8f0 100%); border:0.7px solid #b48a1e; display:flex; align-items:center; justify-content:center; opacity:0.92;" title="Chip de Seguridad Institucional">
+                        <svg width="13" height="9" viewBox="0 0 14 10" fill="none">
+                            <rect x="1" y="1" width="12" height="8" rx="1.5" stroke="#78580e" stroke-width="0.55"/>
+                            <line x1="1" y1="5" x2="13" y2="5" stroke="#78580e" stroke-width="0.55"/>
+                            <line x1="5" y1="1" x2="5" y2="9" stroke="#78580e" stroke-width="0.55"/>
+                            <line x1="9" y1="1" x2="9" y2="9" stroke="#78580e" stroke-width="0.55"/>
                         </svg>
                     </div>
 
-                    <!-- BLOQUE DE DATOS DEL ALUMNO DE ALTA PRECISIÓN -->
-                    <div style="position:absolute; left:96px; top:65px; right:12px; z-index:3; line-height:1.2;">
-                        <div style="font-size:0.48rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">ESTUDIANTE / NOMBRE:</div>
-                        <div style="font-size:0.68rem; font-weight:900; color:#0f172a; text-transform:uppercase; line-height:1.15; max-height:2.3em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:2px;" title="${name}">
+                    <!-- SELLO HOLOGRÁFICO DISCRETO -->
+                    <div style="position:absolute; right:10px; top:54px; z-index:2; font-size:0.42rem; font-weight:900; color:#0b2c66; background:linear-gradient(135deg, rgba(243,216,125,0.35), rgba(186,230,253,0.45)); border:0.8px solid rgba(212,175,55,0.65); border-radius:999px; padding:1.5px 6px; letter-spacing:0.6px; text-transform:uppercase;">
+                        ✦ ENCCO 1970
+                    </div>
+
+                    <!-- BLOQUE DE DATOS DEL ALUMNO -->
+                    <div style="position:absolute; left:95px; top:70px; right:10px; z-index:3; line-height:1.18;">
+                        <div style="font-size:0.45rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.55px;">ESTUDIANTE</div>
+                        <div style="font-size:0.67rem; font-weight:900; color:#0f172a; text-transform:uppercase; line-height:1.14; max-height:2.28em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:3px;" title="${name}">
                             ${name}
                         </div>
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                            <div>
-                                <span style="font-size:0.48rem; font-weight:800; color:#64748b; text-transform:uppercase;">CARNÉ NO:</span>
-                                <span style="font-size:0.64rem; font-weight:900; color:#003882; font-family:'Outfit',monospace; margin-left:3px;">${carne}</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; gap:4px;">
+                            <div style="white-space:nowrap;">
+                                <span style="font-size:0.45rem; font-weight:800; color:#64748b; text-transform:uppercase;">${personalCode ? 'CÓD. MINEDUC:' : 'CARNÉ:'}</span>
+                                <span style="font-size:0.62rem; font-weight:900; color:#0b2c66; font-family:'Outfit',monospace; margin-left:2px;">${primaryCode}</span>
                             </div>
-                            <div style="font-size:0.46rem; font-weight:800; color:#007a3d; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:3px; padding:1px 5px;">
-                                CICLO [${cycle}]
+                            <div style="font-size:0.44rem; font-weight:800; color:#006837; background:#ecfdf5; border:0.8px solid #86efac; border-radius:4px; padding:1px 5px; white-space:nowrap;">
+                                ${shift.toUpperCase()}
                             </div>
                         </div>
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px;">
-                            <div style="font-size:0.52rem; font-weight:700; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;">
-                                <span style="color:#007a3d; font-weight:800;">GRADO:</span> ${grade} "${section}"
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #e2e8f0; border-left:2.5px solid #006837; border-radius:4px; padding:2px 6px;">
+                            <div style="font-size:0.50rem; font-weight:800; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:155px;" title="${grade} • Sección ${secLetter}">
+                                ${grade} <span style="color:#006837;">• Sec. ${secLetter}</span>
                             </div>
-                            <div style="font-size:0.54rem; font-weight:900; color:#ea580c; text-transform:uppercase; letter-spacing:0.5px;">
-                                ESTUDIANTE
+                            <div style="font-size:0.46rem; font-weight:900; color:#ea580c; text-transform:uppercase; letter-spacing:0.5px;">
+                                ACTIVO
                             </div>
                         </div>
                     </div>
 
-                    <!-- CONTENEDOR INFERIOR BLANCO RESERVADO (CÓDIGO DE BARRAS + QR + MARCO PLATEADO) -->
-                    <div style="position:absolute; left:10px; right:10px; bottom:9px; height:42px; background:#ffffff; border:1.2px solid #cbd5e1; border-radius:8px; padding:2px 8px; display:flex; align-items:center; justify-content:space-between; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,0.06); z-index:3;">
+                    <!-- CONTENEDOR INFERIOR BLANCO DE ALTA PRECISIÓN (CÓDIGO DE BARRAS + QR) -->
+                    <div style="position:absolute; left:10px; right:10px; bottom:9px; height:42px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:2px 8px; display:flex; align-items:center; justify-content:space-between; gap:6px; box-shadow:0 2px 6px rgba(15,23,42,0.06); z-index:3;">
                         <div style="flex:1; text-align:center; overflow:hidden;">
                             <div style="width:92%; margin:0 auto;">
                                 ${barcodeSvg}
                             </div>
-                            <div style="font-size:0.46rem; font-family:monospace; color:#334155; font-weight:800; letter-spacing:1px; margin-top:1px;">
-                                ${carne}
+                            <div style="font-size:0.46rem; font-family:monospace; color:#0f172a; font-weight:800; letter-spacing:1.1px; margin-top:1px;">
+                                ${primaryCode}
                             </div>
                         </div>
-                        <div style="flex-shrink:0; border-left:1.2px solid #e2e8f0; padding-left:6px; display:flex; flex-direction:column; align-items:center; justify-content:center;" title="Escanear con Celular para Validar">
+                        <div style="flex-shrink:0; border-left:1px solid #e2e8f0; padding-left:6px; display:flex; flex-direction:column; align-items:center; justify-content:center;" title="Escanear para validar credencial oficial">
                             ${qrSvg}
-                            <span style="font-size:0.36rem; color:#64748b; font-weight:800; letter-spacing:0.5px; margin-top:1px;">VALIDAR</span>
+                            <span style="font-size:0.35rem; color:#0b2c66; font-weight:800; letter-spacing:0.5px; margin-top:1px;">VERIFICAR</span>
                         </div>
                     </div>
 
-                    <!-- REMATE INFERIOR DIAGONAL MULTICOLOR (AZUL, VERDE, PLATEADO Y NARANJA) -->
-                    <svg style="position:absolute; bottom:0; left:0; width:100%; height:7px; pointer-events:none; z-index:1;" viewBox="0 0 336 7" preserveAspectRatio="none">
-                        <polygon points="0,0 150,0 142,7 0,7" fill="#003882" />
-                        <polygon points="144,0 205,0 197,7 136,7" fill="#007a3d" />
-                        <polygon points="200,0 230,0 222,7 192,7" fill="#cbd5e1" />
-                        <polygon points="225,0 260,0 252,7 217,7" fill="#ea580c" />
+                    <!-- REMATE INFERIOR DIAGONAL EJECUTIVO -->
+                    <svg style="position:absolute; bottom:0; left:0; width:100%; height:6px; pointer-events:none; z-index:1;" viewBox="0 0 336 6" preserveAspectRatio="none">
+                        <polygon points="0,0 155,0 148,6 0,6" fill="#0b2c66" />
+                        <polygon points="150,0 225,0 218,6 143,6" fill="#006837" />
+                        <polygon points="220,0 280,0 273,6 213,6" fill="#d4af37" />
+                        <polygon points="275,0 336,0 336,6 268,6" fill="#ea580c" />
                     </svg>
 
                 </div>
@@ -388,15 +462,16 @@
         },
 
         /**
-         * Reverso del carné estudiantil horizontal (ultra legible con datos completos)
+         * Reverso del carné estudiantil horizontal (Diseño Editorial Premium CR80)
          */
         renderStudentCardBackHtml(student) {
-            const cycle = student.academicCycle || (window.STATE && window.STATE.activeCycle) || '2026';
-            const carne = student.carne || student.personalCode || '2026-0001-PC';
-            const personalCode = student.personalCode || 'No asignado';
+            const cycle = this.getActiveCycle();
+            const personalCode = (student.personalCode || student.codigoPersonal || '').trim().toUpperCase() || 'No asignado';
+            const carne = (student.carne || '').trim() || personalCode;
+            const primaryCode = (student.personalCode || student.codigoPersonal || student.carne || `ENCCO-${cycle}`).trim().toUpperCase();
             const cui = student.cui || 'No registrado';
-            const grade = student.grade || student.gradeLabel || 'Grado no asignado';
-            const section = student.section || 'A';
+            const grade = student.grade || student.gradeLabel || 'Perito Contador';
+            const secLetter = this.formatCleanSection(student.section || student.gradeCode || 'A');
             const career = student.career || 'Perito Contador';
             const shift = student.shift || student.jornada || 'Matutina';
             const birthDate = student.birthDate || student.fechaNacimiento || '';
@@ -405,66 +480,67 @@
             const guardian = guardianData.name;
             const guardianPhone = guardianData.phone;
 
-            const qrTextBack = `https://comerciojutiapa.github.io/enccojutiapa/?verify=student&carne=${encodeURIComponent(carne)}&cycle=${cycle}`;
+            const baseUrl = this.getPublicBaseUrl();
+            const qrTextBack = `${baseUrl}?verify=student&code=${encodeURIComponent(primaryCode)}&cycle=${encodeURIComponent(cycle)}`;
             const qrSvgBack = this.generateQrSvg(qrTextBack, 30);
 
             return `
-                <div class="encco-carnet-card encco-carnet-student encco-carnet-back" style="width:336px; height:212px; background:#ffffff; border-radius:12px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; display:flex; flex-direction:column; box-sizing:border-box; padding:8px 12px; justify-content:space-between; text-align:left; user-select:none;">
+                <div class="encco-carnet-card encco-carnet-student encco-carnet-back" style="width:336px; height:212px; background:linear-gradient(155deg, #ffffff 0%, #f8fafc 100%); border-radius:13px; border:1.5px solid #cbd5e1; box-shadow:0 10px 24px rgba(11,44,102,0.16), 0 2px 6px rgba(0,0,0,0.06); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; display:flex; flex-direction:column; box-sizing:border-box; padding:8px 12px; justify-content:space-between; text-align:left; user-select:none;">
                     
-                    <!-- LÍNEA SUPERIOR DECORATIVA TRICOLOR Y PLATEADA -->
-                    <div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, #003882 0%, #007a3d 35%, #cbd5e1 65%, #ea580c 100%);"></div>
+                    <!-- LÍNEA SUPERIOR DECORATIVA METÁLICA (AZUL, ESMERALDA, DORADO Y NARANJA) -->
+                    <div style="position:absolute; top:0; left:0; width:100%; height:3.5px; background:linear-gradient(90deg, #0b2c66 0%, #006837 40%, #d4af37 72%, #ea580c 100%);"></div>
 
                     <!-- ENCABEZADO MINEDUC REVERSO -->
-                    <div style="border-bottom:1.5px solid #007a3d; padding-bottom:3px; text-align:center; margin-top:2px;">
-                        <span style="font-family:'Outfit', sans-serif; font-size:0.64rem; font-weight:900; color:#003882; text-transform:uppercase; letter-spacing:0.4px; display:block;">
+                    <div style="border-bottom:1.5px solid #006837; padding-bottom:3px; text-align:center; margin-top:2px;">
+                        <span style="font-family:'Outfit', sans-serif; font-size:0.62rem; font-weight:900; color:#0b2c66; text-transform:uppercase; letter-spacing:0.4px; display:block;">
                             ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                         </span>
-                        <div style="font-size:0.48rem; color:#475569; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:1px;">
+                        <div style="font-size:0.47rem; color:#475569; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:1px;">
                             <span>Jutiapa, Guatemala</span>
-                            <span style="color:#cbd5e1;">|</span>
-                            <span>Código MINEDUC: <strong style="color:#003882; background:#e0f2fe; padding:0.5px 5px; border-radius:3px; border:0.8px solid #bae6fd;">22-01-0014-46</strong></span>
-                            <span style="color:#cbd5e1;">|</span>
-                            <span style="color:#007a3d; font-weight:800;">Ciclo ${cycle}</span>
+                            <span style="color:#d4af37;">◆</span>
+                            <span>Cód. MINEDUC: <strong style="color:#0b2c66; background:#e0f2fe; padding:0.5px 5px; border-radius:3px; border:0.8px solid #bae6fd;">22-01-0014-46</strong></span>
+                            <span style="color:#d4af37;">◆</span>
+                            <span style="color:#006837; font-weight:800;">Ciclo ${cycle}</span>
                         </div>
                     </div>
 
-                    <!-- TABLA DE DATOS DEL ALUMNO DE ALTA LEGIBILIDAD -->
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.54rem; color:#0f172a; line-height:1.28; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px;">
+                    <!-- FICHA DE DATOS DEL ALUMNO DE ALTA LEGIBILIDAD -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.52rem; color:#0f172a; line-height:1.30; background:#ffffff; border:1px solid #e2e8f0; border-radius:7px; padding:5px 8px; box-shadow:0 1px 3px rgba(15,23,42,0.03);">
                         <div>
-                            <div><strong style="color:#003882;">Cód. Personal:</strong> <span style="font-weight:800; color:#0f172a;">${personalCode}</span></div>
-                            <div><strong style="color:#007a3d;">CUI / DPI:</strong> <span style="font-weight:700;">${cui}</span></div>
-                            <div><strong style="color:#007a3d;">Jornada:</strong> <span>${shift}</span></div>
-                            <div><strong style="color:#007a3d;">Nacimiento:</strong> <span>${birthDate || 'No reg.'}</span></div>
+                            <div><strong style="color:#0b2c66;">Cód. Personal:</strong> <span style="font-weight:800; color:#0f172a; font-family:'Outfit',monospace;">${personalCode}</span></div>
+                            <div><strong style="color:#006837;">Carné Inst.:</strong> <span style="font-weight:700;">${carne}</span></div>
+                            <div><strong style="color:#006837;">CUI / DPI:</strong> <span style="font-weight:700;">${cui}</span></div>
+                            <div><strong style="color:#006837;">Jornada:</strong> <span>${shift}${birthDate ? ` | Nac: ${birthDate}` : ''}</span></div>
                         </div>
                         <div>
-                            <div><strong style="color:#007a3d;">Grado:</strong> <span style="font-weight:700;">${grade} "${section}"</span></div>
-                            <div><strong style="color:#007a3d;">Carrera:</strong> <span>${career}</span></div>
-                            <div><strong style="color:#007a3d;">Encargado:</strong> <span style="font-weight:700;">${guardian}</span></div>
-                            <div><strong style="color:#ea580c;">Emergencia:</strong> <span style="font-weight:800; color:#ea580c; background:#fff7ed; padding:0 4px; border-radius:3px;">${guardianPhone}</span></div>
+                            <div><strong style="color:#006837;">Grado:</strong> <span style="font-weight:700;">${grade} • Sec. ${secLetter}</span></div>
+                            <div><strong style="color:#006837;">Carrera:</strong> <span>${career}</span></div>
+                            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${guardian}"><strong style="color:#006837;">Encargado:</strong> <span style="font-weight:700;">${guardian}</span></div>
+                            <div><strong style="color:#ea580c;">Emergencia:</strong> <span style="font-weight:800; color:#c2410c; background:#fff7ed; border:0.7px solid #fdba74; padding:0 4px; border-radius:3px;">${guardianPhone}</span></div>
                         </div>
                     </div>
 
                     <!-- NORMATIVA INSTITUCIONAL OFICIAL -->
-                    <div style="font-size:0.46rem; color:#475569; line-height:1.22; background:#ffffff; border-left:2.5px solid #003882; padding-left:5px;">
-                        • <strong>Identificación Oficial:</strong> Acredita al portador como alumno regular formalmente inscrito.<br>
-                        • <strong>Uso:</strong> Obligatorio para ingreso a instalaciones, biblioteca, gestiones y evaluaciones.<br>
+                    <div style="font-size:0.45rem; color:#475569; line-height:1.22; background:#ffffff; border-left:2.5px solid #d4af37; padding-left:5px;">
+                        • <strong>Identificación Oficial:</strong> Acredita al portador como alumno regular inscrito en el Ciclo ${cycle}.<br>
+                        • <strong>Uso:</strong> Obligatorio para ingreso, asistencia digital, biblioteca y evaluaciones.<br>
                         • <strong>Extravío:</strong> Reportar inmediatamente en Dirección. Documento personal e intransferible.
                     </div>
 
                     <!-- FIRMA DE DIRECCIÓN, SELLO Y QR DE VERIFICACIÓN -->
                     <div style="display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #e2e8f0; padding-top:3px;">
-                        <div style="text-align:center; width:110px;">
-                            <img src="firma_director_sello.png" style="height:25px; object-fit:contain; display:block; margin:0 auto;" onerror="this.style.display='none'">
-                            <div style="border-top:1px solid #0f172a; padding-top:1px; font-size:0.46rem; font-weight:800; color:#0f172a;">
+                        <div style="text-align:center; width:112px;">
+                            <img src="firma_director_sello.png" style="height:24px; object-fit:contain; display:block; margin:0 auto;" onerror="this.style.display='none'">
+                            <div style="border-top:1px solid #0b2c66; padding-top:1px; font-size:0.46rem; font-weight:800; color:#0b2c66;">
                                 Dirección ENCCO Jutiapa
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <div style="text-align:right;">
-                                <div style="font-size:0.48rem; color:#64748b; font-weight:700;">Vigencia: Ciclo ${cycle}</div>
-                                <div style="font-size:0.40rem; color:#007a3d; font-weight:800;">VERIFICADO MINEDUC</div>
+                                <div style="font-size:0.48rem; color:#0b2c66; font-weight:800;">Vigencia: Ciclo ${cycle}</div>
+                                <div style="font-size:0.40rem; color:#006837; font-weight:800; letter-spacing:0.3px;">✦ VERIFICADO MINEDUC</div>
                             </div>
-                            <div style="width:30px; height:30px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; background:#ffffff;" title="QR de Verificación">
+                            <div style="width:30px; height:30px; border:1px solid #d4af37; border-radius:5px; padding:1px; background:#ffffff;" title="QR de Verificación Oficial">
                                 ${qrSvgBack}
                             </div>
                         </div>
@@ -482,7 +558,7 @@
          * Frente del carné docente vertical (Recreación exacta del modelo oficial)
          */
         renderTeacherCardFrontHtml(teacher) {
-            const cycle = (window.STATE && window.STATE.activeCycle) || '2026';
+            const cycle = this.getActiveCycle();
             const name = teacher.name || 'Catedrático Titular';
             const teacherId = teacher.id || 'usr-doc-01';
             const dpi = teacher.cui || teacher.dpi || teacher.id || 'No registrado';
@@ -499,7 +575,8 @@
             if (!teacherArea) teacherArea = 'Área Comercial / Contable';
 
             const barcodeSvg = this.generateBarcodeSvg(teacherId, 20);
-            const qrText = `https://comerciojutiapa.github.io/enccojutiapa/?verify=teacher&id=${encodeURIComponent(teacherId)}&nom=${encodeURIComponent(name)}`;
+            const baseUrl = this.getPublicBaseUrl();
+            const qrText = `${baseUrl}?verify=teacher&id=${encodeURIComponent(teacherId)}&cycle=${encodeURIComponent(cycle)}`;
             const qrSvg = this.generateQrSvg(qrText, 28);
 
             const photoInner = teacher.photoUrl || teacher.photo
@@ -618,7 +695,7 @@
          * Reverso del carné docente vertical (ultra legible con datos completos de acreditación)
          */
         renderTeacherCardBackHtml(teacher) {
-            const cycle = (window.STATE && window.STATE.activeCycle) || '2026';
+            const cycle = this.getActiveCycle();
             const name = teacher.name || 'Catedrático Titular';
             const teacherId = teacher.id || 'usr-doc-01';
             const dpi = teacher.cui || teacher.dpi || teacher.id || 'No registrado';
@@ -637,7 +714,8 @@
             }
             if (!teacherSubjects) teacherSubjects = 'Ciencias Comerciales';
 
-            const qrTextBack = `https://comerciojutiapa.github.io/enccojutiapa/?verify=teacher&id=${encodeURIComponent(teacherId)}&cycle=${cycle}`;
+            const baseUrl = this.getPublicBaseUrl();
+            const qrTextBack = `${baseUrl}?verify=teacher&id=${encodeURIComponent(teacherId)}&cycle=${encodeURIComponent(cycle)}`;
             const qrSvgBack = this.generateQrSvg(qrTextBack, 32);
 
             return `
@@ -752,7 +830,7 @@
         getTeachersList() {
             const users = (window.STATE && Array.isArray(window.STATE.users)) ? window.STATE.users : [];
             return users.filter(u => {
-                if (!u) return false;
+                if (!u || u.active === false) return false;
                 if (u.role === 'docente' || u.role === 'profesor_auxiliar') return true;
                 if (u.roles && (u.roles.includes('docente') || u.roles.includes('profesor_auxiliar'))) return true;
                 if (u.id && String(u.id).startsWith('usr-doc-')) return true;
@@ -1737,20 +1815,26 @@
                 `).join('');
 
             } else {
-                const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+                const allStudents = this.getCycleStudentsList();
                 const carFilter = document.getElementById('carnetsCareerFilter')?.value || 'ALL';
                 const grdFilter = document.getElementById('carnetsGradeFilter')?.value || 'ALL';
                 const secFilter = document.getElementById('carnetsSectionFilter')?.value || 'ALL';
+                const photoFilter = document.getElementById('carnetsPhotoFilter')?.value || 'ALL';
                 const searchVal = (document.getElementById('carnetsSearchInput')?.value || '').trim().toLowerCase();
 
                 itemsToPrint = allStudents.filter(st => {
                     if (!st) return false;
-                    // 🛑 Excluir estrictamente a estudiantes Retirados o Inactivos de la impresión masiva de carnés
-                    if (st.status === 'Retirado' || st.status === 'Inactivo') return false;
+                    // 🛑 Excluir estrictamente a estudiantes Retirados, Inactivos o Egresados de la impresión masiva de carnés
+                    const stStatus = String(st.status || '').toLowerCase().trim();
+                    if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
                     const carMatch = (carFilter === 'ALL' || !carFilter || (st.career || '').toLowerCase() === carFilter.toLowerCase());
                     const grdMatch = (grdFilter === 'ALL' || !grdFilter || (st.grade || '').toLowerCase() === grdFilter.toLowerCase());
-                    const secMatch = (secFilter === 'ALL' || !secFilter || (st.section || '').toLowerCase() === secFilter.toLowerCase());
+                    const stSecLetter = this.formatCleanSection(st.section || st.gradeCode || '');
+                    const secMatch = (secFilter === 'ALL' || !secFilter || stSecLetter === this.formatCleanSection(secFilter));
                     if (!carMatch || !grdMatch || !secMatch) return false;
+                    const hasPhoto = Boolean(st.photoUrl || st.photo);
+                    if (photoFilter === 'WITH_PHOTO' && !hasPhoto) return false;
+                    if (photoFilter === 'WITHOUT_PHOTO' && hasPhoto) return false;
                     if (searchVal) {
                         const sName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(st, 'lastFirst') : (st.name || `${st.lastName || ''} ${st.firstName || ''}`)).toLowerCase();
                         const sCarne = (st.carne || '').toLowerCase();
@@ -1872,41 +1956,43 @@
     /* ======================================================================
      * 🖥️ 4. RENDERIZADO DE LA VISTA GENERAL DE CARNÉS
      * ====================================================================== */
-    function renderCarnetsView() {
-        if (typeof document === 'undefined') return;
-        const container = document.getElementById('view-carnets');
-        if (!container) return;
-
+    function getFilteredCarnetsEntities() {
         const isTeachers = (EnccoCarnets.activeTab === 'teachers');
-        const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-        const teachers = EnccoCarnets.getTeachersList();
+        if (isTeachers) {
+            const teachers = EnccoCarnets.getTeachersList();
+            const docRenglonFilter = document.getElementById('carnetsTeacherRenglonFilter')?.value || 'ALL';
+            const docSearchVal = (document.getElementById('carnetsTeacherSearchInput')?.value || '').trim().toLowerCase();
+            return teachers.filter(t => {
+                if (!t) return false;
+                const rengMatch = (docRenglonFilter === 'ALL' || !docRenglonFilter || (t.renglon || '').toLowerCase() === docRenglonFilter.toLowerCase());
+                if (!rengMatch) return false;
+                if (docSearchVal) {
+                    const sName = (t.name || '').toLowerCase();
+                    const sTitle = (t.title || '').toLowerCase();
+                    const sId = (t.id || '').toLowerCase();
+                    if (!sName.includes(docSearchVal) && !sTitle.includes(docSearchVal) && !sId.includes(docSearchVal)) return false;
+                }
+                return true;
+            });
+        }
 
-        // Filtros Estudiantes
+        const allStudents = EnccoCarnets.getCycleStudentsList();
         const carFilter = document.getElementById('carnetsCareerFilter')?.value || 'ALL';
         const grdFilter = document.getElementById('carnetsGradeFilter')?.value || 'ALL';
         const secFilter = document.getElementById('carnetsSectionFilter')?.value || 'ALL';
+        const photoFilter = document.getElementById('carnetsPhotoFilter')?.value || 'ALL';
         const stSearchVal = (document.getElementById('carnetsSearchInput')?.value || '').trim().toLowerCase();
 
-        // Filtros Docentes
-        const docRenglonFilter = document.getElementById('carnetsTeacherRenglonFilter')?.value || 'ALL';
-        const docSearchVal = (document.getElementById('carnetsTeacherSearchInput')?.value || '').trim().toLowerCase();
-
-        // Opciones únicas para estudiantes ordenadas pedagógicamente
-        const careers = [...new Set(allStudents.map(s => s.career).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-        const grades = [...new Set(allStudents.map(s => s.grade).filter(Boolean))].sort((a, b) => {
-            const wa = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(a) : 99;
-            const wb = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(b) : 99;
-            return wa - wb || a.localeCompare(b);
-        });
-        const sections = [...new Set(allStudents.map(s => s.section).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-
-        // Lista filtrada de estudiantes
         const filteredStudents = allStudents.filter(st => {
             if (!st) return false;
             const carMatch = (carFilter === 'ALL' || !carFilter || (st.career || '').toLowerCase() === carFilter.toLowerCase());
             const grdMatch = (grdFilter === 'ALL' || !grdFilter || (st.grade || '').toLowerCase() === grdFilter.toLowerCase());
-            const secMatch = (secFilter === 'ALL' || !secFilter || (st.section || '').toLowerCase() === secFilter.toLowerCase());
+            const stSecLetter = EnccoCarnets.formatCleanSection(st.section || st.gradeCode || '');
+            const secMatch = (secFilter === 'ALL' || !secFilter || stSecLetter === EnccoCarnets.formatCleanSection(secFilter));
             if (!carMatch || !grdMatch || !secMatch) return false;
+            const hasPhoto = Boolean(st.photoUrl || st.photo);
+            if (photoFilter === 'WITH_PHOTO' && !hasPhoto) return false;
+            if (photoFilter === 'WITHOUT_PHOTO' && hasPhoto) return false;
             if (stSearchVal) {
                 const sName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(st, 'lastFirst') : (st.name || `${st.lastName || ''} ${st.firstName || ''}`)).toLowerCase();
                 const sCarne = (st.carne || '').toLowerCase();
@@ -1922,21 +2008,132 @@
             return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
         });
 
-        // Lista filtrada de docentes
-        const filteredTeachers = teachers.filter(t => {
-            if (!t) return false;
-            const rengMatch = (docRenglonFilter === 'ALL' || !docRenglonFilter || (t.renglon || '').toLowerCase() === docRenglonFilter.toLowerCase());
-            if (!rengMatch) return false;
-            if (docSearchVal) {
-                const sName = (t.name || '').toLowerCase();
-                const sTitle = (t.title || '').toLowerCase();
-                const sId = (t.id || '').toLowerCase();
-                if (!sName.includes(docSearchVal) && !sTitle.includes(docSearchVal) && !sId.includes(docSearchVal)) return false;
-            }
-            return true;
-        });
+        return filteredStudents;
+    }
 
-        const activeCount = isTeachers ? filteredTeachers.length : filteredStudents.length;
+    function updateCarnetsGridOnly() {
+        const gridEl = document.getElementById('carnetsGridContainer');
+        if (!gridEl) return;
+
+        const isTeachers = (EnccoCarnets.activeTab === 'teachers');
+        const list = getFilteredCarnetsEntities();
+        const totalFiltered = list.length;
+        const limit = EnccoCarnets.visibleLimit || 24;
+        const visibleList = list.slice(0, limit);
+        const remaining = Math.max(0, totalFiltered - visibleList.length);
+
+        const missingPhotosCount = list.filter(e => e && !(e.photoUrl || e.photo) && e.status !== 'Retirado' && e.status !== 'Inactivo').length;
+
+        const countLabel = document.getElementById('carnetsActiveCountLabel');
+        if (countLabel) {
+            countLabel.innerHTML = `Mostrando <strong>${visibleList.length}</strong> de <strong>${totalFiltered}</strong> ${isTeachers ? 'docentes' : 'estudiantes'} (${isTeachers ? 'Formato Vertical' : 'Formato Horizontal CR80'})`;
+        }
+
+        const photoBadge = document.getElementById('carnetsPhotoMissingBadge');
+        if (photoBadge) {
+            photoBadge.innerHTML = missingPhotosCount > 0
+                ? `<span style="font-size:0.74rem; font-weight:700; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; border-radius:999px; padding:2px 10px;"><i class="fa-solid fa-camera-retro"></i> ${missingPhotosCount} sin fotografía</span>`
+                : `<span style="font-size:0.74rem; font-weight:700; color:#15803d; background:#dcfce7; border:1px solid #86efac; border-radius:999px; padding:2px 10px;"><i class="fa-solid fa-circle-check"></i> 100% con fotografía</span>`;
+        }
+
+        const batchBtn = document.getElementById('carnetsBatchPrintBtn');
+        if (batchBtn) {
+            const printableCount = isTeachers
+                ? totalFiltered
+                : list.filter(st => st && st.status !== 'Retirado' && st.status !== 'Inactivo' && st.status !== 'Egresado').length;
+            batchBtn.innerHTML = `<i class="fa-solid fa-print"></i> Imprimir Lote (${printableCount} Carnés)`;
+        }
+
+        if (totalFiltered === 0) {
+            gridEl.innerHTML = `
+                <div style="grid-column:1 / -1; text-align:center; padding:50px 20px; background:#ffffff; border-radius:12px; border:1.5px dashed #cbd5e1; width:100%;">
+                    <i class="fa-solid fa-id-card-clip" style="font-size:2.4rem; color:#94a3b8; display:block; margin-bottom:10px;"></i>
+                    <h4 style="margin:0; color:#334155;">No se encontraron registros para los filtros seleccionados</h4>
+                    <p style="margin:4px 0 0 0; color:#64748b; font-size:0.82rem;">Modifique los términos de búsqueda o los selectores de filtro.</p>
+                </div>
+            `;
+            return;
+        }
+
+        gridEl.innerHTML = visibleList.map(entity => {
+            const isDoc = isTeachers;
+            const cardId = entity.id;
+            const isRetired = !isDoc && (entity.status === 'Retirado' || entity.status === 'Inactivo');
+            const cardHtml = isDoc
+                ? EnccoCarnets.renderTeacherCardFrontHtml(entity)
+                : EnccoCarnets.renderStudentCardFrontHtml(entity);
+
+            return `
+                <div class="carnet-preview-wrapper" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    <div id="carnetCardBox_${cardId}">
+                        ${cardHtml}
+                    </div>
+                    ${isRetired ? `
+                        <div style="font-size:0.70rem; font-weight:800; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:2px 8px; border-radius:4px;">
+                            <i class="fa-solid fa-user-slash"></i> ESTUDIANTE RETIRADO
+                        </div>
+                    ` : ''}
+                    
+                    <!-- BOTONES DE ACCIÓN INDIVIDUAL -->
+                    <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px; margin-top:2px;">
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="EnccoCarnets.toggleCardSide('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Alternar entre Frente y Reverso">
+                            <i class="fa-solid fa-arrows-rotate"></i> Voltear
+                        </button>
+                        ${isRetired ? `
+                            <button type="button" class="btn btn-xs btn-outline-danger" disabled style="font-size:0.70rem; font-weight:700; padding:2px 7px; opacity:0.65; cursor:not-allowed;" title="Estudiante Retirado - No se emite carné institucional">
+                                <i class="fa-solid fa-ban"></i> Retirado
+                            </button>
+                        ` : `
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Imprimir carné individual">
+                                <i class="fa-solid fa-print"></i> Imprimir
+                            </button>
+                        `}
+                        <button type="button" class="btn btn-xs btn-outline-warning" onclick="EnccoCarnets.openPhotoModal('${cardId}', '${isDoc ? 'teacher' : 'student'}', 'camera')" style="font-size:0.70rem; font-weight:700; padding:2px 7px; color:#b45309; border-color:#f59e0b;" title="Tomar foto con cámara web en vivo">
+                            <i class="fa-solid fa-camera"></i> Cámara
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-success" onclick="EnccoCarnets.promptDirectFileUpload('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Cargar fotografía desde archivo local">
+                            <i class="fa-solid fa-upload"></i> Archivo
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('') + (remaining > 0 ? `
+            <div style="grid-column:1 / -1; text-align:center; padding:16px 0;">
+                <button type="button" class="btn btn-outline-primary" onclick="EnccoCarnets.loadMoreCards()" style="font-weight:800; padding:8px 22px; border-radius:999px;">
+                    <i class="fa-solid fa-angles-down"></i> Mostrar más carnés (${remaining} restantes)
+                </button>
+            </div>
+        ` : '');
+    }
+
+    function renderCarnetsView() {
+        if (typeof document === 'undefined') return;
+        const container = document.getElementById('view-carnets');
+        if (!container) return;
+
+        const isTeachers = (EnccoCarnets.activeTab === 'teachers');
+        const cycle = EnccoCarnets.getActiveCycle();
+        const allStudents = EnccoCarnets.getCycleStudentsList();
+        const teachers = EnccoCarnets.getTeachersList();
+
+        // Conservar valores previos de filtros si existen
+        const carFilter = document.getElementById('carnetsCareerFilter')?.value || 'ALL';
+        const grdFilter = document.getElementById('carnetsGradeFilter')?.value || 'ALL';
+        const secFilter = document.getElementById('carnetsSectionFilter')?.value || 'ALL';
+        const photoFilter = document.getElementById('carnetsPhotoFilter')?.value || 'ALL';
+        const stSearchVal = (document.getElementById('carnetsSearchInput')?.value || '').trim();
+
+        const docRenglonFilter = document.getElementById('carnetsTeacherRenglonFilter')?.value || 'ALL';
+        const docSearchVal = (document.getElementById('carnetsTeacherSearchInput')?.value || '').trim();
+
+        // Opciones únicas para estudiantes ordenadas pedagógicamente (con letras de sección limpias sin duplicar "Sección")
+        const careers = [...new Set(allStudents.map(s => s.career).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const grades = [...new Set(allStudents.map(s => s.grade).filter(Boolean))].sort((a, b) => {
+            const wa = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(a) : 99;
+            const wb = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(b) : 99;
+            return wa - wb || a.localeCompare(b);
+        });
+        const sections = [...new Set(allStudents.map(s => EnccoCarnets.formatCleanSection(s.section || s.gradeCode)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
         container.innerHTML = `
             <div class="carnets-container" style="padding:10px 0;">
@@ -1947,64 +2144,70 @@
                         <h2 style="margin:0; font-size:1.45rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:10px;">
                             <i class="fa-solid fa-id-card" style="color:var(--brand-green);"></i>
                             Emisión Oficial de Credenciales y Carnés Institucionales
+                            <span class="badge" style="background:linear-gradient(135deg,#0b2c66,#006837); color:#f3d87d; font-size:0.74rem; padding:4px 10px; border-radius:999px; font-weight:800;">Ciclo ${cycle}</span>
                         </h2>
                         <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">
-                            Modelos oficiales ENCCO 1970: Carnet Docente (Vertical) y Carnet Estudiantil (Horizontal) con Código de Barras y QR.
+                            Modelos oficiales ENCCO 1970 (CR80 Premium): Carnet Estudiantil (Horizontal) y Carnet Docente (Vertical) con Código de Barras y QR.
                         </p>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button type="button" class="btn btn-primary" onclick="EnccoCarnets.printFilteredBatch()" style="background:#15803d; font-weight:800; box-shadow:0 3px 8px rgba(21,128,61,0.3);">
-                            <i class="fa-solid fa-print"></i> Imprimir Lote (${activeCount} Carnés)
+                        <button type="button" id="carnetsBatchPrintBtn" class="btn btn-primary" onclick="EnccoCarnets.printFilteredBatch()" style="background:linear-gradient(135deg,#0b2c66,#006837); border:none; font-weight:800; box-shadow:0 3px 10px rgba(11,44,102,0.28);">
+                            <i class="fa-solid fa-print"></i> Imprimir Lote
                         </button>
                     </div>
                 </div>
 
                 <!-- SELECTOR DE PESTAÑAS: ESTUDIANTES (HORIZONTAL) VS DOCENTES (VERTICAL) -->
                 <div style="display:flex; gap:8px; border-bottom:2.5px solid #e2e8f0; margin-bottom:16px;">
-                    <button type="button" class="btn btn-sm ${!isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.switchTab('students')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${!isTeachers ? 'background:#0f5127; border-color:#0f5127; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
+                    <button type="button" class="btn btn-sm ${!isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('students')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${!isTeachers ? 'background:#006837; border-color:#006837; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
                         <i class="fa-solid fa-user-graduate"></i> Carnés Estudiantiles (Horizontal)
-                        <span class="badge" style="background:${!isTeachers ? '#ffffff' : '#cbd5e1'}; color:${!isTeachers ? '#0f5127' : '#334155'}; margin-left:4px;">${allStudents.length}</span>
+                        <span class="badge" style="background:${!isTeachers ? '#ffffff' : '#cbd5e1'}; color:${!isTeachers ? '#006837' : '#334155'}; margin-left:4px;">${allStudents.length}</span>
                     </button>
-                    <button type="button" class="btn btn-sm ${isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.switchTab('teachers')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${isTeachers ? 'background:#0d47a1; border-color:#0d47a1; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
+                    <button type="button" class="btn btn-sm ${isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('teachers')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${isTeachers ? 'background:#0b2c66; border-color:#0b2c66; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
                         <i class="fa-solid fa-chalkboard-user"></i> Carnés Docentes (Vertical)
-                        <span class="badge" style="background:${isTeachers ? '#ffffff' : '#cbd5e1'}; color:${isTeachers ? '#0d47a1' : '#334155'}; margin-left:4px;">${teachers.length}</span>
+                        <span class="badge" style="background:${isTeachers ? '#ffffff' : '#cbd5e1'}; color:${isTeachers ? '#0b2c66' : '#334155'}; margin-left:4px;">${teachers.length}</span>
                     </button>
                 </div>
 
-                <!-- BARRA DE FILTROS DEPENDIENDO DE LA PESTAÑA ACTIVA -->
+                <!-- BARRA DE FILTROS PERSISTENTE (SIN PÉRDIDA DE FOCO AL ESCRIBIR) -->
                 ${!isTeachers ? `
-                    <!-- FILTROS PARA ESTUDIANTES -->
-                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:18px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-                        <div style="flex:1; min-width:220px;">
-                            <input type="text" id="carnetsSearchInput" class="form-control" placeholder="Buscar por alumno, carné o código personal..." value="${stSearchVal}" oninput="renderCarnetsView()" style="font-size:0.84rem;">
+                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="flex:1; min-width:210px;">
+                            <input type="text" id="carnetsSearchInput" class="form-control" placeholder="Buscar por alumno, carné o código personal..." value="${stSearchVal}" oninput="EnccoCarnets.onSearchInput()" style="font-size:0.84rem;">
                         </div>
-                        <div style="min-width:140px;">
-                            <select id="carnetsCareerFilter" class="form-control" onchange="renderCarnetsView()" style="font-size:0.84rem; font-weight:600;">
+                        <div style="min-width:135px;">
+                            <select id="carnetsCareerFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
                                 <option value="ALL">-- Todas las Carreras --</option>
                                 ${careers.map(c => `<option value="${c}" ${carFilter === c ? 'selected' : ''}>${c}</option>`).join('')}
                             </select>
                         </div>
                         <div style="min-width:130px;">
-                            <select id="carnetsGradeFilter" class="form-control" onchange="renderCarnetsView()" style="font-size:0.84rem; font-weight:600;">
+                            <select id="carnetsGradeFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
                                 <option value="ALL">-- Todos los Grados --</option>
                                 ${grades.map(g => `<option value="${g}" ${grdFilter === g ? 'selected' : ''}>${g}</option>`).join('')}
                             </select>
                         </div>
-                        <div style="min-width:110px;">
-                            <select id="carnetsSectionFilter" class="form-control" onchange="renderCarnetsView()" style="font-size:0.84rem; font-weight:600;">
+                        <div style="min-width:115px;">
+                            <select id="carnetsSectionFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
                                 <option value="ALL">-- Sección --</option>
-                                ${sections.map(s => `<option value="${s}" ${secFilter === s ? 'selected' : ''}>Sección "${s}"</option>`).join('')}
+                                ${sections.map(s => `<option value="${s}" ${secFilter === s ? 'selected' : ''}>Sección ${s}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="min-width:135px;">
+                            <select id="carnetsPhotoFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL" ${photoFilter === 'ALL' ? 'selected' : ''}>📷 Todas las Fotos</option>
+                                <option value="WITH_PHOTO" ${photoFilter === 'WITH_PHOTO' ? 'selected' : ''}>✅ Con Fotografía</option>
+                                <option value="WITHOUT_PHOTO" ${photoFilter === 'WITHOUT_PHOTO' ? 'selected' : ''}>⚠️ Sin Fotografía</option>
                             </select>
                         </div>
                     </div>
                 ` : `
-                    <!-- FILTROS PARA DOCENTES -->
-                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:18px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
                         <div style="flex:1; min-width:240px;">
-                            <input type="text" id="carnetsTeacherSearchInput" class="form-control" placeholder="Buscar por nombre de catedrático, título o ID..." value="${docSearchVal}" oninput="renderCarnetsView()" style="font-size:0.84rem;">
+                            <input type="text" id="carnetsTeacherSearchInput" class="form-control" placeholder="Buscar por nombre de catedrático, título o ID..." value="${docSearchVal}" oninput="EnccoCarnets.onSearchInput()" style="font-size:0.84rem;">
                         </div>
                         <div style="min-width:160px;">
-                            <select id="carnetsTeacherRenglonFilter" class="form-control" onchange="renderCarnetsView()" style="font-size:0.84rem; font-weight:600;">
+                            <select id="carnetsTeacherRenglonFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
                                 <option value="ALL">-- Todos los Renglones --</option>
                                 <option value="011" ${docRenglonFilter === '011' ? 'selected' : ''}>Renglón 011 (Presupuestado)</option>
                                 <option value="021" ${docRenglonFilter === '021' ? 'selected' : ''}>Renglón 021 (Contrato)</option>
@@ -2013,71 +2216,24 @@
                     </div>
                 `}
 
-                <!-- CONTADOR Y EXPLICACIÓN -->
+                <!-- CONTADOR Y ESTADO DE FOTOGRAFÍAS -->
                 <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <span style="font-size:0.86rem; color:#475569; font-weight:700;">
-                        Mostrando <strong>${activeCount}</strong> ${isTeachers ? 'docentes' : 'estudiantes'} (${isTeachers ? 'Formato Vertical' : 'Formato Horizontal'})
-                    </span>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span id="carnetsActiveCountLabel" style="font-size:0.86rem; color:#475569; font-weight:700;"></span>
+                        <span id="carnetsPhotoMissingBadge"></span>
+                    </div>
                     <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
-                        <i class="fa-solid fa-circle-info"></i> Código de Barras (para pistola) y Código QR (para cámara de celular) integrados.
+                        <i class="fa-solid fa-circle-info"></i> Código de Barras (pistola) y QR dinámico (celular) integrados.
                     </span>
                 </div>
 
                 <!-- GRILLA DE PREVISUALIZACIÓN DE CARNÉS -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(${isTeachers ? '230px' : '340px'}, 1fr)); gap:18px; justify-items:center;">
-                    ${activeCount === 0 ? `
-                        <div style="grid-column:1 / -1; text-align:center; padding:50px 20px; background:#ffffff; border-radius:12px; border:1.5px dashed #cbd5e1; width:100%;">
-                            <i class="fa-solid fa-id-card-clip" style="font-size:2.4rem; color:#94a3b8; display:block; margin-bottom:10px;"></i>
-                            <h4 style="margin:0; color:#334155;">No se encontraron registros para los filtros seleccionados</h4>
-                            <p style="margin:4px 0 0 0; color:#64748b; font-size:0.82rem;">Modifique los términos de búsqueda o los selectores de filtro.</p>
-                        </div>
-                    ` : (isTeachers ? filteredTeachers : filteredStudents).map(entity => {
-                        const isDoc = isTeachers;
-                        const cardId = entity.id;
-                        const isRetired = !isDoc && (entity.status === 'Retirado' || entity.status === 'Inactivo');
-                        const cardHtml = isDoc 
-                            ? EnccoCarnets.renderTeacherCardFrontHtml(entity) 
-                            : EnccoCarnets.renderStudentCardFrontHtml(entity);
-
-                        return `
-                            <div class="carnet-preview-wrapper" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                                <div id="carnetCardBox_${cardId}">
-                                    ${cardHtml}
-                                </div>
-                                ${isRetired ? `
-                                    <div style="font-size:0.70rem; font-weight:800; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:2px 8px; border-radius:4px;">
-                                        <i class="fa-solid fa-user-slash"></i> ESTUDIANTE RETIRADO
-                                    </div>
-                                ` : ''}
-                                
-                                <!-- BOTONES DE ACCIÓN INDIVIDUAL -->
-                                <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px; margin-top:2px;">
-                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="EnccoCarnets.toggleCardSide('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Alternar entre Frente y Reverso">
-                                        <i class="fa-solid fa-arrows-rotate"></i> Voltear
-                                    </button>
-                                    ${isRetired ? `
-                                        <button type="button" class="btn btn-xs btn-outline-danger" disabled style="font-size:0.70rem; font-weight:700; padding:2px 7px; opacity:0.65; cursor:not-allowed;" title="Estudiante Retirado - No se emite carné institucional">
-                                            <i class="fa-solid fa-ban"></i> Retirado
-                                        </button>
-                                    ` : `
-                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Imprimir carné individual">
-                                            <i class="fa-solid fa-print"></i> Imprimir
-                                        </button>
-                                    `}
-                                    <button type="button" class="btn btn-xs btn-outline-warning" onclick="EnccoCarnets.openPhotoModal('${cardId}', '${isDoc ? 'teacher' : 'student'}', 'camera')" style="font-size:0.70rem; font-weight:700; padding:2px 7px; color:#b45309; border-color:#f59e0b;" title="Tomar foto con cámara web en vivo">
-                                        <i class="fa-solid fa-camera"></i> Cámara
-                                    </button>
-                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="EnccoCarnets.promptDirectFileUpload('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Cargar fotografía desde archivo local">
-                                        <i class="fa-solid fa-upload"></i> Archivo
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
+                <div id="carnetsGridContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(${isTeachers ? '230px' : '340px'}, 1fr)); gap:18px; justify-items:center;"></div>
 
             </div>
         `;
+
+        updateCarnetsGridOnly();
     }
 
     // Exponer EnccoCarnets, helper de fotos y renderCarnetsView globalmente
