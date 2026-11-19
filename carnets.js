@@ -1705,8 +1705,7 @@
                 title = `Carné Estudiantil - ${(typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''))}`;
             }
 
-            const printWin = window.open('', '_blank', 'width=850,height=650');
-            printWin.document.write(`
+            const singlePrintHtml = `
                 <html>
                     <head>
                         <title>${title}</title>
@@ -1767,8 +1766,13 @@
                         </script>
                     </body>
                 </html>
-            `);
-            printWin.document.close();
+            `;
+            if (typeof window.enccoSafePrintHtml === 'function') {
+                window.enccoSafePrintHtml(singlePrintHtml, 'width=850,height=650', true);
+            } else {
+                const printWin = window.open('', '_blank', 'width=850,height=650');
+                if (printWin) { printWin.document.write(singlePrintHtml); printWin.document.close(); }
+            }
         },
 
         /**
@@ -1867,8 +1871,7 @@
                 `).join('');
             }
 
-            const printWin = window.open('', '_blank', 'width=1050,height=800');
-            printWin.document.write(`
+            const batchPrintHtml = `
                 <html>
                     <head>
                         <title>${title}</title>
@@ -1941,15 +1944,20 @@
                             ${cardsHtml}
                         </div>
                         <div style="text-align:center; margin-top:10px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
-                            Sistema de Emisión de Carnés Institucionales ENCCO • © 2026 <strong>Nehemias Salguero</strong>, Jutiapa, Guatemala. Todos los derechos reservados.
+                            Sistema de Emisión de Carnés Institucionales ENCCO • © ${new Date().getFullYear()} <strong>Nehemias Salguero</strong>, Jutiapa, Guatemala. Todos los derechos reservados.
                         </div>
                         <script>
                             window.onload = function() { window.print(); };
                         </script>
                     </body>
                 </html>
-            `);
-            printWin.document.close();
+            `;
+            if (typeof window.enccoSafePrintHtml === 'function') {
+                window.enccoSafePrintHtml(batchPrintHtml, 'width=1050,height=800', true);
+            } else {
+                const printWin = window.open('', '_blank', 'width=1050,height=800');
+                if (printWin) { printWin.document.write(batchPrintHtml); printWin.document.close(); }
+            }
         }
     };
 

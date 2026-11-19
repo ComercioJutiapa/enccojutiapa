@@ -2897,7 +2897,7 @@
                 <meta charset="utf-8">
                 <title>Control_Pruebas_${dayObj.date}_${cycleYear}</title>
                 <style>
-                    @page { size: legal landscape; margin: 12mm; }
+                    @page { size: 8.5in 13in landscape; margin: 10mm; }
                     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #000; margin: 0; padding: 0; }
                     .header-box { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
                     .header-box h2 { margin: 0; font-size: 14pt; text-transform: uppercase; }

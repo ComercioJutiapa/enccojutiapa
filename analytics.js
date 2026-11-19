@@ -616,12 +616,13 @@
     EnccoAnalytics.printCitationElement = function() {
         const area = document.getElementById('citationPrintableArea');
         if (!area) return;
-        const printWin = window.open('', '_blank', 'width=800,height=600');
-        printWin.document.write(`
+        const citHtml = `
             <html>
                 <head>
                     <title>Citación Oficial ENCCO Jutiapa</title>
                     <style>
+                        @page { size: letter portrait; margin: 12mm; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; }
                         strong { color: #000; }
                     </style>
@@ -633,8 +634,13 @@
                     </script>
                 </body>
             </html>
-        `);
-        printWin.document.close();
+        `;
+        if (typeof window.enccoSafePrintHtml === 'function') {
+            window.enccoSafePrintHtml(citHtml, 'width=800,height=600', true);
+        } else {
+            const printWin = window.open('', '_blank', 'width=800,height=600');
+            if (printWin) { printWin.document.write(citHtml); printWin.document.close(); }
+        }
     };
 
     EnccoAnalytics.exportRiskListToExcel = function() {
@@ -671,12 +677,13 @@
 
     EnccoAnalytics.printExecutiveRiskReport = function() {
         const data = EnccoAnalytics.getAggregatedAnalytics();
-        const printWin = window.open('', '_blank', 'width=950,height=750');
-        printWin.document.write(`
+        const riskPrintHtml = `
             <html>
                 <head>
                     <title>Informe Ejecutivo de Riesgo y Deserción - ENCCO</title>
                     <style>
+                        @page { size: letter portrait; margin: 12mm; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; color: #1e293b; }
                         h2, h3, h4 { margin: 0; }
                         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
@@ -737,8 +744,13 @@
                     </script>
                 </body>
             </html>
-        `);
-        printWin.document.close();
+        `;
+        if (typeof window.enccoSafePrintHtml === 'function') {
+            window.enccoSafePrintHtml(riskPrintHtml, 'width=950,height=750', true);
+        } else {
+            const printWin = window.open('', '_blank', 'width=950,height=750');
+            if (printWin) { printWin.document.write(riskPrintHtml); printWin.document.close(); }
+        }
     };
 
     EnccoAnalytics.triggerRefresh = function() {

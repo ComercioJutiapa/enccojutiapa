@@ -79,11 +79,13 @@ mockWindow.STATE.config = {};
 assert.strictEqual(fn(), 1, "Debe devolver 1 como fallback seguro");
 console.log("✅ 3. Motor canónico getEffectiveActiveBimestre() validado en todos sus niveles jerárquicos.");
 
-// 4. Verificar que se eliminó el recorte de nombres con ellipsis y que la Nómina en Blanco muestra nombre completo en 1 línea y tema verde fiel en impresión
+// 4. Verificar que se eliminó el recorte de nombres con ellipsis y que la Nómina en Blanco muestra nombre completo en 1 línea y tema azul institucional fiel en impresión
 assert(!appJsContent.includes('white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px'), "Aún existe text-overflow:ellipsis con max-width:215px en app.js");
-assert(appJsContent.includes('class="roster-name-cell"') && appJsContent.includes('roster-green-head-1'), "Falta clase roster-name-cell o encabezado verde en Nómina en Blanco 10 Casillas");
-assert(!appJsContent.includes('th { background-color: #0369a1 !important;'), "executeNativeDocumentPrint aún fuerza th azul con !important sobrescribiendo documentos verdes");
-console.log("✅ 4. Fidelidad de impresión verde (sin override azul !important) y nombre completo en 1 línea confirmados.");
+assert(appJsContent.includes('class="roster-name-cell"') && appJsContent.includes('roster-blue-head-1'), "Falta clase roster-name-cell o encabezado azul institucional en Nómina en Blanco 10 Casillas");
+assert(!appJsContent.includes('th { background-color: #0369a1 !important;'), "executeNativeDocumentPrint aún fuerza th azul con !important sobrescribiendo documentos");
+assert(appJsContent.includes('function enccoSafePrintHtml('), "Falta motor universal anti-bloqueo de pop-ups enccoSafePrintHtml");
+assert(!appJsContent.includes('http://localhost:8000/login.html'), "Aún existe URL localhost:8000 quemada en tarjetas de credenciales");
+console.log("✅ 4. Fidelidad de impresión azul institucional, nombre completo en 1 línea, anti-bloqueo pop-ups y URL dinámica confirmados.");
 
 // 5. Verificar ancho compacto de casillas en printStudentsBlankRoster10Casillas (27px para garantizar nombre completo en 1 línea en Hoja Oficio)
 assert(appJsContent.includes('width:27px; padding:1px; text-align:center;'), "Las casillas de 10 casillas no están optimizadas a 27px con padding compacto");

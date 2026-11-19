@@ -19214,33 +19214,36 @@ function printStudentExpedienteRecord(studentId) {
     const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(student) : { grade: student.grade || '', section: student.section || '' };
     const dateFormatted = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
 
+    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || student.cycle || STATE.activeCycle || '2026').trim();
+    const attPctObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
+        ? window.getStudentAttendancePercentageToDate(student.id, effectiveCycle)
+        : null;
+    const attPctText = (attPctObj && attPctObj.percentage !== null && typeof attPctObj.percentage !== 'undefined')
+        ? `${attPctObj.percentage}% (${attPctObj.attendedDays}/${attPctObj.totalRecordedDays} días)`
+        : 'Sin registros a la fecha';
+
     const statusBadgeText = metrics.status === 'completo' ? 'EXPEDIENTE COMPLETO (6/6)' : `EXPEDIENTE INCOMPLETO (${metrics.deliveredCount}/${metrics.totalRequired})`;
     const statusBadgeColor = metrics.status === 'completo' ? '#166534' : '#92400e';
     const statusBadgeBg = metrics.status === 'completo' ? '#dcfce7' : '#fef3c7';
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        alert("Por favor permita las ventanas emergentes para imprimir la constancia de expediente.");
-        return;
-    }
-
-    printWindow.document.write(`
+    const expPrintHtml = `
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <title>Control de Expediente - ${stName}</title>
+        <title>Control de Expediente - ${escapeHtml(stName)}</title>
         <style>
             @page { size: letter portrait; margin: 12mm 15mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 10px; }
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border-bottom: 2px solid #0f172a; padding-bottom: 8px; }
-            .header-title { font-size: 13.5px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin: 0; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border-bottom: 2px solid #0369a1; padding-bottom: 8px; }
+            .header-title { font-size: 13.5px; font-weight: 800; text-transform: uppercase; color: #0f2b5c; margin: 0; }
             .header-sub { font-size: 10.5px; font-weight: 600; color: #475569; margin: 2px 0 0 0; }
-            .info-box { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
+            .info-box { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0369a1; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
             .info-item { margin-bottom: 3px; font-size: 10.5px; }
-            .info-label { font-weight: 800; color: #334155; }
+            .info-label { font-weight: 800; color: #0f2b5c; }
             table.docs-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 10.5px; }
-            table.docs-table th { background: #1e293b; color: #ffffff; font-weight: 800; text-transform: uppercase; font-size: 9.5px; padding: 6px 8px; border: 1px solid #0f172a; }
+            table.docs-table th { background: #0369a1; color: #ffffff; font-weight: 800; text-transform: uppercase; font-size: 9.5px; padding: 6px 8px; border: 1px solid #0f2b5c; }
             table.docs-table td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
             table.docs-table tr:nth-child(even) { background: #f8fafc; }
             .badge-entregado { background: #dcfce7; color: #166534; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 9.5px; }
@@ -19256,12 +19259,12 @@ function printStudentExpedienteRecord(studentId) {
         <table class="header-table">
             <tr>
                 <td style="width:75px; vertical-align:middle;">
-                    <img src="https://ui-avatars.com/api/?name=ENCCO&background=15803d&color=fff&size=60" alt="Logo" style="width:60px; height:60px; border-radius:6px;">
+                    <img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" alt="Logo" style="width:60px; height:60px; object-fit:contain; border-radius:6px;">
                 </td>
                 <td style="vertical-align:middle; text-align:center;">
                     <div class="header-title">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                     <div class="header-sub">JUTIAPA, JUTIAPA &bull; CÓDIGO MINEDUC: 22-01-0014-46</div>
-                    <div style="font-size:11px; font-weight:800; color:#0284c7; margin-top:3px;">CONTROL OFICIAL DE EXPEDIENTE DE ADMISIÓN Y DOCUMENTOS</div>
+                    <div style="font-size:11px; font-weight:800; color:#0369a1; margin-top:3px;">CONTROL OFICIAL DE EXPEDIENTE DE ADMISIÓN Y DOCUMENTOS</div>
                 </td>
                 <td style="width:110px; text-align:right; vertical-align:middle;">
                     <span style="background:${statusBadgeBg}; color:${statusBadgeColor}; border:1px solid ${statusBadgeColor}; font-weight:800; font-size:9px; padding:4px 8px; border-radius:4px; display:inline-block; text-align:center;">
@@ -19273,14 +19276,15 @@ function printStudentExpedienteRecord(studentId) {
 
         <div class="info-box">
             <div>
-                <div class="info-item"><span class="info-label">Estudiante:</span> ${stName}</div>
-                <div class="info-item"><span class="info-label">Carné:</span> ${student.carne || 'N/A'} &bull; <span class="info-label">CUI / DPI:</span> ${student.cui || 'N/A'} &bull; <span class="info-label">Cód. Personal:</span> ${student.personalCode || 'N/A'}</div>
-                <div class="info-item"><span class="info-label">Grado y Sección:</span> ${assign.grade} — Sección "${assign.section}" &bull; <span class="info-label">Carrera:</span> ${student.career || 'Perito Contador'}</div>
+                <div class="info-item"><span class="info-label">Estudiante:</span> ${escapeHtml(stName)}</div>
+                <div class="info-item"><span class="info-label">Carné:</span> ${escapeHtml(student.carne || 'N/A')} &bull; <span class="info-label">CUI / DPI:</span> ${escapeHtml(student.cui || 'N/A')} &bull; <span class="info-label">Cód. Personal:</span> ${escapeHtml(student.personalCode || 'N/A')}</div>
+                <div class="info-item"><span class="info-label">Grado y Sección:</span> ${escapeHtml(assign.grade)} — Sección "${escapeHtml(assign.section)}" &bull; <span class="info-label">Carrera:</span> ${escapeHtml(student.career || 'Perito Contador')}</div>
             </div>
             <div>
-                <div class="info-item"><span class="info-label">Ciclo Lectivo:</span> ${student.cycle || STATE.activeCycle || '2026'}</div>
+                <div class="info-item"><span class="info-label">Ciclo Lectivo:</span> ${escapeHtml(effectiveCycle)}</div>
                 <div class="info-item"><span class="info-label">Fecha Emisión:</span> ${dateFormatted}</div>
-                <div class="info-item"><span class="info-label">Estado Alumno:</span> ${student.status || 'Activo'}</div>
+                <div class="info-item"><span class="info-label">Estado Alumno:</span> ${escapeHtml(student.status || 'Activo')}</div>
+                <div class="info-item"><span class="info-label">Asistencia a la Fecha:</span> <strong style="color:#0369a1;">${escapeHtml(attPctText)}</strong></div>
             </div>
         </div>
 
@@ -19356,13 +19360,9 @@ function printStudentExpedienteRecord(studentId) {
         </div>
     </body>
     </html>
-    `);
+    `;
 
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-        printWindow.print();
-    }, 450);
+    enccoSafePrintHtml(expPrintHtml, 'width=950,height=800', true);
 }
 
 // Attach to window for global inline accessibility
@@ -20622,13 +20622,15 @@ function printStudentFullFicha(studentId) {
             </tr>
         `).join('');
 
-    const printWin = window.open('', '_blank', 'width=950,height=800');
-    if (!printWin) {
-        if (typeof showToast === 'function') showToast('Por favor habilite las ventanas emergentes para imprimir la Ficha Integral.', 'warning');
-        return;
-    }
+    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const attPctToDate = (typeof window.getStudentAttendancePercentageToDate === 'function')
+        ? window.getStudentAttendancePercentageToDate(student.id, effectiveCycle)
+        : null;
+    const displayAttPct = (attPctToDate && attPctToDate.percentage !== null && typeof attPctToDate.percentage !== 'undefined')
+        ? `${attPctToDate.percentage}%`
+        : `${fullRecord.attendancePercent}%`;
 
-    printWin.document.write(`
+    const fullFichaHtml = `
         <!DOCTYPE html>
         <html lang="es">
         <head>
@@ -20636,23 +20638,24 @@ function printStudentFullFicha(studentId) {
             <title>Ficha Integral - ${escapeHtml(fullName)}</title>
             <style>
                 @page { size: letter portrait; margin: 12mm; }
+                * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.4; margin: 0; padding: 0; }
-                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0369a1; padding-bottom: 8px; margin-bottom: 12px; }
                 .header-center { text-align: center; flex: 1; }
-                .header-center h1 { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; color: #0f172a; }
+                .header-center h1 { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; color: #0f2b5c; }
                 .header-center h2 { margin: 2px 0; font-size: 12px; font-weight: 800; color: #0369a1; }
                 .header-center p { margin: 0; font-size: 10px; color: #475569; }
-                .section-title { background: #0f172a; color: #fff; font-weight: 800; font-size: 11px; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; margin: 12px 0 6px 0; letter-spacing: 0.4px; }
-                .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; }
+                .section-title { background: #0369a1; color: #fff; font-weight: 800; font-size: 11px; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; margin: 12px 0 6px 0; letter-spacing: 0.4px; }
+                .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid #0369a1; border-radius: 6px; padding: 8px 12px; }
                 .info-item { font-size: 10.5px; }
-                .info-item strong { color: #334155; }
+                .info-item strong { color: #0f2b5c; }
                 .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 8px 0; }
                 .kpi-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; text-align: center; background: #fff; }
                 .kpi-box .lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #475569; }
                 .kpi-box .val { font-size: 15px; font-weight: 900; margin-top: 2px; }
                 table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
                 th, td { border: 1px solid #cbd5e1; padding: 5px 7px; text-align: left; vertical-align: top; }
-                th { background: #f1f5f9; font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 9.5px; }
+                th { background: #e0f2fe; font-weight: 800; color: #0f2b5c; text-transform: uppercase; font-size: 9.5px; }
                 .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-top: 38px; text-align: center; font-size: 10px; }
                 .sig-line { border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700; }
             </style>
@@ -20662,11 +20665,11 @@ function printStudentFullFicha(studentId) {
                 <img src="logo.png" alt="Logo" style="width:58px; height:58px; object-fit:contain;" onerror="this.style.display='none'">
                 <div class="header-center">
                     <h1>${escapeHtml(schoolName)}</h1>
-                    <p>${escapeHtml(slogan)} &bull; Ciclo Escolar ${escapeHtml(String(STATE.activeCycle || '2026'))}</p>
+                    <p>${escapeHtml(slogan)} &bull; Ciclo Escolar ${escapeHtml(effectiveCycle)}</p>
                     <h2>FICHA INTEGRAL DE DATOS PERSONALES, ASISTENCIA, FALTAS Y CONDUCTA</h2>
                     <p>Fecha de emisión: ${escapeHtml(printDate)}</p>
                 </div>
-                <div style="text-align:right; font-size:10px; font-weight:800; border:1px solid #0f172a; padding:6px 10px; border-radius:6px;">
+                <div style="text-align:right; font-size:10px; font-weight:800; border:1px solid #0369a1; padding:6px 10px; border-radius:6px;">
                     CARNÉ<br><span style="font-size:13px; color:#0369a1;">${escapeHtml(student.carne || student.personalCode || student.id)}</span>
                 </div>
             </div>
@@ -20686,7 +20689,7 @@ function printStudentFullFicha(studentId) {
 
             <div class="section-title">2. Consolidado General de Asistencia, Inasistencias y Disciplina</div>
             <div class="kpi-row" style="grid-template-columns: repeat(7, 1fr);">
-                <div class="kpi-box"><div class="lbl">% Asistencia</div><div class="val" style="color:#0369a1;">${fullRecord.attendancePercent}%</div></div>
+                <div class="kpi-box"><div class="lbl">% Asistencia</div><div class="val" style="color:#0369a1;">${displayAttPct}</div></div>
                 <div class="kpi-box"><div class="lbl">Inasistencias (A)</div><div class="val" style="color:#dc2626;">${fullRecord.totalAbsences}</div></div>
                 <div class="kpi-box"><div class="lbl">🔒 "A" Blindadas</div><div class="val" style="color:#be123c;">${fullRecord.lockedAbsencesCount}</div></div>
                 <div class="kpi-box" style="background:#faf5ff; border-color:#d8b4fe;"><div class="lbl" style="color:#6b21a8;">⚖️ Suspensión (S)</div><div class="val" style="color:#7c3aed;">${fullRecord.suspensionCount || 0}</div></div>
@@ -20748,8 +20751,8 @@ function printStudentFullFicha(studentId) {
             </script>
         </body>
         </html>
-    `);
-    printWin.document.close();
+    `;
+    enccoSafePrintHtml(fullFichaHtml, 'width=950,height=800', true);
 }
 window.printStudentFullFicha = printStudentFullFicha;
 
@@ -23698,7 +23701,7 @@ function downloadFormattedExcelWorkbook(htmlContent, filename) {
             <![endif]-->
             <style>
                 @page {
-                    size: 8.5in 14in landscape;
+                    size: 8.5in 13in landscape;
                     margin: 0.25in;
                     mso-header-data: "";
                     mso-footer-data: "";
@@ -24914,20 +24917,20 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             .roster-oficio-table td {
                 box-sizing: border-box;
             }
-            .roster-oficio-table thead tr.roster-green-head-1 th {
-                background-color: #15803d !important;
+            .roster-oficio-table thead tr.roster-blue-head-1 th {
+                background-color: #0369a1 !important;
                 color: #ffffff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
-            .roster-oficio-table thead tr.roster-green-head-1 th.roster-green-group {
-                background-color: #166534 !important;
+            .roster-oficio-table thead tr.roster-blue-head-1 th.roster-blue-group {
+                background-color: #0f2b5c !important;
             }
-            .roster-oficio-table thead tr.roster-green-head-1 th.roster-green-total {
-                background-color: #14532d !important;
+            .roster-oficio-table thead tr.roster-blue-head-1 th.roster-blue-total {
+                background-color: #0c4a6e !important;
             }
-            .roster-oficio-table thead tr.roster-green-head-2 th {
-                background-color: #16a34a !important;
+            .roster-oficio-table thead tr.roster-blue-head-2 th {
+                background-color: #0284c7 !important;
                 color: #ffffff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -24950,33 +24953,33 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             }
         </style>
         <div class="roster-oficio-container" style="font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;">
-            <div style="border:2px solid #15803d; border-radius:6px; overflow:hidden; margin-bottom:8px;">
-                <!-- ENCABEZADO INSTITUCIONAL -->
-                <div style="background:linear-gradient(135deg, #064e3b 0%, #15803d 60%, #16a34a 100%); color:#ffffff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:8px;">
+                <!-- ENCABEZADO INSTITUCIONAL (AZUL INSTITUCIONAL ENCCO) -->
+                <div style="background:linear-gradient(135deg, #0f2b5c 0%, #0369a1 60%, #0284c7 100%); color:#ffffff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:38px; width:auto; object-fit:contain;">
                         <div>
                             <h2 style="margin:0; font-size:1rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">${escapeHtml(h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</h2>
-                            <div style="font-size:0.72rem; font-weight:600; color:#bbf7d0;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
+                            <div style="font-size:0.72rem; font-weight:600; color:#bae6fd;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="background:#166534; color:#fff; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:8px; border:1px solid #86efac; text-transform:uppercase;">
+                        <div style="background:#0c4a6e; color:#fff; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:8px; border:1px solid #7dd3fc; text-transform:uppercase;">
                             CONTROL DE TAREAS Y ZONA (10 CASILLAS)
                         </div>
-                        <div style="font-size:0.68rem; color:#dcfce7; margin-top:2px;">HOJA OFICIO (8.5" × 13")</div>
+                        <div style="font-size:0.68rem; color:#e0f2fe; margin-top:2px;">HOJA OFICIO (8.5" × 13")</div>
                     </div>
                 </div>
                 
                 <!-- DATOS DEL GRADO, MAESTRO GUÍA Y CAMPOS DEL CATEDRÁTICO -->
-                <div style="background:#f0fdf4; border-top:2px solid #16a34a; padding:6px 10px; font-size:8pt; color:#0f172a;">
+                <div style="background:#f0f9ff; border-top:2px solid #0284c7; padding:6px 10px; font-size:8pt; color:#0f172a;">
                     <div style="display:grid; grid-template-columns: 2fr 1fr; gap:8px; margin-bottom:4px;">
                         <div>
-                            <div style="font-size:10pt; font-weight:900; color:#15803d; text-transform:uppercase;">
+                            <div style="font-size:10pt; font-weight:900; color:#0369a1; text-transform:uppercase;">
                                 NÓMINA DE CONTROL — ${escapeHtml(gradeName)} (${escapeHtml(sectionName)})
                             </div>
                             <div style="color:#1e293b; font-size:8pt; margin-top:1px;">
-                                <strong>Carrera:</strong> ${escapeHtml(careerName)} &nbsp;|&nbsp; 👨‍🏫 <strong>Maestro(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${escapeHtml(guideTeacher)}</span>
+                                <strong>Carrera:</strong> ${escapeHtml(careerName)} &nbsp;|&nbsp; 👨‍🏫 <strong>Maestro(a) Guía:</strong> <span style="color:#0f2b5c; font-weight:bold;">${escapeHtml(guideTeacher)}</span>
                             </div>
                         </div>
                         <div style="text-align:right; font-size:7.5pt; color:#475569;">
@@ -24985,10 +24988,10 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
                     </div>
 
                     <!-- CAMPOS: ASIGNATURA (OPCIONAL/MANO), CATEDRÁTICO AUTOMÁTICO Y BIMESTRE ACTIVO -->
-                    <div style="display:grid; grid-template-columns: 1.3fr 1.3fr 1.4fr; gap:8px; margin-top:4px; padding-top:4px; border-top:1px solid #bbf7d0; font-size:8pt; align-items:center;">
+                    <div style="display:grid; grid-template-columns: 1.3fr 1.3fr 1.4fr; gap:8px; margin-top:4px; padding-top:4px; border-top:1px solid #bae6fd; font-size:8pt; align-items:center;">
                         <div>
                             <strong>Asignatura / Materia:</strong> 
-                            ${selectedSubject ? `<span style="font-weight:800; color:#15803d; text-transform:uppercase;">${escapeHtml(selectedSubject)}</span>` : `_________________________`}
+                            ${selectedSubject ? `<span style="font-weight:800; color:#0369a1; text-transform:uppercase;">${escapeHtml(selectedSubject)}</span>` : `_________________________`}
                         </div>
                         <div>
                             <strong>Catedrático(a):</strong> 
@@ -24997,12 +25000,12 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
                         <div style="text-align:right;">
                             <strong>Bimestre:</strong> 
                             ${bimCheck(1)} 1º &nbsp; ${bimCheck(2)} 2º &nbsp; ${bimCheck(3)} 3º &nbsp; ${bimCheck(4)} 4º
-                            <span style="background:#15803d; color:#fff; font-size:6.8pt; font-weight:800; padding:1px 5px; border-radius:3px; margin-left:3px;">${activeBimestre}º Activo</span>
+                            <span style="background:#0369a1; color:#fff; font-size:6.8pt; font-weight:800; padding:1px 5px; border-radius:3px; margin-left:3px;">${activeBimestre}º Activo</span>
                         </div>
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:3px; border-top:1px dashed #cbd5e1; font-size:7.5pt; color:#475569;">
-                        <span>Total Alumnos: <strong style="color:#15803d;">${list.length}</strong> (Activos: <strong style="color:#15803d;">${countAct}</strong>${countRet > 0 ? ` | Retirados: <strong style="color:#b91c1c;">${countRet}</strong>` : ''}${countAus > 0 ? ` | Ausentes: <strong style="color:#b45309;">${countAus}</strong>` : ''}${countExon > 0 ? ` | Exonerados: <strong style="color:#0284c7;">${countExon}</strong>` : ''} | Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
+                        <span>Total Alumnos: <strong style="color:#0369a1;">${list.length}</strong> (Activos: <strong style="color:#0369a1;">${countAct}</strong>${countRet > 0 ? ` | Retirados: <strong style="color:#b91c1c;">${countRet}</strong>` : ''}${countAus > 0 ? ` | Ausentes: <strong style="color:#b45309;">${countAus}</strong>` : ''}${countExon > 0 ? ` | Exonerados: <strong style="color:#0284c7;">${countExon}</strong>` : ''} | Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
                         <span>Instructivo: Registre el punteo de cada tarea formativa en las casillas C-1 a C-10 y sume el Total Zona.</span>
                     </div>
                 </div>
@@ -25011,25 +25014,25 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             <!-- TABLA CON 10 CASILLAS EN BLANCO -->
             <table class="roster-oficio-table" style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif; background:#ffffff;">
                 <thead>
-                    <tr class="roster-green-head-1" style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:6.8pt; text-align:center;">
-                        <th rowspan="2" style="padding:3px 1px; width:22px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">No.</th>
-                        <th rowspan="2" style="padding:3px 2px; width:64px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">CÓDIGO PERSONAL</th>
-                        <th rowspan="2" style="padding:3px 5px; text-align:left; border:1px solid #064e3b; background:#15803d; color:#ffffff;">Apellidos y Nombres</th>
-                        <th rowspan="2" style="padding:3px 1px; width:20px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">Sex</th>
-                        <th colspan="10" class="roster-green-group" style="padding:2px; border:1px solid #064e3b; background:#166534; color:#ffffff;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (10 CASILLAS)</th>
-                        <th rowspan="2" class="roster-green-total" style="padding:3px 1px; width:38px; border:1px solid #064e3b; background:#14532d; color:#ffffff;">TOTAL<br><span style="font-size:5.8pt; font-weight:normal;">ZONA</span></th>
+                    <tr class="roster-blue-head-1" style="background:#0369a1; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:6.8pt; text-align:center;">
+                        <th rowspan="2" style="padding:3px 1px; width:22px; border:1px solid #0f2b5c; background:#0369a1; color:#ffffff;">No.</th>
+                        <th rowspan="2" style="padding:3px 2px; width:64px; border:1px solid #0f2b5c; background:#0369a1; color:#ffffff;">CÓDIGO PERSONAL</th>
+                        <th rowspan="2" style="padding:3px 5px; text-align:left; border:1px solid #0f2b5c; background:#0369a1; color:#ffffff;">Apellidos y Nombres</th>
+                        <th rowspan="2" style="padding:3px 1px; width:20px; border:1px solid #0f2b5c; background:#0369a1; color:#ffffff;">Sex</th>
+                        <th colspan="10" class="roster-blue-group" style="padding:2px; border:1px solid #0f2b5c; background:#0f2b5c; color:#ffffff;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (10 CASILLAS)</th>
+                        <th rowspan="2" class="roster-blue-total" style="padding:3px 1px; width:38px; border:1px solid #0f2b5c; background:#0c4a6e; color:#ffffff;">TOTAL<br><span style="font-size:5.8pt; font-weight:normal;">ZONA</span></th>
                     </tr>
-                    <tr class="roster-green-head-2" style="background:#16a34a; color:#ffffff; font-weight:700; font-size:6.2pt; text-align:center;">
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-1<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-2<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-3<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-4<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-5<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-6<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-7<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-8<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-9<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
-                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-10<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                    <tr class="roster-blue-head-2" style="background:#0284c7; color:#ffffff; font-weight:700; font-size:6.2pt; text-align:center;">
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-1<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-2<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-3<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-4<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-5<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-6<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-7<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-8<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-9<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #0f2b5c; background:#0284c7; color:#ffffff;">C-10<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43880,6 +43883,58 @@ function executeNativeDocumentPrint() {
     }, 400);
 }
 
+/**
+ * Motor universal anti-bloqueo de pop-ups para impresión directa de HTML completo.
+ * Intenta abrir ventana emergente y, si el navegador la bloquea, imprime automáticamente
+ * mediante un iframe oculto garantizando colores exactos (print-color-adjust: exact).
+ */
+function enccoSafePrintHtml(fullHtml, windowFeatures = 'width=1050,height=800', autoPrint = true) {
+    try {
+        const printWin = (typeof window !== 'undefined' && typeof window.open === 'function')
+            ? window.open('', '_blank', windowFeatures)
+            : null;
+        if (printWin && printWin.document) {
+            printWin.document.open();
+            printWin.document.write(fullHtml);
+            printWin.document.close();
+            if (autoPrint && !/window\.print\s*\(/.test(fullHtml)) {
+                setTimeout(() => {
+                    try { printWin.focus(); printWin.print(); } catch (e) {}
+                }, 400);
+            }
+            return true;
+        }
+    } catch (e) { /* fallback automático a iframe */ }
+
+    try {
+        if (typeof document === 'undefined') return false;
+        let iframe = document.getElementById('enccUniversalPrintIframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'enccUniversalPrintIframe';
+            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+            document.body.appendChild(iframe);
+        }
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        // Evitar window.close() dentro del iframe
+        const safeHtml = String(fullHtml || '').replace(/window\.close\s*\(\s*\)\s*;?/g, '');
+        doc.write(safeHtml);
+        doc.close();
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (err) {}
+        }, 450);
+        return true;
+    } catch (err) {
+        console.error('Error en enccoSafePrintHtml:', err);
+        return false;
+    }
+}
+window.enccoSafePrintHtml = enccoSafePrintHtml;
+
 // ──────────────────────────────────────────────────────────────────────────
 // 📋 FUNCIONES DE IMPRESIÓN OFICIAL CON VISTA PREVIA INMEDIATA EN PANTALLA
 // ──────────────────────────────────────────────────────────────────────────
@@ -43966,29 +44021,36 @@ function printOfficialUsersRoster() {
 }
 
 function printUserCredentialsList() {
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
     const users = STATE.users || [];
+    const portalOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:'))
+        ? window.location.origin
+        : 'https://comerciojutiapa.github.io/enccojutiapa';
+    const portalLoginUrl = `${portalOrigin}/login.html`;
 
     const cardsHtml = users.map((u, idx) => {
         const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || u.role === 'admin';
         const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director';
         const roleLabel = isDir ? 'Director de la Escuela' : isSuper ? 'Super Administrador' : (u.role === 'secretaria' || u.role === 'secretaria_auxiliar') ? 'Secretaría Académica' : (u.role === 'profesor_auxiliar' || u.role === 'auxiliar') ? 'Auxiliatura y Disciplina' : 'Catedrático Titular';
+        const passDisplay = (u.password && !u.passwordHash)
+            ? escapeHtml(u.password)
+            : 'Protegida (solicitar restablecimiento en Administración)';
         return `
             <div style="border:1.5px solid #cbd5e1; border-radius:8px; padding:12px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.05); page-break-inside:avoid; display:flex; flex-direction:column; justify-content:space-between;">
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:8px;">
                         <span style="font-size:0.75rem; font-weight:800; color:#0369a1; text-transform:uppercase;">ENCCO - Tarjeta de Acceso</span>
-                        <span style="background:${isDir ? '#f5f3ff' : isSuper ? '#e0f2fe' : '#f0fdf4'}; color:${isDir ? '#7c3aed' : isSuper ? '#0369a1' : '#15803d'}; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">${roleLabel}</span>
+                        <span style="background:${isDir ? '#f5f3ff' : isSuper ? '#e0f2fe' : '#f0f9ff'}; color:${isDir ? '#7c3aed' : '#0369a1'}; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">${roleLabel}</span>
                     </div>
-                    <h4 style="margin:0 0 6px 0; font-size:0.92rem; font-weight:800; color:#0f172a; text-transform:uppercase;">${u.name || ''}</h4>
+                    <h4 style="margin:0 0 6px 0; font-size:0.92rem; font-weight:800; color:#0f172a; text-transform:uppercase;">${escapeHtml(u.name || '')}</h4>
                     <div style="font-size:0.8rem; color:#334155; line-height:1.4;">
-                        <div><strong>Usuario / Correo:</strong> <span style="font-family:monospace; color:#0369a1;">${u.email || u.username}</span></div>
-                        <div><strong>Contraseña Inicial:</strong> <span style="font-family:monospace; color:#c2410c; font-weight:bold;">${u.password || 'C@rolina1'}</span></div>
-                        <div><strong>Ciclo Escolar:</strong> ${cycle}</div>
+                        <div><strong>Usuario / Correo:</strong> <span style="font-family:monospace; color:#0369a1;">${escapeHtml(u.email || u.username || '')}</span></div>
+                        <div><strong>Contraseña:</strong> <span style="font-family:monospace; color:#0f172a; font-weight:bold;">${passDisplay}</span></div>
+                        <div><strong>Ciclo Escolar:</strong> ${escapeHtml(cycle)}</div>
                     </div>
                 </div>
                 <div style="border-top:1px dashed #cbd5e1; margin-top:8px; padding-top:4px; font-size:0.7rem; color:#64748b; text-align:center;">
-                    Portal Académico: http://localhost:8000/login.html
+                    Portal Académico: ${escapeHtml(portalLoginUrl)}
                 </div>
             </div>
         `;
