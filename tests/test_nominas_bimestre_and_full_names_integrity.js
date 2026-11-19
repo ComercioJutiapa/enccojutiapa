@@ -79,14 +79,15 @@ mockWindow.STATE.config = {};
 assert.strictEqual(fn(), 1, "Debe devolver 1 como fallback seguro");
 console.log("✅ 3. Motor canónico getEffectiveActiveBimestre() validado en todos sus niveles jerárquicos.");
 
-// 4. Verificar que se eliminó el recorte de nombres con ellipsis y max-width: 215px en printStudentsBlankRoster10Casillas
+// 4. Verificar que se eliminó el recorte de nombres con ellipsis y que la Nómina en Blanco muestra nombre completo en 1 línea y tema verde fiel en impresión
 assert(!appJsContent.includes('white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px'), "Aún existe text-overflow:ellipsis con max-width:215px en app.js");
-assert(appJsContent.includes('white-space:normal; word-break:break-word; line-height:1.15'), "Falta white-space:normal y word-break:break-word en el renderizado de filas");
-console.log("✅ 4. Eliminación de text-overflow:ellipsis y activación de wrapping multi-línea confirmado.");
+assert(appJsContent.includes('class="roster-name-cell"') && appJsContent.includes('roster-green-head-1'), "Falta clase roster-name-cell o encabezado verde en Nómina en Blanco 10 Casillas");
+assert(!appJsContent.includes('th { background-color: #0369a1 !important;'), "executeNativeDocumentPrint aún fuerza th azul con !important sobrescribiendo documentos verdes");
+console.log("✅ 4. Fidelidad de impresión verde (sin override azul !important) y nombre completo en 1 línea confirmados.");
 
-// 5. Verificar ancho de casillas en printStudentsBlankRoster10Casillas (reducidas de 38px a 34px para dar 40px más al nombre)
-assert(appJsContent.includes('width:34px; text-align:center;'), "Las casillas de 10 casillas no están optimizadas a 34px para ganar espacio de nombre");
-console.log("✅ 5. Ancho de casillas de calificación manual ajustado a 34px ganando espacio horizontal.");
+// 5. Verificar ancho compacto de casillas en printStudentsBlankRoster10Casillas (27px para garantizar nombre completo en 1 línea en Hoja Oficio)
+assert(appJsContent.includes('width:27px; padding:1px; text-align:center;'), "Las casillas de 10 casillas no están optimizadas a 27px con padding compacto");
+console.log("✅ 5. Ancho de casillas de calificación manual ajustado a 27px ganando espacio horizontal en Hoja Oficio.");
 
 // 6. Verificar bloque institucional de 3 firmas en printStudentsOfficialList y printSectionStudentsList
 assert(appJsContent.includes('Catedrático(a) Guía / Titular'), "Falta firma de Catedrático Guía / Titular en nóminas oficiales");

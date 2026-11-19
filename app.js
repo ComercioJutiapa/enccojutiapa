@@ -24877,25 +24877,30 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             zonaContent = '<span style="color:#0284c7; font-weight:800; font-size:6.5pt; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px;">EXON.</span>';
         }
 
+        const isDenseRoster = list.length > 36;
+        const rowHeightPx = isDenseRoster ? 18 : 21;
+        const nameFontPt = isDenseRoster ? '7.2pt' : '7.7pt';
+        const codeFontPt = isDenseRoster ? '6.9pt' : '7.2pt';
+
         return `
-        <tr style="height:22px; background:${rowBg};">
-            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt; background:${rowBg};">${idx + 1}</td>
-            <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 4px; font-size:7.8pt; white-space:normal; word-break:break-word; line-height:1.15;">
+        <tr style="height:${rowHeightPx}px; background:${rowBg};">
+            <td style="text-align:center; font-weight:bold; width:22px; border:1px solid #334155; padding:1px 2px; font-size:7.6pt; background:${rowBg};">${idx + 1}</td>
+            <td style="text-align:center; font-weight:bold; width:64px; border:1px solid #334155; padding:1px 2px; font-size:${codeFontPt}; font-family:monospace; white-space:nowrap;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
+            <td class="roster-name-cell" style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:1px 4px; font-size:${nameFontPt}; white-space:nowrap; line-height:1.15;">
                 ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}
             </td>
-            <td style="text-align:center; width:22px; font-weight:600; border:1px solid #334155; padding:2px 1px; font-size:7.5pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:34px; text-align:center;">${cellContent}</td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;">${zonaContent}</td>
+            <td style="text-align:center; width:20px; font-weight:600; border:1px solid #334155; padding:1px 1px; font-size:7.3pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:27px; padding:1px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; padding:1px; text-align:center;">${zonaContent}</td>
         </tr>`;
     }).join('');
 
@@ -24903,11 +24908,33 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
         <style>
             @page {
                 size: 8.5in 13in portrait;
-                margin: 5mm 6mm 5mm 6mm;
+                margin: 5mm 5mm 5mm 5mm;
+            }
+            .roster-oficio-table th,
+            .roster-oficio-table td {
+                box-sizing: border-box;
+            }
+            .roster-oficio-table thead tr.roster-green-head-1 th {
+                background-color: #15803d !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .roster-oficio-table thead tr.roster-green-head-1 th.roster-green-group {
+                background-color: #166534 !important;
+            }
+            .roster-oficio-table thead tr.roster-green-head-1 th.roster-green-total {
+                background-color: #14532d !important;
+            }
+            .roster-oficio-table thead tr.roster-green-head-2 th {
+                background-color: #16a34a !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             @media print {
                 html, body {
-                    width: 8.5in !important;
+                    width: 100% !important;
                     margin: 0 !important;
                     padding: 0 !important;
                     -webkit-print-color-adjust: exact !important;
@@ -24915,7 +24942,10 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
                 }
                 .roster-oficio-container {
                     width: 100% !important;
-                    max-width: 8.5in !important;
+                    max-width: 100% !important;
+                }
+                .roster-oficio-table .roster-name-cell {
+                    white-space: nowrap !important;
                 }
             }
         </style>
@@ -24979,27 +25009,27 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             </div>
 
             <!-- TABLA CON 10 CASILLAS EN BLANCO -->
-            <table style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif; background:#ffffff;">
+            <table class="roster-oficio-table" style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif; background:#ffffff;">
                 <thead>
-                    <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:7pt; text-align:center;">
-                        <th rowspan="2" style="padding:3px 1px; width:26px; border:1px solid #064e3b;">No.</th>
-                        <th rowspan="2" style="padding:3px 2px; width:78px; border:1px solid #064e3b;">CÓDIGO PERSONAL</th>
-                        <th rowspan="2" style="padding:3px 5px; text-align:left; border:1px solid #064e3b;">Apellidos y Nombres</th>
-                        <th rowspan="2" style="padding:3px 1px; width:22px; border:1px solid #064e3b;">Sex</th>
-                        <th colspan="10" style="padding:2px; border:1px solid #064e3b; background:#166534;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (10 CASILLAS)</th>
-                        <th rowspan="2" style="padding:3px 1px; width:44px; border:1px solid #064e3b; background:#14532d;">TOTAL<br><span style="font-size:6pt; font-weight:normal;">ZONA</span></th>
+                    <tr class="roster-green-head-1" style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:6.8pt; text-align:center;">
+                        <th rowspan="2" style="padding:3px 1px; width:22px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">No.</th>
+                        <th rowspan="2" style="padding:3px 2px; width:64px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">CÓDIGO PERSONAL</th>
+                        <th rowspan="2" style="padding:3px 5px; text-align:left; border:1px solid #064e3b; background:#15803d; color:#ffffff;">Apellidos y Nombres</th>
+                        <th rowspan="2" style="padding:3px 1px; width:20px; border:1px solid #064e3b; background:#15803d; color:#ffffff;">Sex</th>
+                        <th colspan="10" class="roster-green-group" style="padding:2px; border:1px solid #064e3b; background:#166534; color:#ffffff;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (10 CASILLAS)</th>
+                        <th rowspan="2" class="roster-green-total" style="padding:3px 1px; width:38px; border:1px solid #064e3b; background:#14532d; color:#ffffff;">TOTAL<br><span style="font-size:5.8pt; font-weight:normal;">ZONA</span></th>
                     </tr>
-                    <tr style="background:#16a34a; color:#ffffff; font-weight:700; font-size:6.5pt; text-align:center;">
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-1<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-2<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-3<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-4<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-5<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-6<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-7<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-8<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-9<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
-                        <th style="padding:2px 1px; width:34px; border:1px solid #064e3b;">C-10<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                    <tr class="roster-green-head-2" style="background:#16a34a; color:#ffffff; font-weight:700; font-size:6.2pt; text-align:center;">
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-1<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-2<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-3<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-4<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-5<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-6<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-7<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-8<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-9<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
+                        <th style="padding:2px 1px; width:27px; border:1px solid #064e3b; background:#16a34a; color:#ffffff;">C-10<br><span style="font-size:5.2pt; font-weight:normal;">Pts:__</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43822,10 +43852,11 @@ function executeNativeDocumentPrint() {
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
                 @page { size: ${pageSizeRule}; margin: 5mm; }
+                * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 11px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-                th, td { border: 1px solid #334155; padding: 5px 6px; }
-                th { background-color: #0369a1 !important; color: #ffffff !important; font-weight: bold; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                th, td { border: 1px solid #334155; padding: 4px 5px; }
+                th { background-color: #0369a1; color: #ffffff; font-weight: bold; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .row-retirado, .row-retirado td, tr.row-retirado td { background-color: #fee2e2 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #b91c1c !important; }
                 .row-ausente, .row-ausente td, tr.row-ausente td { background-color: #fef3c7 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #b45309 !important; }
                 .row-exonerado, .row-exonerado td, tr.row-exonerado td { background-color: #e0f2fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #0284c7 !important; }
