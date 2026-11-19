@@ -55,7 +55,8 @@ const CRITICAL_SUITES = [
     'tests/test_download_excel_button_robustness.js',
     'tests/test_cycle_2027_clean_slate_and_history_isolation.js',
     'tests/test_pensum_cnb_enhancements.js',
-    'tests/test_pensum_assignments_and_grades_coherence.js'
+    'tests/test_pensum_assignments_and_grades_coherence.js',
+    'tests/test_cross_module_coherence_7_modules.js'
 ];
 
 console.log('================================================================================');

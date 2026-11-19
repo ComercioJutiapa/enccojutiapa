@@ -4704,6 +4704,8 @@ async function saveUserForm(e) {
 
     try {
         let savedUserObj = null;
+        let cascadePensumChanged = false;
+        let cascadeGradesChanged = false;
 
         if (userId) {
             // Edición de usuario existente
@@ -4723,7 +4725,9 @@ async function saveUserForm(e) {
                 // Cascada en cátedras
                 (STATE.pensum || []).forEach(a => {
                     if (a.teacherId === userId || a.teacher === oldName) {
+                        if (a.teacher !== name || a.teacherId !== userId) cascadePensumChanged = true;
                         a.teacher = name;
+                        a.teacherName = name;
                         a.teacherId = userId;
                     }
                 });
@@ -4731,6 +4735,7 @@ async function saveUserForm(e) {
                 // Cascada en docentes guías
                 (STATE.gradesList || []).forEach(g => {
                     if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                        if (g.guideTeacher !== name || g.guideTeacherId !== userId) cascadeGradesChanged = true;
                         g.guideTeacher = name;
                         g.guideTeacherId = userId;
                     }
@@ -4797,8 +4802,11 @@ async function saveUserForm(e) {
         if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
         if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderGradesTable === 'function') renderGradesTable();
         if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
 
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
@@ -4836,7 +4844,14 @@ async function saveUserForm(e) {
 
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
                 try {
-                    await withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
+                    const syncJobs = [withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.')];
+                    if (cascadePensumChanged) {
+                        syncJobs.push(EnccoCloudSync.syncNode('pensum', STATE.pensum).catch(() => {}));
+                    }
+                    if (cascadeGradesChanged) {
+                        syncJobs.push(EnccoCloudSync.syncNode('gradesList', STATE.gradesList).catch(() => {}));
+                    }
+                    await Promise.all(syncJobs);
                 } catch(rtdbErr) {
                     console.warn("Aviso al sincronizar usuarios en RTDB:", rtdbErr);
                 }
@@ -6351,7 +6366,12 @@ function renderGuideTeachersView(searchQuery = '') {
         let guideDisplayHtml = '';
         if (canManageGuides) {
             // Dropdown dinámico inline para asignación en tiempo real para usuarios con permiso de modificación
-            const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+            const teachers = (STATE.users || []).filter(u => {
+                const isTeacherRole = u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-'));
+                if (!isTeacherRole) return false;
+                const isCurrentAssigned = (u.id === g.guideTeacherId || u.name === g.guideTeacher || (guideInfo && (u.id === guideInfo.id || u.name === guideInfo.name)));
+                return u.active !== false || isCurrentAssigned;
+            });
             guideDisplayHtml = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <select class="form-control form-control-sm" style="font-size:0.86rem; font-weight:700; color:var(--text-primary); border-color:#93c5fd; background:#f0f9ff; max-width:260px;"
@@ -21228,8 +21248,14 @@ function updatePrintModelStats(gradeCode) {
         return;
     }
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
-    const students = (STATE.students || []).filter(s => {
-        if (s.active === false || s.status === 'Retirado') return false;
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const cycleStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], activeCycle)
+        : (STATE.students || []);
+    const students = cycleStudents.filter(s => {
+        if (!s || s.active === false || s.status === 'Retirado') return false;
+        const stLower = String(s.status || '').toLowerCase().trim();
+        if (stLower === 'egresado') return false;
         if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
         if (gradeObj) {
             const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
@@ -25305,6 +25331,11 @@ async function toggleGlobalLock() {
         await EnccoCloudSync.patchNode('config', { globalLocked: isLocked, lastModified: nowTime });
     } else if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         await EnccoCloudSync.syncNode('config', STATE.config);
+    }
+
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    if (typeof applyBimestreAndLockConfig === 'function') {
+        applyBimestreAndLockConfig({ globalLocked: isLocked }, true);
     }
 
     showToast(`Carga de notas ${isLocked ? 'BLOQUEADA' : 'HABILITADA'} globalmente.`, isLocked ? "warning" : "success");
@@ -41537,7 +41568,42 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
     showToast(`Cuadro de notas descargado como "${cleanName}".`, "success");
 }
 
+function isGradebookExcelImportBlockedForCurrentUser(targetUnit) {
+    const role = String(STATE.currentRole || '').toLowerCase();
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole()) ||
+        role === 'admin' || role === 'director' || role === 'secretaria' || role === 'super_usuario' || role === 'superadmin';
+    if (isSuperOrDir) return { blocked: false, reason: '' };
+
+    const currentUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    const hasBypass = Boolean(currentUser && STATE.config?.teacherBypass && STATE.config.teacherBypass[currentUser.id]);
+    if (hasBypass) return { blocked: false, reason: '' };
+
+    if (STATE.config?.globalLocked) {
+        return { blocked: true, reason: 'La carga de calificaciones se encuentra BLOQUEADA globalmente por Dirección.' };
+    }
+
+    const activeUnits = Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0
+        ? STATE.config.activeUnits.map(Number)
+        : [parseInt(STATE.config?.activeBimestre) || 1];
+    const unitNum = parseInt(targetUnit) || parseInt(STATE.config?.activeBimestre) || 1;
+    if (!activeUnits.includes(unitNum)) {
+        return { blocked: true, reason: `El ${unitNum}º Bimestre se encuentra cerrado/bloqueado para carga de calificaciones.` };
+    }
+    return { blocked: false, reason: '' };
+}
+window.isGradebookExcelImportBlockedForCurrentUser = isGradebookExcelImportBlockedForCurrentUser;
+
 function triggerGradebookExcelImport() {
+    const selectedUnit = (typeof getEffectiveActiveBimestre === 'function')
+        ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value)
+        : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
+    const lockCheck = isGradebookExcelImportBlockedForCurrentUser(selectedUnit);
+    if (lockCheck.blocked) {
+        showToast(`🔒 Importación bloqueada: ${lockCheck.reason}`, 'warning');
+        return;
+    }
+
     let fileInput = document.getElementById('gradebookExcelFileInput');
     if (!fileInput) {
         fileInput = document.createElement('input');
@@ -41573,6 +41639,13 @@ async function handleGradebookExcelImport(e) {
     }
 
     const currentUnit = (typeof getEffectiveActiveBimestre === 'function') ? getEffectiveActiveBimestre(document.getElementById('gradebookBimestreSelect')?.value) : (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1);
+
+    const lockCheck = isGradebookExcelImportBlockedForCurrentUser(currentUnit);
+    if (lockCheck.blocked) {
+        showToast(`🔒 Importación cancelada: ${lockCheck.reason}`, 'warning');
+        if (fileInputEl) fileInputEl.value = '';
+        return;
+    }
 
     showToast("Analizando y validando archivo de calificaciones...", "info");
 
@@ -44054,7 +44127,12 @@ function populateGuideTeacherSelect(selectedTeacherIdOrName) {
     const select = document.getElementById('guideTeacherSelectModal') || document.getElementById('quickGuideTeacherSelect');
     if (!select) return;
 
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+    const teachers = (STATE.users || []).filter(u => {
+        const isTeacherRole = u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-'));
+        if (!isTeacherRole) return false;
+        const isSelected = (u.id === selectedTeacherIdOrName || u.name === selectedTeacherIdOrName);
+        return u.active !== false || isSelected;
+    });
     let html = '<option value="">-- Sin Maestro Guía --</option>';
     html += teachers.map(t => {
         const isSel = (t.id === selectedTeacherIdOrName || t.name === selectedTeacherIdOrName) ? 'selected' : '';
@@ -44113,13 +44191,24 @@ async function saveQuickGuideTeacher(e) {
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        if (typeof updatePrintModelStats === 'function' && document.getElementById('printModelGradeSelect')?.value) {
+            updatePrintModelStats(document.getElementById('printModelGradeSelect').value);
+        }
 
-        // 🌟 A. Persistencia Atómica en Firestore
+        // Normalizar docId de sección para sincronización unificada con handleDirectGuideTeacherChange
+        const gKeyNorm = typeof getPensumItemGradeKey === 'function' ? getPensumItemGradeKey(grade) : '4to';
+        const secCleanNorm = String(grade.section || 'A').replace(/^Sección\s*/i, '').trim().toUpperCase() || 'A';
+        const secDocId = `${gKeyNorm}_${secCleanNorm}`;
+        const nowIso = new Date(nowTime).toISOString();
+
+        // 🌟 A. Persistencia Atómica en Firestore (gradesList, maestros_guias y secciones/{docId})
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
                 const gRef = doc(db, 'gradesList', grade.id || grade.code);
                 const mgRef = doc(db, 'maestros_guias', grade.id || grade.code);
+                const secRef = doc(db, 'secciones', secDocId);
                 const guidePayload = {
                     gradeId: grade.id,
                     gradeName: grade.name,
@@ -44129,6 +44218,16 @@ async function saveQuickGuideTeacher(e) {
                     guideTeacher: grade.guideTeacher,
                     lastModified: nowTime
                 };
+                const secPayload = {
+                    gradoId: gKeyNorm,
+                    seccionId: secCleanNorm,
+                    grado: grade.name || `${gKeyNorm} Perito Contador`,
+                    seccion: `Sección ${secCleanNorm}`,
+                    codigo: grade.code || `${gKeyNorm} ${secCleanNorm}`,
+                    maestroGuiaId: grade.guideTeacherId,
+                    maestroGuiaNombre: grade.guideTeacher,
+                    ultimaActualizacion: nowIso
+                };
                 const fsAction = (typeof updateDoc === 'function')
                     ? updateDoc(gRef, { guideTeacherId: grade.guideTeacherId, guideTeacher: grade.guideTeacher, lastModified: nowTime }).catch(e => {
                         if (typeof setDoc === 'function') return setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true });
@@ -44136,7 +44235,12 @@ async function saveQuickGuideTeacher(e) {
                     })
                     : (typeof setDoc === 'function' ? setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true }) : Promise.resolve());
                 await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-                if (typeof setDoc === 'function') await setDoc(mgRef, guidePayload, { merge: true });
+                if (typeof setDoc === 'function') {
+                    await Promise.all([
+                        setDoc(mgRef, guidePayload, { merge: true }),
+                        setDoc(secRef, secPayload, { merge: true })
+                    ]);
+                }
             } catch(fsErr) {
                 console.warn("Aviso al guardar maestro guía en Firestore:", fsErr);
             }
@@ -44147,9 +44251,25 @@ async function saveQuickGuideTeacher(e) {
             await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.').catch(rtErr => {
                 console.warn("Aviso al sincronizar maestro guía en RTDB:", rtErr);
             });
+            EnccoCloudSync.syncNode(`secciones/${secDocId}`, {
+                gradoId: gKeyNorm,
+                seccionId: secCleanNorm,
+                grado: grade.name || `${gKeyNorm} Perito Contador`,
+                seccion: `Sección ${secCleanNorm}`,
+                codigo: grade.code || `${gKeyNorm} ${secCleanNorm}`,
+                id: grade.id,
+                carrera: grade.career || 'Perito Contador',
+                jornada: grade.shift || 'Matutina',
+                maestroGuiaId: grade.guideTeacherId,
+                maestroGuiaNombre: grade.guideTeacher,
+                ultimaActualizacion: nowIso
+            }).catch(() => {});
         }
 
-        showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
+        const toastMsg = grade.guideTeacherId
+            ? `Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`
+            : `Sección ${grade.name} (${grade.section}) actualizada a Maestro Guía "Sin asignar".`;
+        showToast(toastMsg, 'success');
     } catch(err) {
         console.error("❌ Error al guardar maestro guía:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
@@ -45959,10 +46079,32 @@ async function deletePensumSubject(subjectId) {
     const s = (STATE.pensumCatalog || []).find(x => x.id === subjectId);
     if (!s) return;
 
+    const cleanSubNorm = str => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const sGKey = typeof getPensumItemGradeKey === 'function' ? getPensumItemGradeKey(s) : '';
+    const sNameNorm = cleanSubNorm(s.name || s.subject);
+    const linkedWithTeacher = (STATE.pensum || []).filter(a => {
+        if (!a) return false;
+        const sameGrade = !sGKey || (typeof getPensumItemGradeKey === 'function' && getPensumItemGradeKey(a) === sGKey);
+        const sameCourse = (s.code && a.code === s.code) || (cleanSubNorm(a.subject || a.name) === sNameNorm);
+        return sameGrade && sameCourse && a.teacher && a.teacher !== 'Sin asignar' && a.teacherId;
+    });
+
+    const isOfficialCnb = typeof OFFICIAL_CNB_PENSUM_COURSES !== 'undefined' &&
+        Object.values(OFFICIAL_CNB_PENSUM_COURSES).flat().some(c => c.code === s.code || cleanSubNorm(c.name) === sNameNorm);
+
+    const warnParts = [];
+    if (linkedWithTeacher.length > 0) {
+        warnParts.push(`Tiene ${linkedWithTeacher.length} cátedra(s) con catedrático asignado (sus notas históricas no se borrarán).`);
+    }
+    if (isOfficialCnb) {
+        warnParts.push(`Nota: pertenece a la malla oficial CNB; podrá restaurarla luego desde "Cargar Malla Oficial CNB".`);
+    }
+    const extraInfo = warnParts.length > 0 ? ' ' + warnParts.join(' ') : '';
+
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
             title: 'Eliminar Asignatura del Pensum',
-            message: `¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?`,
+            message: `¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?${extraInfo}`,
             confirmText: 'Sí, eliminar',
             cancelText: 'Cancelar',
             type: 'danger'
@@ -45977,6 +46119,7 @@ async function deletePensumSubject(subjectId) {
     renderPensumCatalogTable();
     if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
     if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+    if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
     if (typeof renderDashboard === 'function') renderDashboard();
     showToast('Asignatura eliminada del pensum.', 'success');
 
@@ -46705,6 +46848,8 @@ async function savePensumSubjectForm(e) {
         if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
 
         let targetId = asignaturaId;
+        let oldName = '';
+        let oldCode = '';
 
         if (isEditing || targetId) {
             let idx = STATE.pensumCatalog.findIndex(x => x && x.id === targetId);
@@ -46713,6 +46858,8 @@ async function savePensumSubjectForm(e) {
             }
 
             if (idx !== -1) {
+                oldName = STATE.pensumCatalog[idx].name || STATE.pensumCatalog[idx].subject || '';
+                oldCode = STATE.pensumCatalog[idx].code || '';
                 targetId = STATE.pensumCatalog[idx].id || targetId;
                 STATE.pensumCatalog[idx].id = targetId;
                 STATE.pensumCatalog[idx].code = code;
@@ -46747,16 +46894,21 @@ async function savePensumSubjectForm(e) {
             });
         }
 
-        // Cascada en STATE.pensum (clases asignadas a docentes)
+        // Cascada en STATE.pensum (clases asignadas a docentes) usando oldName/oldCode y nuevo nombre/código
         const targetGKey = getPensumItemGradeKey({ grade });
         const cleanStrNorm = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
         const targetSubNorm = cleanStrNorm(name);
+        const oldSubNorm = cleanStrNorm(oldName);
 
-        (STATE.pensum || []).forEach(asg => {
+        if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
+
+        STATE.pensum.forEach(asg => {
             const asgGKey = getPensumItemGradeKey(asg);
             const asgSubNorm = cleanStrNorm(asg.subject || asg.name);
-            if (asgGKey === targetGKey && (asgSubNorm === targetSubNorm || asg.code === code)) {
-                asg.code = code;
+            const matchesOld = (oldSubNorm && asgSubNorm === oldSubNorm) || (oldCode && asg.code === oldCode);
+            const matchesNew = (asgSubNorm === targetSubNorm) || (code && asg.code === code);
+            if (asgGKey === targetGKey && (matchesOld || matchesNew)) {
+                asg.code = code || asg.code;
                 asg.subject = name;
                 asg.name = name;
                 asg.hours = hours;
@@ -46765,12 +46917,49 @@ async function savePensumSubjectForm(e) {
             }
         });
 
+        // Si es una asignatura nueva, garantizar su cátedra en estado 'Sin asignar' en todas las secciones del grado
+        if (!isEditing) {
+            const gradeSections = (STATE.gradesList || []).filter(g => getPensumItemGradeKey(g) === targetGKey);
+            gradeSections.forEach(gradeObj => {
+                const secRaw = String(gradeObj.section || 'A').replace(/^Sección\s*/i, '').trim().toUpperCase() || 'A';
+                const secLabel = `Sección ${secRaw}`;
+                const alreadyInSec = STATE.pensum.some(a => {
+                    if (getPensumItemGradeKey(a) !== targetGKey) return false;
+                    const aSec = String(a.section || a.gradeCode || '').replace(/^Sección\s*/i, '').trim().toUpperCase();
+                    const aSecLetter = aSec.slice(-1);
+                    const sameSec = (aSecLetter === secRaw || a.section === secLabel);
+                    const sameCourse = cleanStrNorm(a.subject || a.name) === targetSubNorm || (code && a.code === code);
+                    return sameSec && sameCourse;
+                });
+                if (!alreadyInSec) {
+                    STATE.pensum.push({
+                        id: `pen-${targetGKey}-${secRaw.toLowerCase()}-${(code || Date.now()).toString().toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                        code: code || '',
+                        subject: name,
+                        name: name,
+                        career: gradeObj.career || career || 'Perito Contador',
+                        grade: gradeObj.name || grade,
+                        gradeCode: gradeObj.code || `${targetGKey} ${secRaw}`,
+                        section: secLabel,
+                        teacher: 'Sin asignar',
+                        teacherId: null,
+                        teacherName: 'Sin asignar',
+                        periodsPerWeek: hours,
+                        hours: hours,
+                        periods: hours,
+                        lastModified: Date.now()
+                    });
+                }
+            });
+        }
+
         // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización visual
         saveStateToLocalStorage();
         closePensumSubjectModal();
         renderPensumCatalogTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
         if (typeof renderDashboard === 'function') renderDashboard();
 
         const codeLabel = code ? ` [${code}]` : '';
@@ -47005,6 +47194,7 @@ async function deleteUser(userId) {
         (STATE.pensum || []).forEach(a => {
             if (a.teacherId === userId || a.teacher === oldName) {
                 a.teacher = 'Sin asignar';
+                a.teacherName = 'Sin asignar';
                 a.teacherId = null;
             }
         });
@@ -47021,8 +47211,13 @@ async function deleteUser(userId) {
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. Refrescar la tabla en pantalla
+        // 2. Refrescar la tabla en pantalla y módulos vinculados
         renderUsersTable();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderGradesTable === 'function') renderGradesTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
 
         // 3. Sincronizar UI global y Dashboard
         try {
@@ -47246,24 +47441,48 @@ async function saveGradeForm(e) {
     }
 
     try {
+        let gradePensumCascadeChanged = false;
+        let isNewGradeCreated = false;
+
         if (id) {
             // Modo edición de grado existente
             const idx = STATE.gradesList.findIndex(x => x.id === id);
             if (idx !== -1) {
+                const oldName = STATE.gradesList[idx].name;
+                const oldSection = STATE.gradesList[idx].section;
+                const oldCode = STATE.gradesList[idx].code;
                 const secVal = sectionInput ? sectionInput.value.trim() : STATE.gradesList[idx].section;
                 const codeVal = codeInput ? codeInput.value.trim() : STATE.gradesList[idx].code;
+                const newCode = codeVal || `${name} ${secVal}`;
                 STATE.gradesList[idx].name = name;
                 STATE.gradesList[idx].career = career;
                 STATE.gradesList[idx].shift = shift;
                 STATE.gradesList[idx].section = secVal;
-                STATE.gradesList[idx].code = codeVal || `${name} ${secVal}`;
+                STATE.gradesList[idx].code = newCode;
+                STATE.gradesList[idx].active = true;
                 const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
-                STATE.gradesList[idx].guideTeacherId = guideUserObj ? guideUserObj.id : (guideTeacher || null);
-                STATE.gradesList[idx].guideTeacher = guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar');
+                STATE.gradesList[idx].guideTeacherId = guideUserObj ? guideUserObj.id : (guideTeacher ? guideTeacher : null);
+                STATE.gradesList[idx].guideTeacher = guideUserObj ? guideUserObj.name : (guideTeacher ? guideTeacher : 'Sin asignar');
+
+                // Cascada coherente hacia STATE.pensum si cambió nombre, sección o código
+                if (oldName !== name || oldSection !== secVal || oldCode !== newCode) {
+                    (STATE.pensum || []).forEach(a => {
+                        if (!a) return;
+                        const matchGrade = (a.gradeCode === oldCode) || (a.grade === oldName && a.section === oldSection);
+                        if (matchGrade) {
+                            a.grade = name;
+                            a.gradeCode = newCode;
+                            a.section = secVal;
+                            a.career = career || a.career || 'Perito Contador';
+                            gradePensumCascadeChanged = true;
+                        }
+                    });
+                }
             } else {
                 throw new Error(`Grado con ID "${id}" no encontrado en memoria.`);
             }
         } else {
+            isNewGradeCreated = true;
             // Modo creación: recopilar secciones seleccionadas
             let selectedSections = [];
             document.querySelectorAll('#quickSectionBadges .section-pill.active').forEach(b => {
@@ -47280,25 +47499,38 @@ async function saveGradeForm(e) {
 
             if (selectedSections.length === 0) selectedSections = ['Sección A'];
 
-            // Crear cada grado/sección
+            // Crear cada grado/sección evitando duplicados
             selectedSections.forEach(sec => {
                 const shortSec = sec.replace('Sección', '').trim();
                 const code = `${name.replace('Perito Contador', 'PC').trim()} ${shortSec}`;
                 const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
-                STATE.gradesList.push({
+                const candidate = {
                     id: 'grd-' + Date.now() + '-' + Math.floor(Math.random()*1000),
                     name: name,
                     career: career,
                     shift: shift,
                     section: sec,
                     code: code,
-                    guideTeacherId: guideUserObj ? guideUserObj.id : (guideTeacher || null),
-                    guideTeacher: guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar')
-                });
+                    active: true,
+                    guideTeacherId: guideUserObj ? guideUserObj.id : (guideTeacher ? guideTeacher : null),
+                    guideTeacher: guideUserObj ? guideUserObj.name : (guideTeacher ? guideTeacher : 'Sin asignar')
+                };
+                const candKey = typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(candidate) : `${name}_${sec}`;
+                const alreadyExists = (STATE.gradesList || []).some(g => (typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) : `${g.name}_${g.section}`) === candKey);
+                if (!alreadyExists) {
+                    STATE.gradesList.push(candidate);
+                }
             });
         }
 
-        STATE.gradesList = sortGrades(STATE.gradesList);
+        STATE.gradesList = sortGrades(deduplicateGradesCollection(STATE.gradesList));
+
+        // Si se creó una nueva sección, generar sus cátedras oficiales del Pensum en estado 'Sin asignar'
+        if (isNewGradeCreated && typeof syncClassAssignmentsWithPensumAndGrades === 'function') {
+            syncClassAssignmentsWithPensumAndGrades({ showNotification: false });
+            gradePensumCascadeChanged = true;
+        }
+
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
         STATE._lastSavedLocally = nowTime;
@@ -47309,6 +47541,9 @@ async function saveGradeForm(e) {
         updateGradeSelects();
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
 
@@ -47345,6 +47580,9 @@ async function saveGradeForm(e) {
             await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.').catch(rtErr => {
                 console.warn("Aviso al sincronizar grados en RTDB:", rtErr);
             });
+            if (gradePensumCascadeChanged) {
+                EnccoCloudSync.syncNode('pensum', STATE.pensum).catch(() => {});
+            }
         }
 
         showToast(`Grado "${name}" guardado y confirmado en Firebase con éxito.`, 'success');
@@ -47369,10 +47607,39 @@ async function deleteGrade(gradeId) {
     const g = (STATE.gradesList || []).find(x => x.id === gradeId);
     if (!g) return;
 
+    // 🛡️ Protección anti-pérdida de datos: verificar si existen alumnos inscritos en esta sección
+    const targetCycle = String(STATE.activeCycle || '2026').trim();
+    const cycleStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(STATE.students || [], targetCycle)
+        : (STATE.students || []);
+    const gCanonical = typeof getGradeSectionCanonicalKey === 'function' ? getGradeSectionCanonicalKey(g) : '';
+    const studentsInSection = cycleStudents.filter(s => {
+        if (!s || s.active === false) return false;
+        if (gCanonical && typeof getGradeSectionCanonicalKey === 'function') {
+            const assign = typeof getStudentAssignment === 'function' ? getStudentAssignment(s) : { grade: s.grade, section: s.section };
+            return getGradeSectionCanonicalKey(assign) === gCanonical;
+        }
+        return s.gradeCode === g.code || (s.grade === g.name && s.section === g.section);
+    });
+
+    if (studentsInSection.length > 0) {
+        showToast(`No se puede eliminar "${g.name} (${g.section})" porque tiene ${studentsInSection.length} estudiante(s) inscrito(s) en el ciclo ${targetCycle}. Traslade a los estudiantes primero para no perder datos.`, 'warning');
+        return;
+    }
+
+    const assignedCoursesInSection = (STATE.pensum || []).filter(a => {
+        if (!a) return false;
+        const matchG = a.gradeCode === g.code || (a.grade === g.name && a.section === g.section);
+        return matchG && a.teacher && a.teacher !== 'Sin asignar' && a.teacherId;
+    });
+    const extraWarn = assignedCoursesInSection.length > 0
+        ? ` Atención: esta sección tiene ${assignedCoursesInSection.length} cátedra(s) con docente asignado que quedarán sin sección.`
+        : '';
+
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
             title: 'Eliminar Grado / Sección',
-            message: `¿Está seguro de eliminar el grado "${g.name} (${g.section})"? Esta acción no se puede deshacer.`,
+            message: `¿Está seguro de eliminar el grado "${g.name} (${g.section})"?${extraWarn} Esta acción no se puede deshacer.`,
             confirmText: 'Sí, eliminar grado',
             cancelText: 'Cancelar',
             type: 'danger'
@@ -47405,6 +47672,9 @@ async function deleteGrade(gradeId) {
         updateGradeSelects();
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
         showToast(`Grado "${g.name} (${g.section})" eliminado.`, 'info');
@@ -48966,12 +49236,14 @@ function updateClassAssignmentSelects() {
     const modalTeacherSelect = document.getElementById('classAssignmentFormTeacher');
 
     const teachers = (STATE.users || []).filter(u => 
-        u.role === 'docente' || 
-        u.role === 'catedratico' || 
-        u.role === 'profesor' || 
-        (u.id && u.id.startsWith('usr-doc')) ||
-        (u.title && u.title.toLowerCase().includes('docente')) ||
-        (u.title && u.title.toLowerCase().includes('catedr'))
+        u && u.active !== false && (
+            u.role === 'docente' || 
+            u.role === 'catedratico' || 
+            u.role === 'profesor' || 
+            (u.id && u.id.startsWith('usr-doc')) ||
+            (u.title && u.title.toLowerCase().includes('docente')) ||
+            (u.title && u.title.toLowerCase().includes('catedr'))
+        )
     );
     const grades = STATE.gradesList || [];
 
@@ -49228,8 +49500,8 @@ async function saveClassAssignmentForm(e) {
         code: p.dataset.code || `${gradeName} ${p.dataset.section || p.textContent.trim()}`
     }));
 
-    if (!gradeName || !rawSub || !teacherId) {
-        showToast('Complete el grado, asignatura y docente a asignar.', 'warning');
+    if (!gradeName || !rawSub) {
+        showToast('Complete el grado y la asignatura a configurar.', 'warning');
         return;
     }
 
@@ -49249,8 +49521,10 @@ async function saveClassAssignmentForm(e) {
         }
     }
 
-    const teacher = (STATE.users || []).find(u => u.id === teacherId);
-    const teacherName = teacher ? teacher.name : 'Catedrático Titular';
+    const isUnassigning = (!teacherId || teacherId === 'UNASSIGNED' || teacherId === 'Sin asignar');
+    const teacher = isUnassigning ? null : (STATE.users || []).find(u => u.id === teacherId);
+    const resolvedTeacherId = isUnassigning ? null : (teacher ? teacher.id : teacherId);
+    const teacherName = isUnassigning ? 'Sin asignar' : (teacher ? teacher.name : 'Catedrático Titular');
 
     const rawG = gradeName.toUpperCase();
     let gGradeNum = 0;
@@ -49281,11 +49555,13 @@ async function saveClassAssignmentForm(e) {
     }
 
     try {
+        const touchedAssignments = [];
         if (id) {
             const a = STATE.pensum.find(x => x.id === id);
             if (a) {
-                a.teacherId = teacherId;
+                a.teacherId = resolvedTeacherId;
                 a.teacher = teacherName;
+                a.teacherName = teacherName;
                 a.grade = gradeName;
                 a.gradeCode = selectedSections[0].code;
                 a.section = selectedSections[0].section;
@@ -49293,7 +49569,9 @@ async function saveClassAssignmentForm(e) {
                 a.name = fullSubjectName;
                 a.periodsPerWeek = periods;
                 a.hours = periods;
+                a.periods = periods;
                 if (assignedCourseCode) a.code = assignedCourseCode;
+                touchedAssignments.push(a);
             }
         } else {
             selectedSections.forEach(sec => {
@@ -49304,19 +49582,23 @@ async function saveClassAssignmentForm(e) {
                 );
 
                 if (existingIdx !== -1) {
-                    STATE.pensum[existingIdx].teacherId = teacherId;
+                    STATE.pensum[existingIdx].teacherId = resolvedTeacherId;
                     STATE.pensum[existingIdx].teacher = teacherName;
+                    STATE.pensum[existingIdx].teacherName = teacherName;
                     STATE.pensum[existingIdx].periodsPerWeek = periods;
                     STATE.pensum[existingIdx].hours = periods;
+                    STATE.pensum[existingIdx].periods = periods;
                     STATE.pensum[existingIdx].subject = fullSubjectName;
                     STATE.pensum[existingIdx].name = fullSubjectName;
                     if (assignedCourseCode) STATE.pensum[existingIdx].code = assignedCourseCode;
+                    touchedAssignments.push(STATE.pensum[existingIdx]);
                 } else {
-                    STATE.pensum.push({
+                    const newAsg = {
                         id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                         code: assignedCourseCode,
-                        teacherId: teacherId,
+                        teacherId: resolvedTeacherId,
                         teacher: teacherName,
+                        teacherName: teacherName,
                         grade: gradeName,
                         gradeCode: sec.code,
                         section: sec.section,
@@ -49324,8 +49606,11 @@ async function saveClassAssignmentForm(e) {
                         name: fullSubjectName,
                         career: 'Perito Contador',
                         periodsPerWeek: periods,
-                        hours: periods
-                    });
+                        hours: periods,
+                        periods: periods
+                    };
+                    STATE.pensum.push(newAsg);
+                    touchedAssignments.push(newAsg);
                 }
             });
         }
@@ -49342,15 +49627,20 @@ async function saveClassAssignmentForm(e) {
         if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
         if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
         if (typeof renderUsersTable === 'function') renderUsersTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
 
-        showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`, 'success');
+        const saveMsg = isUnassigning
+            ? `Cátedra "${fullSubjectName}" dejada en estado "Sin asignar" sin afectar datos históricos.`
+            : `Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`;
+        showToast(saveMsg, 'success');
 
         // 🌟 Persistencia atómica con writeBatch en Firestore y RTDB en segundo plano
         (async () => {
             if (window.FirebaseModular && window.FirebaseModular.db) {
                 try {
                     const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
-                    const relevantAssignments = id ? [STATE.pensum.find(x => x.id === id)].filter(Boolean) : STATE.pensum.slice(-selectedSections.length);
+                    const relevantAssignments = touchedAssignments.filter(Boolean);
                     if (typeof writeBatch === 'function' && relevantAssignments.length > 1) {
                         const batch = writeBatch(db);
                         for (const asg of relevantAssignments) {
@@ -49457,10 +49747,66 @@ async function deleteClassAssignment(asgId) {
     const a = (STATE.pensum || []).find(x => x.id === asgId);
     if (!a) return;
 
+    const hasTeacherAssigned = Boolean(a.teacher && a.teacher !== 'Sin asignar' && a.teacherId);
+    const cleanSubNorm = str => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const aGKey = typeof getPensumItemGradeKey === 'function' ? getPensumItemGradeKey(a) : '';
+    const isOfficialCatalogCourse = (STATE.pensumCatalog || []).some(p => {
+        const sameGrade = !aGKey || (typeof getPensumItemGradeKey === 'function' && getPensumItemGradeKey(p) === aGKey);
+        return sameGrade && ((p.code && a.code && String(p.code) === String(a.code)) || cleanSubNorm(p.name || p.subject) === cleanSubNorm(a.subject || a.name));
+    });
+
+    // Si es una cátedra oficial con docente asignado, desasignar al docente sin destruir la cátedra ni perder notas
+    if (hasTeacherAssigned && isOfficialCatalogCourse) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Quitar Docente de Cátedra Oficial',
+                message: `¿Desea quitar al docente "${a.teacher}" de la clase "${a.subject || a.name}" (${a.gradeCode || a.grade} ${a.section || ''})? La cátedra oficial quedará en estado "Sin asignar" sin perder calificaciones históricas ni afectar el funcionamiento.`,
+                confirmText: 'Sí, quitar docente',
+                cancelText: 'Cancelar',
+                type: 'warning'
+            })
+            : false;
+        if (!confirmed) return;
+
+        a.teacher = 'Sin asignar';
+        a.teacherName = 'Sin asignar';
+        a.teacherId = null;
+        a.lastModified = Date.now();
+        STATE.lastModified = a.lastModified;
+        saveStateToLocalStorage();
+        renderAssignmentsTable();
+        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        showToast(`Docente quitado de "${a.subject || a.name}". La cátedra quedó "Sin asignar" sin afectar datos.`, 'success');
+
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    if (typeof setDoc === 'function') {
+                        await setDoc(doc(db, 'pensum', asgId), { ...a }, { merge: true });
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al desasignar cátedra en Firestore:", fsErr);
+                }
+            }
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await EnccoCloudSync.syncNode('pensum', STATE.pensum);
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar cátedras en RTDB:", rtdbErr);
+                }
+            }
+        })();
+        return;
+    }
+
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
             title: 'Eliminar Asignación de Cátedra',
-            message: `¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" al docente ${a.teacher}?`,
+            message: `¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" (${a.teacher || 'Sin asignar'})?`,
             confirmText: 'Sí, eliminar cátedra',
             cancelText: 'Cancelar',
             type: 'danger'
@@ -49475,6 +49821,8 @@ async function deleteClassAssignment(asgId) {
     renderAssignmentsTable();
     if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
     if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+    if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
     showToast('Asignación de cátedra eliminada exitosamente.', 'success');
 
     // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
