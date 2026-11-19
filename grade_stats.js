@@ -4025,14 +4025,14 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
                             migrateCellHtml = `<span style="font-size:0.72rem; color:#64748b; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Pendiente otras materias</span>`;
                         } else if (migPrev && migPrev.alreadyMigrated) {
                             migrateCellHtml = migPrev.isGraduando
-                                ? `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.72rem; border:1px solid #7dd3fc;"><i class="fa-solid fa-user-graduate"></i> Egresado ${escapeHtml(viewingCycle)}</span>`
+                                ? `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.72rem; border:1px solid #7dd3fc;"><i class="fa-solid fa-user-graduate"></i> Ya en Egresados ${escapeHtml(viewingCycle)}</span>`
                                 : `<span style="display:inline-block; padding:3px 8px; border-radius:6px; background:#dcfce7; color:#15803d; font-weight:800; font-size:0.72rem; border:1px solid #86efac;"><i class="fa-solid fa-check-double"></i> Ya en ${escapeHtml(targetNextCycle)} (${escapeHtml(migPrev.existingGradeLabel || migPrev.targetGradeShort)})</span>`;
                         } else if (migPrev && migPrev.isGraduando) {
                             migrateCellHtml = `
                                 <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                                     <span style="font-size:0.72rem; font-weight:800; color:#0b2c66;">🎓 Graduando ${escapeHtml(viewingCycle)}</span>
-                                    <button type="button" onclick="migrateSingleRecoveryPassedStudent('${safeKeyAttr}', '${escapeHtml(viewingCycle)}', '${escapeHtml(targetNextCycle)}')" style="padding:3px 10px; border-radius:6px; border:none; background:#0369a1; color:#ffffff; font-size:0.72rem; font-weight:800; cursor:pointer;">
-                                        <i class="fa-solid fa-graduation-cap"></i> Marcar Egresado
+                                    <button type="button" onclick="migrateSingleRecoveryPassedStudent('${safeKeyAttr}', '${escapeHtml(viewingCycle)}', '${escapeHtml(targetNextCycle)}')" style="padding:3px 10px; border-radius:6px; border:none; background:#0369a1; color:#ffffff; font-size:0.72rem; font-weight:800; cursor:pointer;" title="Agregar oficialmente a la cohorte de Egresados ${escapeHtml(viewingCycle)} sin duplicar">
+                                        <i class="fa-solid fa-graduation-cap"></i> Agregar a Egresados
                                     </button>
                                 </div>
                             `;
@@ -4581,6 +4581,62 @@ function _prefetchLiveTargetCycleStudentsIfNeeded(targetCycle = '2027') {
         });
 }
 
+function _getGraduatedCohortForCycle(originCycle = '2026') {
+    const origStr = String(originCycle || '2026').trim();
+    const sources = [];
+    if (window._liveGraduatedCohortCache && Array.isArray(window._liveGraduatedCohortCache[origStr])) {
+        sources.push(window._liveGraduatedCohortCache[origStr]);
+    }
+    if (window.STATE && window.STATE.graduatedStudentsByCycle && Array.isArray(window.STATE.graduatedStudentsByCycle[origStr])) {
+        sources.push(window.STATE.graduatedStudentsByCycle[origStr]);
+    }
+    const merged = [];
+    const seen = new Set();
+    sources.forEach(arr => {
+        arr.forEach(s => {
+            if (!s) return;
+            const k = `${s.id || ''}|${String(s.personalCode || s.codigoPersonal || '').toUpperCase()}|${_normRecoveryName(s.name)}`;
+            if (!seen.has(k)) {
+                seen.add(k);
+                merged.push(s);
+            }
+        });
+    });
+    return merged;
+}
+
+function _prefetchGraduatedCohortIfNeeded(originCycle = '2026') {
+    const origStr = String(originCycle || '2026').trim();
+    if (typeof fetch !== 'function') return;
+    if (!window._liveGraduatedFetchState) window._liveGraduatedFetchState = {};
+    const stFetch = window._liveGraduatedFetchState[origStr];
+    if (stFetch && (stFetch.loading || (Date.now() - (stFetch.fetchedAt || 0) < 60000))) return;
+
+    const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
+        ? window.CycleArchiver.getFirebaseUrl()
+        : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+
+    window._liveGraduatedFetchState[origStr] = { loading: true, fetchedAt: 0 };
+    fetch(`${fbUrl}/encc_school_state/historico/${origStr}/egresadosSnapshot.json?t=${Date.now()}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(cloudData => {
+            const arr = Array.isArray(cloudData) ? cloudData : Object.values(cloudData || {}).filter(Boolean);
+            if (!window._liveGraduatedCohortCache) window._liveGraduatedCohortCache = {};
+            window._liveGraduatedCohortCache[origStr] = arr;
+            if (window.STATE) {
+                if (!window.STATE.graduatedStudentsByCycle) window.STATE.graduatedStudentsByCycle = {};
+                if (arr.length > 0) window.STATE.graduatedStudentsByCycle[origStr] = arr;
+            }
+            window._liveGraduatedFetchState[origStr] = { loading: false, fetchedAt: Date.now() };
+            if (window._reprobadosActiveSubView === 'ganaron' && typeof renderReprobadosRecuperacionView === 'function') {
+                renderReprobadosRecuperacionView({ reuseData: true });
+            }
+        })
+        .catch(() => {
+            window._liveGraduatedFetchState[origStr] = { loading: false, fetchedAt: Date.now() };
+        });
+}
+
 function _buildInitialGradesForPromotedGrade(targetGradeNum) {
     const gMap = {};
     const cnb = window.CycleArchiver && window.CycleArchiver.OFFICIAL_CNB_SUBJECTS;
@@ -4603,7 +4659,7 @@ function _buildInitialGradesForPromotedGrade(targetGradeNum) {
     return gMap;
 }
 
-function _findMatchingStudentInStateForRecovery(st, targetCycle = null) {
+function _findMatchingStudentInStateForRecovery(st, targetCycle = null, originCycle = null) {
     if (!st) return null;
     const normCode = (v) => String(v || '').trim().toUpperCase();
     const targetId = String(st.id || st.studentId || '').trim();
@@ -4625,6 +4681,13 @@ function _findMatchingStudentInStateForRecovery(st, targetCycle = null) {
         }
         return false;
     };
+
+    // 0. Buscar en la cohorte oficial de Egresados del ciclo origen (si aplica para graduandos de 6to)
+    if (originCycle) {
+        const gradList = _getGraduatedCohortForCycle(originCycle);
+        const foundGrad = gradList.find(matchesStudent);
+        if (foundGrad) return foundGrad;
+    }
 
     // 1. Buscar primero en el listado VIVO del ciclo destino (2027 / ciclo + 1), incluso si estamos en Modo Histórico 2026
     if (targetCycle) {
@@ -4686,9 +4749,10 @@ function getRecoveryMigrationPreviewForStudent(st, originCycle = '2026', targetC
 
     // Disparar hidratación silenciosa desde la nube si se recargó en Modo Histórico 2026
     _prefetchLiveTargetCycleStudentsIfNeeded(tgtStr);
+    if (isGraduando) _prefetchGraduatedCohortIfNeeded(origStr);
 
-    // Verificación estricta Anti-Duplicidad en listado vivo de targetCycle (2027+) y STATE.students
-    const existing = _findMatchingStudentInStateForRecovery(st, tgtStr);
+    // Verificación estricta Anti-Duplicidad en cohorte de Egresados (para 6to), listado vivo de targetCycle (2027+) y STATE.students
+    const existing = _findMatchingStudentInStateForRecovery(st, tgtStr, isGraduando ? origStr : null);
     let alreadyMigrated = false;
     let existingGradeLabel = '';
 
@@ -4882,6 +4946,7 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
 
     const nowTs = Date.now();
     const touchedStudents = [];
+    const newlyGraduatedStudents = [];
     let migratedCount = 0;
     let graduatedCount = 0;
 
@@ -4954,6 +5019,7 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
             targetObj.academicCycle = origStr;
             targetObj.academicPromotionStatus = `Graduado por Recuperación ${origStr}`;
             targetObj.lastModified = nowTs;
+            newlyGraduatedStudents.push(JSON.parse(JSON.stringify(targetObj)));
             graduatedCount++;
         } else {
             const secLabel = `Sección ${chosenSec}`;
@@ -5014,6 +5080,42 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
         }
     } catch (uiErr) {}
 
+    // Registrar graduandos de 6to en la cohorte oficial de Egresados del ciclo origen (anti-duplicidad y sin perder egresados previos)
+    let updatedGradCohort = null;
+    if (newlyGraduatedStudents.length > 0) {
+        const existingGradCohort = _getGraduatedCohortForCycle(origStr);
+        const mergedGrad = existingGradCohort.map(x => JSON.parse(JSON.stringify(x)));
+        const normCode = (v) => String(v || '').trim().toUpperCase();
+
+        newlyGraduatedStudents.forEach(gStu => {
+            const gId = String(gStu.id || '').trim();
+            const gCode = normCode(gStu.personalCode || gStu.codigoPersonal);
+            const gCui = normCode(gStu.cui);
+            const gName = _normRecoveryName(gStu.name);
+            const existingIdx = mergedGrad.findIndex(e => {
+                if (!e) return false;
+                if (gId && String(e.id || '') === gId) return true;
+                if (gCode && (normCode(e.personalCode) === gCode || normCode(e.codigoPersonal) === gCode)) return true;
+                if (gCui && normCode(e.cui) === gCui) return true;
+                if (gName && gName.length >= 6 && _normRecoveryName(e.name) === gName) return true;
+                return false;
+            });
+            if (existingIdx >= 0) {
+                mergedGrad[existingIdx] = Object.assign({}, mergedGrad[existingIdx], gStu);
+            } else {
+                mergedGrad.push(gStu);
+            }
+        });
+
+        updatedGradCohort = mergedGrad;
+        if (!window.STATE.graduatedStudentsByCycle || typeof window.STATE.graduatedStudentsByCycle !== 'object') {
+            window.STATE.graduatedStudentsByCycle = {};
+        }
+        window.STATE.graduatedStudentsByCycle[origStr] = updatedGradCohort;
+        if (!window._liveGraduatedCohortCache) window._liveGraduatedCohortCache = {};
+        window._liveGraduatedCohortCache[origStr] = updatedGradCohort;
+    }
+
     // Persistencia atómica en Firebase (Firestore + RTDB) en segundo plano sobre la colección destino (nunca sobreescribe con snapshot 2026)
     (async () => {
         try {
@@ -5026,6 +5128,16 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
             }
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
                 await EnccoCloudSync.syncNode('students', targetCollection).catch(() => {});
+            }
+            if (updatedGradCohort && typeof fetch === 'function') {
+                const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
+                    ? window.CycleArchiver.getFirebaseUrl()
+                    : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+                await fetch(`${fbUrl}/encc_school_state/historico/${origStr}/egresadosSnapshot.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedGradCohort)
+                }).catch(() => {});
             }
         } catch (cloudErr) {
             console.warn('Aviso al sincronizar migración de recuperación en Firebase:', cloudErr);

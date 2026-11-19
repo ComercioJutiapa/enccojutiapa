@@ -156,6 +156,22 @@ eval(fs.readFileSync(path.join(__dirname, '../grade_stats.js'), 'utf8'));
     assert.strictEqual(prevManual.existingGradeLabel, '5to D', "Debe mostrar su sección real en 2027 (5to D)");
     console.log("  ✅ Prueba 4 Superada: Recarga de Ciclo 2026 mantiene 100% sincronizado el estado de promovidos en 2027.");
 
+    // 5. Graduandos de 6to: agregar a cohorte oficial de Egresados y detectar ya-egresados al recargar 2026
+    console.log("\n➡️  Prueba 5: Graduandos de 6to se agregan a Egresados 2026 y se detectan aunque se recargue 2026...");
+    assert(Array.isArray(STATE.graduatedStudentsByCycle['2026']), "Debe existir cohorte STATE.graduatedStudentsByCycle['2026']");
+    assert(STATE.graduatedStudentsByCycle['2026'].some(e => e.id === 'stu-rec-6a' && e.status === 'Egresado'), "stu-rec-6a debe haber sido agregado a Egresados 2026");
+
+    // Simular recarga 2026 donde stu-rec-6a aparece todavía como Activo en el snapshot 2026
+    STATE.students.push({
+        id: 'stu-rec-6a', personalCode: 'R6A003', name: 'Morales Díaz, José',
+        grade: '6to Perito Contador', section: 'Sección A', cycle: '2026', status: 'Activo'
+    });
+    const prev6a = getRecoveryMigrationPreviewForStudent({ id: 'stu-rec-6a', code: 'R6A003', name: 'Morales Díaz, José', grade: '6to Perito Contador', section: 'A' }, '2026', '2027');
+    assert.strictEqual(prev6a.isGraduando, true);
+    assert.strictEqual(prev6a.alreadyMigrated, true, "Graduando de 6to ya presente en Egresados 2026 DEBE aparecer marcado como Ya en Egresados");
+    assert.strictEqual(prev6a.existingGradeLabel, 'Egresado 2026');
+    console.log("  ✅ Prueba 5 Superada: Cohorte oficial de Egresados 2026 sincronizada sin pérdida ni duplicidad.");
+
     console.log("\n🎯 ¡TODAS LAS PRUEBAS DE MIGRACIÓN DE RECUPERACIONES A 2027 PASARON AL 100%!\n");
     process.exit(0);
 })().catch(err => {
