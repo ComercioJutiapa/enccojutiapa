@@ -866,6 +866,10 @@
                     <i class="fa-solid fa-id-card"></i>
                     <span>Carnés Estudiantiles</span>
                 </a>
+                <a href="#" class="nav-item" data-view="scholarships" data-perm="scholarships" data-allowed="admin,director,secretaria,profesor_auxiliar,docente" onclick="navigateTo('scholarships', event)">
+                    <i class="fa-solid fa-hand-holding-heart"></i>
+                    <span>Becas y Bolsas de Estudio</span>
+                </a>
                 <a href="#" class="nav-item" data-view="datos-sire" data-perm="datos-sire" data-allowed="*" onclick="navigateTo('datos-sire', event)">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <span>Datos para Sire</span>
@@ -2797,6 +2801,9 @@
 
                 <!-- 7.0. CENTRO DE CONTROL INTEGRAL DE AUXILIATURA Y SECRETARÍA -->
                 <section class="app-view" id="view-auxiliatura-center"></section>
+
+                <!-- 7.0B. BECAS Y BOLSAS DE ESTUDIO (MULTICICLO) -->
+                <section class="app-view" id="view-scholarships"></section>
 
                 <!-- 7.0.1. AUXILIATURAS DE EXÁMENES (AUXILIATURA, DIRECCIÓN Y SECRETARÍA) -->
                 <section class="app-view" id="view-exam-schedules"></section>
@@ -5004,6 +5011,7 @@
                                 <span id="profGradeDisplayBadge" class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700;"><i class="fa-solid fa-graduation-cap"></i> Grado y Sección</span>
                                 <span id="profAbsencesBadge" class="badge" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-weight:700; display:none;"><i class="fa-solid fa-calendar-xmark"></i> <span id="profAbsencesBadgeText">0 Faltas</span></span>
                                 <span id="profExpedienteHeaderBadge" class="badge" onclick="switchStudentProfileTab('expediente')" style="cursor:pointer; font-weight:800; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; transition:transform 0.15s ease; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;" title="Haga clic para ver y gestionar el expediente del estudiante"><i class="fa-solid fa-folder-closed"></i> <span id="profExpedienteBadgeText">Expediente: Cargando...</span></span>
+                                <span id="profScholarshipHeaderBadge" class="badge" onclick="if(typeof openScholarshipAssignModal==='function') openScholarshipAssignModal(STATE.selectedStudentId)" style="cursor:pointer; font-weight:800; padding:4px 10px; border-radius:6px; display:none; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;" title="Estudiante becado / con bolsa de estudio — clic para gestionar"></span>
                             </div>
                         </div>
                     </div>
@@ -5053,6 +5061,9 @@
                                 </span>
                             </div>
                         </div>
+
+                        <!-- RESUMEN RESPONSIVO: BECA / BOLSA DE ESTUDIO + DOCUMENTOS FALTANTES EN EXPEDIENTE -->
+                        <div id="profScholarshipAndDocsSummaryBox"></div>
 
                         <div class="form-row">
                             <div class="form-group" style="flex:1;">
@@ -6695,6 +6706,7 @@
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261118_v275_multicycle_fix" charset="UTF-8"></script>
     <script src="student_docs_audit.js?v=20261119_v3_fit" charset="UTF-8"></script>
+    <script src="scholarships_module.js?v=20261119_v1" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="exam_schedules_module.js?v=20261014_v248_opt_performance" charset="UTF-8"></script>

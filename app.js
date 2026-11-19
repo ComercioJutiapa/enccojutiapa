@@ -1202,8 +1202,8 @@ function enforceViewReadOnlyMode(viewName) {
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
 
-    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
-    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center') {
+    // 🛡️ ACCESO TOTAL A BITÁCORA, CENTRO DE CONTROL Y BECAS: Dirección, Auxiliatura y Secretaría
+    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center' || viewName === 'scholarships') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedFull.includes(STATE.currentRole)) return;
     }
@@ -13423,6 +13423,7 @@ function navigateTo(viewName, event = null) {
         'grade-stats': { title: 'Promedios y Estadísticas por Grado y Sección', sub: 'Rendimiento académico consolidado, cuadros por grado y reportes oficiales de promedios' },
         'predictive-analytics': { title: 'Analítica Predictiva y Riesgo Escolar', sub: 'Monitoreo de rendimiento temprano, detección de deserción y citaciones a padres de familia' },
         'carnets': { title: 'Generador e Impresión de Carnés Estudiantiles', sub: 'Credenciales oficiales formato CR80 con código de barras e impresión masiva' },
+        'scholarships': { title: 'Becas y Bolsas de Estudio', sub: 'Control multiciclo de alumnos becados, porcentaje de asistencia a la fecha y emisión de constancias' },
         'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos y Ausencias', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
@@ -13562,6 +13563,7 @@ function renderCurrentView() {
         case 'grade-stats': renderGradeStatsView(); break;
         case 'predictive-analytics': if (typeof renderPredictiveAnalyticsView === 'function') renderPredictiveAnalyticsView(); break;
         case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
+        case 'scholarships': if (typeof renderScholarshipsView === 'function') renderScholarshipsView(); break;
         case 'auxiliatura-center': if (typeof renderAuxiliaturaCenterView === 'function') renderAuxiliaturaCenterView(); break;
         case 'auxiliatura-log':
             if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView();
@@ -20630,6 +20632,20 @@ function printStudentFullFicha(studentId) {
         ? `${attPctToDate.percentage}%`
         : `${fullRecord.attendancePercent}%`;
 
+    const activeSch = (typeof window.getStudentScholarshipForCycle === 'function')
+        ? window.getStudentScholarshipForCycle(student, effectiveCycle)
+        : null;
+    const schSummaryLabel = activeSch
+        ? `🎓 ${activeSch.type}${activeSch.program ? ' — ' + activeSch.program : ''} (${activeSch.status || 'Activa'})`
+        : 'Sin beca / bolsa asignada';
+
+    const expMissingSummary = (typeof window.getStudentMissingDocsSummary === 'function')
+        ? window.getStudentMissingDocsSummary(student)
+        : (() => {
+            const m = typeof calculateStudentExpedienteMetrics === 'function' ? calculateStudentExpedienteMetrics(student) : { deliveredCount: 0, totalRequired: 6, status: 'incompleto' };
+            return { deliveredCount: m.deliveredCount, totalRequired: m.totalRequired, isComplete: m.status === 'completo', missing: [], inProgress: [], cuiInfo: { status: 'valid', label: 'OK' } };
+        })();
+
     const fullFichaHtml = `
         <!DOCTYPE html>
         <html lang="es">
@@ -20685,6 +20701,7 @@ function printStudentFullFicha(studentId) {
                 <div class="info-item"><strong>Teléfono Alumno:</strong> ${escapeHtml(student.phone || '—')}</div>
                 <div class="info-item"><strong>Dirección:</strong> ${escapeHtml(student.address || '—')}</div>
                 <div class="info-item"><strong>Encargado / Padres:</strong> ${escapeHtml(student.guardianName || student.fatherName || student.motherName || '—')} (${escapeHtml(student.guardianPhone || student.fatherPhone || student.motherPhone || '—')})</div>
+                <div class="info-item" style="grid-column: span 3;"><strong>Beca / Bolsa de Estudio (${escapeHtml(effectiveCycle)}):</strong> <span style="color:${activeSch ? '#0369a1' : '#64748b'}; font-weight:${activeSch ? '800' : '600'};">${escapeHtml(schSummaryLabel)}</span>${activeSch && activeSch.agreementRef ? ` &bull; <strong>Acuerdo/Ref.:</strong> ${escapeHtml(activeSch.agreementRef)}` : ''}</div>
             </div>
 
             <div class="section-title">2. Consolidado General de Asistencia, Inasistencias y Disciplina</div>
@@ -20740,6 +20757,19 @@ function printStudentFullFicha(studentId) {
                 </thead>
                 <tbody>${annRowsHtml}</tbody>
             </table>
+
+            <div class="section-title">6. Estado de Expediente y Documentos Faltantes</div>
+            <div style="background:${expMissingSummary.isComplete ? '#f0fdf4' : '#fffbeb'}; border:1px solid ${expMissingSummary.isComplete ? '#86efac' : '#fde68a'}; border-left:4px solid ${expMissingSummary.isComplete ? '#15803d' : '#d97706'}; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong>Avance Documental: ${expMissingSummary.deliveredCount} de ${expMissingSummary.totalRequired} documentos oficiales entregados</strong>
+                    <span style="font-weight:800; color:${expMissingSummary.isComplete ? '#15803d' : '#b45309'};">${expMissingSummary.isComplete ? '✅ EXPEDIENTE COMPLETO' : '⚠️ EXPEDIENTE INCOMPLETO'}</span>
+                </div>
+                ${expMissingSummary.isComplete
+                    ? `<div style="color:#15803d;">Todos los requisitos documentales oficiales han sido recibidos y cotejados.</div>`
+                    : `<div><strong>Documentos Faltantes (${expMissingSummary.missing.length}):</strong> ${expMissingSummary.missing.length > 0 ? escapeHtml(expMissingSummary.missing.join(' • ')) : 'Ninguno pendiente'}${expMissingSummary.inProgress && expMissingSummary.inProgress.length > 0 ? `<br><strong>En Trámite:</strong> ${escapeHtml(expMissingSummary.inProgress.join(' • '))}` : ''}</div>`
+                }
+                ${expMissingSummary.cuiInfo && expMissingSummary.cuiInfo.status !== 'valid' ? `<div style="color:#b91c1c; font-weight:800; margin-top:3px;">⚠️ Observación CUI: ${escapeHtml(expMissingSummary.cuiInfo.label)}</div>` : ''}
+            </div>
 
             <div class="signatures">
                 <div class="sig-line">Firma de Padre, Madre o Encargado<br><span style="font-weight:400; color:#475569;">Enterado de Récord de Asistencia y Conducta</span></div>
