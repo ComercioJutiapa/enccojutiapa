@@ -4,10 +4,17 @@
     "ignore": [
       "firebase.json",
       "firebase-debug.log*",
+      ".git/**",
+      ".agent/**",
+      ".firebase/**",
       "**/.*",
       "**/node_modules/**",
       "tests/**",
       "respaldos/**",
+      "_backups/**",
+      "scripts/**",
+      "tools/**",
+      "extension_sire_encco/**",
       "**/*.test.js",
       "test_*.js",
       "generate_*.js",
@@ -17,6 +24,9 @@
       "*.xlsx",
       "*.pdf",
       "*.log",
+      "*.pem",
+      "*.rules",
+      "database.rules.json",
       "package*.json"
     ],
     "headers": [
