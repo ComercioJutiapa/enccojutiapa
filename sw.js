@@ -6,8 +6,8 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const ENCCO_SW_BUILD = '20261118_v3_excel_openxml';
-const CACHE_NAME = 'encco-cache-v2026-11-18-v3-excel-openxml';
+const ENCCO_SW_BUILD = '20261119_v284';
+const CACHE_NAME = 'encco-cache-v2026-11-19-v284';
 const STATIC_ASSETS = [
     './',
     'index.html',
@@ -50,6 +50,7 @@ self.addEventListener('fetch', event => {
         url.hostname.includes('firestore.googleapis.com') || 
         url.hostname.includes('firebaseapp.com') ||
         url.hostname.includes('identitytoolkit.googleapis.com') ||
+        url.hostname.includes('securetoken.googleapis.com') ||
         url.pathname.includes('/stream') ||
         event.request.method !== 'GET') {
         return;
