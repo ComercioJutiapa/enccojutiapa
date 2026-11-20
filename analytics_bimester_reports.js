@@ -150,7 +150,8 @@
                     key: secKey, grade: gradeBase, section: cleanSec,
                     total: 0, male: 0, female: 0,
                     sum: 0, count: 0, passed: 0, failed: 0,
-                    atRisk: 0, maleSum: 0, maleCount: 0, femaleSum: 0, femaleCount: 0
+                    atRisk: 0, maleSum: 0, maleCount: 0, femaleSum: 0, femaleCount: 0,
+                    riskStudents: []
                 });
             }
             const secObj = sectionsMap.get(secKey);
@@ -258,10 +259,20 @@
 
             if (stuSubjCount > 0) {
                 gBucket.evaluatedStudents++;
-                const stuAvg = stuSum / stuSubjCount;
+                const stuAvg = Math.round((stuSum / stuSubjCount) * 10) / 10;
                 if (stuFailedSubj >= 2 || stuAvg < 60) {
                     gBucket.atRisk++;
                     secObj.atRisk++;
+                    const attPctVal = (attObj && attObj.percentage !== null && typeof attObj.percentage !== 'undefined') ? `${attObj.percentage}%` : 'S/R';
+                    const hasSch = typeof window.getStudentScholarshipForCycle === 'function' && !!window.getStudentScholarshipForCycle(s, cycle);
+                    secObj.riskStudents.push({
+                        name: typeof window.formatStudentDisplayName === 'function' ? window.formatStudentDisplayName(s, 'lastFirst').toUpperCase() : (s.name || ''),
+                        gender: isF ? 'F' : 'M',
+                        avg: stuAvg,
+                        failedCount: stuFailedSubj,
+                        attPct: attPctVal,
+                        isBecado: hasSch
+                    });
                 }
             }
         });
@@ -566,20 +577,22 @@
                     <table class="ab-table">
                         <thead>
                             <tr>
-                                <th style="width:26%; text-align:left;">Grado y Sección</th>
-                                <th style="width:14%; text-align:center;">Matrícula (H / M)</th>
-                                <th style="width:12%; text-align:center;">Prom. Gral.</th>
-                                <th style="width:14%; text-align:center;">Prom. H / M</th>
-                                <th style="width:22%; text-align:left;">% Aprobación</th>
-                                <th style="width:12%; text-align:center;">En Riesgo</th>
+                                <th style="width:24%; text-align:left;">Grado y Sección</th>
+                                <th style="width:13%; text-align:center;">Matrícula (H/M)</th>
+                                <th style="width:10%; text-align:center;">Prom.</th>
+                                <th style="width:13%; text-align:center;">Prom. H/M</th>
+                                <th style="width:19%; text-align:left;">% Aprobación</th>
+                                <th style="width:9%; text-align:center;">Riesgo</th>
+                                <th style="width:12%; text-align:center;">Maestro Guía</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sections.map(s => {
                                 const clr = s.passRate >= 80 ? '#16a34a' : (s.passRate >= 60 ? '#d97706' : '#dc2626');
+                                const safeKey = _esc(s.key).replace(/'/g, "\\'");
                                 return `<tr>
                                     <td><strong style="color:#0f2b5c;">${_esc(s.key)}</strong></td>
-                                    <td style="text-align:center;"><strong>${s.total}</strong> <small style="color:#64748b;">(👦${s.male} / 👧${s.female})</small></td>
+                                    <td style="text-align:center;"><strong>${s.total}</strong> <small style="color:#64748b;">(👦${s.male}/👧${s.female})</small></td>
                                     <td style="text-align:center; font-weight:800; color:#0369a1;">${s.count ? s.avg : '—'}</td>
                                     <td style="text-align:center; font-size:0.74rem;"><span style="color:#0284c7; font-weight:700;">${s.maleCount ? s.maleAvg : '—'}</span> / <span style="color:#be185d; font-weight:700;">${s.femaleCount ? s.femaleAvg : '—'}</span></td>
                                     <td>
@@ -589,21 +602,29 @@
                                         </div>
                                     </td>
                                     <td style="text-align:center;"><span style="background:${s.atRisk > 0 ? '#fee2e2' : '#dcfce7'}; color:${s.atRisk > 0 ? '#b91c1c' : '#15803d'}; padding:2px 8px; border-radius:10px; font-weight:800; font-size:0.73rem;">${s.atRisk}</span></td>
+                                    <td style="text-align:center;">
+                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="printGuideTeacherSectionAnalyticsReport('${safeKey}')" style="padding:3px 7px; font-size:0.72rem; font-weight:700;" title="Imprimir reporte de tutoría para el Maestro Guía">
+                                            <i class="fa-solid fa-compass"></i> Guía
+                                        </button>
+                                    </td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
                 </div>
                 <div class="ab-cards">
-                    ${sections.map(s => `
+                    ${sections.map(s => {
+                        const safeKey = _esc(s.key).replace(/'/g, "\\'");
+                        return `
                         <div class="ab-card">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <strong style="color:#0f2b5c;">${_esc(s.key)}</strong>
                                 <span style="font-weight:800; color:#0369a1;">Prom: ${s.count ? s.avg : '—'}</span>
                             </div>
-                            <div style="font-size:0.75rem; color:#475569; margin:4px 0;">Total: <strong>${s.total}</strong> (👦 ${s.male} | 👧 ${s.female}) &bull; Aprobación: <strong>${s.count ? s.passRate + '%' : '—'}</strong> &bull; Riesgo: <strong style="color:#dc2626;">${s.atRisk}</strong></div>
-                        </div>
-                    `).join('')}
+                            <div style="font-size:0.75rem; color:#475569; margin:4px 0 8px 0;">Total: <strong>${s.total}</strong> (👦 ${s.male} | 👧 ${s.female}) &bull; Aprobación: <strong>${s.count ? s.passRate + '%' : '—'}</strong> &bull; Riesgo: <strong style="color:#dc2626;">${s.atRisk}</strong></div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="printGuideTeacherSectionAnalyticsReport('${safeKey}')" style="width:100%; font-weight:700; font-size:0.76rem;"><i class="fa-solid fa-compass"></i> Imprimir Reporte Maestro Guía</button>
+                        </div>`;
+                    }).join('')}
                 </div>
             `;
         } else if (HUB_STATE.activeTab === 'teachers') {
@@ -895,6 +916,59 @@
         }
     }
 
+    /**
+     * Reporte para Maestro Guía por Sección (tutoría, alumnos en riesgo, H/M, % asistencia y becados).
+     */
+    function printGuideTeacherSectionAnalyticsReport(sectionKey) {
+        const data = computeBimesterAnalytics(HUB_STATE.bimestre);
+        const sec = data.sections.find(x => x.key === sectionKey);
+        if (!sec) return;
+        const todayStr = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+        const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
+        const gObj = gradesList.find(g => g && `${g.name} (${String(g.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase()})` === sec.key);
+        const guideTeacher = (gObj && (gObj.guideTeacher || gObj.teacher)) || 'Maestro(a) Guía';
+
+        const htmlContent = `
+            <style>
+                @page { size: letter portrait; margin: 12mm; }
+                .gt-tbl th { background-color: #0369a1 !important; color: #ffffff !important; border: 1px solid #0f2b5c; padding: 5px; font-size: 8pt; }
+                .gt-tbl td { border: 1px solid #cbd5e1; padding: 4px 6px; font-size: 8.2pt; }
+            </style>
+            <div style="font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;">
+                <div style="border-bottom:3px solid #0369a1; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="margin:0; font-size:1.05rem; color:#0f2b5c;">REPORTE DE TUTORÍA PARA MAESTRO GUÍA</h2>
+                        <div style="font-size:0.8rem; color:#475569;">ENCCO Jutiapa &bull; Ciclo ${_esc(data.cycle)} &bull; ${_esc(data.bimLabel)}</div>
+                    </div>
+                    <div style="font-size:0.76rem; color:#475569;">${_esc(todayStr)}</div>
+                </div>
+                <div style="background:#f0f9ff; border:1px solid #bae6fd; border-left:4px solid #0369a1; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:9pt;">
+                    <div><strong>Sección:</strong> ${_esc(sec.key)} &bull; <strong>Maestro(a) Guía:</strong> ${_esc(guideTeacher)}</div>
+                    <div style="margin-top:4px;"><strong>Matrícula:</strong> ${sec.total} (👦 Hombres: ${sec.male} / 👧 Mujeres: ${sec.female}) &bull; <strong>Promedio:</strong> ${sec.count ? sec.avg : '—'} pts &bull; <strong>% Aprobación:</strong> ${sec.count ? sec.passRate + '%' : '—'}</div>
+                </div>
+                <h4 style="margin:8px 0 4px 0; color:#0f2b5c; font-size:9pt;">Estudiantes en Seguimiento Prioritario / Riesgo (${sec.riskStudents.length})</h4>
+                <table class="gt-tbl" style="width:100%; border-collapse:collapse; margin-bottom:14px;">
+                    <thead><tr><th style="width:30px;">No.</th><th style="text-align:left;">Estudiante</th><th>Sexo</th><th>Prom.</th><th>Reprob.</th><th>% Asist.</th><th>Beca</th></tr></thead>
+                    <tbody>
+                        ${sec.riskStudents.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:14px; color:#15803d; font-weight:700;">✅ Sin estudiantes en riesgo académico en esta sección.</td></tr>' : sec.riskStudents.map((r, i) => `
+                            <tr><td style="text-align:center;">${i + 1}</td><td><strong>${_esc(r.name)}</strong></td><td style="text-align:center;">${r.gender}</td><td style="text-align:center; font-weight:800;">${r.avg}</td><td style="text-align:center; color:#b91c1c; font-weight:800;">${r.failedCount}</td><td style="text-align:center;">${_esc(r.attPct)}</td><td style="text-align:center;">${r.isBecado ? '🎓 Sí' : '—'}</td></tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:44px; text-align:center; font-size:8.5pt;">
+                    <div style="border-top:1px solid #0f172a; padding-top:4px;"><strong>${_esc(guideTeacher)}</strong><br>Maestro(a) Guía</div>
+                    <div style="border-top:1px solid #0f172a; padding-top:4px;"><strong>Dirección / Orientación</strong><br>ENCCO Jutiapa</div>
+                </div>
+            </div>
+        `;
+
+        if (typeof window.renderAndShowPrintDocument === 'function') {
+            window.renderAndShowPrintDocument(`Reporte Maestro Guía — ${sec.key} (${data.bimLabel})`, htmlContent, 'portrait');
+        } else if (typeof window.enccoSafePrintHtml === 'function') {
+            window.enccoSafePrintHtml(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head><body>${htmlContent}</body></html>`, 'width=900,height=800', true);
+        }
+    }
+
     async function exportBimesterAnalyticsExcel() {
         const data = computeBimesterAnalytics(HUB_STATE.bimestre);
         const filenameBase = `Analitica_Escolar_ENCCO_${data.cycle}_B${data.bimFilter}`;
@@ -958,5 +1032,6 @@
     window.setAnalyticsHubTab = setAnalyticsHubTab;
     window.printClaustroDocentesAnalyticsReport = printClaustroDocentesAnalyticsReport;
     window.printIndividualTeacherAnalyticsReport = printIndividualTeacherAnalyticsReport;
+    window.printGuideTeacherSectionAnalyticsReport = printGuideTeacherSectionAnalyticsReport;
     window.exportBimesterAnalyticsExcel = exportBimesterAnalyticsExcel;
 })(window, document);

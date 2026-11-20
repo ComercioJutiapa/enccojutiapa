@@ -86,6 +86,9 @@ assert(lastPrint.html.includes('INFORME DE MEJORA ESCOLAR') && lastPrint.html.in
 
 mockWindow.printIndividualTeacherAnalyticsReport('Profa. Ana López');
 assert(lastPrint.html.includes('INFORME PEDAGÓGICO INDIVIDUAL POR DOCENTE') && lastPrint.html.includes('PÉREZ JUAN'), 'Informe individual docente incluye lista de estudiantes a reforzar');
-console.log('  ✅ 4. Reportes imprimibles para Claustro y por Docente individual verificados.');
+
+mockWindow.printGuideTeacherSectionAnalyticsReport('4to Perito Contador (A)');
+assert(lastPrint.html.includes('REPORTE DE TUTORÍA PARA MAESTRO GUÍA') && lastPrint.html.includes('4to Perito Contador (A)'), 'Reporte para Maestro Guía por sección verificado');
+console.log('  ✅ 4. Los 3 reportes imprimibles (Claustro, Docente Individual y Maestro Guía) verificados.');
 
 console.log('\n🎯 ¡TODAS LAS PRUEBAS DE ANALÍTICA POR BIMESTRE Y REPORTES DOCENTES PASARON AL 100%!');
