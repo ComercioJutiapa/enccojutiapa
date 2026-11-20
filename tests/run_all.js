@@ -60,7 +60,8 @@ const CRITICAL_SUITES = [
     'tests/test_attendance_multicycle_and_scholarship_pct.js',
     'tests/test_recovery_passed_migration_2027.js',
     'tests/test_student_docs_audit_and_cui.js',
-    'tests/test_scholarships_and_ficha_docs.js'
+    'tests/test_scholarships_and_ficha_docs.js',
+    'tests/test_analytics_bimester_reports.js'
 ];
 
 console.log('================================================================================');
