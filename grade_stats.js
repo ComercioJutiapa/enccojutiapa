@@ -4561,7 +4561,7 @@ function _prefetchLiveTargetCycleStudentsIfNeeded(targetCycle = '2027') {
 
     const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
         ? window.CycleArchiver.getFirebaseUrl()
-        : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+        : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
 
     window._liveTargetCycleFetchState[tgtStr] = { loading: true, fetchedAt: 0 };
     fetch(`${fbUrl}/encc_school_state/students.json?t=${Date.now()}`)
@@ -4614,7 +4614,7 @@ function _prefetchGraduatedCohortIfNeeded(originCycle = '2026') {
 
     const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
         ? window.CycleArchiver.getFirebaseUrl()
-        : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+        : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
 
     window._liveGraduatedFetchState[origStr] = { loading: true, fetchedAt: 0 };
     fetch(`${fbUrl}/encc_school_state/historico/${origStr}/egresadosSnapshot.json?t=${Date.now()}`)
@@ -4639,11 +4639,13 @@ function _prefetchGraduatedCohortIfNeeded(originCycle = '2026') {
 
 function _buildInitialGradesForPromotedGrade(targetGradeNum) {
     const gMap = {};
-    const cnb = window.CycleArchiver && window.CycleArchiver.OFFICIAL_CNB_SUBJECTS;
-    const key = targetGradeNum === 5 ? '5to' : (targetGradeNum === 6 ? '6to' : '4to');
-    if (cnb && Array.isArray(cnb[key]) && cnb[key].length > 0) {
-        cnb[key].forEach(subj => {
-            gMap[subj] = { b1: null, b2: null, b3: null, b4: null };
+    const cnb = window.OFFICIAL_GRADE_SUBJECTS || (window.CycleArchiver && window.CycleArchiver.OFFICIAL_CNB_SUBJECTS);
+    const numKey = String(targetGradeNum || 5);
+    const altKey = targetGradeNum === 5 ? '5to' : (targetGradeNum === 6 ? '6to' : '4to');
+    const cnbList = cnb && (Array.isArray(cnb[numKey]) ? cnb[numKey] : (Array.isArray(cnb[altKey]) ? cnb[altKey] : null));
+    if (cnbList && cnbList.length > 0) {
+        cnbList.forEach(subj => {
+            gMap[subj] = [0, 0, 0, 0];
         });
         return gMap;
     }
@@ -4653,7 +4655,7 @@ function _buildInitialGradesForPromotedGrade(targetGradeNum) {
         const gRaw = String(p.grade || p.gradeCode || '').toUpperCase();
         if ((targetGradeNum === 5 && gRaw.includes('5')) || (targetGradeNum === 6 && gRaw.includes('6'))) {
             const subjName = p.subject || p.name;
-            if (subjName) gMap[subjName] = { b1: null, b2: null, b3: null, b4: null };
+            if (subjName) gMap[subjName] = [0, 0, 0, 0];
         }
     });
     return gMap;
@@ -5132,7 +5134,7 @@ async function executeRecoveryMigrationBatch(items, originCycle = '2026', target
             if (updatedGradCohort && typeof fetch === 'function') {
                 const fbUrl = (window.CycleArchiver && typeof window.CycleArchiver.getFirebaseUrl === 'function')
                     ? window.CycleArchiver.getFirebaseUrl()
-                    : 'https://encco-jutiapa-1970-default-rtdb.firebaseio.com';
+                    : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
                 await fetch(`${fbUrl}/encc_school_state/historico/${origStr}/egresadosSnapshot.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
