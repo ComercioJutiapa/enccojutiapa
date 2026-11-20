@@ -15975,39 +15975,39 @@ function renderStudentsTable() {
 
         return `
             <tr style="${tableRowBg}">
-                <td style="text-align:center; padding:8px 6px;">${avatarHtml}</td>
-                <td style="padding:6px 6px; line-height:1.2;">
-                    <div style="font-weight:800; color:#0f2b5c; font-size:0.79rem; letter-spacing:0.2px;">${escapeHtml(s.carne || 'S/C')}</div>
-                    ${s.personalCode ? `<div style="color:var(--brand-green-dark); font-weight:700; font-size:0.73rem;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge" style="font-size:0.68rem;"></i> ${escapeHtml(s.personalCode)}</div>` : ''}
-                    ${s.cui ? `<div style="color:#64748b; font-size:0.70rem;">CUI: ${escapeHtml(s.cui)}</div>` : ''}
+                <td data-label="Foto" style="text-align:center; padding:6px 4px;">${avatarHtml}</td>
+                <td data-label="Carné / CUI" style="padding:6px 5px; line-height:1.2;">
+                    <div style="font-weight:800; color:#0f2b5c; font-size:0.77rem; letter-spacing:0.2px;">${escapeHtml(s.carne || 'S/C')}</div>
+                    ${s.personalCode ? `<div style="color:var(--brand-green-dark); font-weight:700; font-size:0.71rem;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge" style="font-size:0.66rem;"></i> ${escapeHtml(s.personalCode)}</div>` : ''}
+                    ${s.cui ? `<div style="color:#64748b; font-size:0.68rem;">CUI: ${escapeHtml(s.cui)}</div>` : ''}
                 </td>
-                <td style="padding:8px 10px;">
-                    <strong style="color:#0f172a; font-size:0.88rem;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>
+                <td data-label="Estudiante" style="padding:6px 6px;">
+                    <strong style="color:#0f172a; font-size:0.84rem;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>
                     ${s.retireReason ? `<br><small style="color:#b45309; font-style:italic;" title="Motivo registrado por Secretaría"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(s.retireReason)}</small>` : ''}
                 </td>
-                <td style="padding:8px 10px;">
-                    <div style="font-weight:700; color:#0f172a; font-size:0.84rem; line-height:1.2;">
-                        <i class="fa-solid fa-graduation-cap" style="color:#0284c7; font-size:0.8rem; margin-right:3px;"></i>${escapeHtml(gradeName)}
+                <td data-label="Grado / Secc." style="padding:6px 6px;">
+                    <div style="font-weight:700; color:#0f172a; font-size:0.80rem; line-height:1.2;">
+                        <i class="fa-solid fa-graduation-cap" style="color:#0284c7; font-size:0.76rem; margin-right:3px;"></i>${escapeHtml(gradeName)}
                     </div>
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.74rem; margin-top:3px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:12px;">
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.71rem; margin-top:3px; display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:12px;">
                         <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(sectionName)}
                     </span>
                 </td>
-                <td style="padding:8px 10px;">
-                    <span style="font-size:0.82rem; color:#334155; font-weight:600;">${escapeHtml(guardianInfo.name)}</span>${roleBadge}<br>
-                    <div style="display:inline-flex; align-items:center; gap:5px; margin-top:2px;">
-                        <small style="color:#64748b; font-size:0.76rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(guardianInfo.phoneDisplay)}</small>
+                <td data-label="Encargado" style="padding:6px 6px;">
+                    <div><span style="font-size:0.79rem; color:#334155; font-weight:600;">${escapeHtml(guardianInfo.name)}</span>${roleBadge}</div>
+                    <div style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:2px;">
+                        <small style="color:#64748b; font-size:0.73rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(guardianInfo.phoneDisplay)}</small>
                         ${(tutorTel && canRoleUseWhatsApp()) ? `
-                            <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar a ${escapeHtml(guardianInfo.label || 'encargado')} (${escapeHtml(guardianInfo.name)}) vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
+                            <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar a ${escapeHtml(guardianInfo.label || 'encargado')} (${escapeHtml(guardianInfo.name)}) vía WhatsApp" style="padding:1px 5px; font-size:0.70rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
                                 <i class="fa-brands fa-whatsapp"></i> Chat
                             </button>
                         ` : ''}
                     </div>
                 </td>
-                <td style="text-align:center; padding:8px 6px;">${avgColumnContent}</td>
-                <td style="text-align:center; padding:8px 6px;">${statusBadge}</td>
-                <td style="text-align:center; padding:8px 8px;">
-                    <div style="display:inline-flex; gap:4px; align-items:center; justify-content:center; white-space:nowrap;">
+                <td data-label="Promedio" style="text-align:center; padding:6px 4px;">${avgColumnContent}</td>
+                <td data-label="Estado" style="text-align:center; padding:6px 4px;">${statusBadge}</td>
+                <td data-label="Acciones" style="text-align:center; padding:6px 4px;">
+                    <div class="student-row-actions">
                         <button type="button" class="btn ${isDocente ? 'btn-primary' : 'btn-outline-primary'} btn-sm" onclick="openStudentProfileModal('${s.id}')" title="Ver Expediente y Ficha de Datos" style="padding:4px 9px; font-size:0.76rem; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
                             <i class="fa-solid fa-id-card"></i> ${isDocente ? 'Ficha' : 'Ficha'}
                         </button>
