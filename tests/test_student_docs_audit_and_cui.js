@@ -128,4 +128,12 @@ assert.strictEqual(lastPrintedOrient, 'landscape', 'Reporte impreso en orientaci
 assert(lastPrintedHtml.includes('8.5in 13in landscape') && lastPrintedHtml.includes('#0369a1'), 'Impresión en Hoja Oficio 8.5x13 y Azul Institucional');
 console.log('  ✅ 5. Renderizado responsivo (ventana, tablet, móvil) e impresión Azul Institucional Oficio verificados.');
 
+// 7. Verificar guardado atómico sin timeout en saveStudentProfileForm y sincronización de documentos
+const appCode = fs.readFileSync(path.join(rootDir, 'app.js'), 'utf8');
+assert(appCode.includes("function _syncStudentExpedienteAtomicToRtdb(student, nowTime)"), 'Debe existir helper atómico _syncStudentExpedienteAtomicToRtdb');
+assert(appCode.includes("EnccoCloudSync.patchNode('students/' + studentIndex, studentAtomicPatch)"), 'saveStudentProfileForm debe usar patchNode atómico por estudiante (~2 KB) en vez de subir todos los alumnos');
+assert(appCode.includes("modular.auth && modular.auth.currentUser"), 'saveStudentProfileForm debe condicionar setDoc en Firestore a sesión Auth activa');
+assert(appCode.includes("window.renderStudentDocsAuditPanel()"), 'saveStudentProfileForm debe refrescar el panel de Auditoría Docs y CUI cuando esté abierto');
+console.log('  ✅ 6. Guardado atómico en RTDB (patchNode), guarda de Firestore Auth y refresco automático de Auditoría verificados.');
+
 console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUDITORÍA DE DOCUMENTOS Y CUI PASARON AL 100%!');

@@ -19049,6 +19049,45 @@ function onExpedienteDocFieldChange(docKey, field, value) {
     if (typeof saveStateToLocalStorage === 'function') {
         saveStateToLocalStorage();
     }
+    if (typeof _syncStudentExpedienteAtomicToRtdb === 'function') {
+        _syncStudentExpedienteAtomicToRtdb(student, nowTime);
+    }
+}
+
+let _expedienteAtomicSyncTimers = {};
+function _syncStudentExpedienteAtomicToRtdb(student, nowTime) {
+    if (!student || !student.id || STATE.isHistoricalReadOnlyMode) return;
+    const stuId = String(student.id);
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    window._locallyDirtyStudentIds.add(stuId);
+    if (_expedienteAtomicSyncTimers[stuId]) clearTimeout(_expedienteAtomicSyncTimers[stuId]);
+    _expedienteAtomicSyncTimers[stuId] = setTimeout(async () => {
+        try {
+            if (typeof calculateStudentExpedienteMetrics === 'function') {
+                calculateStudentExpedienteMetrics(student);
+            }
+            const idx = (STATE.students || []).findIndex(s => s && String(s.id) === stuId);
+            if (idx !== -1 && typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
+                await EnccoCloudSync.patchNode('students/' + idx, {
+                    expediente: student.expediente,
+                    lastModified: nowTime || Date.now(),
+                    _localModifiedAt: nowTime || Date.now()
+                });
+            }
+            if (typeof window.renderStudentDocsAuditPanel === 'function') {
+                const auditPanel = document.getElementById('studentDocsAuditPanel');
+                if (auditPanel && auditPanel.style.display !== 'none') {
+                    window.renderStudentDocsAuditPanel();
+                }
+            }
+        } catch (syncErr) {
+            console.warn('Aviso al sincronizar expediente atómico en RTDB:', syncErr);
+        } finally {
+            setTimeout(() => {
+                if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.delete(stuId);
+            }, 12000);
+        }
+    }, 350);
 }
 
 function onExpedienteGeneralNotesChange(value) {
@@ -19210,6 +19249,9 @@ function quickMarkAllExpedienteDocs(newStatus) {
 
     if (typeof saveStateToLocalStorage === 'function') {
         saveStateToLocalStorage();
+    }
+    if (typeof _syncStudentExpedienteAtomicToRtdb === 'function') {
+        _syncStudentExpedienteAtomicToRtdb(student, nowTime);
     }
 
     if (typeof showToast === 'function') {
@@ -21177,22 +21219,31 @@ async function saveStudentProfileForm(e) {
         if (student.id) window._locallyDirtyStudentIds.add(student.id);
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
-        saveStateToLocalStorage();
-        closeStudentProfileModal();
-        if (typeof setStudentFiltersToMatch === 'function' && student.grade && student.section) {
-            setStudentFiltersToMatch(student.grade, student.section, student.gradeCode);
-        } else if (typeof renderStudentsTable === 'function') {
-            renderStudentsTable();
-        }
-        if (typeof renderBoletasTable === 'function') renderBoletasTable();
-        if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
-        if (typeof loadAttendanceList === 'function') loadAttendanceList();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        showToast(`Expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y reasignado a ${student.grade} (${student.section}).`, "success");
+        try { saveStateToLocalStorage(); } catch (lsErr) { console.warn("Aviso localStorage:", lsErr); }
+        try { closeStudentProfileModal(); } catch (cmErr) {}
 
-        // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true y sanitización anti-undefined)
+        const auditPanelEl = document.getElementById('studentDocsAuditPanel');
+        const isAuditPanelOpen = !!(auditPanelEl && auditPanelEl.style.display !== 'none');
+
+        try {
+            if (!isAuditPanelOpen && typeof setStudentFiltersToMatch === 'function' && student.grade && student.section) {
+                setStudentFiltersToMatch(student.grade, student.section, student.gradeCode);
+            } else if (typeof renderStudentsTable === 'function') {
+                renderStudentsTable();
+            }
+        } catch (stUiErr) { console.warn("Aviso al refrescar tabla de estudiantes:", stUiErr); }
+        if (isAuditPanelOpen && typeof window.renderStudentDocsAuditPanel === 'function') {
+            try { window.renderStudentDocsAuditPanel(); } catch (auErr) { console.warn("Aviso al refrescar auditoría docs:", auErr); }
+        }
+        if (typeof renderBoletasTable === 'function') { try { renderBoletasTable(); } catch (bErr) {} }
+        if (typeof loadTeacherGradebook === 'function') { try { loadTeacherGradebook(); } catch (gErr) {} }
+        if (typeof loadAttendanceList === 'function') { try { loadAttendanceList(); } catch (aErr) {} }
+        if (typeof renderDashboard === 'function') { try { renderDashboard(); } catch (dErr) {} }
+        showToast(`Expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado (${student.grade} - ${student.section}).`, "success");
+
+        // 🌟 A. Persistencia Atómica en Firestore (solo cuando existe sesión Firebase Auth activa)
         const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+        if (modular && modular.db && modular.auth && modular.auth.currentUser && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             try {
                 const { db, doc, setDoc } = modular;
                 const stuRef = doc(db, 'students', student.id);
@@ -21205,13 +21256,65 @@ async function saveStudentProfileForm(e) {
             }
         }
 
-        // 🌟 B. Sincronización atómica aislada en RTDB (SÓLO nodo 'students')
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        // 🌟 B. Sincronización atómica ultraliviana en RTDB (PATCH de ~2 KB solo del estudiante editado, sin subir los 408 alumnos ni tocar notas)
+        let rtdbSaved = false;
+        const studentIndex = (STATE.students || []).findIndex(s => s && (
+            String(s.id) === String(student.id) ||
+            (s.carne && student.carne && String(s.carne) === String(student.carne)) ||
+            (s.personalCode && student.personalCode && String(s.personalCode) === String(student.personalCode))
+        ));
+
+        const studentAtomicPatch = {
+            status: student.status,
+            active: student.active,
+            grade: student.grade,
+            section: student.section,
+            gradeCode: student.gradeCode,
+            gradeLabel: student.gradeLabel,
+            career: student.career,
+            address: student.address,
+            phone: student.phone,
+            email: student.email,
+            retireReason: student.retireReason,
+            retireRecipient: student.retireRecipient,
+            retireDate: student.retireDate,
+            hasExpediente: student.hasExpediente,
+            expediente: student.expediente,
+            editedByAuthority: student.editedByAuthority,
+            lastModifiedByRole: student.lastModifiedByRole,
+            lastModifiedBy: student.lastModifiedBy,
+            _localModifiedAt: student._localModifiedAt,
+            lastModified: student.lastModified
+        };
+        if (student.photo) studentAtomicPatch.photo = student.photo;
+        if (student.photoUrl) studentAtomicPatch.photoUrl = student.photoUrl;
+
+        if (typeof EnccoCloudSync !== 'undefined' && studentIndex !== -1 && typeof EnccoCloudSync.patchNode === 'function') {
+            for (let attempt = 1; attempt <= 2 && !rtdbSaved; attempt++) {
+                try {
+                    rtdbSaved = await withTimeout(
+                        EnccoCloudSync.patchNode('students/' + studentIndex, studentAtomicPatch),
+                        15000,
+                        'Tiempo de espera en Realtime Database agotado.'
+                    );
+                } catch(rtdbErr) {
+                    console.warn('Aviso al sincronizar expediente atómico en RTDB (intento ' + attempt + '/2):', rtdbErr);
+                }
+            }
+        } else if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.syncNode === 'function') {
             try {
-                await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
+                rtdbSaved = await withTimeout(
+                    EnccoCloudSync.syncNode('students', STATE.students),
+                    15000,
+                    'Tiempo de espera en Realtime Database agotado.'
+                );
             } catch(rtdbErr) {
                 console.warn("Aviso al sincronizar expediente en RTDB:", rtdbErr);
             }
+        }
+
+        if (!rtdbSaved && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+            showToast("Cambios aplicados en pantalla, pero la conexión con Firebase demoró. Verifique su internet y vuelva a pulsar Guardar si persiste.", "warning");
         }
         setTimeout(() => {
             if (window._locallyDirtyStudentIds && student.id) {
