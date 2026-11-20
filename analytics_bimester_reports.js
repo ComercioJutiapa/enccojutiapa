@@ -17,7 +17,12 @@
 
     const HUB_STATE = {
         bimestre: 'ALL', // 'ALL' | '1' | '2' | '3' | '4'
-        activeTab: 'bimesters' // 'bimesters' | 'gender' | 'sections' | 'teachers' | 'subjects'
+        activeTab: 'bimesters', // 'bimesters' | 'risk' | 'gender' | 'sections' | 'teachers' | 'subjects'
+        riskGrade: 'ALL',
+        riskSection: 'ALL',
+        riskSubject: 'ALL',
+        riskGender: 'ALL',
+        riskLevel: 'ALL'
     };
 
     function _esc(str) {
@@ -134,6 +139,7 @@
         const sectionsMap = new Map();
         const teachersMap = new Map();
         const subjectsMap = new Map();
+        const atRiskStudents = [];
         let becadosAtRisk = 0;
 
         students.forEach(s => {
@@ -173,6 +179,7 @@
             let stuSum = 0;
             let stuSubjCount = 0;
             let stuFailedSubj = 0;
+            const stuFailedDetails = [];
 
             Object.entries(gradesObj).forEach(([subjName, rawScores]) => {
                 const scores = _extractSubjectBimesterScores(rawScores);
@@ -204,7 +211,11 @@
 
                 stuSum += effScore;
                 stuSubjCount++;
-                if (effScore < 60) stuFailedSubj++;
+                const teacherName = _resolveTeacherForSubjectAndGrade(subjName, gradeBase, cleanSec);
+                if (effScore < 60) {
+                    stuFailedSubj++;
+                    stuFailedDetails.push({ subject: subjName, score: Math.round(effScore * 10) / 10, teacher: teacherName });
+                }
 
                 // Acumular por género y sección
                 gBucket.sum += effScore; gBucket.count++;
@@ -224,7 +235,6 @@
                     });
                 }
                 const subObj = subjectsMap.get(subjName);
-                const teacherName = _resolveTeacherForSubjectAndGrade(subjName, gradeBase, cleanSec);
                 subObj.teachers.add(teacherName);
                 subObj.sum += effScore; subObj.count++;
                 if (effScore >= 60) subObj.passed++; else subObj.failed++;
@@ -257,16 +267,19 @@
                 else { tObj.maleCount++; if (effScore >= 60) tObj.malePassed++; }
             });
 
+            const attPctNum = (attObj && attObj.percentage !== null && typeof attObj.percentage !== 'undefined') ? Number(attObj.percentage) : null;
+            const attPctVal = attPctNum !== null ? `${attPctNum}%` : 'S/R';
+            const hasSch = typeof window.getStudentScholarshipForCycle === 'function' && !!window.getStudentScholarshipForCycle(s, cycle);
+            const displayName = typeof window.formatStudentDisplayName === 'function' ? window.formatStudentDisplayName(s, 'lastFirst').toUpperCase() : (s.name || '');
+
             if (stuSubjCount > 0) {
                 gBucket.evaluatedStudents++;
                 const stuAvg = Math.round((stuSum / stuSubjCount) * 10) / 10;
                 if (stuFailedSubj >= 2 || stuAvg < 60) {
                     gBucket.atRisk++;
                     secObj.atRisk++;
-                    const attPctVal = (attObj && attObj.percentage !== null && typeof attObj.percentage !== 'undefined') ? `${attObj.percentage}%` : 'S/R';
-                    const hasSch = typeof window.getStudentScholarshipForCycle === 'function' && !!window.getStudentScholarshipForCycle(s, cycle);
                     secObj.riskStudents.push({
-                        name: typeof window.formatStudentDisplayName === 'function' ? window.formatStudentDisplayName(s, 'lastFirst').toUpperCase() : (s.name || ''),
+                        name: displayName,
                         gender: isF ? 'F' : 'M',
                         avg: stuAvg,
                         failedCount: stuFailedSubj,
@@ -274,6 +287,51 @@
                         isBecado: hasSch
                     });
                 }
+
+                // Clasificación de riesgo individual para el ranking "Más en Riesgo"
+                let riskLevel = null;
+                if (stuFailedSubj >= 3 || stuAvg < 50 || (attPctNum !== null && attPctNum < 70)) riskLevel = 'critico';
+                else if (stuFailedSubj === 2 || stuAvg < 60 || (attPctNum !== null && attPctNum < 80)) riskLevel = 'alto';
+                else if (stuFailedSubj === 1 || (attPctNum !== null && attPctNum < 85)) riskLevel = 'preventivo';
+
+                if (riskLevel) {
+                    const levelWeight = riskLevel === 'critico' ? 300 : (riskLevel === 'alto' ? 200 : 100);
+                    const riskScore = levelWeight + (stuFailedSubj * 25) + Math.max(0, 60 - stuAvg) + (attPctNum !== null && attPctNum < 85 ? (85 - attPctNum) : 0);
+                    atRiskStudents.push({
+                        id: s.id,
+                        name: displayName,
+                        gender: isF ? 'F' : 'M',
+                        grade: gradeBase,
+                        section: cleanSec,
+                        sectionKey: secKey,
+                        avg: stuAvg,
+                        failedCount: stuFailedSubj,
+                        failedSubjects: stuFailedDetails.sort((a, b) => a.score - b.score),
+                        attPctNum,
+                        attPct: attPctVal,
+                        isBecado: hasSch,
+                        riskLevel,
+                        riskScore: Math.round(riskScore * 10) / 10
+                    });
+                }
+            } else if (attPctNum !== null && attPctNum < 85) {
+                const riskLevel = attPctNum < 70 ? 'critico' : (attPctNum < 80 ? 'alto' : 'preventivo');
+                atRiskStudents.push({
+                    id: s.id,
+                    name: displayName,
+                    gender: isF ? 'F' : 'M',
+                    grade: gradeBase,
+                    section: cleanSec,
+                    sectionKey: secKey,
+                    avg: null,
+                    failedCount: 0,
+                    failedSubjects: [],
+                    attPctNum,
+                    attPct: attPctVal,
+                    isBecado: hasSch,
+                    riskLevel,
+                    riskScore: (riskLevel === 'critico' ? 300 : (riskLevel === 'alto' ? 200 : 100)) + (85 - attPctNum)
+                });
             }
         });
 
@@ -355,6 +413,8 @@
         const overallAvg = finalizeAvg(gender.male.sum + gender.female.sum, totalEvaluatedGrades);
         const overallPassRate = finalizeRate(gender.male.passed + gender.female.passed, totalEvaluatedGrades);
 
+        atRiskStudents.sort((a, b) => b.riskScore - a.riskScore || b.failedCount - a.failedCount || a.name.localeCompare(b.name, 'es'));
+
         return {
             cycle,
             bimFilter,
@@ -367,6 +427,7 @@
             sections,
             teachers,
             subjects,
+            atRiskStudents,
             recommendations
         };
     }
@@ -511,11 +572,133 @@
         injectBimesterAnalyticsStyles();
 
         const data = computeBimesterAnalytics(HUB_STATE.bimestre);
-        const { cycle, bimLabel, bimesters, gender, sections, teachers, subjects, recommendations } = data;
+        const { cycle, bimLabel, bimesters, gender, sections, teachers, subjects, atRiskStudents, recommendations } = data;
+
+        const filteredRisk = (atRiskStudents || []).filter(r => {
+            if (HUB_STATE.riskGrade !== 'ALL' && r.grade !== HUB_STATE.riskGrade) return false;
+            if (HUB_STATE.riskSection !== 'ALL' && r.section !== HUB_STATE.riskSection) return false;
+            if (HUB_STATE.riskGender !== 'ALL' && r.gender !== HUB_STATE.riskGender) return false;
+            if (HUB_STATE.riskLevel !== 'ALL' && r.riskLevel !== HUB_STATE.riskLevel) return false;
+            if (HUB_STATE.riskSubject !== 'ALL' && !r.failedSubjects.some(f => f.subject === HUB_STATE.riskSubject)) return false;
+            return true;
+        });
 
         let tabBodyHtml = '';
 
-        if (HUB_STATE.activeTab === 'bimesters') {
+        if (HUB_STATE.activeTab === 'risk') {
+            const availGrades = [...new Set(atRiskStudents.map(r => r.grade))].sort();
+            const availSections = [...new Set(atRiskStudents.filter(r => HUB_STATE.riskGrade === 'ALL' || r.grade === HUB_STATE.riskGrade).map(r => r.section))].sort();
+            const availSubjects = [...new Set(atRiskStudents.flatMap(r => r.failedSubjects.map(f => f.subject)))].sort((a, b) => a.localeCompare(b, 'es'));
+
+            const riskBadge = (lvl) => {
+                if (lvl === 'critico') return '<span style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:2px 7px; border-radius:10px; font-weight:800; font-size:0.71rem;">🔴 Crítico</span>';
+                if (lvl === 'alto') return '<span style="background:#ffedd5; color:#c2410c; border:1px solid #fdba74; padding:2px 7px; border-radius:10px; font-weight:800; font-size:0.71rem;">🟠 Alto</span>';
+                return '<span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:2px 7px; border-radius:10px; font-weight:800; font-size:0.71rem;">🟡 Preventivo</span>';
+            };
+
+            const critCnt = filteredRisk.filter(r => r.riskLevel === 'critico').length;
+            const altoCnt = filteredRisk.filter(r => r.riskLevel === 'alto').length;
+            const prevCnt = filteredRisk.filter(r => r.riskLevel === 'preventivo').length;
+
+            tabBodyHtml = `
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; padding:10px 12px; margin-bottom:12px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1 1 480px;">
+                        <select onchange="setAnalyticsRiskFilter('riskGrade', this.value)" style="height:34px; border-radius:7px; border:1px solid #cbd5e1; padding:0 8px; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                            <option value="ALL">🏫 Todos los Grados</option>
+                            ${availGrades.map(g => `<option value="${_esc(g)}" ${HUB_STATE.riskGrade === g ? 'selected' : ''}>${_esc(g)}</option>`).join('')}
+                        </select>
+                        <select onchange="setAnalyticsRiskFilter('riskSection', this.value)" style="height:34px; border-radius:7px; border:1px solid #cbd5e1; padding:0 8px; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                            <option value="ALL">📌 Todas las Secciones</option>
+                            ${availSections.map(sc => `<option value="${_esc(sc)}" ${HUB_STATE.riskSection === sc ? 'selected' : ''}>Sección ${_esc(sc)}</option>`).join('')}
+                        </select>
+                        <select onchange="setAnalyticsRiskFilter('riskSubject', this.value)" style="height:34px; border-radius:7px; border:1px solid #cbd5e1; padding:0 8px; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff; max-width:240px;">
+                            <option value="ALL">📚 Todas las Clases Reprobadas</option>
+                            ${availSubjects.map(sb => `<option value="${_esc(sb)}" ${HUB_STATE.riskSubject === sb ? 'selected' : ''}>${_esc(sb)}</option>`).join('')}
+                        </select>
+                        <select onchange="setAnalyticsRiskFilter('riskGender', this.value)" style="height:34px; border-radius:7px; border:1px solid #cbd5e1; padding:0 8px; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                            <option value="ALL" ${HUB_STATE.riskGender === 'ALL' ? 'selected' : ''}>👦👧 Hombres y Mujeres</option>
+                            <option value="M" ${HUB_STATE.riskGender === 'M' ? 'selected' : ''}>👦 Solo Hombres</option>
+                            <option value="F" ${HUB_STATE.riskGender === 'F' ? 'selected' : ''}>👧 Solo Mujeres</option>
+                        </select>
+                        <select onchange="setAnalyticsRiskFilter('riskLevel', this.value)" style="height:34px; border-radius:7px; border:1px solid #cbd5e1; padding:0 8px; font-size:0.76rem; font-weight:700; color:#0f2b5c; background:#fff;">
+                            <option value="ALL" ${HUB_STATE.riskLevel === 'ALL' ? 'selected' : ''}>🚦 Todos los Niveles</option>
+                            <option value="critico" ${HUB_STATE.riskLevel === 'critico' ? 'selected' : ''}>🔴 Crítico (${critCnt})</option>
+                            <option value="alto" ${HUB_STATE.riskLevel === 'alto' ? 'selected' : ''}>🟠 Alto (${altoCnt})</option>
+                            <option value="preventivo" ${HUB_STATE.riskLevel === 'preventivo' ? 'selected' : ''}>🟡 Preventivo (${prevCnt})</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="printTopRiskStudentsReport()" style="background:#0369a1; border-color:#0f2b5c; font-weight:800; font-size:0.76rem; min-height:34px; white-space:nowrap;">
+                        <i class="fa-solid fa-print"></i> Imprimir Lista de Riesgo (${filteredRisk.length})
+                    </button>
+                </div>
+
+                <div class="ab-table-wrap">
+                    <table class="ab-table">
+                        <thead>
+                            <tr>
+                                <th style="width:32px; text-align:center;">No.</th>
+                                <th style="width:22%; text-align:left;">Estudiante</th>
+                                <th style="width:14%; text-align:center;">Grado y Secc.</th>
+                                <th style="width:10%; text-align:center;">Riesgo</th>
+                                <th style="width:28%; text-align:left;">Clases Reprobadas (Nota)</th>
+                                <th style="width:11%; text-align:center;">Prom. / Asist.</th>
+                                <th style="width:11%; text-align:center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredRisk.length === 0 ? `<tr><td colspan="7" style="text-align:center; padding:26px; color:#15803d; font-weight:700;">✅ No hay estudiantes en riesgo para los filtros seleccionados en ${_esc(bimLabel)}.</td></tr>` : filteredRisk.map((r, idx) => `
+                                <tr style="background:${r.riskLevel === 'critico' ? '#fff5f5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')};">
+                                    <td style="text-align:center; font-weight:700; color:#475569;">${idx + 1}</td>
+                                    <td>
+                                        <strong style="color:#0f2b5c; cursor:pointer; display:block;" onclick="if(typeof openStudentProfileModal==='function') openStudentProfileModal('${_esc(r.id)}')">${_esc(r.name)}</strong>
+                                        <div style="font-size:0.69rem; color:#64748b;">${r.gender === 'F' ? '👧 Mujer' : '👦 Hombre'}${r.isBecado ? ' &bull; <strong style="color:#0369a1;">🎓 Becado</strong>' : ''}</div>
+                                    </td>
+                                    <td style="text-align:center; font-size:0.73rem; font-weight:700; color:#334155;">${_esc(r.sectionKey)}</td>
+                                    <td style="text-align:center;">${riskBadge(r.riskLevel)}</td>
+                                    <td style="font-size:0.72rem; line-height:1.35;">
+                                        ${r.failedSubjects.length === 0
+                                            ? '<span style="color:#b45309; font-weight:700;">Alerta por inasistencia</span>'
+                                            : r.failedSubjects.map(f => `<span style="display:inline-block; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:4px; padding:1px 5px; margin:1px 2px 1px 0; font-weight:700;">${_esc(f.subject)}: <strong>${f.score}</strong></span>`).join('')}
+                                    </td>
+                                    <td style="text-align:center; font-size:0.74rem;">
+                                        <div style="font-weight:800; color:${r.avg !== null && r.avg < 60 ? '#dc2626' : '#0f2b5c'};">${r.avg !== null ? r.avg + ' pts' : '—'}</div>
+                                        <div style="font-size:0.69rem; color:#475569;">Asist: <strong>${_esc(r.attPct)}</strong></div>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <div style="display:inline-flex; gap:4px;">
+                                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="if(typeof openStudentProfileModal==='function') openStudentProfileModal('${_esc(r.id)}')" title="Ver Ficha" style="padding:3px 6px;"><i class="fa-solid fa-id-card"></i></button>
+                                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="if(window.EnccoAnalytics && EnccoAnalytics.openParentCitationModal) EnccoAnalytics.openParentCitationModal('${_esc(r.id)}')" title="Citar Encargado" style="padding:3px 6px;"><i class="fa-solid fa-envelope-open-text"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ab-cards">
+                    ${filteredRisk.length === 0 ? '<div style="text-align:center; padding:20px; color:#15803d; font-weight:700;">✅ Sin estudiantes en riesgo con este filtro.</div>' : filteredRisk.map((r, idx) => `
+                        <div class="ab-card" style="border-left-color:${r.riskLevel === 'critico' ? '#dc2626' : (r.riskLevel === 'alto' ? '#ea580c' : '#d97706')};">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+                                <div>
+                                    <strong style="color:#0f2b5c; font-size:0.84rem;">${idx + 1}. ${_esc(r.name)}</strong>
+                                    <div style="font-size:0.72rem; color:#64748b;">${_esc(r.sectionKey)} &bull; ${r.gender === 'F' ? '👧 Mujer' : '👦 Hombre'}${r.isBecado ? ' • 🎓 Becado' : ''}</div>
+                                </div>
+                                ${riskBadge(r.riskLevel)}
+                            </div>
+                            <div style="font-size:0.74rem; margin:6px 0;">Prom: <strong>${r.avg !== null ? r.avg : '—'}</strong> &bull; Asistencia: <strong>${_esc(r.attPct)}</strong> &bull; Reprobadas: <strong style="color:#dc2626;">${r.failedCount}</strong></div>
+                            <div style="margin-bottom:8px; font-size:0.72rem;">
+                                ${r.failedSubjects.map(f => `<span style="display:inline-block; background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 5px; margin:2px 3px 0 0; font-weight:700;">${_esc(f.subject)}: ${f.score}</span>`).join('') || '<span style="color:#b45309;">Alerta por asistencia</span>'}
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="if(typeof openStudentProfileModal==='function') openStudentProfileModal('${_esc(r.id)}')" style="flex:1; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-id-card"></i> Ficha</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(window.EnccoAnalytics && EnccoAnalytics.openParentCitationModal) EnccoAnalytics.openParentCitationModal('${_esc(r.id)}')" style="flex:1; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-envelope-open-text"></i> Citar</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else if (HUB_STATE.activeTab === 'bimesters') {
             tabBodyHtml = `
                 <div class="ab-grid-4" style="margin-bottom:14px;">
                     ${bimesters.map(b => `
@@ -756,6 +939,7 @@
 
                 <div class="ab-tabs">
                     <button type="button" class="ab-tab-btn ${HUB_STATE.activeTab === 'bimesters' ? 'active' : ''}" onclick="setAnalyticsHubTab('bimesters')"><i class="fa-solid fa-chart-column"></i> Evolución por Bimestre</button>
+                    <button type="button" class="ab-tab-btn ${HUB_STATE.activeTab === 'risk' ? 'active' : ''}" onclick="setAnalyticsHubTab('risk')" style="${HUB_STATE.activeTab === 'risk' ? '' : 'border-color:#fca5a5; color:#b91c1c;'}"><i class="fa-solid fa-triangle-exclamation"></i> Más en Riesgo (${atRiskStudents.length})</button>
                     <button type="button" class="ab-tab-btn ${HUB_STATE.activeTab === 'gender' ? 'active' : ''}" onclick="setAnalyticsHubTab('gender')"><i class="fa-solid fa-venus-mars"></i> Hombres y Mujeres</button>
                     <button type="button" class="ab-tab-btn ${HUB_STATE.activeTab === 'sections' ? 'active' : ''}" onclick="setAnalyticsHubTab('sections')"><i class="fa-solid fa-school"></i> Grado y Sección (${sections.length})</button>
                     <button type="button" class="ab-tab-btn ${HUB_STATE.activeTab === 'teachers' ? 'active' : ''}" onclick="setAnalyticsHubTab('teachers')"><i class="fa-solid fa-chalkboard-user"></i> Por Docentes (${teachers.length})</button>
@@ -769,6 +953,100 @@
 
     function setAnalyticsHubBimestre(b) { HUB_STATE.bimestre = String(b || 'ALL'); renderAnalyticsBimesterHub(); }
     function setAnalyticsHubTab(t) { HUB_STATE.activeTab = t || 'bimesters'; renderAnalyticsBimesterHub(); }
+    function setAnalyticsRiskFilter(field, val) {
+        if (field in HUB_STATE) {
+            HUB_STATE[field] = String(val || 'ALL');
+            if (field === 'riskGrade') HUB_STATE.riskSection = 'ALL';
+            renderAnalyticsBimesterHub();
+        }
+    }
+
+    /**
+     * Imprime el Listado Oficial de Estudiantes Más en Riesgo (por Grado, Sección y Clases)
+     * en Azul Institucional ENCCO, Hoja Oficio Horizontal (8.5"x13").
+     */
+    function printTopRiskStudentsReport() {
+        const data = computeBimesterAnalytics(HUB_STATE.bimestre);
+        const list = (data.atRiskStudents || []).filter(r => {
+            if (HUB_STATE.riskGrade !== 'ALL' && r.grade !== HUB_STATE.riskGrade) return false;
+            if (HUB_STATE.riskSection !== 'ALL' && r.section !== HUB_STATE.riskSection) return false;
+            if (HUB_STATE.riskGender !== 'ALL' && r.gender !== HUB_STATE.riskGender) return false;
+            if (HUB_STATE.riskLevel !== 'ALL' && r.riskLevel !== HUB_STATE.riskLevel) return false;
+            if (HUB_STATE.riskSubject !== 'ALL' && !r.failedSubjects.some(f => f.subject === HUB_STATE.riskSubject)) return false;
+            return true;
+        });
+        const todayStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const filterSummary = [
+            HUB_STATE.riskGrade !== 'ALL' ? HUB_STATE.riskGrade : 'Todos los grados',
+            HUB_STATE.riskSection !== 'ALL' ? `Sección ${HUB_STATE.riskSection}` : 'Todas las secciones',
+            HUB_STATE.riskSubject !== 'ALL' ? `Clase: ${HUB_STATE.riskSubject}` : 'Todas las clases'
+        ].join(' • ');
+
+        const htmlContent = `
+            <style>
+                @page { size: 8.5in 13in landscape; margin: 5mm; }
+                .rk-tbl th { background-color: #0369a1 !important; color: #ffffff !important; border: 1px solid #0f2b5c; padding: 4px; font-size: 7.4pt; }
+                .rk-tbl td { border: 1px solid #334155; padding: 3px 4px; font-size: 7.5pt; }
+            </style>
+            <div style="font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;">
+                <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:8px;">
+                    <div style="background:linear-gradient(135deg, #0f2b5c 0%, #0369a1 60%, #0284c7 100%); color:#ffffff; padding:7px 12px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:36px; width:auto;">
+                            <div>
+                                <h2 style="margin:0; font-size:1rem; font-weight:900;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h2>
+                                <div style="font-size:0.72rem; color:#bae6fd;">CICLO ESCOLAR ${_esc(data.cycle)} | ${_esc(data.bimLabel)}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="background:#0c4a6e; border:1px solid #7dd3fc; padding:3px 10px; border-radius:6px; font-size:0.74rem; font-weight:800;">ESTUDIANTES EN MAYOR RIESGO ACADÉMICO</div>
+                            <div style="font-size:0.68rem; color:#e0f2fe; margin-top:2px;">${_esc(todayStr)}</div>
+                        </div>
+                    </div>
+                    <div style="background:#f0f9ff; padding:5px 10px; display:flex; justify-content:space-between; font-size:7.6pt;">
+                        <span><strong>Filtros:</strong> ${_esc(filterSummary)}</span>
+                        <span><strong>Total listados:</strong> ${list.length} estudiantes (ordenados de mayor a menor riesgo)</span>
+                    </div>
+                </div>
+                <table class="rk-tbl" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="width:26px;">No.</th>
+                            <th style="text-align:left;">Apellidos y Nombres</th>
+                            <th>Sexo</th>
+                            <th>Grado y Sección</th>
+                            <th>Nivel Riesgo</th>
+                            <th style="text-align:left;">Clases Reprobadas (Nota)</th>
+                            <th>Prom.</th>
+                            <th>% Asist.</th>
+                            <th>Beca</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.length === 0 ? '<tr><td colspan="9" style="text-align:center; padding:16px; color:#15803d; font-weight:700;">✅ Sin estudiantes en riesgo para los filtros seleccionados.</td></tr>' : list.map((r, i) => `
+                            <tr style="background:${r.riskLevel === 'critico' ? '#fff5f5' : (i % 2 === 0 ? '#ffffff' : '#f8fafc')};">
+                                <td style="text-align:center; font-weight:bold;">${i + 1}</td>
+                                <td style="font-weight:700; white-space:nowrap;">${_esc(r.name)}</td>
+                                <td style="text-align:center;">${r.gender}</td>
+                                <td style="text-align:center;">${_esc(r.sectionKey)}</td>
+                                <td style="text-align:center; font-weight:800; color:${r.riskLevel === 'critico' ? '#b91c1c' : (r.riskLevel === 'alto' ? '#c2410c' : '#b45309')};">${r.riskLevel.toUpperCase()}</td>
+                                <td>${r.failedSubjects.map(f => `${_esc(f.subject)} (${f.score})`).join(' • ') || 'Alerta de inasistencia'}</td>
+                                <td style="text-align:center; font-weight:800;">${r.avg !== null ? r.avg : '—'}</td>
+                                <td style="text-align:center;">${_esc(r.attPct)}</td>
+                                <td style="text-align:center;">${r.isBecado ? '🎓 Sí' : '—'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        if (typeof window.renderAndShowPrintDocument === 'function') {
+            window.renderAndShowPrintDocument(`Estudiantes en Mayor Riesgo — ${data.bimLabel} (${data.cycle})`, htmlContent, 'landscape');
+        } else if (typeof window.enccoSafePrintHtml === 'function') {
+            window.enccoSafePrintHtml(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head><body>${htmlContent}</body></html>`, 'width=1100,height=800', true);
+        }
+    }
 
     /**
      * Informe Ejecutivo para Claustro de Docentes (Azul Institucional, Hoja Oficio 8.5"x13").
@@ -990,6 +1268,8 @@
                     data.teachers.map(t => [t.teacher, t.subjectsList.join(', '), t.count, t.avg, `${t.passRate}%`, t.failed]));
                 addSheet('Por_Catedras', ['Cátedra', 'Docentes', 'Promedio', 'Prom. Hombres', 'Prom. Mujeres', '% Aprobación', 'Reprobados'],
                     data.subjects.map(sb => [sb.subject, sb.teachersList.join(', '), sb.avg, sb.maleAvg, sb.femaleAvg, `${sb.passRate}%`, sb.failed]));
+                addSheet('Mas_En_Riesgo', ['No.', 'Estudiante', 'Sexo', 'Grado y Sección', 'Nivel Riesgo', 'Cant. Reprobadas', 'Clases Reprobadas', 'Promedio', '% Asistencia', 'Becado'],
+                    (data.atRiskStudents || []).map((r, i) => [i + 1, r.name, r.gender, r.sectionKey, r.riskLevel.toUpperCase(), r.failedCount, r.failedSubjects.map(f => `${f.subject} (${f.score})`).join(' | '), r.avg !== null ? r.avg : '—', r.attPct, r.isBecado ? 'Sí' : 'No']));
 
                 const buf = await wb.xlsx.writeBuffer();
                 const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -1030,6 +1310,8 @@
     window.renderAnalyticsBimesterHub = renderAnalyticsBimesterHub;
     window.setAnalyticsHubBimestre = setAnalyticsHubBimestre;
     window.setAnalyticsHubTab = setAnalyticsHubTab;
+    window.setAnalyticsRiskFilter = setAnalyticsRiskFilter;
+    window.printTopRiskStudentsReport = printTopRiskStudentsReport;
     window.printClaustroDocentesAnalyticsReport = printClaustroDocentesAnalyticsReport;
     window.printIndividualTeacherAnalyticsReport = printIndividualTeacherAnalyticsReport;
     window.printGuideTeacherSectionAnalyticsReport = printGuideTeacherSectionAnalyticsReport;

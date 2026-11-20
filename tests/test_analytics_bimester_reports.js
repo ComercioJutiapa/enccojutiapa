@@ -72,13 +72,16 @@ assert.strictEqual(ds.subjects.length, 2);
 assert(ds.bimesters[0].avg === 72.5 && ds.bimesters[1].avg === 77.5, 'Evolución B1 (72.5) -> B2 (77.5) calculada exactamente');
 console.log('  ✅ 2. Desgloses por Bimestre, Hombres/Mujeres, Grado/Sección, Docentes y Cátedras exactos.');
 
-// 3. Renderizado de las 5 pestañas + CSS responsivo
-['bimesters', 'gender', 'sections', 'teachers', 'subjects'].forEach(tab => {
+// 3. Renderizado de las 6 pestañas (incluyendo Más en Riesgo por grado, sección y clases) + CSS responsivo
+['bimesters', 'risk', 'gender', 'sections', 'teachers', 'subjects'].forEach(tab => {
     mockWindow.setAnalyticsHubTab(tab);
     assert(domMap.enccoAnalyticsBimesterHub.innerHTML.length > 200, `Pestaña ${tab} renderizada`);
 });
+assert(ds.atRiskStudents.length === 1 && ds.atRiskStudents[0].name === 'PÉREZ JUAN' && ds.atRiskStudents[0].failedSubjects[0].subject === 'Matemática Comercial', 'Ranking Más en Riesgo identifica estudiante y clase exacta reprobada');
+mockWindow.printTopRiskStudentsReport();
+assert(lastPrint.orient === 'landscape' && lastPrint.html.includes('ESTUDIANTES EN MAYOR RIESGO ACADÉMICO') && lastPrint.html.includes('Matemática Comercial'), 'Impresión oficial de Más en Riesgo por grado, sección y clase verificada');
 assert(injectedCss.includes('table-layout: fixed') && injectedCss.includes('@media (max-width: 900px)'), 'CSS responsivo (escritorio, tablet, móvil) verificado');
-console.log('  ✅ 3. 5 pestañas visuales y CSS responsivo verificados.');
+console.log('  ✅ 3. 6 pestañas visuales (incluyendo Más en Riesgo por grado/sección/clases) y CSS responsivo verificados.');
 
 // 4. Reporte para Claustro Docente e Informe Individual por Docente
 mockWindow.printClaustroDocentesAnalyticsReport();
