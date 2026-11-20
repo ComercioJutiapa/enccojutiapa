@@ -13404,6 +13404,20 @@ function navigateTo(viewName, event = null) {
         });
     }
 
+    // Accesibilidad y Agentic Browsing: marcar semánticamente la vista activa con aria-current="page"
+    try {
+        document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+            if (el.getAttribute('data-view') === viewName) {
+                el.setAttribute('aria-current', 'page');
+            } else {
+                el.removeAttribute('aria-current');
+            }
+        });
+        if (typeof window.enccoEnhanceAccessibilitySemantics === 'function') {
+            window.enccoEnhanceAccessibilitySemantics();
+        }
+    } catch (a11yErr) {}
+
     const titles = {
         'dashboard': STATE.currentRole === 'docente' ? { title: 'Mis Clases Asignadas', sub: 'Cursos y cátedras a su cargo para el ciclo lectivo por grado y sección' } : { title: 'Panel Principal', sub: 'Escuela Nacional de Ciencias Comerciales Jutiapa (1970)' },
         'gradebook': { title: 'Ingreso de Calificaciones', sub: 'Registro oficial de zonas (40 pts) y evaluaciones bimestrales (60 pts)' },
@@ -57973,3 +57987,37 @@ function sanitizeCycle2027PristineState() {
     }
 }
 window.sanitizeCycle2027PristineState = sanitizeCycle2027PristineState;
+
+
+// ============================================================================
+// ACCESIBILIDAD WCAG 2.1 AA & AGENTIC BROWSING — AUTO-ETIQUETADO SEMÁNTICO
+// ============================================================================
+function enccoEnhanceAccessibilitySemantics() {
+    if (typeof document === 'undefined') return;
+    try {
+        document.querySelectorAll('select:not([aria-label]):not([aria-labelledby]), input:not([type="hidden"]):not([aria-label]):not([aria-labelledby])').forEach(el => {
+            const parentLabel = el.closest('div')?.querySelector('label');
+            const labelText = (parentLabel && parentLabel.textContent ? parentLabel.textContent.trim() : '')
+                || el.getAttribute('placeholder')
+                || el.getAttribute('title')
+                || (el.options && el.options[0] ? el.options[0].textContent.trim() : '')
+                || el.id
+                || '';
+            if (labelText) el.setAttribute('aria-label', labelText.replace(/[:*]+$/, '').trim());
+        });
+        document.querySelectorAll('a.nav-item[href="#"]').forEach(a => {
+            if (!a.getAttribute('role')) a.setAttribute('role', 'button');
+            const txt = (a.textContent || '').trim();
+            if (txt && !a.getAttribute('aria-label')) a.setAttribute('aria-label', txt);
+        });
+        document.querySelectorAll('img:not([loading])').forEach(img => {
+            if (!img.closest('.sidebar-header') && !img.closest('.top-header')) {
+                img.setAttribute('loading', 'lazy');
+            }
+        });
+    } catch (e) {}
+}
+window.enccoEnhanceAccessibilitySemantics = enccoEnhanceAccessibilitySemantics;
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', enccoEnhanceAccessibilitySemantics);
+}

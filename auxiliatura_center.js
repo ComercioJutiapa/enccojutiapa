@@ -1276,7 +1276,7 @@
                     </div>
                     <div style="display:flex; gap:6px;">
                         ${waLink ? `
-                            <a href="${waLink}" target="_blank" class="btn btn-sm btn-success" style="font-weight:700; padding:3px 10px; font-size:0.78rem; display:flex; align-items:center; gap:5px; text-decoration:none;">
+                            <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-success" style="font-weight:700; padding:3px 10px; font-size:0.78rem; display:flex; align-items:center; gap:5px; text-decoration:none;">
                                 <i class="fa-brands fa-whatsapp"></i> WhatsApp
                             </a>
                         ` : ''}

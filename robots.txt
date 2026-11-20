@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /login.html
+Disallow: /tests/
+Disallow: /respaldos/
+Disallow: /node_modules/
+
+Sitemap: https://encco-jutiapa-live-2026.web.app/sitemap.xml

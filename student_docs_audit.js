@@ -587,7 +587,7 @@
             const cleanPhone = String(r.guardianPhone || '').replace(/\D/g, '');
             const waMsg = encodeURIComponent(`Estimado encargado de ${r.displayName} (${r.gradeLabel}), le saludamos de Secretaría ENCCO Jutiapa. Para completar su expediente escolar ${activeCycle}, le solicitamos entregar a la brevedad: ${r.observationsText}. ¡Muchas gracias!`);
             const waBtnMobile = (canWA && cleanPhone && !r.isFullyCompliant)
-                ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" class="btn btn-sm" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:6px 12px; border-radius:7px; text-decoration:none; font-weight:800; display:inline-flex; align-items:center; gap:5px;" title="Enviar recordatorio por WhatsApp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>`
+                ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:6px 12px; border-radius:7px; text-decoration:none; font-weight:800; display:inline-flex; align-items:center; gap:5px;" title="Enviar recordatorio por WhatsApp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>`
                 : '';
 
             return `
@@ -735,7 +735,7 @@
                                 const cleanPhone = String(r.guardianPhone || '').replace(/\D/g, '');
                                 const waMsg = encodeURIComponent(`Estimado encargado de ${r.displayName} (${r.gradeLabel}), le saludamos de Secretaría ENCCO Jutiapa. Para completar su expediente escolar ${activeCycle}, le solicitamos entregar a la brevedad: ${r.observationsText}. ¡Muchas gracias!`);
                                 const waBtn = (canWA && cleanPhone && !r.isFullyCompliant)
-                                    ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" class="btn btn-xs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 5px; border-radius:5px; text-decoration:none; font-weight:700;" title="Enviar recordatorio de faltantes por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`
+                                    ? `<a href="https://wa.me/502${cleanPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" class="btn btn-xs" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 5px; border-radius:5px; text-decoration:none; font-weight:700;" title="Enviar recordatorio de faltantes por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`
                                     : '';
 
                                 return `
