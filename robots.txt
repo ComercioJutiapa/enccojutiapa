@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
 Allow: /index.html
-Allow: /login.html
+Disallow: /login.html
+Disallow: /plataforma.html
+Disallow: /datos-sire.html
 Disallow: /tests/
 Disallow: /respaldos/
 Disallow: /node_modules/
