@@ -15654,6 +15654,101 @@ function onStudentSectionFilterChange(gradeCode) {
 }
 window.onStudentSectionFilterChange = onStudentSectionFilterChange;
 
+function getLocalIsoDateString(dateObj) {
+    const d = dateObj instanceof Date ? dateObj : new Date();
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+window.getLocalIsoDateString = getLocalIsoDateString;
+
+function getStudentEnrollmentDateISO(student) {
+    if (!student || typeof student !== 'object') return '';
+    const direct = String(student.enrollmentDate || student.fechaInscripcion || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+    const rawTs = student.enrolledAt || student.promotedAt || '';
+    if (rawTs) {
+        const str = String(rawTs).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) return getLocalIsoDateString(parsed);
+        const prefix = str.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return prefix;
+    }
+    return '';
+}
+window.getStudentEnrollmentDateISO = getStudentEnrollmentDateISO;
+
+function matchesStudentEnrollmentDateFilter(student, mode, fromVal, toVal, nowDate) {
+    const m = String(mode || 'ALL').toUpperCase();
+    if (m === 'ALL' || !m) return true;
+    const stuIso = getStudentEnrollmentDateISO(student);
+    if (!stuIso) return false;
+    const refNow = nowDate instanceof Date ? nowDate : new Date();
+    const todayIso = getLocalIsoDateString(refNow);
+    if (m === 'TODAY') return stuIso === todayIso;
+    if (m === 'LAST_7') {
+        const d7 = new Date(refNow.getFullYear(), refNow.getMonth(), refNow.getDate() - 6);
+        const startIso = getLocalIsoDateString(d7);
+        return stuIso >= startIso && stuIso <= todayIso;
+    }
+    if (m === 'THIS_MONTH') {
+        return stuIso.slice(0, 7) === todayIso.slice(0, 7);
+    }
+    if (m === 'EXACT') {
+        const target = String(fromVal || '').trim();
+        return target ? stuIso === target : true;
+    }
+    if (m === 'RANGE') {
+        const f = String(fromVal || '').trim();
+        const t = String(toVal || '').trim();
+        if (f && stuIso < f) return false;
+        if (t && stuIso > t) return false;
+        return Boolean(f || t);
+    }
+    return true;
+}
+window.matchesStudentEnrollmentDateFilter = matchesStudentEnrollmentDateFilter;
+
+function onStudentEnrollDateFilterChange() {
+    const modeEl = document.getElementById('studentEnrollDateModeSelect');
+    const wrapEl = document.getElementById('studentEnrollDateInputsWrap');
+    const fromEl = document.getElementById('studentEnrollDateFrom');
+    const sepEl = document.getElementById('studentEnrollDateToSep');
+    const toEl = document.getElementById('studentEnrollDateTo');
+    const mode = modeEl ? modeEl.value : 'ALL';
+    const todayIso = getLocalIsoDateString();
+
+    if (wrapEl) {
+        if (mode === 'EXACT' || mode === 'RANGE') {
+            wrapEl.style.display = 'inline-flex';
+            if (fromEl && !fromEl.value) fromEl.value = todayIso;
+            if (mode === 'RANGE') {
+                if (sepEl) sepEl.style.display = 'inline';
+                if (toEl) {
+                    toEl.style.display = 'inline-block';
+                    if (!toEl.value) toEl.value = todayIso;
+                }
+            } else {
+                if (sepEl) sepEl.style.display = 'none';
+                if (toEl) toEl.style.display = 'none';
+            }
+        } else {
+            wrapEl.style.display = 'none';
+            if (sepEl) sepEl.style.display = 'none';
+            if (toEl) toEl.style.display = 'none';
+        }
+    }
+    if (typeof filterStudentsTable === 'function') {
+        filterStudentsTable(true);
+    } else if (typeof renderStudentsTable === 'function') {
+        renderStudentsTable();
+    }
+}
+window.onStudentEnrollDateFilterChange = onStudentEnrollDateFilterChange;
+
 function resetStudentFilters() {
     const careerSelect = document.getElementById('studentCareerFilterSelect');
     const gradeOnlySelect = document.getElementById('studentGradeOnlyFilterSelect');
@@ -15675,6 +15770,16 @@ function resetStudentFilters() {
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
     if (statusSelect) statusSelect.value = 'ALL';
     if (searchInput) searchInput.value = '';
+    const enrollModeEl = document.getElementById('studentEnrollDateModeSelect');
+    const enrollWrapEl = document.getElementById('studentEnrollDateInputsWrap');
+    const enrollFromEl = document.getElementById('studentEnrollDateFrom');
+    const enrollToEl = document.getElementById('studentEnrollDateTo');
+    const enrollSepEl = document.getElementById('studentEnrollDateToSep');
+    if (enrollModeEl) enrollModeEl.value = 'ALL';
+    if (enrollFromEl) enrollFromEl.value = '';
+    if (enrollToEl) { enrollToEl.value = ''; enrollToEl.style.display = 'none'; }
+    if (enrollSepEl) enrollSepEl.style.display = 'none';
+    if (enrollWrapEl) enrollWrapEl.style.display = 'none';
 
     renderStudentsTable();
 }
@@ -15760,11 +15865,18 @@ function renderStudentsTable() {
     const gradeSelect = document.getElementById('gradeFilterSelect');
     const statusSelect = document.getElementById('statusFilterSelect');
     const searchInput = document.getElementById('studentSearchInput');
+    const enrollDateModeEl = document.getElementById('studentEnrollDateModeSelect');
+    const enrollDateFromEl = document.getElementById('studentEnrollDateFrom');
+    const enrollDateToEl = document.getElementById('studentEnrollDateTo');
 
     const careerVal = careerSelect ? careerSelect.value : '';
     const gradeVal = gradeSelect ? gradeSelect.value : '';
     const statusVal = statusSelect ? statusSelect.value : 'ALL';
     const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const enrollDateMode = enrollDateModeEl ? enrollDateModeEl.value : 'ALL';
+    const enrollDateFrom = enrollDateFromEl ? enrollDateFromEl.value : '';
+    const enrollDateTo = enrollDateToEl ? enrollDateToEl.value : '';
+    const hasEnrollDateFilter = Boolean(enrollDateMode && enrollDateMode !== 'ALL');
 
     const summaryBox = document.getElementById('studentsFilterSummary');
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal);
@@ -15772,8 +15884,8 @@ function renderStudentsTable() {
     const sValLower = (statusVal || '').toLowerCase().trim();
     const isSpecialStatusFilter = (sValLower === 'retirado' || sValLower === 'ausente' || sValLower === 'inactivo' || sValLower === 'all');
 
-    // Verificación estricta: Si no se ha seleccionado grado/sección, no hay búsqueda activa por texto y el estado es Activo (por defecto)
-    if (!gradeVal && !searchVal && !isSpecialStatusFilter && !isDocente) {
+    // Verificación estricta: Si no se ha seleccionado grado/sección, no hay búsqueda activa por texto, ni filtro de fecha de inscripción y el estado es Activo (por defecto)
+    if (!gradeVal && !searchVal && !hasEnrollDateFilter && !isSpecialStatusFilter && !isDocente) {
         if (summaryBox) summaryBox.style.display = 'none';
         tbody.innerHTML = `
             <tr>
@@ -15869,6 +15981,11 @@ function renderStudentsTable() {
         }
     }
 
+    // 📅 Filtro dinámico por fecha oculta de inscripción (sin mostrar columna pública en la tabla)
+    if (hasEnrollDateFilter && typeof matchesStudentEnrollmentDateFilter === 'function') {
+        list = list.filter(s => matchesStudentEnrollmentDateFilter(s, enrollDateMode, enrollDateFrom, enrollDateTo));
+    }
+
     // Ordenar alfabéticamente por apellidos y nombres (lastFirst) con soporte de colación en español
     list.sort((a, b) => {
         const nameA = formatStudentDisplayName(a, 'lastFirst');
@@ -15907,10 +16024,21 @@ function renderStudentsTable() {
             </button>
         ` : '';
 
+        let enrollDateBadge = '';
+        if (hasEnrollDateFilter) {
+            let lbl = '';
+            if (enrollDateMode === 'TODAY') lbl = `Hoy (${getLocalIsoDateString()})`;
+            else if (enrollDateMode === 'LAST_7') lbl = 'Últimos 7 días';
+            else if (enrollDateMode === 'THIS_MONTH') lbl = `Mes ${getLocalIsoDateString().slice(0, 7)}`;
+            else if (enrollDateMode === 'EXACT') lbl = enrollDateFrom || 'Fecha exacta';
+            else if (enrollDateMode === 'RANGE') lbl = `${enrollDateFrom || '...'} a ${enrollDateTo || '...'}`;
+            enrollDateBadge = ` &nbsp;|&nbsp; <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.75rem; font-weight:800;"><i class="fa-solid fa-calendar-day"></i> Inscripción: ${escapeHtml(lbl)}</span>`;
+        }
+
         summaryBox.innerHTML = `
             <div>
                 <i class="fa-solid fa-users" style="color:var(--brand-green);"></i> 
-                ${headerDesc} ${statusText} ${guideInfo} &nbsp;|&nbsp; 
+                ${headerDesc} ${statusText} ${guideInfo}${enrollDateBadge} &nbsp;|&nbsp; 
                 Total: <span class="badge badge-success" style="font-size:0.82rem; font-weight:800;">${list.length} ${list.length === 1 ? 'estudiante' : 'estudiantes'}</span>
             </div>
             <div style="display:flex; gap:8px;">
@@ -16390,6 +16518,8 @@ function resetStudentEnrollmentForm(showNotification = true) {
     
     const idEl = document.getElementById('studentFormId');
     if (idEl) idEl.value = '';
+    const enrollDateEl = document.getElementById('studentEnrollmentDate');
+    if (enrollDateEl) enrollDateEl.value = (typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString() : new Date().toISOString().slice(0, 10);
     
     const titleEl = document.getElementById('enrollmentViewTitle');
     if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-plus"></i> Inscripción Oficial de Estudiantes';
@@ -16514,6 +16644,7 @@ function openEditStudentModal(studentId) {
     };
 
     setVal('studentFormId', student.id);
+    setVal('studentEnrollmentDate', (typeof getStudentEnrollmentDateISO === 'function' ? getStudentEnrollmentDateISO(student) : '') || (typeof getLocalIsoDateString === 'function' ? getLocalIsoDateString() : new Date().toISOString().slice(0, 10)));
     
     const titleEl = document.getElementById('enrollmentViewTitle');
     if (titleEl) {
@@ -17007,11 +17138,16 @@ async function saveStudentForm(e) {
         const authRoleName = STATE.currentRole || 'Secretaría';
         const authUserName = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || authRoleName;
         const nowTime = Date.now();
+        const todayIsoDate = (typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString(new Date(nowTime)) : new Date(nowTime).toISOString().slice(0, 10);
+        const hiddenEnrollDateVal = (document.getElementById('studentEnrollmentDate')?.value || '').trim();
 
         if (idx !== -1) {
             const existing = STATE.students[idx];
+            const preservedEnrollmentDate = (typeof getStudentEnrollmentDateISO === 'function' ? getStudentEnrollmentDateISO(existing) : '') || hiddenEnrollDateVal || todayIsoDate;
             STATE.students[idx] = {
                 ...existing,
+                enrollmentDate: preservedEnrollmentDate,
+                enrolledAt: existing.enrolledAt || new Date(nowTime).toISOString(),
                 carne, personalCode, cui, firstName, lastName,
                 name: `${firstName} ${lastName}`.trim(),
                 birthDate, age, gender, phone, email, address,
@@ -17060,7 +17196,8 @@ async function saveStudentForm(e) {
                 guardianName, guardianDpi, guardianPhone1, guardianPhone2,
                 tutor: guardianName || '',
                 photo: photoUrl || '',
-                enrolledAt: new Date().toISOString(),
+                enrollmentDate: hiddenEnrollDateVal || todayIsoDate,
+                enrolledAt: new Date(nowTime).toISOString(),
                 editedByAuthority: true,
                 lastModifiedByRole: authRoleName,
                 lastModifiedBy: authUserName,

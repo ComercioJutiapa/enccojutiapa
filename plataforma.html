@@ -1106,6 +1106,7 @@
 
                     <form id="mainEnrollmentForm" onsubmit="saveStudentForm(event)">
                         <input type="hidden" id="studentFormId">
+                        <input type="hidden" id="studentEnrollmentDate">
                         
 
 
@@ -1449,9 +1450,25 @@
 
                         <!-- FILA 2: BÚSQUEDA EN VIVO + ACCIONES Y REPORTES -->
                         <div class="students-actions-row">
-                            <div class="students-search-wrapper" style="position:relative; flex:1 1 260px; max-width:400px;">
+                            <div class="students-search-wrapper" style="position:relative; flex:1 1 240px; max-width:340px;">
                                 <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9rem; pointer-events:none; z-index:2;"></i>
                                 <input type="text" id="studentSearchInput" placeholder="Buscar por Nombre, CUI o Carné..." oninput="filterStudentsTable()" aria-label="Buscar estudiante por nombre, carné o código personal" style="padding-left:36px !important; width:100%; height:36px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.83rem; font-weight:600; background:#f8fafc; box-sizing:border-box;">
+                            </div>
+
+                            <div id="studentEnrollDateFilterGroup" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                <select id="studentEnrollDateModeSelect" onchange="onStudentEnrollDateFilterChange()" aria-label="Filtrar estudiantes por fecha de inscripción" title="Filtrar nómina por fecha oculta de inscripción" style="height:36px; border-radius:7px; border:1.5px solid #bae6fd; background:#f0f9ff; color:#0f2b5c; font-size:0.79rem; font-weight:700; padding:0 8px; cursor:pointer; max-width:100%;">
+                                    <option value="ALL" selected>📅 Inscripción: Todas</option>
+                                    <option value="TODAY">📅 Inscritos Hoy</option>
+                                    <option value="LAST_7">📅 Últimos 7 días</option>
+                                    <option value="THIS_MONTH">📅 Este mes</option>
+                                    <option value="EXACT">📅 Fecha exacta...</option>
+                                    <option value="RANGE">📅 Rango de fechas...</option>
+                                </select>
+                                <span id="studentEnrollDateInputsWrap" style="display:none; align-items:center; gap:4px; flex-wrap:wrap;">
+                                    <input type="date" id="studentEnrollDateFrom" onchange="filterStudentsTable(true)" aria-label="Fecha de inscripción desde" style="height:36px; border-radius:7px; border:1.5px solid #0284c7; background:#ffffff; color:#0f2b5c; font-size:0.78rem; font-weight:700; padding:0 6px;">
+                                    <span id="studentEnrollDateToSep" style="display:none; font-size:0.76rem; font-weight:800; color:#64748b;">a</span>
+                                    <input type="date" id="studentEnrollDateTo" onchange="filterStudentsTable(true)" aria-label="Fecha de inscripción hasta" style="display:none; height:36px; border-radius:7px; border:1.5px solid #0284c7; background:#ffffff; color:#0f2b5c; font-size:0.78rem; font-weight:700; padding:0 6px;">
+                                </span>
                             </div>
 
                             <div class="students-buttons-group">
@@ -6698,7 +6715,7 @@
     <script src="sire.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261123_v289" charset="UTF-8"></script>
+    <script src="app.js?v=20261123_v290" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
