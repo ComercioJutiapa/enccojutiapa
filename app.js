@@ -50101,7 +50101,21 @@ function toggleAllAssignmentSections() {
 }
 window.toggleAllAssignmentSections = toggleAllAssignmentSections;
 
+function updateClassAssignmentSubmitButtonLabel() {
+    const submitBtn = document.getElementById('classAssignmentSubmitBtn') || document.querySelector('#classAssignmentModal form button[type="submit"]');
+    if (!submitBtn || submitBtn.disabled) return;
+    const activeCount = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill.active').length;
+    const labelHtml = activeCount > 1
+        ? `<i class="fa-solid fa-check"></i> Guardar en ${activeCount} Secciones`
+        : '<i class="fa-solid fa-check"></i> Guardar Asignación';
+    submitBtn.innerHTML = labelHtml;
+    submitBtn.setAttribute('data-orig-html', labelHtml);
+}
+window.updateClassAssignmentSubmitButtonLabel = updateClassAssignmentSubmitButtonLabel;
+
 function checkClassAssignmentConflict() {
+    updateClassAssignmentSubmitButtonLabel();
+
     const gradeSelect = document.getElementById('classAssignmentFormGrade');
     const subjectSelect = document.getElementById('classAssignmentFormSubject');
     const teacherSelect = document.getElementById('classAssignmentFormTeacher');
@@ -50124,16 +50138,22 @@ function checkClassAssignmentConflict() {
 
     const currentId = document.getElementById('classAssignmentFormId')?.value;
     const conflicts = [];
+    const isRealTeacher = (asg) => {
+        if (!asg) return false;
+        const tName = String(asg.teacher || asg.teacherName || '').trim().toLowerCase();
+        return Boolean(tName && tName !== 'sin asignar' && tName !== 'por asignar' && tName !== 'sin docente' && asg.teacherId);
+    };
 
     selectedSections.forEach(sec => {
         const existing = (STATE.pensum || []).find(a => 
+            a &&
             a.id !== currentId &&
             a.grade === gradeName &&
             a.section === sec &&
             ((a.subject || a.name || '').toLowerCase() === subject.toLowerCase())
         );
 
-        if (existing && existing.teacherId !== teacherId) {
+        if (existing && isRealTeacher(existing) && String(existing.teacherId) !== String(teacherId)) {
             conflicts.push(`<strong>${sec}</strong> (actualmente con <em>${existing.teacher || 'otro docente'}</em>)`);
         }
     });
@@ -50225,67 +50245,80 @@ async function saveClassAssignmentForm(e) {
     }
 
     try {
-        const touchedAssignments = [];
-        if (id) {
-            const a = STATE.pensum.find(x => x.id === id);
-            if (a) {
-                a.teacherId = resolvedTeacherId;
-                a.teacher = teacherName;
-                a.teacherName = teacherName;
-                a.grade = gradeName;
-                a.gradeCode = selectedSections[0].code;
-                a.section = selectedSections[0].section;
-                a.subject = fullSubjectName;
-                a.name = fullSubjectName;
-                a.periodsPerWeek = periods;
-                a.hours = periods;
-                a.periods = periods;
-                if (assignedCourseCode) a.code = assignedCourseCode;
-                touchedAssignments.push(a);
-            }
-        } else {
-            selectedSections.forEach(sec => {
-                const existingIdx = STATE.pensum.findIndex(x => 
-                    (x.grade === gradeName || x.gradeCode === sec.code) &&
-                    x.section === sec.section &&
-                    getFullOfficialSubjectName(x.subject || x.name, gGradeNum) === fullSubjectName
-                );
-
-                if (existingIdx !== -1) {
-                    STATE.pensum[existingIdx].teacherId = resolvedTeacherId;
-                    STATE.pensum[existingIdx].teacher = teacherName;
-                    STATE.pensum[existingIdx].teacherName = teacherName;
-                    STATE.pensum[existingIdx].periodsPerWeek = periods;
-                    STATE.pensum[existingIdx].hours = periods;
-                    STATE.pensum[existingIdx].periods = periods;
-                    STATE.pensum[existingIdx].subject = fullSubjectName;
-                    STATE.pensum[existingIdx].name = fullSubjectName;
-                    if (assignedCourseCode) STATE.pensum[existingIdx].code = assignedCourseCode;
-                    touchedAssignments.push(STATE.pensum[existingIdx]);
-                } else {
-                    const newAsg = {
-                        id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-                        code: assignedCourseCode,
-                        teacherId: resolvedTeacherId,
-                        teacher: teacherName,
-                        teacherName: teacherName,
-                        grade: gradeName,
-                        gradeCode: sec.code,
-                        section: sec.section,
-                        subject: fullSubjectName,
-                        name: fullSubjectName,
-                        career: 'Perito Contador',
-                        periodsPerWeek: periods,
-                        hours: periods,
-                        periods: periods
-                    };
-                    STATE.pensum.push(newAsg);
-                    touchedAssignments.push(newAsg);
-                }
-            });
-        }
-
         const nowTime = Date.now();
+        const touchedAssignments = [];
+        const normSecLetter = (s) => {
+            if (typeof getCleanSectionLetter === 'function') return getCleanSectionLetter(s);
+            const m = String(s || '').toUpperCase().match(/(?:SECCI[OÓ]N\s*|\b)([A-Z])\b/);
+            return m ? m[1] : String(s || '').trim().toUpperCase();
+        };
+
+        // 🛡️ Guardado multi-sección coherente y dinámico (tanto en Nuevo como en Editar):
+        // Aplica la asignación a TODAS las secciones marcadas sin duplicar ni alterar secciones no marcadas.
+        selectedSections.forEach((sec, secIdx) => {
+            const targetSecLetter = normSecLetter(sec.section || sec.code);
+            let existingIdx = -1;
+
+            if (id) {
+                const origIdx = STATE.pensum.findIndex(x => x && x.id === id);
+                if (origIdx !== -1) {
+                    const origAsg = STATE.pensum[origIdx];
+                    const origSecLetter = normSecLetter(origAsg.section || origAsg.gradeCode);
+                    if (origSecLetter === targetSecLetter && (origAsg.grade === gradeName || origAsg.gradeCode === sec.code)) {
+                        existingIdx = origIdx;
+                    }
+                }
+            }
+
+            if (existingIdx === -1) {
+                existingIdx = STATE.pensum.findIndex(x => {
+                    if (!x) return false;
+                    const xGradeMatch = (x.grade === gradeName || x.gradeCode === sec.code);
+                    const xSecMatch = normSecLetter(x.section || x.gradeCode) === targetSecLetter;
+                    const xSubjMatch = getFullOfficialSubjectName(x.subject || x.name, gGradeNum) === fullSubjectName;
+                    return xGradeMatch && xSecMatch && xSubjMatch;
+                });
+            }
+
+            if (existingIdx !== -1) {
+                const target = STATE.pensum[existingIdx];
+                target.teacherId = resolvedTeacherId;
+                target.teacher = teacherName;
+                target.teacherName = teacherName;
+                target.grade = gradeName;
+                target.gradeCode = sec.code || target.gradeCode;
+                target.section = sec.section || target.section;
+                target.periodsPerWeek = periods;
+                target.hours = periods;
+                target.periods = periods;
+                target.subject = fullSubjectName;
+                target.name = fullSubjectName;
+                if (assignedCourseCode) target.code = assignedCourseCode;
+                target.lastModified = nowTime;
+                touchedAssignments.push(target);
+            } else {
+                const newAsg = {
+                    id: 'asg-' + nowTime + '-' + secIdx + '-' + Math.floor(Math.random() * 1000),
+                    code: assignedCourseCode,
+                    teacherId: resolvedTeacherId,
+                    teacher: teacherName,
+                    teacherName: teacherName,
+                    grade: gradeName,
+                    gradeCode: sec.code,
+                    section: sec.section,
+                    subject: fullSubjectName,
+                    name: fullSubjectName,
+                    career: 'Perito Contador',
+                    periodsPerWeek: periods,
+                    hours: periods,
+                    periods: periods,
+                    lastModified: nowTime
+                };
+                STATE.pensum.push(newAsg);
+                touchedAssignments.push(newAsg);
+            }
+        });
+
         STATE.lastModified = nowTime;
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
@@ -50300,9 +50333,11 @@ async function saveClassAssignmentForm(e) {
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
         if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
 
+        const savedSecLabels = selectedSections.map(s => s.code || s.section).join(', ');
+        const secCountLabel = selectedSections.length > 1 ? ` en ${selectedSections.length} secciones (${savedSecLabels})` : ` (${savedSecLabels})`;
         const saveMsg = isUnassigning
-            ? `Cátedra "${fullSubjectName}" dejada en estado "Sin asignar" sin afectar datos históricos.`
-            : `Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`;
+            ? `Cátedra "${fullSubjectName}"${secCountLabel} dejada en estado "Sin asignar" sin afectar datos históricos.`
+            : `Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente${secCountLabel}.`;
         showToast(saveMsg, 'success');
 
         // 🌟 Persistencia atómica en Firestore (si hay sesión Auth) y RTDB con reintento garantizado
@@ -50420,6 +50455,9 @@ function openEditClassAssignmentModal(asgId) {
     const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
     if (hoursInput) {
         hoursInput.value = a.periodsPerWeek || a.hours || 4;
+    }
+    if (typeof checkClassAssignmentConflict === 'function') {
+        checkClassAssignmentConflict();
     }
 }
 

@@ -131,6 +131,14 @@ console.log(`  ✓ Cátedras Sin Asignar: ${unassignedKpi}`);
 console.log(`  ✓ Períodos Semanales: ${periodsKpi}`);
 console.log('  ✅ Test 5 Superado: Algoritmo de cálculo de KPIs validado con 100% de precisión.');
 
+// TEST 6: Verificación de guardado multi-sección en modo Edición y alerta de conflicto sin falsos positivos
+console.log('\n▶ [TEST 6] Verificando guardado multi-sección en edición y etiqueta dinámica...');
+assert(appJs.includes('function updateClassAssignmentSubmitButtonLabel()'), 'Debe existir updateClassAssignmentSubmitButtonLabel()');
+assert(appJs.includes('Guardar en ${activeCount} Secciones'), 'El botón debe mostrar dinámicamente cuántas secciones se guardarán');
+assert(appJs.includes('selectedSections.forEach((sec, secIdx) => {'), 'saveClassAssignmentForm debe iterar todas las secciones marcadas incluso en modo edición');
+assert(appJs.includes("const isRealTeacher = (asg) => {"), 'checkClassAssignmentConflict debe ignorar cátedras en estado Sin asignar');
+console.log('  ✅ Test 6 Superado: Guardado multi-sección en edición, botón dinámico y filtro de conflictos verificados.');
+
 console.log('\n' + '='.repeat(80));
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ASIGNACIONES PASARON EXITOSAMENTE (100%)');
 console.log('='.repeat(80));

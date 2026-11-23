@@ -4649,13 +4649,13 @@
                     </div>
 
                     <!-- PASO 3: ASIGNATURA DEL PENSUM Y PERÍODOS AUTOMÁTICOS -->
-                    <div class="form-row">
-                        <div class="form-group" style="flex:2.2;">
+                    <div class="form-row" style="display:grid; grid-template-columns:minmax(0, 1fr) 115px; gap:10px; align-items:end;">
+                        <div class="form-group" style="margin-bottom:0; min-width:0;">
                             <label style="font-weight:700;"><i class="fa-solid fa-book-open" style="color:var(--brand-green);"></i> 3. Asignatura del Pensum *</label>
-                            <select id="classAssignmentFormSubject" class="form-control" onchange="onClassAssignmentSubjectChange(this)" required style="font-weight:700;"></select>
+                            <select id="classAssignmentFormSubject" class="form-control" onchange="onClassAssignmentSubjectChange(this)" required style="font-weight:700; width:100%;"></select>
                         </div>
-                        <div class="form-group" style="flex:1;">
-                            <label style="font-weight:700;">Períodos/Sem *</label>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:700; white-space:nowrap;">Períodos/Sem *</label>
                             <input type="number" id="classAssignmentFormHours" class="form-control" required min="1" max="15" value="4" style="font-weight:800; text-align:center; background:#f0fdf4; color:#166534; border:1.5px solid #86efac;">
                         </div>
                     </div>
@@ -6715,7 +6715,7 @@
     <script src="sire.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261123_v291" charset="UTF-8"></script>
+    <script src="app.js?v=20261123_v292" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
