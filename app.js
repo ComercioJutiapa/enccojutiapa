@@ -906,12 +906,8 @@ const EnccoAuthStore = {
             if (isSuper) {
                 hasPerm = true;
             } else if (permKey) {
+                // Prioridad absoluta a la matriz dinámica de Roles y Permisos (soporta roles personalizados)
                 hasPerm = hasRolePermission(permKey, role);
-                if (hasPerm && allowed && !allowed.includes('*')) {
-                    hasPerm = allowed.includes(role.toLowerCase()) ||
-                        (allowed.includes('director') && role.toLowerCase() === 'direccion') ||
-                        (allowed.includes('profesor_auxiliar') && (role.toLowerCase() === 'auxiliar' || role.toLowerCase() === 'auxiliatura'));
-                }
             } else if (allowed) {
                 hasPerm = allowed.includes('*') || allowed.includes(role.toLowerCase()) ||
                     (allowed.includes('director') && role.toLowerCase() === 'direccion') ||
@@ -1202,13 +1198,7 @@ function enforceViewReadOnlyMode(viewName) {
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
 
-    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
-    // (Becas y Bolsas de Estudio se rige 100% dinámicamente por la matriz de Roles y Permisos)
-    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center') {
-        const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        if (allowedFull.includes(STATE.currentRole)) return;
-    }
-
+    // 🛡️ Control 100% dinámico por matriz de 3 niveles (Modificar / Solo Ver / Bloqueado)
     const canModify = canRoleModify(viewName, STATE.currentRole);
 
     if (!canModify) {
@@ -1270,6 +1260,9 @@ function normalizePermKey(key) {
     if (k === 'auxiliatura_log' || k === 'auxiliatura-log' || k === 'bitacora' || k === 'bitacora_auxiliatura' || k === 'bitacora-auxiliatura' || k === 'bitacora-diaria' || k === 'bitacora_diaria') return 'auxiliatura-log';
     if (k === 'auxiliatura_center' || k === 'auxiliatura-center' || k === 'centro_control' || k === 'centro-control') return 'auxiliatura-center';
     if (k === 'scholarships' || k === 'becas' || k === 'bolsas' || k === 'bolsas_estudio' || k === 'bolsas-estudio' || k === 'becas-bolsas' || k === 'becas_bolsas') return 'scholarships';
+    if (k === 'exam-schedules' || k === 'exam_schedules' || k === 'horarios-examenes' || k === 'horarios_examenes' || k === 'auxiliaturas-examenes' || k === 'auxiliaturas_examenes') return 'exam-schedules';
+    if (k === 'careers' || k === 'carreras') return 'careers';
+    if (k === 'cycles' || k === 'ciclos') return 'cycles';
     return k;
 }
 
@@ -1333,7 +1326,7 @@ async function toggleRoleActive(roleKey) {
         if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.syncNode === 'function') {
             await EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
         }
-        if (window.FirebaseModular && window.FirebaseModular.db) {
+        if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
             const { db, doc, setDoc } = window.FirebaseModular;
             await setDoc(doc(db, 'rolesConfig', r.key), r, { merge: true });
             await setDoc(doc(db, 'config', 'rolesConfig'), { list: STATE.rolesConfig, lastModified: Date.now() }, { merge: true });
@@ -3122,9 +3115,9 @@ async function saveActiveRolePermissions() {
         renderRolesManagementView();
         showToast(`Permisos del rol "${roleObjInState.name}" guardados exitosamente.`, 'success');
 
-        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+        // 🌟 Persistencia atómica en Firestore (solo con sesión Auth activa) y RTDB con reintento
         (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db) {
+            if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
                 try {
                     const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
                     const rolRef = doc(db, 'roles', key);
@@ -3175,21 +3168,30 @@ async function saveActiveRolePermissions() {
                 }
             }
 
-            try {
-                const rtdbPromises = [];
-                if (typeof EnccoCloudSync !== 'undefined') {
-                    if (typeof EnccoCloudSync.patchNode === 'function') {
-                        rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleObj));
-                    }
-                    if (typeof EnccoCloudSync.syncNode === 'function') {
-                        rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+            let rtdbSaved = false;
+            if (typeof EnccoCloudSync !== 'undefined') {
+                for (let attempt = 1; attempt <= 2 && !rtdbSaved; attempt++) {
+                    try {
+                        const rtdbPromises = [];
+                        if (typeof EnccoCloudSync.patchNode === 'function') {
+                            rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleObj));
+                        }
+                        if (typeof EnccoCloudSync.syncNode === 'function') {
+                            rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                        }
+                        if (rtdbPromises.length > 0) {
+                            const results = await withTimeout(Promise.all(rtdbPromises), 15000, 'Tiempo de espera en Realtime Database agotado.');
+                            rtdbSaved = results.some(Boolean);
+                        } else {
+                            rtdbSaved = true;
+                        }
+                    } catch(rtdbErr) {
+                        console.warn(`Aviso en RTDB al guardar rol activo (intento ${attempt}/2):`, rtdbErr);
                     }
                 }
-                if (rtdbPromises.length > 0) {
-                    await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
-                }
-            } catch(rtdbErr) {
-                console.warn("Aviso en RTDB al guardar rol activo:", rtdbErr);
+            }
+            if (!rtdbSaved && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+                showToast('⚠️ Los permisos se aplicaron en pantalla, pero Firebase tardó en responder. Verifique su red y vuelva a pulsar Guardar.', 'warning');
             }
         })();
     } catch(err) {
