@@ -135,4 +135,16 @@ assert.strictEqual(lastPrint.orient, 'portrait');
 assert(lastPrint.html.includes('CONSTANCIA DE ASISTENCIA Y RENDIMIENTO PARA BECA') && lastPrint.html.includes('94%'), 'Constancia individual incluye % de asistencia a la fecha');
 console.log('  ✅ 5. Impresión oficial de nómina y constancia individual de beca verificadas.');
 
+// 7. Verificar integración dinámica en Roles y Permisos (SYSTEM_MODULES_LIST, normalizePermKey, canManageScholarships, sidebar sin data-allowed fijo)
+assert(appCode.includes("key: 'scholarships', name: 'Becas y Bolsas de Estudio'"), 'Becas y Bolsas de Estudio debe estar registrado en SYSTEM_MODULES_LIST');
+assert(appCode.includes("k === 'scholarships' || k === 'becas'"), 'normalizePermKey debe reconocer scholarships/becas/bolsas');
+assert(htmlCode.includes('data-view="scholarships" data-perm="scholarships" onclick='), 'Sidebar debe depender dinámicamente de data-perm="scholarships" sin data-allowed fijo');
+mockWindow.canRoleModify = (mod, role) => mod === 'scholarships' && role === 'custom_becas_role';
+mockWindow.hasRolePermission = (mod, role) => mod === 'scholarships' && (role === 'custom_becas_role' || role === 'docente');
+assert.strictEqual(mockWindow.canManageScholarships('custom_becas_role'), true, 'Rol personalizado con permiso edit debe poder gestionar becas');
+assert.strictEqual(mockWindow.canManageScholarships('docente'), false, 'Docente con permiso solo view no puede editar becas');
+assert.strictEqual(mockWindow.canViewScholarships('docente'), true, 'Docente con permiso view sí puede consultar becas');
+assert.strictEqual(mockWindow.canViewScholarships('estudiante'), false, 'Rol sin permiso no puede ver becas');
+console.log('  ✅ 6. Integración dinámica en Roles y Permisos (3 niveles + roles personalizados) verificada.');
+
 console.log('\n🎯 ¡TODAS LAS PRUEBAS DE BECAS, BOLSAS DE ESTUDIO Y FICHA INTEGRAL PASARON AL 100%!');

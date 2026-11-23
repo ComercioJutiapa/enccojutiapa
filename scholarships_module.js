@@ -39,12 +39,31 @@
         return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || '2026').trim();
     }
 
+    function canViewScholarships(roleOverride) {
+        const st = window.STATE || {};
+        const role = String(roleOverride || st.currentRole || '').toLowerCase().trim();
+        if (!role || role === 'guest') return false;
+        if (typeof window.isSuperUserRole === 'function' && window.isSuperUserRole(role)) return true;
+        if (typeof window.isDirectorRole === 'function' && window.isDirectorRole(role)) return true;
+        if (typeof window.hasRolePermission === 'function') {
+            return !!window.hasRolePermission('scholarships', role);
+        }
+        return ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora', 'secretaria', 'secretario', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'].includes(role);
+    }
+
     function canManageScholarships(roleOverride) {
         const st = window.STATE || {};
         if (st.isHistoricalReadOnlyMode) return false;
         const role = String(roleOverride || st.currentRole || '').toLowerCase().trim();
+        if (!role || role === 'guest') return false;
         if (typeof window.isSuperUserRole === 'function' && window.isSuperUserRole(role)) return true;
         if (typeof window.isDirectorRole === 'function' && window.isDirectorRole(role)) return true;
+        if (typeof window.canRoleModify === 'function') {
+            return !!window.canRoleModify('scholarships', role);
+        }
+        if (typeof window.getModulePermissionLevel === 'function') {
+            return window.getModulePermissionLevel('scholarships', role) === 'edit';
+        }
         return ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora', 'secretaria', 'secretario', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(role);
     }
 
@@ -472,6 +491,17 @@
         const container = document.getElementById('view-scholarships');
         if (!container) return;
         injectScholarshipsStyles();
+
+        if (!canViewScholarships()) {
+            container.innerHTML = `
+                <div class="sch-shell" style="padding:28px 20px; text-align:center;">
+                    <div style="font-size:2rem; color:#dc2626; margin-bottom:8px;"><i class="fa-solid fa-lock"></i></div>
+                    <h3 style="margin:0 0 6px; color:#0f2b5c; font-weight:800;">Acceso Restringido</h3>
+                    <p style="margin:0; color:#64748b; font-size:0.86rem;">Su rol actual no tiene permiso habilitado para consultar <strong>Becas y Bolsas de Estudio</strong>. Solicite autorización en <em>Roles y Permisos</em>.</p>
+                </div>
+            `;
+            return;
+        }
 
         const { activeCycle, allBecados, rows, kpis } = buildScholarshipsDataset();
         const canEdit = canManageScholarships();
@@ -1083,6 +1113,7 @@
 
     window.SCHOLARSHIP_TYPES = SCHOLARSHIP_TYPES;
     window.getScholarshipActiveCycle = getScholarshipActiveCycle;
+    window.canViewScholarships = canViewScholarships;
     window.canManageScholarships = canManageScholarships;
     window.getStudentScholarshipForCycle = getStudentScholarshipForCycle;
     window.getStudentMissingDocsSummary = getStudentMissingDocsSummary;

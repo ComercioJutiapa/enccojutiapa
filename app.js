@@ -1202,8 +1202,9 @@ function enforceViewReadOnlyMode(viewName) {
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
 
-    // 🛡️ ACCESO TOTAL A BITÁCORA, CENTRO DE CONTROL Y BECAS: Dirección, Auxiliatura y Secretaría
-    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center' || viewName === 'scholarships') {
+    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+    // (Becas y Bolsas de Estudio se rige 100% dinámicamente por la matriz de Roles y Permisos)
+    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedFull.includes(STATE.currentRole)) return;
     }
@@ -1268,6 +1269,7 @@ function normalizePermKey(key) {
     if (k === 'disciplina' || k === 'discipline' || k === 'conducta' || k === 'discipline-report' || k === 'discipline_report' || k === 'reportes-conducta' || k === 'reportes_conducta' || k === 'discipline_view') return 'discipline';
     if (k === 'auxiliatura_log' || k === 'auxiliatura-log' || k === 'bitacora' || k === 'bitacora_auxiliatura' || k === 'bitacora-auxiliatura' || k === 'bitacora-diaria' || k === 'bitacora_diaria') return 'auxiliatura-log';
     if (k === 'auxiliatura_center' || k === 'auxiliatura-center' || k === 'centro_control' || k === 'centro-control') return 'auxiliatura-center';
+    if (k === 'scholarships' || k === 'becas' || k === 'bolsas' || k === 'bolsas_estudio' || k === 'bolsas-estudio' || k === 'becas-bolsas' || k === 'becas_bolsas') return 'scholarships';
     return k;
 }
 
@@ -1439,6 +1441,14 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         const allowedCarnets = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedCarnets.includes(roleKey)) return 'none';
         return 'edit';
+    }
+
+    if (key === 'scholarships') {
+        const allowedEdit = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        const allowedView = ['docente', 'catedratico'];
+        if (allowedEdit.includes(roleKey)) return 'edit';
+        if (allowedView.includes(roleKey)) return 'view';
+        return 'none';
     }
 
     return 'none';
@@ -3543,6 +3553,7 @@ var SYSTEM_MODULES_LIST = [
     { key: 'grade-stats', name: 'Promedios y Estadísticas', icon: 'fa-chart-bar', category: 'Académico', desc: 'Estadísticas de promedios, aprobados y reprobados por grado y sección.' },
     { key: 'predictive-analytics', name: 'Analítica Predictiva y Riesgo Escolar', icon: 'fa-chart-line', category: 'Académico', desc: 'Semáforo de riesgo de deserción, ranking de cursos críticos y citaciones.' },
     { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' },
+    { key: 'scholarships', name: 'Becas y Bolsas de Estudio', icon: 'fa-hand-holding-heart', category: 'Secretaría y Alumnos', desc: 'Control multiciclo de alumnos becados, seguimiento de asistencia mínima (85%) y emisión de constancias.' },
     { key: 'exoneraciones-log', name: 'Libro de Exoneraciones', icon: 'fa-file-shield', category: 'Secretaría y Alumnos', desc: 'Libro de registro oficial de exoneraciones y consideraciones académicas especiales.' },
     { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
     { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' },
@@ -3594,7 +3605,7 @@ function initDefaultRolesConfig() {
             color: '#d97706',
             isSystem: true,
             active: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'users']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'scholarships', 'users']
         },
         {
             key: 'docente',
@@ -3603,7 +3614,7 @@ function initDefaultRolesConfig() {
             color: '#0891b2',
             isSystem: true,
             active: true,
-            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history', 'scholarships']
         },
         {
             key: 'estudiante',
@@ -3698,7 +3709,8 @@ function normalizeRolesConfig() {
                 'attendance': 'edit',
                 'discipline': 'edit',
                 'exoneraciones-log': 'view',
-                'permissions-history': 'view'
+                'permissions-history': 'view',
+                'scholarships': 'view'
             };
             Object.keys(docenteDefaults).forEach(p => {
                 if (typeof roleObj.permissionLevels[p] === 'undefined') {
@@ -3719,6 +3731,10 @@ function normalizeRolesConfig() {
             if (typeof roleObj.permissionLevels['auxiliatura-center'] === 'undefined') {
                 roleObj.permissionLevels['auxiliatura-center'] = 'edit';
                 if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
+            }
+            if (typeof roleObj.permissionLevels['scholarships'] === 'undefined') {
+                roleObj.permissionLevels['scholarships'] = 'edit';
+                if (!roleObj.permissions.includes('scholarships')) roleObj.permissions.push('scholarships', 'scholarships_edit', 'scholarships_view');
             }
             if (roleObj.key === 'profesor_auxiliar') {
                 if (typeof roleObj.permissionLevels['exam-schedules'] === 'undefined') {
