@@ -789,11 +789,39 @@
         `;
     }
 
+    function canAccessStudentDocsAudit(roleOverride) {
+        const st = window.STATE || {};
+        const role = String(roleOverride || st.currentRole || '').toLowerCase().trim();
+        if (!role || role === 'guest' || role === 'docente' || role === 'catedratico' || role === 'estudiante') {
+            return false;
+        }
+        if (typeof window.isSuperUserRole === 'function' && window.isSuperUserRole(role)) return true;
+        if (typeof window.isDirectorRole === 'function' && window.isDirectorRole(role)) return true;
+        if (['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora', 'secretaria', 'secretario', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(role)) {
+            return true;
+        }
+        if (typeof window.canRoleModify === 'function') {
+            return !!window.canRoleModify('students', role);
+        }
+        return false;
+    }
+
     function toggleStudentDocsAuditPanel(forceState) {
         const panel = document.getElementById('studentDocsAuditPanel');
         const tableCard = document.querySelector('#view-students .table-card');
         const btn = document.getElementById('btnToggleDocsAuditPanel');
         if (!panel) return;
+
+        if (!canAccessStudentDocsAudit()) {
+            AUDIT_STATE.isOpen = false;
+            panel.style.display = 'none';
+            if (tableCard) tableCard.style.display = '';
+            if (btn) btn.style.display = 'none';
+            if (typeof window.showToast === 'function') {
+                window.showToast('Acceso restringido: Auditoría Docs y CUI es exclusiva de Dirección, Secretaría y Auxiliatura.', 'warning');
+            }
+            return;
+        }
 
         AUDIT_STATE.isOpen = (typeof forceState === 'boolean') ? forceState : !AUDIT_STATE.isOpen;
 
@@ -1045,6 +1073,7 @@
         };
     }
 
+    window.canAccessStudentDocsAudit = canAccessStudentDocsAudit;
     window.validateStudentCuiForAudit = validateStudentCuiForAudit;
     window.buildStudentDocsAuditDataset = buildStudentDocsAuditDataset;
     window.renderStudentDocsAuditPanel = renderStudentDocsAuditPanel;

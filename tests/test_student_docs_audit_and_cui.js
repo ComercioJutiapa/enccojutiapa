@@ -67,6 +67,7 @@ const mockWindow = {
     },
     STATE: {
         activeCycle: '2027',
+        currentRole: 'secretaria',
         students: [
             // Alumno completo 2027
             { id: 'st-ok', cycle: '2027', name: 'PÉREZ ANA', grade: '4to Perito Contador', section: 'A', gradeCode: '4A', status: 'Activo', cui: '2987654321012', personalCode: 'A123BCD', expediente: { docs: fullDocsDelivered } },
@@ -134,6 +135,11 @@ assert(appCode.includes("function _syncStudentExpedienteAtomicToRtdb(student, no
 assert(appCode.includes("EnccoCloudSync.patchNode('students/' + studentIndex, studentAtomicPatch)"), 'saveStudentProfileForm debe usar patchNode atómico por estudiante (~2 KB) en vez de subir todos los alumnos');
 assert(appCode.includes("modular.auth && modular.auth.currentUser"), 'saveStudentProfileForm debe condicionar setDoc en Firestore a sesión Auth activa');
 assert(appCode.includes("window.renderStudentDocsAuditPanel()"), 'saveStudentProfileForm debe refrescar el panel de Auditoría Docs y CUI cuando esté abierto');
-console.log('  ✅ 6. Guardado atómico en RTDB (patchNode), guarda de Firestore Auth y refresco automático de Auditoría verificados.');
+assert(htmlCode.includes('class="btn btn-primary role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" id="btnToggleDocsAuditPanel"'), 'El botón Auditoría Docs y CUI debe estar restringido y oculto para docentes');
+assert.strictEqual(mockWindow.canAccessStudentDocsAudit('docente'), false, 'Docente NO debe poder acceder a Auditoría Docs y CUI');
+assert.strictEqual(mockWindow.canAccessStudentDocsAudit('estudiante'), false, 'Estudiante NO debe poder acceder a Auditoría Docs y CUI');
+assert.strictEqual(mockWindow.canAccessStudentDocsAudit('secretaria'), true, 'Secretaría sí puede acceder a Auditoría Docs y CUI');
+assert.strictEqual(mockWindow.canAccessStudentDocsAudit('profesor_auxiliar'), true, 'Profesor Auxiliar sí puede acceder a Auditoría Docs y CUI');
+console.log('  ✅ 6. Guardado atómico en RTDB (patchNode), restricción RBAC para docentes y refresco automático de Auditoría verificados.');
 
 console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUDITORÍA DE DOCUMENTOS Y CUI PASARON AL 100%!');

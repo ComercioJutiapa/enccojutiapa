@@ -1455,7 +1455,7 @@
                             </div>
 
                             <div class="students-buttons-group">
-                                <button type="button" class="btn btn-primary" id="btnToggleDocsAuditPanel" onclick="toggleStudentDocsAuditPanel()" title="Ver auditoría dinámica de documentos de expediente (6 requisitos) y validación de CUI RENAP" style="height:36px; font-weight:800; font-size:0.81rem; display:inline-flex; align-items:center; gap:6px; border-radius:7px; padding:0 12px; background:#0369a1; border-color:#0f2b5c; color:#ffffff;">
+                                <button type="button" class="btn btn-primary role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" id="btnToggleDocsAuditPanel" onclick="toggleStudentDocsAuditPanel()" title="Ver auditoría dinámica de documentos de expediente (6 requisitos) y validación de CUI RENAP" style="height:36px; font-weight:800; font-size:0.81rem; display:inline-flex; align-items:center; gap:6px; border-radius:7px; padding:0 12px; background:#0369a1; border-color:#0f2b5c; color:#ffffff;">
                                     <i class="fa-solid fa-folder-check"></i> Auditoría Docs y CUI
                                 </button>
                                 <button type="button" class="btn btn-success print-btn" onclick="printStudentsBlankRoster10Casillas()" title="Imprimir nómina en blanco con 10 casillas para control de tareas y notas a mano (sin firmas, tamaño oficio 8.5x13 in)" style="height:36px; font-weight:700; font-size:0.81rem; display:inline-flex; align-items:center; gap:6px; border-radius:7px; padding:0 12px;">
@@ -6707,7 +6707,7 @@
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=20261119_v280" defer charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261119_v280" defer charset="UTF-8"></script>
-    <script src="student_docs_audit.js?v=20261119_v280" defer charset="UTF-8"></script>
+    <script src="student_docs_audit.js?v=20261123_v288" defer charset="UTF-8"></script>
     <script src="scholarships_module.js?v=20261123_v287" defer charset="UTF-8"></script>
     <script src="db_repository.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261119_v280" charset="UTF-8"></script>
