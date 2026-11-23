@@ -233,5 +233,13 @@ assert.strictEqual(getFullOfficialSubjectName("Organización y Métodos", 6), "O
 
 console.log("  ✅ Prueba 5 Superada: Migración de nombres canónicos con preservación total de docentes y compatibilidad en listas.");
 
+// 6. Prueba de Blindaje Anti-Borrado de Asignaciones en Arranque y syncNode('pensum')
+console.log("\n➡️  Prueba 6: Blindaje Anti-Borrado de Asignaciones de Docentes en Firebase...");
+const appSrcForGuard = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+assert(appSrcForGuard.includes("syncClassAssignmentsWithPensumAndGrades({ showNotification: false, syncCloud: false })"), "El arranque debe invocar syncClassAssignmentsWithPensumAndGrades con syncCloud: false");
+assert(appSrcForGuard.includes("if (nodeName === 'pensum' && !(opts && opts.allowAllUnassigned))"), "EnccoCloudSync.syncNode debe bloquear sobreescrituras de /pensum con 0 docentes asignados");
+assert(appSrcForGuard.includes("EnccoCloudSync.syncNode('pensum', STATE.pensum, { allowAllUnassigned: isUnassigning })"), "saveClassAssignmentForm debe persistir con reintento y permitir desasignación deliberada");
+console.log("  ✅ Prueba 6 Superada: Blindaje anti-borrado de asignaciones verificado.");
+
 console.log("\n🎯 ¡TODAS LAS PRUEBAS DE COHERENCIA PENSUM-GRADOS-ASIGNACIONES PASARON EXITOSAMENTE!\n");
 process.exit(0);

@@ -2520,7 +2520,7 @@ const EnccoCloudSync = {
         }
     },
 
-    async syncNode(nodeName, data) {
+    async syncNode(nodeName, data, opts = {}) {
         if (!nodeName) return false;
 
         // 🛡️ GUARDA ESTRICTA DE MODO HISTÓRICO (SOLO LECTURA):
@@ -2572,6 +2572,16 @@ const EnccoCloudSync = {
             if (valid.length < 28) {
                 console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar pensum con elementos inválidos (${valid.length} válidos). Operación cancelada.`);
                 return false;
+            }
+            if (nodeName === 'pensum' && !(opts && opts.allowAllUnassigned)) {
+                const assignedTeachersCount = valid.filter(p => {
+                    const t = String(p.teacher || p.teacherName || '').trim().toLowerCase();
+                    return t && t !== 'sin asignar' && t !== 'por asignar' && t !== 'sin docente';
+                }).length;
+                if (assignedTeachersCount === 0) {
+                    console.warn('🛡️ [EnccoCloudSync] Bloqueado intento de sobreescribir /pensum en Firebase con 0 docentes asignados (protección anti-borrado).');
+                    return false;
+                }
             }
             data = valid;
         }
@@ -9281,9 +9291,18 @@ function syncClassAssignmentsWithPensumAndGrades(options = { showNotification: t
     STATE.pensum = synchronizedPensum;
 
     if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+    const shouldSyncCloud = !(options && options.syncCloud === false);
+    const hasAssignedTeachers = synchronizedPensum.some(p => {
+        const t = String((p && (p.teacher || p.teacherName)) || '').trim().toLowerCase();
+        return t && t !== 'sin asignar' && t !== 'por asignar' && t !== 'sin docente';
+    });
+    if (shouldSyncCloud && typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
-        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        if (hasAssignedTeachers) {
+            EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        } else {
+            console.warn('🛡️ [Pensum Sync] Se omitió subir /pensum a Firebase porque todas las cátedras están sin asignar (protección anti-borrado).');
+        }
     }
 
     if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
@@ -10736,7 +10755,7 @@ async function initApp() {
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
     ensureCanonicalPensumCatalogCoherence();
-    syncClassAssignmentsWithPensumAndGrades({ showNotification: false });
+    syncClassAssignmentsWithPensumAndGrades({ showNotification: false, syncCloud: false });
 
     // 📇 Sincronización garantizada de contactos y teléfonos oficiales de usuarios y maestros
     if (typeof reconcileOfficialUserContacts === 'function') {
@@ -50147,11 +50166,12 @@ async function saveClassAssignmentForm(e) {
             : `Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`;
         showToast(saveMsg, 'success');
 
-        // 🌟 Persistencia atómica con writeBatch en Firestore y RTDB en segundo plano
+        // 🌟 Persistencia atómica en Firestore (si hay sesión Auth) y RTDB con reintento garantizado
         (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db) {
+            const modular = window.FirebaseModular;
+            if (modular && modular.db && modular.auth && modular.auth.currentUser) {
                 try {
-                    const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
+                    const { db, doc, writeBatch, setDoc } = modular;
                     const relevantAssignments = touchedAssignments.filter(Boolean);
                     if (typeof writeBatch === 'function' && relevantAssignments.length > 1) {
                         const batch = writeBatch(db);
@@ -50176,12 +50196,22 @@ async function saveClassAssignmentForm(e) {
                 }
             }
 
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-                try {
-                    await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera agotado en Realtime Database.');
-                } catch(rtdbErr) {
-                    console.warn("Aviso al sincronizar asignaciones en RTDB:", rtdbErr);
+            let rtdbOk = false;
+            if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.syncNode === 'function') {
+                for (let attempt = 1; attempt <= 2 && !rtdbOk; attempt++) {
+                    try {
+                        rtdbOk = await withTimeout(
+                            EnccoCloudSync.syncNode('pensum', STATE.pensum, { allowAllUnassigned: isUnassigning }),
+                            15000,
+                            'Tiempo de espera agotado en Realtime Database.'
+                        );
+                    } catch(rtdbErr) {
+                        console.warn('Aviso al sincronizar asignaciones en RTDB (intento ' + attempt + '/2):', rtdbErr);
+                    }
                 }
+            }
+            if (!rtdbOk && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+                showToast('⚠️ La asignación se mostró en pantalla, pero Firebase tardó en responder. Verifique su conexión y vuelva a guardar.', 'warning');
             }
         })();
     } catch(err) {
