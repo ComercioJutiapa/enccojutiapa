@@ -2545,6 +2545,14 @@ const EnccoCloudSync = {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de usuarios truncada (${data.length} < 20). Operación cancelada para proteger integridad.`);
             return false;
         }
+        if (nodeName === 'users' && Array.isArray(data)) {
+            // 🔐 Seguridad: nunca persistir contraseñas en texto claro en RTDB (autenticación real vive en Firebase Auth)
+            data = data.map(u => {
+                if (!u || typeof u !== 'object') return u;
+                const { password: _omittedPwd, ...safeUser } = u;
+                return safeUser;
+            });
+        }
         if ((nodeName === 'attendanceRecords' || nodeName.startsWith('attendanceRecords')) && (!data || typeof data !== 'object' || Object.keys(data).length === 0)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de asistencias vacía o truncada. Operación cancelada para proteger la integridad de las asistencias.`);
             return false;
@@ -4876,20 +4884,31 @@ async function saveUserForm(e) {
                     if (provRes && provRes.created) {
                         console.log(`🔐 [Firebase Auth] Cuenta sincronizada automáticamente para: ${savedUserObj.email}`);
                         if (provRes.uid && typeof getFirebaseDatabaseUrl === 'function') {
+                            const allowPayload = {
+                                email: String(savedUserObj.email).trim().toLowerCase(),
+                                role: String(savedUserObj.role || 'docente').trim().toLowerCase(),
+                                active: true,
+                                authorizedAt: new Date().toISOString()
+                            };
                             try {
                                 const fbUrl = getFirebaseDatabaseUrl();
                                 await fetch(`${fbUrl}/authorized_uids/${provRes.uid}.json`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        email: String(savedUserObj.email).trim().toLowerCase(),
-                                        role: String(savedUserObj.role || 'docente').trim().toLowerCase(),
-                                        active: true,
-                                        authorizedAt: new Date().toISOString()
-                                    })
+                                    body: JSON.stringify(allowPayload)
                                 });
                             } catch (allowErr) {
-                                console.warn('Aviso al registrar UID en authorized_uids:', allowErr);
+                                console.warn('Aviso al registrar UID en authorized_uids (RTDB):', allowErr);
+                            }
+                            if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
+                                try {
+                                    const { db, doc, setDoc } = window.FirebaseModular;
+                                    if (typeof doc === 'function' && typeof setDoc === 'function') {
+                                        await setDoc(doc(db, 'authorized_uids', provRes.uid), allowPayload, { merge: true });
+                                    }
+                                } catch (fsAllowErr) {
+                                    console.warn('Aviso al registrar UID en authorized_uids (Firestore):', fsAllowErr);
+                                }
                             }
                         }
                     }
@@ -4902,7 +4921,8 @@ async function saveUserForm(e) {
                 try {
                     const { db, doc, setDoc, deleteDoc } = window.FirebaseModular;
                     const userDocRef = doc(db, 'users', savedUserObj.id);
-                    const userPayload = { ...savedUserObj, lastModified: nowTime };
+                    const { password: _omittedFsPwd, ...safeSavedUserObj } = savedUserObj;
+                    const userPayload = { ...safeSavedUserObj, lastModified: nowTime };
 
                     if (typeof setDoc === 'function') {
                         await withTimeout(setDoc(userDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
@@ -48003,8 +48023,22 @@ async function deleteUser(userId) {
             if (typeof renderDashboard === 'function') renderDashboard();
         } catch(uiErr) {}
 
-        // 4. Sincronizar de inmediato con Firebase (Firestore + Realtime DB) en segundo plano
+        // 4. Sincronizar de inmediato con Firebase (Revocación de UID + Firestore + Realtime DB) en segundo plano
         (async () => {
+            if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.revokeAuthorizedUser === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
+                try {
+                    const revokeTarget = user.email || user.firebaseUid || '';
+                    if (revokeTarget) {
+                        const revRes = await window.EnccoFirebaseAuthBridge.revokeAuthorizedUser(revokeTarget, getFirebaseDatabaseUrl());
+                        if (revRes && revRes.revoked) {
+                            console.log(`🔐 [Firebase Auth] Acceso revocado en /authorized_uids para: ${revokeTarget} (${revRes.count} UID)`);
+                        }
+                    }
+                } catch (revErr) {
+                    console.warn('Aviso al revocar UID en authorized_uids:', revErr);
+                }
+            }
+
             if (window.FirebaseModular && window.FirebaseModular.db) {
                 try {
                     const { db, doc, deleteDoc } = window.FirebaseModular;

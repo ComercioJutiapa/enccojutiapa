@@ -9,11 +9,11 @@
       ],
       "rolesConfig": {
         ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
       },
       "users": {
         ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
       },
       "pensum": {
         ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
@@ -79,15 +79,15 @@
     },
     "roles": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     },
     "rolesConfig": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     },
     "users": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     },
     "secciones": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
@@ -95,7 +95,7 @@
     },
     "config": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     },
     "cycles": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
@@ -187,7 +187,7 @@
     },
     "authorized_uids": {
       ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
-      ".write": "auth != null && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     }
   }
 }

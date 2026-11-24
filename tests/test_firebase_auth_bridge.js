@@ -131,6 +131,66 @@ console.log('  ✅ 3. Resolución de alias sin contraseñas y derivación compat
     assert.strictEqual(storeMap.ENCCO_FB_ID_TOKEN, 'FRESH_JWT_NEW', 'Debe actualizar sessionStorage con el token fresco');
     console.log('  ✅ 5. Hidratación 0ms (sessionStorage) y auto-reintento transparente ante HTTP 401 verificados.');
 
+    // 6. Fase 3: Revocación automática de UID, lista blanca Firestore, roles en RTDB, limpieza de password y CSP
+    const patchedUrls = [];
+    const fsRevokedDocs = [];
+    const mockWin3 = {
+        location: { href: 'https://encco-jutiapa-live-2026.web.app/plataforma.html' },
+        sessionStorage: { getItem: () => 'ADMIN_JWT', setItem: () => {}, removeItem: () => {} },
+        fetch: async (url, init) => {
+            if (!init || !init.method || init.method === 'GET') {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        uid_doc_1: { email: 'docente.prueba@gmail.com', role: 'docente', active: true },
+                        uid_admin_1: { email: 'nehemias.salguero1982@gmail.com', role: 'admin', active: true }
+                    })
+                };
+            }
+            patchedUrls.push({ url, method: init.method, body: JSON.parse(init.body) });
+            return { ok: true, status: 200, json: async () => ({}) };
+        },
+        FirebaseModular: {
+            db: { __mock: true },
+            auth: { currentUser: { uid: 'uid_admin_1' } },
+            doc: (_db, col, id) => ({ col, id }),
+            setDoc: async (ref, payload) => { fsRevokedDocs.push({ ref, payload }); }
+        },
+        addEventListener: () => {},
+        removeEventListener: () => {}
+    };
+    mockWin3.window = mockWin3;
+    const ctx3 = { window: mockWin3, URL, console, setTimeout, clearTimeout, setInterval, clearInterval };
+    vm.createContext(ctx3);
+    vm.runInContext(bridgeCode, ctx3);
+
+    const revRes = await mockWin3.EnccoFirebaseAuthBridge.revokeAuthorizedUser(
+        'docente.prueba@gmail.com',
+        'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com'
+    );
+    assert.strictEqual(revRes.revoked, true, 'Debe revocar el UID del docente eliminado');
+    assert.strictEqual(revRes.count, 1, 'Debe revocar exactamente 1 UID coincidente');
+    assert.strictEqual(patchedUrls.length, 1, 'Debe emitir PATCH en RTDB /authorized_uids/<uid>');
+    assert.strictEqual(patchedUrls[0].body.active, false, 'Debe marcar active: false en RTDB');
+    assert.strictEqual(fsRevokedDocs.length, 1, 'Debe espejar active: false en Firestore authorized_uids');
+    assert.strictEqual(fsRevokedDocs[0].payload.active, false, 'Debe marcar active: false en Firestore');
+
+    const projectRoot = path.join(__dirname, '..');
+    const fsRulesText = fs.readFileSync(path.join(projectRoot, 'firestore.rules'), 'utf8');
+    assert.ok(fsRulesText.includes('function isAuthorizedStaff()'), 'firestore.rules debe definir isAuthorizedStaff()');
+    assert.ok(fsRulesText.includes('function isAdminOrDirector()'), 'firestore.rules debe definir isAdminOrDirector()');
+    assert.ok(fsRulesText.includes('allow read, write: if false;'), 'firestore.rules debe ser fail-closed por defecto');
+
+    const rtdbRulesObj = JSON.parse(fs.readFileSync(path.join(projectRoot, 'database.rules.json'), 'utf8')).rules;
+    assert.ok(rtdbRulesObj.encc_school_state.users['.write'].includes("'admin'"), 'RTDB encc_school_state/users debe restringir escritura a admin/director');
+    assert.ok(rtdbRulesObj.encc_school_state.rolesConfig['.write'].includes("'admin'"), 'RTDB encc_school_state/rolesConfig debe restringir escritura a admin/director');
+
+    const fbJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'firebase.json'), 'utf8'));
+    const allHeaders = (fbJson.hosting.headers || []).flatMap(h => h.headers || []);
+    assert.ok(allHeaders.some(h => h.key === 'Content-Security-Policy' && h.value.includes("object-src 'none'")), 'firebase.json debe incluir Content-Security-Policy');
+    console.log('  ✅ 6. Fase 3 verificada: revocación UID dual, lista blanca Firestore, roles en RTDB y CSP.');
+
     console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUTENTICACIÓN REAL (PASO 2 / OPCIÓN A) PASARON AL 100%!');
     process.exit(0);
 })();

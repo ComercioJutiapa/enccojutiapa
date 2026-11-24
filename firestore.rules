@@ -1,100 +1,135 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // ===============================================================
+    // Modelo de Datos y Control de Acceso Asumido
+    // ===============================================================
+    // Colección de lista blanca institucional: /authorized_uids/{uid}
+    //   - active: bool (requerido, debe ser true para conceder acceso)
+    //   - role: string (ej. 'admin', 'director', 'docente', 'secretaria')
+    //
+    // Niveles de acceso:
+    //   - Personal autorizado (isAuthorizedStaff): lectura general y
+    //     escritura en colecciones operativas académicas.
+    //   - Administración / Dirección (isAdminOrDirector): gestión de
+    //     lista blanca, configuración, RBAC y usuarios.
+    //   - Por defecto (fail-closed): cualquier ruta no declarada se deniega.
+    // ===============================================================
+
     // Función de verificación de usuario autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Regla para configuración del sistema y ciclo escolar activo
+    // Verifica que el usuario autenticado pertenezca a la lista blanca institucional y esté activo
+    function isAuthorizedStaff() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/authorized_uids/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/authorized_uids/$(request.auth.uid)).data.active == true;
+    }
+
+    // Verifica que el usuario autorizado tenga rol de administrador o director
+    function isAdminOrDirector() {
+      return isAuthorizedStaff() &&
+        get(/databases/$(database)/documents/authorized_uids/$(request.auth.uid)).data.role in ['admin', 'director'];
+    }
+
+    // Lista blanca institucional de UIDs autorizados
+    match /authorized_uids/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdminOrDirector());
+      allow write: if isAdminOrDirector();
+    }
+
+    // Reglas para configuración del sistema y ciclo escolar activo (escritura solo Admin/Director)
     match /configuracion/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
     }
     match /config/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
     }
     match /configuracion_sistema/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
     }
 
-    // Reglas para Roles y Permisos RBAC
+    // Reglas para Roles y Permisos RBAC (escritura solo Admin/Director)
     match /roles/{roleId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
     }
     match /rolesConfig/{roleId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
     }
 
-    // Reglas para Docentes, Usuarios y Datos Personales
-    match /docentes/{docenteId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
+    // Reglas para Usuarios (escritura solo Admin/Director)
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
+    }
+
+    // Reglas para Docentes y Datos Personales (operativas)
+    match /docentes/{docenteId} {
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /datos_personales/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
 
     // Reglas para Clases, Pensum y Asignaciones Académicas
     match /clases/{claseId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /pensum/{asgId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /pensumCatalog/{subjectId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
 
     // Reglas para Estudiantes y Notas / Calificaciones
     match /estudiantes/{studentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /students/{studentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /notas/{notaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /gradesList/{gradeId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /grados_secciones/{gradeId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
     match /maestros_guias/{guideId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
 
     // Estado escolar institucional unificado y auditoría
     match /encc_school_state/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthorizedStaff();
+      allow write: if isAuthorizedStaff();
     }
 
-    // Denegación por defecto para cualquier documento no contemplado
+    // Denegación estricta por defecto (fail-closed) para cualquier documento no contemplado
     match /{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

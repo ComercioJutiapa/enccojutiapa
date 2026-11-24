@@ -375,6 +375,62 @@
         }
     }
 
+    /**
+     * Revoca inmediatamente el acceso de un usuario eliminado en la lista blanca
+     * de servidor (/authorized_uids en RTDB y colección authorized_uids en Firestore).
+     */
+    async function revokeAuthorizedUser(emailOrUid, dbUrl) {
+        const needle = String(emailOrUid || '').trim().toLowerCase();
+        if (!needle || !dbUrl) return { revoked: false, count: 0, uids: [] };
+        const cleanDbUrl = String(dbUrl).replace(/\/+$/, '');
+        const nowIso = new Date().toISOString();
+        const revokedUids = [];
+
+        try {
+            const listRes = await window.fetch(`${cleanDbUrl}/authorized_uids.json`);
+            if (!listRes || !listRes.ok) {
+                return { revoked: false, count: 0, uids: [], reason: 'read_failed' };
+            }
+            const allowlist = await listRes.json().catch(() => null);
+            if (!allowlist || typeof allowlist !== 'object') {
+                return { revoked: false, count: 0, uids: [], reason: 'empty_allowlist' };
+            }
+
+            const matchedUids = Object.keys(allowlist).filter((uid) => {
+                if (uid.toLowerCase() === needle) return true;
+                const entry = allowlist[uid];
+                return entry && String(entry.email || '').trim().toLowerCase() === needle;
+            });
+
+            for (const uid of matchedUids) {
+                try {
+                    const patchRes = await window.fetch(`${cleanDbUrl}/authorized_uids/${uid}.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ active: false, revokedAt: nowIso })
+                    });
+                    if (patchRes && patchRes.ok) {
+                        revokedUids.push(uid);
+                    }
+                } catch (e) {}
+
+                // Espejo en Cloud Firestore (colección authorized_uids)
+                try {
+                    if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
+                        const { db, doc, setDoc } = window.FirebaseModular;
+                        if (typeof doc === 'function' && typeof setDoc === 'function') {
+                            await setDoc(doc(db, 'authorized_uids', uid), { active: false, revokedAt: nowIso }, { merge: true });
+                        }
+                    }
+                } catch (fsErr) {}
+            }
+
+            return { revoked: revokedUids.length > 0, count: revokedUids.length, uids: revokedUids };
+        } catch (e) {
+            return { revoked: false, count: 0, uids: [], reason: e.message || 'network_error' };
+        }
+    }
+
     async function signOutSilently() {
         _storeToken(null);
         if (_tokenRefreshTimer) {
@@ -414,6 +470,7 @@
         signInStrict,
         signInSilently,
         provisionNewUserAccount,
+        revokeAuthorizedUser,
         sendPasswordReset,
         signOutSilently,
         getCurrentIdToken,
