@@ -19690,15 +19690,63 @@ function openStudentProfileModal(id) {
         }
     }
 
-    // 1. Cabecera del Perfil
+    // 1. Cabecera del Perfil (Iniciales Nombre+Apellido, Copiado 1-Clic SIRE, Sin carrera redundante)
     const photoImg = document.getElementById('profilePhotoImg');
-    if (photoImg) photoImg.src = student.photoUrl || student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(formatStudentDisplayName(student, 'lastFirst')));
+    if (photoImg) {
+        const fWord = String(student.firstName || '').trim().split(/\s+/)[0] || '';
+        const lWord = String(student.lastName || '').trim().split(/\s+/)[0] || '';
+        let avatarInitials = '';
+        if (fWord && lWord) {
+            avatarInitials = (fWord[0] + ' ' + lWord[0]).toUpperCase();
+        } else {
+            const parts = String(student.name || 'ES').trim().split(/\s+/).filter(Boolean);
+            avatarInitials = parts.length >= 2 ? (parts[0][0] + ' ' + parts[1][0]).toUpperCase() : (parts[0] || 'ES').slice(0, 2).toUpperCase();
+        }
+        photoImg.src = student.photoUrl || student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(avatarInitials) + '&background=0369a1&color=fff&bold=true');
+    }
     
     const nameDisp = document.getElementById('profNameDisplay');
     if (nameDisp) nameDisp.textContent = formatStudentDisplayName(student, 'lastFirst');
 
+    if (typeof window.copyStudentProfileCode !== 'function') {
+        window.copyStudentProfileCode = function(val, btnEl) {
+            if (!val) return;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(val);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = val;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+            } catch (e) {}
+            if (btnEl) {
+                const orig = btnEl.getAttribute('data-orig') || btnEl.innerHTML;
+                btnEl.setAttribute('data-orig', orig);
+                btnEl.innerHTML = '<i class="fa-solid fa-check" style="color:#16a34a;"></i> ¡Copiado!';
+                setTimeout(() => { btnEl.innerHTML = orig; }, 1300);
+            }
+            if (typeof showToast === 'function') showToast(`Copiado al portapapeles: ${val}`, 'info', 1800);
+        };
+    }
+
     const carneDisp = document.getElementById('profCarneDisplay');
-    if (carneDisp) carneDisp.textContent = `Carné: ${student.carne} | Cód. Personal: ${student.personalCode || 'No registrado'} | CUI: ${student.cui || 'No registrado'} | Ciclo: ${student.cycle || STATE.activeCycle || '2026'}`;
+    if (carneDisp) {
+        const pCode = String(student.personalCode || '').trim();
+        const cuiVal = String(student.cui || '').trim();
+        const cycVal = student.cycle || STATE.activeCycle || '2027';
+        const copyBtnStyle = 'display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:6px; border:1px solid #cbd5e1; background:#ffffff; color:#0f2b5c; font-family:monospace; font-size:0.76rem; font-weight:700; cursor:pointer; vertical-align:middle;';
+        const codeHtml = pCode
+            ? `<button type="button" onclick="copyStudentProfileCode('${escapeHtml(pCode)}', this)" title="Copiar Código Personal para SIRE" style="${copyBtnStyle}">Cód: ${escapeHtml(pCode)} <i class="fa-regular fa-copy" style="color:#0284c7;"></i></button>`
+            : '<span style="color:#b45309; font-weight:700;">Cód: No registrado</span>';
+        const cuiHtml = cuiVal
+            ? `<button type="button" onclick="copyStudentProfileCode('${escapeHtml(cuiVal)}', this)" title="Copiar CUI para SIRE" style="${copyBtnStyle}">CUI: ${escapeHtml(cuiVal)} <i class="fa-regular fa-copy" style="color:#0284c7;"></i></button>`
+            : '<span style="color:#dc2626; font-weight:700;">CUI: No registrado</span>';
+        carneDisp.innerHTML = `<span style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:6px;"><span>Carné: <strong>${escapeHtml(student.carne || 'S/C')}</strong></span><span>•</span>${codeHtml}<span>•</span>${cuiHtml}<span>•</span><span>Ciclo: <strong>${escapeHtml(cycVal)}</strong></span></span>`;
+    }
 
     const statusBadge = document.getElementById('profStatusBadge');
     if (statusBadge) {
@@ -19706,10 +19754,15 @@ function openStudentProfileModal(id) {
         statusBadge.textContent = student.status || 'Activo';
     }
 
-    const careerBadge = document.getElementById('profCareerBadge');
-    if (careerBadge) careerBadge.textContent = student.career || 'Perito Contador';
-
     const assign = getStudentAssignment(student);
+    const careerBadge = document.getElementById('profCareerBadge');
+    if (careerBadge) {
+        const careerTxt = student.career || 'Perito Contador';
+        careerBadge.textContent = careerTxt;
+        // Evitar redundancia visual si la insignia de grado ya contiene el nombre de la carrera
+        const gradeHasCareer = String(assign.grade || '').toLowerCase().includes(careerTxt.toLowerCase());
+        careerBadge.style.display = gradeHasCareer ? 'none' : 'inline-flex';
+    }
     const gradeBadge = document.getElementById('profGradeDisplayBadge');
     if (gradeBadge) {
         gradeBadge.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> ${escapeHtml(assign.grade)} &nbsp;|&nbsp; <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(assign.section)}`;

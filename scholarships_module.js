@@ -373,11 +373,26 @@
                 background: #ffffff;
                 box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
             }
+            .prof-exec-kpi-strip {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 8px;
+            }
+            .prof-exec-kpi-item {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 9px;
+                padding: 8px 10px;
+                min-width: 0;
+            }
             .prof-sch-docs-grid {
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 12px;
-                margin-bottom: 16px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            @media (max-width: 900px) {
+                .prof-exec-kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
             @media (max-width: 1150px) {
                 .sch-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px 12px; }
@@ -807,20 +822,26 @@
         const sch = getStudentScholarshipForCycle(student, cycle);
         const canEdit = canManageScholarships();
 
-        // 1. Insignia en el encabezado de la Ficha del Estudiante
+        // 1. Insignia fija en el encabezado de la Ficha del Estudiante (visible en todas las pestañas)
         const headerBadge = document.getElementById('profScholarshipHeaderBadge');
         if (headerBadge) {
             if (sch) {
+                const isBolsa = String(sch.type || '').toLowerCase().includes('bolsa');
                 headerBadge.style.display = 'inline-flex';
-                headerBadge.innerHTML = `<i class="fa-solid fa-hand-holding-heart"></i> ${_esc(sch.type)} (${_esc(sch.status)})`;
+                headerBadge.style.background = isBolsa ? '#fef3c7' : '#e0e7ff';
+                headerBadge.style.color = isBolsa ? '#92400e' : '#3730a3';
+                headerBadge.style.borderColor = isBolsa ? '#f59e0b' : '#818cf8';
+                headerBadge.innerHTML = `${isBolsa ? '💼' : '🎓'} ${_esc(sch.type)} (${_esc(cycle)})`;
+            } else if (canEdit) {
+                headerBadge.style.display = 'inline-flex';
+                headerBadge.style.background = '#f8fafc';
+                headerBadge.style.color = '#475569';
+                headerBadge.style.borderColor = '#cbd5e1';
+                headerBadge.innerHTML = '<i class="fa-solid fa-plus"></i> Asignar Beca / Bolsa';
             } else {
                 headerBadge.style.display = 'none';
             }
         }
-
-        // 2. Bloque responsivo en Pestaña 1 de la Ficha (Beca + Asistencia % + Documentos Faltantes)
-        const box = document.getElementById('profScholarshipAndDocsSummaryBox');
-        if (!box) return;
 
         const attObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
             ? window.getStudentAttendancePercentageToDate(student.id, cycle)
@@ -829,47 +850,121 @@
         const attColor = hasAtt ? (attObj.percentage >= 85 ? '#15803d' : (attObj.percentage >= 75 ? '#b45309' : '#dc2626')) : '#64748b';
         const attLabel = hasAtt ? `${attObj.percentage}% (${attObj.attendedDays}/${attObj.totalRecordedDays} días)` : 'Sin registros a la fecha';
 
+        // Calcular promedio general y cursos aprobados
+        const avgVal = getStudentAverageForScholarship(student);
+        let passedCourses = 0, totalCoursesWithGrade = 0;
+        if (student.grades && typeof student.grades === 'object') {
+            Object.values(student.grades).forEach(arr => {
+                if (!Array.isArray(arr)) return;
+                const nums = arr.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+                if (nums.length > 0) {
+                    totalCoursesWithGrade++;
+                    const cAvg = nums.reduce((a, b) => a + b, 0) / nums.length;
+                    if (cAvg >= 60) passedCourses++;
+                }
+            });
+        }
+
+        // Resolver datos del encargado + teléfono WhatsApp
+        const gName = String(student.guardianName || student.tutor || student.motherName || student.fatherName || 'No registrado').trim();
+        const gDpi = String(student.guardianDpi || student.motherDpi || student.fatherDpi || '').trim();
+        const gPhone = String(student.guardianPhone1 || student.motherPhone1 || student.fatherPhone1 || student.phone || '').trim();
+        const canWa = gPhone && (typeof window.canRoleUseWhatsApp !== 'function' || window.canRoleUseWhatsApp());
+
+        // 1B. Barra Ejecutiva de 4 Indicadores Rápidos (De un vistazo, siempre visible sobre las pestañas)
+        const kpiStrip = document.getElementById('profExecutiveKpiStrip');
+        if (kpiStrip) {
+            const avgColor = avgVal === null ? '#64748b' : (avgVal >= 75 ? '#15803d' : (avgVal >= 60 ? '#b45309' : '#dc2626'));
+            const schRisk = sch && hasAtt && attObj.percentage < 85;
+            kpiStrip.innerHTML = `
+                <div class="prof-exec-kpi-item">
+                    <div style="font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase;">Promedio Actual</div>
+                    <div style="font-size:0.92rem; font-weight:900; color:${avgColor};">${avgVal !== null ? avgVal + ' pts' : 'Sin notas'} ${totalCoursesWithGrade > 0 ? `<span style="font-size:0.70rem; font-weight:700; color:#475569;">(${passedCourses}/${totalCoursesWithGrade} aprob.)</span>` : ''}</div>
+                </div>
+                <div class="prof-exec-kpi-item">
+                    <div style="font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase;">Asistencia (${_esc(cycle)})</div>
+                    <div style="font-size:0.92rem; font-weight:900; color:${attColor};">${hasAtt ? attObj.percentage + '%' : 'S/R'} ${hasAtt ? `<span style="font-size:0.70rem; font-weight:700; color:#475569;">(${attObj.absent || 0} faltas)</span>` : ''}</div>
+                </div>
+                <div class="prof-exec-kpi-item" style="cursor:${canEdit ? 'pointer' : 'default'};" ${canEdit ? `onclick="openScholarshipAssignModal('${_esc(student.id)}')"` : ''}>
+                    <div style="font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase;">Beneficio / Beca</div>
+                    <div style="font-size:0.84rem; font-weight:800; color:${sch ? (schRisk ? '#dc2626' : '#0369a1') : '#64748b'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sch ? (schRisk ? '⚠️ Riesgo < 85%' : '🎓 ' + _esc(sch.type)) : 'Sin asignar'}</div>
+                </div>
+                <div class="prof-exec-kpi-item">
+                    <div style="font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase;">Contacto Encargado</div>
+                    <div style="font-size:0.78rem; font-weight:800; color:#0f2b5c; display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${_esc(gName)}">${_esc(gPhone || gName)}</span>
+                        ${canWa ? `<button type="button" onclick="if(typeof openStudentWhatsAppChat==='function') openStudentWhatsAppChat('${_esc(student.id)}')" style="background:#16a34a; color:#fff; border:none; border-radius:5px; padding:2px 6px; font-size:0.68rem; font-weight:800; cursor:pointer; flex-shrink:0;" title="Enviar WhatsApp a ${_esc(gName)}"><i class="fa-brands fa-whatsapp"></i></button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Bloque responsivo en Pestaña 1 de la Ficha (3 Tarjetas: Beca + Encargado/WhatsApp + Documentos Faltantes)
+        const box = document.getElementById('profScholarshipAndDocsSummaryBox');
+        if (!box) return;
+
         const docsSummary = getStudentMissingDocsSummary(student);
 
         box.innerHTML = `
             <div class="prof-sch-docs-grid">
-                <!-- TARJETA BECA / BOLSA DE ESTUDIO -->
-                <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0369a1; border-radius:9px; padding:11px 14px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
-                        <strong style="font-size:0.82rem; color:#0f2b5c; text-transform:uppercase;"><i class="fa-solid fa-hand-holding-heart" style="color:#0284c7;"></i> Beca / Bolsa de Estudio (${_esc(cycle)})</strong>
-                        ${sch ? _renderStatusBadge(sch.status) : '<span style="font-size:0.72rem; color:#64748b; font-weight:700;">Sin beca asignada</span>'}
+                <!-- TARJETA 1: BECA / BOLSA DE ESTUDIO -->
+                <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0369a1; border-radius:9px; padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:5px; flex-wrap:wrap;">
+                            <strong style="font-size:0.76rem; color:#0f2b5c; text-transform:uppercase;"><i class="fa-solid fa-hand-holding-heart" style="color:#0284c7;"></i> Beca / Bolsa (${_esc(cycle)})</strong>
+                            ${sch ? _renderStatusBadge(sch.status) : '<span style="font-size:0.70rem; color:#64748b; font-weight:700;">Sin asignar</span>'}
+                        </div>
+                        ${sch ? `
+                            <div style="font-size:0.80rem; color:#0f2b5c; font-weight:800;">🎓 ${_esc(sch.type)}</div>
+                            ${sch.program ? `<div style="font-size:0.74rem; color:#334155;">Programa: <strong>${_esc(sch.program)}</strong></div>` : ''}
+                            ${sch.agreementRef ? `<div style="font-size:0.72rem; color:#475569;">Ref: ${_esc(sch.agreementRef)}</div>` : ''}
+                        ` : `
+                            <div style="font-size:0.75rem; color:#475569;">Sin beca ni bolsa de estudio registrada en ${_esc(cycle)}.</div>
+                        `}
+                        <div style="margin-top:5px; font-size:0.74rem; color:#334155;">
+                            <strong>Asistencia:</strong> <span style="font-weight:800; color:${attColor};">${_esc(attLabel)}</span>
+                        </div>
                     </div>
-                    ${sch ? `
-                        <div style="font-size:0.82rem; color:#0f2b5c; font-weight:800;">🎓 ${_esc(sch.type)}</div>
-                        ${sch.program ? `<div style="font-size:0.76rem; color:#334155;">Programa: <strong>${_esc(sch.program)}</strong></div>` : ''}
-                        ${sch.agreementRef ? `<div style="font-size:0.74rem; color:#475569;">Acuerdo/Ref: ${_esc(sch.agreementRef)}</div>` : ''}
-                    ` : `
-                        <div style="font-size:0.78rem; color:#475569;">Este estudiante no cuenta con beca ni bolsa de estudio registrada en el ciclo ${_esc(cycle)}.</div>
-                    `}
-                    <div style="margin-top:6px; font-size:0.77rem; color:#334155;">
-                        <strong>Asistencia a la Fecha:</strong> <span style="font-weight:800; color:${attColor};">${_esc(attLabel)}</span>
-                    </div>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
-                        ${canEdit ? `<button type="button" class="btn btn-xs btn-outline-primary" onclick="openScholarshipAssignModal('${_esc(student.id)}')" style="font-weight:700; font-size:0.74rem; padding:3px 9px;"><i class="fa-solid fa-pen"></i> ${sch ? 'Editar Beca' : 'Asignar Beca / Bolsa'}</button>` : ''}
-                        ${sch ? `<button type="button" class="btn btn-xs btn-outline-success" onclick="printStudentScholarshipCertificate('${_esc(student.id)}')" style="font-weight:700; font-size:0.74rem; padding:3px 9px;"><i class="fa-solid fa-file-signature"></i> Constancia Beca</button>` : ''}
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;">
+                        ${canEdit ? `<button type="button" class="btn btn-xs btn-outline-primary" onclick="openScholarshipAssignModal('${_esc(student.id)}')" style="font-weight:700; font-size:0.72rem; padding:3px 8px;"><i class="fa-solid fa-pen"></i> ${sch ? 'Editar Beca' : 'Asignar Beca'}</button>` : ''}
+                        ${sch ? `<button type="button" class="btn btn-xs btn-outline-success" onclick="printStudentScholarshipCertificate('${_esc(student.id)}')" style="font-weight:700; font-size:0.72rem; padding:3px 8px;"><i class="fa-solid fa-file-signature"></i> Constancia</button>` : ''}
                     </div>
                 </div>
 
-                <!-- TARJETA DOCUMENTOS FALTANTES EN EXPEDIENTE -->
-                <div style="background:${docsSummary.isComplete ? '#f0fdf4' : '#fffbeb'}; border:1.5px solid ${docsSummary.isComplete ? '#86efac' : '#fde68a'}; border-left:4px solid ${docsSummary.isComplete ? '#15803d' : '#d97706'}; border-radius:9px; padding:11px 14px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
-                        <strong style="font-size:0.82rem; color:#0f2b5c; text-transform:uppercase;"><i class="fa-solid fa-folder-open" style="color:${docsSummary.isComplete ? '#15803d' : '#d97706'};"></i> Documentos en Expediente</strong>
-                        <span style="font-size:0.74rem; font-weight:800; padding:2px 8px; border-radius:10px; background:${docsSummary.isComplete ? '#dcfce7' : '#fef3c7'}; color:${docsSummary.isComplete ? '#15803d' : '#b45309'};">${docsSummary.deliveredCount}/${docsSummary.totalRequired}</span>
+                <!-- TARJETA 2: ENCARGADO Y CONTACTO DIRECTO -->
+                <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-left:4px solid #0284c7; border-radius:9px; padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div style="font-size:0.76rem; font-weight:800; color:#0f2b5c; text-transform:uppercase; margin-bottom:5px;">
+                            <i class="fa-solid fa-people-roof" style="color:#0284c7;"></i> Encargado y Contacto
+                        </div>
+                        <div style="font-size:0.79rem; color:#0f172a; font-weight:800; line-height:1.25;">${_esc(gName)}</div>
+                        ${gDpi ? `<div style="font-size:0.72rem; color:#475569; font-family:monospace; margin-top:2px;">DPI: ${_esc(gDpi)}</div>` : ''}
+                        <div style="font-size:0.75rem; color:#334155; margin-top:3px;">
+                            <i class="fa-solid fa-phone" style="color:#0284c7;"></i> <strong>${_esc(gPhone || 'Sin teléfono')}</strong>
+                        </div>
                     </div>
-                    ${docsSummary.isComplete ? `
-                        <div style="font-size:0.8rem; color:#15803d; font-weight:700;">✅ Expediente completo: no faltan documentos oficiales.</div>
-                    ` : `
-                        <div style="font-size:0.76rem; color:#92400e; font-weight:700; margin-bottom:3px;">Documentos Faltantes (${docsSummary.missing.length}):</div>
-                        <div style="font-size:0.75rem; color:#334155; line-height:1.35;">${docsSummary.missing.length > 0 ? docsSummary.missing.map(m => `• ${_esc(m)}`).join('<br>') : 'Ninguno pendiente (en trámite).'}</div>
-                    `}
-                    ${docsSummary.cuiInfo && docsSummary.cuiInfo.status !== 'valid' ? `<div style="margin-top:4px; font-size:0.74rem; color:#b91c1c; font-weight:800;">🔴 CUI: ${_esc(docsSummary.cuiInfo.label)}</div>` : ''}
                     <div style="margin-top:8px;">
-                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="if(typeof switchStudentProfileTab==='function') switchStudentProfileTab('expediente')" style="font-weight:700; font-size:0.74rem; padding:3px 9px;"><i class="fa-solid fa-folder-check"></i> Gestionar Expediente</button>
+                        ${canWa ? `<button type="button" class="btn btn-xs" onclick="if(typeof openStudentWhatsAppChat==='function') openStudentWhatsAppChat('${_esc(student.id)}')" style="width:100%; background:#16a34a; color:#ffffff; border:none; border-radius:6px; font-weight:800; font-size:0.73rem; padding:4px 8px; cursor:pointer;"><i class="fa-brands fa-whatsapp"></i> Enviar WhatsApp</button>` : '<span style="font-size:0.71rem; color:#94a3b8;">WhatsApp no disponible</span>'}
+                    </div>
+                </div>
+
+                <!-- TARJETA 3: DOCUMENTOS FALTANTES EN EXPEDIENTE -->
+                <div style="background:${docsSummary.isComplete ? '#f0fdf4' : '#fffbeb'}; border:1.5px solid ${docsSummary.isComplete ? '#86efac' : '#fde68a'}; border-left:4px solid ${docsSummary.isComplete ? '#15803d' : '#d97706'}; border-radius:9px; padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:5px; flex-wrap:wrap;">
+                            <strong style="font-size:0.76rem; color:#0f2b5c; text-transform:uppercase;"><i class="fa-solid fa-folder-open" style="color:${docsSummary.isComplete ? '#15803d' : '#d97706'};"></i> Expediente</strong>
+                            <span style="font-size:0.72rem; font-weight:800; padding:2px 7px; border-radius:10px; background:${docsSummary.isComplete ? '#dcfce7' : '#fef3c7'}; color:${docsSummary.isComplete ? '#15803d' : '#b45309'};">${docsSummary.deliveredCount}/${docsSummary.totalRequired}</span>
+                        </div>
+                        ${docsSummary.isComplete ? `
+                            <div style="font-size:0.76rem; color:#15803d; font-weight:700;">✅ Expediente completo (6/6).</div>
+                        ` : `
+                            <div style="font-size:0.73rem; color:#92400e; font-weight:700; margin-bottom:2px;">Documentos Faltantes (${docsSummary.missing.length}):</div>
+                            <div style="font-size:0.72rem; color:#334155; line-height:1.3;">${docsSummary.missing.length > 0 ? docsSummary.missing.map(m => `• ${_esc(m)}`).join('<br>') : 'Ninguno pendiente.'}</div>
+                        `}
+                        ${docsSummary.cuiInfo && docsSummary.cuiInfo.status !== 'valid' ? `<div style="margin-top:4px; font-size:0.72rem; color:#b91c1c; font-weight:800;">🔴 CUI: ${_esc(docsSummary.cuiInfo.label)}</div>` : ''}
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="if(typeof switchStudentProfileTab==='function') switchStudentProfileTab('expediente')" style="width:100%; font-weight:700; font-size:0.72rem; padding:3px 8px;"><i class="fa-solid fa-folder-check"></i> Gestionar Documentos</button>
                     </div>
                 </div>
             </div>
