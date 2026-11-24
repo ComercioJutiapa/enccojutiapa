@@ -31,10 +31,10 @@ console.log('  ✅ 1. Integración en login.html, plataforma.html, páginas secu
 function verifyStrictRules(obj, pathStr) {
     if (!obj || typeof obj !== 'object') return;
     if (typeof obj['.read'] !== 'undefined') {
-        assert.strictEqual(obj['.read'], 'auth != null', `${pathStr}/.read debe exigir auth != null`);
+        assert(String(obj['.read']).includes('auth != null') && String(obj['.read']).includes('authorized_uids'), `${pathStr}/.read debe exigir auth != null + authorized_uids`);
     }
     if (typeof obj['.write'] !== 'undefined') {
-        assert(String(obj['.write']).includes('auth != null') && !String(obj['.write']).includes('||'), `${pathStr}/.write debe exigir auth != null sin bypass ||`);
+        assert(String(obj['.write']).includes('auth != null') && String(obj['.write']).includes('authorized_uids'), `${pathStr}/.write debe exigir auth != null + authorized_uids`);
     }
     for (const k of Object.keys(obj)) {
         if (!k.startsWith('.')) verifyStrictRules(obj[k], `${pathStr}/${k}`);

@@ -41,9 +41,12 @@ const rtdbContent = fs.readFileSync(rtdbPath, 'utf8');
 const rtdbJson = JSON.parse(rtdbContent);
 
 assert(
-    rtdbJson.rules.encc_school_state.activityAuditLog['.write'] === '!data.exists() && newData.exists()' ||
-    rtdbJson.rules.encc_school_state.activityAuditLog['.write'] === 'auth != null && !data.exists() && newData.exists()',
+    String(rtdbJson.rules.encc_school_state.activityAuditLog['.write'] || '').includes('!data.exists() && newData.exists()'),
     'activityAuditLog en RTDB es estrictamente append-only (inmutable)'
+);
+assert(
+    rtdbJson.rules.authorized_uids && String(rtdbJson.rules.encc_school_state['.read'] || '').includes("root.child('authorized_uids').child(auth.uid)"),
+    'RTDB exige lista blanca /authorized_uids (bloquea cuentas externas auto-registradas)'
 );
 assert(rtdbJson.rules['.write'] !== 'newData.exists()', 'Regla de escritura raíz en RTDB ya no es permisiva sin restricción');
 
@@ -53,6 +56,7 @@ const firestorePath = path.join(__dirname, 'firestore.rules');
 const firestoreContent = fs.readFileSync(firestorePath, 'utf8');
 
 assert(!firestoreContent.includes('|| true'), 'firestore.rules NO contiene la cláusula insegura "|| true"');
+assert(!firestoreContent.includes('allow read: if true'), 'firestore.rules NO permite lecturas públicas sin autenticación');
 assert(firestoreContent.includes('isAuthenticated()') || firestoreContent.includes('request.auth != null'), 'firestore.rules exige autenticación para escrituras');
 
 // 4. Verificación de Módulo Anti-XSS (DataRepository.security)

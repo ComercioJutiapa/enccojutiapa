@@ -1,31 +1,31 @@
 {
   "rules": {
     "encc_school_state": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "lastModified",
         "activeCycle"
       ],
       "rolesConfig": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       },
       "users": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       },
       "pensum": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       },
       "pensumCatalog": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       },
       "students": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
         ".indexOn": [
           "code",
           "cui",
@@ -35,12 +35,12 @@
         ]
       },
       "gradesList": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       },
       "activityAuditLog": {
-        ".read": "auth != null",
-        ".write": "auth != null && !data.exists() && newData.exists()",
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true && !data.exists() && newData.exists()",
         ".indexOn": [
           "timestamp",
           "user",
@@ -48,13 +48,13 @@
         ]
       },
       "lockoutRecords": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
       }
     },
     "students": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "code",
         "cui",
@@ -66,48 +66,48 @@
       ]
     },
     "pensum": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "pensumCatalog": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "gradesList": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "roles": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "rolesConfig": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "users": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "secciones": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "config": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "cycles": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "gradingConfigs": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "attendance": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "date",
         "gradeCode",
@@ -116,16 +116,16 @@
       ]
     },
     "attendanceRecords": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "attendancePermissionsMeta": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "attendanceAlerts": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "timestamp",
         "status",
@@ -134,8 +134,8 @@
       ]
     },
     "studentAnnotations": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "studentId",
         "date",
@@ -143,8 +143,8 @@
       ]
     },
     "exoneraciones": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "studentId",
         "gradeCode",
@@ -152,8 +152,8 @@
       ]
     },
     "permissions": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "studentId",
         "date",
@@ -161,8 +161,8 @@
       ]
     },
     "auxiliatura_alerts": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "timestamp",
         "status",
@@ -170,20 +170,24 @@
       ]
     },
     "userAlertsDismissed": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "lockoutRecords": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true"
     },
     "historico": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
       ".indexOn": [
         "cycle",
         "archivedAt"
       ]
+    },
+    "authorized_uids": {
+      ".read": "auth != null && root.child('authorized_uids').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && (root.child('authorized_uids').child(auth.uid).child('role').val() == 'admin' || root.child('authorized_uids').child(auth.uid).child('role').val() == 'director')"
     }
   }
 }

@@ -4875,6 +4875,23 @@ async function saveUserForm(e) {
                     const provRes = await window.EnccoFirebaseAuthBridge.provisionNewUserAccount(savedUserObj.email, savedUserObj.password);
                     if (provRes && provRes.created) {
                         console.log(`🔐 [Firebase Auth] Cuenta sincronizada automáticamente para: ${savedUserObj.email}`);
+                        if (provRes.uid && typeof getFirebaseDatabaseUrl === 'function') {
+                            try {
+                                const fbUrl = getFirebaseDatabaseUrl();
+                                await fetch(`${fbUrl}/authorized_uids/${provRes.uid}.json`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        email: String(savedUserObj.email).trim().toLowerCase(),
+                                        role: String(savedUserObj.role || 'docente').trim().toLowerCase(),
+                                        active: true,
+                                        authorizedAt: new Date().toISOString()
+                                    })
+                                });
+                            } catch (allowErr) {
+                                console.warn('Aviso al registrar UID en authorized_uids:', allowErr);
+                            }
+                        }
                     }
                 } catch (provErr) {
                     console.warn('Aviso al sincronizar nuevo usuario en Firebase Auth:', provErr);

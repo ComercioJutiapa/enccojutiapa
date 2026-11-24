@@ -9,35 +9,35 @@ service cloud.firestore {
 
     // Regla para configuración del sistema y ciclo escolar activo
     match /configuracion/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /config/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /configuracion_sistema/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // Reglas para Roles y Permisos RBAC
     match /roles/{roleId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /rolesConfig/{roleId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // Reglas para Docentes, Usuarios y Datos Personales
     match /docentes/{docenteId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /datos_personales/{docId} {
@@ -47,47 +47,47 @@ service cloud.firestore {
 
     // Reglas para Clases, Pensum y Asignaciones Académicas
     match /clases/{claseId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /pensum/{asgId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /pensumCatalog/{subjectId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // Reglas para Estudiantes y Notas / Calificaciones
     match /estudiantes/{studentId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /students/{studentId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /notas/{notaId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /gradesList/{gradeId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /grados_secciones/{gradeId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
     match /maestros_guias/{guideId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // Estado escolar institucional unificado y auditoría
     match /encc_school_state/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
