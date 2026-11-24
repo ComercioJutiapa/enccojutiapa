@@ -432,10 +432,42 @@
         </div>
     </div>
 
-    <script src="auth.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
-    <script src="db.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
-    <script src="ui.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
-    <script src="app.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <!-- Firebase Auth Modular SDK (Paso 1: Transición Silenciosa con browserSessionPersistence) -->
+    <script type="module">
+        try {
+            import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js").then(appMod => {
+                import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js").then(async authMod => {
+                    const firebaseConfig = {
+                        apiKey: atob("QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR"),
+                        authDomain: "encco-jutiapa-live-2026.firebaseapp.com",
+                        databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                        projectId: "encco-jutiapa-live-2026",
+                        storageBucket: "encco-jutiapa-live-2026.firebasestorage.app",
+                        appId: "1:511250190229:web:a7bc5e9acfcaa6c605709c"
+                    };
+                    const app = appMod.initializeApp(firebaseConfig, 'enccoLoginAuthApp_' + Date.now());
+                    const auth = authMod.getAuth(app);
+                    try {
+                        if (authMod.browserSessionPersistence) {
+                            await authMod.setPersistence(auth, authMod.browserSessionPersistence);
+                        }
+                    } catch (pErr) {}
+                    window.FirebaseModular = Object.assign(window.FirebaseModular || {}, {
+                        app: app,
+                        auth: auth,
+                        authMod: authMod,
+                        signOut: authMod.signOut
+                    });
+                    window.dispatchEvent(new CustomEvent('FirebaseModularReady'));
+                }).catch(() => {});
+            }).catch(() => {});
+        } catch (e) {}
+    </script>
+    <script src="firebase_auth_bridge.js?v=20261123_v294" charset="UTF-8"></script>
+    <script src="auth.js?v=20261123_v294" charset="UTF-8"></script>
+    <script src="db.js?v=20261123_v294" charset="UTF-8"></script>
+    <script src="ui.js?v=20261123_v294" charset="UTF-8"></script>
+    <script src="app.js?v=20261123_v294" charset="UTF-8"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -653,6 +685,13 @@
                         return;
                     }
                 }
+            }
+
+            // 🔐 Paso 1 (Transición Silenciosa): Aprovisionar/autenticar sesión JWT en Firebase Auth sin afectar al docente
+            if (window.EnccoFirebaseAuthBridge && authRes.user && authRes.user.email) {
+                try {
+                    await window.EnccoFirebaseAuthBridge.signInSilently(authRes.user.email, password, 3500);
+                } catch (fbAuthErr) {}
             }
 
             if (submitBtn) {

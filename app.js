@@ -5498,7 +5498,10 @@ function initFirebaseRealtimeConnection() {
             }
             // Conectar SSE ligero a /lastModified.json (~16 bytes) para evitar descargar /historico (4.6 MB) en el handshake inicial
             const sseUrl = `${firebaseUrl}/encc_school_state/lastModified.json`;
-            _firebaseEventSource = new EventSource(sseUrl);
+            const authedSseUrl = (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.appendAuthTokenToUrl === 'function')
+                ? window.EnccoFirebaseAuthBridge.appendAuthTokenToUrl(sseUrl)
+                : sseUrl;
+            _firebaseEventSource = new EventSource(authedSseUrl);
 
             // SSE dedicado de baja latencia para alertas de auxiliatura y revocación de sesiones (< 1 KB)
             try {
@@ -5506,7 +5509,11 @@ function initFirebaseRealtimeConnection() {
                     window._firebaseAlertsEventSource.close();
                     window._firebaseAlertsEventSource = null;
                 }
-                const alertsSse = new EventSource(`${firebaseUrl}/encc_school_state/attendanceAlerts.json`);
+                const rawAlertsUrl = `${firebaseUrl}/encc_school_state/attendanceAlerts.json`;
+                const authedAlertsUrl = (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.appendAuthTokenToUrl === 'function')
+                    ? window.EnccoFirebaseAuthBridge.appendAuthTokenToUrl(rawAlertsUrl)
+                    : rawAlertsUrl;
+                const alertsSse = new EventSource(authedAlertsUrl);
                 alertsSse.addEventListener('put', (ev) => {
                     try {
                         const p = JSON.parse(ev.data);
