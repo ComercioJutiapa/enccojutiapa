@@ -25,6 +25,7 @@
         'nehemias': ['nehemias.salguero1982@gmail.com', 'yalilsag@gmail.com'],
         'admin': ['nehemias.salguero1982@gmail.com'],
         'administrador': ['nehemias.salguero1982@gmail.com'],
+        'ennco': ['22-01-0014-46@mineduc.edu.gt'],
         'nehemias.doc': ['yalilsag@gmail.com'],
         'yalilsag': ['yalilsag@gmail.com'],
         'director': ['mirzaaragon6@gmail.com'],

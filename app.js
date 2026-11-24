@@ -4994,7 +4994,104 @@ async function saveUserForm(e) {
         STATE.lastModified = nowTime;
         saveStateToLocalStorage();
 
-        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        // 🌟 Persistencia verificada en Firebase Auth (nuevo usuario), /authorized_uids, Firestore y RTDB
+        let authAlreadyExisted = false;
+        let allowlistWarning = false;
+        let rtdbSyncedOk = false;
+
+        if (!isEditing && savedUserObj && savedUserObj.email && savedUserObj.password && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.provisionNewUserAccount === 'function') {
+            try {
+                const provRes = await window.EnccoFirebaseAuthBridge.provisionNewUserAccount(savedUserObj.email, savedUserObj.password);
+                if (provRes && provRes.alreadyExists) {
+                    authAlreadyExisted = true;
+                } else if (provRes && provRes.created) {
+                    console.log(`🔐 [Firebase Auth] Cuenta sincronizada automáticamente para: ${savedUserObj.email}`);
+                    if (provRes.uid && typeof getFirebaseDatabaseUrl === 'function') {
+                        const allowPayload = {
+                            email: String(savedUserObj.email).trim().toLowerCase(),
+                            role: String(savedUserObj.role || 'docente').trim().toLowerCase(),
+                            active: true,
+                            authorizedAt: new Date().toISOString()
+                        };
+                        try {
+                            const fbUrl = getFirebaseDatabaseUrl();
+                            const allowRes = await fetch(`${fbUrl}/authorized_uids/${provRes.uid}.json`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(allowPayload)
+                            });
+                            if (!allowRes || !allowRes.ok) {
+                                allowlistWarning = true;
+                                console.warn('⚠️ Falló registro en /authorized_uids (RTDB): HTTP', allowRes && allowRes.status);
+                            }
+                        } catch (allowErr) {
+                            allowlistWarning = true;
+                            console.warn('Aviso al registrar UID en authorized_uids (RTDB):', allowErr);
+                        }
+                        if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
+                            try {
+                                const { db, doc, setDoc } = window.FirebaseModular;
+                                if (typeof doc === 'function' && typeof setDoc === 'function') {
+                                    await setDoc(doc(db, 'authorized_uids', provRes.uid), allowPayload, { merge: true });
+                                }
+                            } catch (fsAllowErr) {
+                                console.warn('Aviso al registrar UID en authorized_uids (Firestore):', fsAllowErr);
+                            }
+                        }
+                    }
+                }
+            } catch (provErr) {
+                console.warn('Aviso al sincronizar nuevo usuario en Firebase Auth:', provErr);
+            }
+        }
+
+        if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
+            try {
+                const { db, doc, setDoc, deleteDoc } = window.FirebaseModular;
+                const userDocRef = doc(db, 'users', savedUserObj.id);
+                const { password: _omittedFsPwd, ...safeSavedUserObj } = savedUserObj;
+                const userPayload = { ...safeSavedUserObj, lastModified: nowTime };
+
+                if (typeof setDoc === 'function') {
+                    await withTimeout(setDoc(userDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                }
+
+                if (savedUserObj.role === 'docente') {
+                    const docDocRef = doc(db, 'docentes', savedUserObj.id);
+                    if (typeof setDoc === 'function') {
+                        await withTimeout(setDoc(docDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
+                    }
+                } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
+                    const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
+                    try {
+                        await delFn(doc(db, 'docentes', savedUserObj.id));
+                    } catch(delErr) {}
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al persistir usuario en Firestore (continuando con RTDB):", fsErr);
+            }
+        }
+
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            try {
+                rtdbSyncedOk = Boolean(await withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.'));
+                const extraJobs = [];
+                if (cascadePensumChanged) extraJobs.push(EnccoCloudSync.syncNode('pensum', STATE.pensum).catch(() => {}));
+                if (cascadeGradesChanged) extraJobs.push(EnccoCloudSync.syncNode('gradesList', STATE.gradesList).catch(() => {}));
+                if (extraJobs.length) await Promise.all(extraJobs);
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar usuarios en RTDB:", rtdbErr);
+                rtdbSyncedOk = false;
+            }
+        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
+            try {
+                rtdbSyncedOk = Boolean(await withTimeout(syncUsersToDatabaseImmediate(false), 8000, 'Tiempo de espera agotado al sincronizar usuarios con Firebase.'));
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar usuarios con Firebase:", rtdbErr);
+                rtdbSyncedOk = false;
+            }
+        }
+
         closeUserModal();
         if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
@@ -5009,97 +5106,13 @@ async function saveUserForm(e) {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        showToast(`Usuario "${name}" guardado exitosamente.`, "success");
-
-        // 🌟 Persistencia atómica en Firebase Auth (nuevo usuario), Firestore y RTDB en segundo plano
-        (async () => {
-            if (savedUserObj && savedUserObj.email && savedUserObj.password && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.provisionNewUserAccount === 'function') {
-                try {
-                    const provRes = await window.EnccoFirebaseAuthBridge.provisionNewUserAccount(savedUserObj.email, savedUserObj.password);
-                    if (provRes && provRes.created) {
-                        console.log(`🔐 [Firebase Auth] Cuenta sincronizada automáticamente para: ${savedUserObj.email}`);
-                        if (provRes.uid && typeof getFirebaseDatabaseUrl === 'function') {
-                            const allowPayload = {
-                                email: String(savedUserObj.email).trim().toLowerCase(),
-                                role: String(savedUserObj.role || 'docente').trim().toLowerCase(),
-                                active: true,
-                                authorizedAt: new Date().toISOString()
-                            };
-                            try {
-                                const fbUrl = getFirebaseDatabaseUrl();
-                                await fetch(`${fbUrl}/authorized_uids/${provRes.uid}.json`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(allowPayload)
-                                });
-                            } catch (allowErr) {
-                                console.warn('Aviso al registrar UID en authorized_uids (RTDB):', allowErr);
-                            }
-                            if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
-                                try {
-                                    const { db, doc, setDoc } = window.FirebaseModular;
-                                    if (typeof doc === 'function' && typeof setDoc === 'function') {
-                                        await setDoc(doc(db, 'authorized_uids', provRes.uid), allowPayload, { merge: true });
-                                    }
-                                } catch (fsAllowErr) {
-                                    console.warn('Aviso al registrar UID en authorized_uids (Firestore):', fsAllowErr);
-                                }
-                            }
-                        }
-                    }
-                } catch (provErr) {
-                    console.warn('Aviso al sincronizar nuevo usuario en Firebase Auth:', provErr);
-                }
-            }
-
-            if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
-                try {
-                    const { db, doc, setDoc, deleteDoc } = window.FirebaseModular;
-                    const userDocRef = doc(db, 'users', savedUserObj.id);
-                    const { password: _omittedFsPwd, ...safeSavedUserObj } = savedUserObj;
-                    const userPayload = { ...safeSavedUserObj, lastModified: nowTime };
-
-                    if (typeof setDoc === 'function') {
-                        await withTimeout(setDoc(userDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
-                    }
-
-                    if (savedUserObj.role === 'docente') {
-                        const docDocRef = doc(db, 'docentes', savedUserObj.id);
-                        if (typeof setDoc === 'function') {
-                            await withTimeout(setDoc(docDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
-                        }
-                    } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
-                        const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
-                        try {
-                            await delFn(doc(db, 'docentes', savedUserObj.id));
-                        } catch(delErr) {}
-                    }
-                } catch(fsErr) {
-                    console.warn("Aviso al persistir usuario en Firestore (continuando con RTDB):", fsErr);
-                }
-            }
-
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-                try {
-                    const syncJobs = [withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.')];
-                    if (cascadePensumChanged) {
-                        syncJobs.push(EnccoCloudSync.syncNode('pensum', STATE.pensum).catch(() => {}));
-                    }
-                    if (cascadeGradesChanged) {
-                        syncJobs.push(EnccoCloudSync.syncNode('gradesList', STATE.gradesList).catch(() => {}));
-                    }
-                    await Promise.all(syncJobs);
-                } catch(rtdbErr) {
-                    console.warn("Aviso al sincronizar usuarios en RTDB:", rtdbErr);
-                }
-            } else if (typeof syncUsersToDatabaseImmediate === 'function') {
-                try {
-                    await withTimeout(syncUsersToDatabaseImmediate(false), 8000, 'Tiempo de espera agotado al sincronizar usuarios con Firebase.');
-                } catch(rtdbErr) {
-                    console.warn("Aviso al sincronizar usuarios con Firebase:", rtdbErr);
-                }
-            }
-        })();
+        if (!rtdbSyncedOk || allowlistWarning) {
+            showToast('⚠️ No se pudo sincronizar con Firebase (sesión vencida o sin rol admin/director en Firebase Auth). Cierre sesión e ingrese con su correo de Super Administrador.', 'danger');
+        } else if (authAlreadyExisted) {
+            showToast(`Usuario "${name}" sincronizado en ENCCO (la cuenta ya existía en Firebase Auth).`, 'success');
+        } else {
+            showToast(`Usuario "${name}" guardado y sincronizado en Firebase.`, 'success');
+        }
     } catch(err) {
         console.error("❌ Error al guardar usuario en Firebase:", err);
         const errMsg = err && err.message ? err.message : String(err);
