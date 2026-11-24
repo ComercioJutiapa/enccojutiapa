@@ -53,10 +53,26 @@
         'licdafrancis': ['licdafrancisgonzalez@gmail.com']
     };
 
+    const SESSION_TOKEN_KEY = 'ENCCO_FB_ID_TOKEN';
     let _cachedIdToken = null;
+    try {
+        if (typeof window.sessionStorage !== 'undefined') {
+            _cachedIdToken = window.sessionStorage.getItem(SESSION_TOKEN_KEY) || null;
+        }
+    } catch (e) {}
     let _tokenRefreshTimer = null;
     let _fetchWrapped = false;
     let _authListenerBound = false;
+
+    function _storeToken(token) {
+        _cachedIdToken = token || null;
+        try {
+            if (typeof window.sessionStorage !== 'undefined') {
+                if (_cachedIdToken) window.sessionStorage.setItem(SESSION_TOKEN_KEY, _cachedIdToken);
+                else window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            }
+        } catch (e) {}
+    }
 
     /**
      * Normaliza la contraseña para cumplir el mínimo de 6 caracteres de Firebase Auth
@@ -95,7 +111,7 @@
         if (!token || !isRtdbUrl(urlStr)) return urlStr;
         try {
             const u = new URL(urlStr, (window.location && window.location.href) || 'https://encco-jutiapa-live-2026.web.app/');
-            if (!u.searchParams.has('auth')) {
+            if (tokenOverride || !u.searchParams.has('auth')) {
                 u.searchParams.set('auth', token);
             }
             return u.toString();
@@ -136,13 +152,14 @@
             mod.authMod.onIdTokenChanged(mod.auth, async (user) => {
                 if (user && typeof user.getIdToken === 'function') {
                     try {
-                        _cachedIdToken = await user.getIdToken();
+                        const fresh = await user.getIdToken();
+                        _storeToken(fresh);
                         scheduleTokenRefresh(user);
                     } catch (e) {
                         console.warn('[AuthBridge] Aviso al obtener ID Token:', e.message || e);
                     }
                 } else {
-                    _cachedIdToken = null;
+                    _storeToken(null);
                     if (_tokenRefreshTimer) {
                         clearInterval(_tokenRefreshTimer);
                         _tokenRefreshTimer = null;
@@ -162,10 +179,22 @@
                 const mod = window.FirebaseModular;
                 const activeUser = (mod && mod.auth && mod.auth.currentUser) || user;
                 if (activeUser && typeof activeUser.getIdToken === 'function') {
-                    _cachedIdToken = await activeUser.getIdToken(true);
+                    _storeToken(await activeUser.getIdToken(true));
                 }
             } catch (e) {}
         }, 45 * 60 * 1000);
+    }
+
+    async function refreshIdTokenNow() {
+        try {
+            const mod = await waitForFirebaseModular(2500);
+            if (mod && mod.auth && mod.auth.currentUser && typeof mod.auth.currentUser.getIdToken === 'function') {
+                const fresh = await mod.auth.currentUser.getIdToken(true);
+                _storeToken(fresh);
+                return fresh;
+            }
+        } catch (e) {}
+        return null;
     }
 
     function installRtdbTokenInterceptor() {
@@ -173,20 +202,40 @@
         _fetchWrapped = true;
         const originalFetch = window.fetch.bind(window);
 
-        window.fetch = function (input, init) {
+        window.fetch = async function (input, init) {
+            const rawUrl = (typeof input === 'string') ? input : (input && typeof input.url === 'string' ? input.url : '');
+            const isTargetRtdb = isRtdbUrl(rawUrl);
+
+            let signedInput = input;
             try {
-                if (_cachedIdToken) {
-                    if (typeof input === 'string' && isRtdbUrl(input)) {
-                        input = appendAuthTokenToUrl(input, _cachedIdToken);
-                    } else if (input && typeof input === 'object' && typeof input.url === 'string' && isRtdbUrl(input.url)) {
+                if (isTargetRtdb && _cachedIdToken) {
+                    if (typeof input === 'string') {
+                        signedInput = appendAuthTokenToUrl(input, _cachedIdToken);
+                    } else if (input && typeof input === 'object' && typeof Request === 'function') {
                         const signedUrl = appendAuthTokenToUrl(input.url, _cachedIdToken);
-                        if (signedUrl !== input.url && typeof Request === 'function') {
-                            input = new Request(signedUrl, input);
-                        }
+                        if (signedUrl !== input.url) signedInput = new Request(signedUrl, input);
                     }
                 }
             } catch (e) {}
-            return originalFetch(input, init);
+
+            const response = await originalFetch(signedInput, init);
+
+            // 🔄 Auto-reintento transparente si el JWT expiró (> 60 min) o aún estaba cargando el SDK
+            if (isTargetRtdb && response && response.status === 401) {
+                const refreshed = await refreshIdTokenNow();
+                if (refreshed) {
+                    try {
+                        let retryInput = input;
+                        if (typeof input === 'string') {
+                            retryInput = appendAuthTokenToUrl(input, refreshed);
+                        } else if (input && typeof input === 'object' && typeof Request === 'function') {
+                            retryInput = new Request(appendAuthTokenToUrl(input.url, refreshed), input);
+                        }
+                        return await originalFetch(retryInput, init);
+                    } catch (retryErr) {}
+                }
+            }
+            return response;
         };
     }
 
@@ -219,7 +268,7 @@
                     const cred = await signInWithEmailAndPassword(mod.auth, email, authPass);
                     if (cred && cred.user) {
                         const token = await cred.user.getIdToken();
-                        _cachedIdToken = token;
+                        _storeToken(token);
                         bindAuthTokenListener();
                         scheduleTokenRefresh(cred.user);
                         return { authenticated: true, email, uid: cred.user.uid, idToken: token };
@@ -327,7 +376,7 @@
     }
 
     async function signOutSilently() {
-        _cachedIdToken = null;
+        _storeToken(null);
         if (_tokenRefreshTimer) {
             clearInterval(_tokenRefreshTimer);
             _tokenRefreshTimer = null;
@@ -345,7 +394,7 @@
     }
 
     function setCachedIdTokenForTest(token) {
-        _cachedIdToken = token || null;
+        _storeToken(token);
     }
 
     installRtdbTokenInterceptor();

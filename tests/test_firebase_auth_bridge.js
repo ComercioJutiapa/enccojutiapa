@@ -98,6 +98,39 @@ console.log('  ✅ 3. Resolución de alias sin contraseñas y derivación compat
     assert.strictEqual(badRes.authenticated, false);
     console.log('  ✅ 4. signInStrict, interceptor JWT y rechazo de credenciales inválidas verificados.');
 
+    // 6. Verificar hidratación 0ms en sessionStorage y auto-reintento transparente ante HTTP 401
+    let callCount401 = 0;
+    const storeMap = { ENCCO_FB_ID_TOKEN: 'STALE_JWT_OLD' };
+    const mockWin2 = {
+        location: { href: 'https://encco-jutiapa-live-2026.web.app/plataforma.html' },
+        sessionStorage: {
+            getItem: k => storeMap[k] || null,
+            setItem: (k, v) => { storeMap[k] = v; },
+            removeItem: k => { delete storeMap[k]; }
+        },
+        fetch: async (url) => {
+            callCount401++;
+            if (url.includes('STALE_JWT_OLD')) return { ok: false, status: 401 };
+            return { ok: true, status: 200, url };
+        },
+        FirebaseModular: {
+            auth: { currentUser: { getIdToken: async () => 'FRESH_JWT_NEW' } },
+            authMod: {}
+        },
+        addEventListener: () => {},
+        removeEventListener: () => {}
+    };
+    mockWin2.window = mockWin2;
+    const ctx2 = { window: mockWin2, URL, console, setTimeout, clearTimeout, setInterval, clearInterval };
+    vm.createContext(ctx2);
+    vm.runInContext(bridgeCode, ctx2);
+    assert.strictEqual(mockWin2.EnccoFirebaseAuthBridge.getCurrentIdToken(), 'STALE_JWT_OLD', 'Debe hidratar token en 0ms desde sessionStorage');
+    const retryRes = await mockWin2.fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json');
+    assert.strictEqual(retryRes.status, 200, 'Debe refrescar token ante 401 y reintentar transparentemente');
+    assert.strictEqual(callCount401, 2, 'Debe realizar exactamente 1 reintento con el token fresco');
+    assert.strictEqual(storeMap.ENCCO_FB_ID_TOKEN, 'FRESH_JWT_NEW', 'Debe actualizar sessionStorage con el token fresco');
+    console.log('  ✅ 5. Hidratación 0ms (sessionStorage) y auto-reintento transparente ante HTTP 401 verificados.');
+
     console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUTENTICACIÓN REAL (PASO 2 / OPCIÓN A) PASARON AL 100%!');
     process.exit(0);
 })();
