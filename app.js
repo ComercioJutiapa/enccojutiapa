@@ -4473,6 +4473,91 @@ function closeUserModal() {
 }
 window.closeUserModal = closeUserModal;
 
+function updateUserFormStatusBadge() {
+    const activeChk = document.getElementById('userFormActive');
+    const badge = document.getElementById('userFormAuthStatusBadge');
+    if (!badge) return;
+    const isActive = !activeChk || activeChk.checked;
+    if (isActive) {
+        badge.style.color = '#0369a1';
+        badge.style.background = '#e0f2fe';
+        badge.innerHTML = '<i class="fa-solid fa-shield-check"></i> Cuenta activa en Firebase Auth';
+    } else {
+        badge.style.color = '#991b1b';
+        badge.style.background = '#fee2e2';
+        badge.innerHTML = '<i class="fa-solid fa-ban"></i> Acceso revocado (inactivo)';
+    }
+}
+window.updateUserFormStatusBadge = updateUserFormStatusBadge;
+
+function generateSecureUserPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const input = document.getElementById('userFormPassword');
+    if (input) {
+        input.value = pwd;
+        input.type = 'text';
+    }
+    if (typeof showToast === 'function') showToast('Clave segura generada. Cópiela antes de guardar.', 'info');
+    return pwd;
+}
+window.generateSecureUserPassword = generateSecureUserPassword;
+
+function onUserFormRoleChange(fromCheckbox = false) {
+    const roleSelect = document.getElementById('userFormRole');
+    const sysChk = document.getElementById('userFormSystemOnly');
+    const renglonGroup = document.getElementById('userFormRenglonGroup');
+    const renglonSelect = document.getElementById('userFormRenglon');
+    const titleInput = document.getElementById('userFormTitle');
+    const idInput = document.getElementById('userFormId');
+    const titleEl = document.getElementById('userModalTitle');
+    if (!roleSelect) return;
+
+    const role = String(roleSelect.value || 'docente').trim().toLowerCase();
+    const isEditing = Boolean(idInput && idInput.value && idInput.value.trim());
+
+    if (!fromCheckbox && sysChk) {
+        sysChk.checked = (role === 'admin');
+    }
+    const isSystemOnly = Boolean(sysChk && sysChk.checked);
+
+    if (renglonGroup) {
+        renglonGroup.style.display = isSystemOnly ? 'none' : '';
+    }
+    if (renglonSelect) {
+        if (isSystemOnly) {
+            renglonSelect.value = 'N/A';
+        } else if (renglonSelect.value === 'N/A') {
+            renglonSelect.value = '011';
+        }
+    }
+
+    if (titleInput && !fromCheckbox) {
+        const curTitle = String(titleInput.value || '').trim();
+        const defaultTitles = ['', 'PEM / Catedrático Titular', 'Super Usuario Maestro / Administración del Sistema', 'Director / Directora', 'Secretaría Académica', 'Profesor Auxiliar / Disciplina'];
+        if (defaultTitles.includes(curTitle)) {
+            const map = {
+                admin: 'Super Usuario Maestro / Administración del Sistema',
+                director: 'Director / Directora',
+                secretaria: 'Secretaría Académica',
+                profesor_auxiliar: 'Profesor Auxiliar / Disciplina',
+                docente: 'PEM / Catedrático Titular'
+            };
+            titleInput.value = map[role] || 'PEM / Catedrático Titular';
+        }
+    }
+
+    if (titleEl && !isEditing) {
+        titleEl.innerHTML = (role === 'admin')
+            ? '<i class="fa-solid fa-crown" style="color:#fde047;"></i> Registrar Super Usuario Maestro'
+            : '<i class="fa-solid fa-user-shield" style="color:#bae6fd;"></i> Registrar Usuario / Maestro';
+    }
+}
+window.onUserFormRoleChange = onUserFormRoleChange;
+
 function openUserModal() {
     if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) return;
     if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
@@ -4486,18 +4571,27 @@ function openUserModal() {
     const titleInput = document.getElementById('userFormTitle');
     const renglonSelect = document.getElementById('userFormRenglon');
     const genderSelect = document.getElementById('userFormGender');
+    const sysChk = document.getElementById('userFormSystemOnly');
+    const activeChk = document.getElementById('userFormActive');
+    const pwdCreateBox = document.getElementById('userFormPasswordCreateBox');
+    const pwdEditBox = document.getElementById('userFormPasswordEditBox');
     const titleEl = document.getElementById('userModalTitle');
 
     if (idInput) idInput.value = '';
     if (nameInput) nameInput.value = '';
     if (emailInput) emailInput.value = '';
     if (phoneInput) phoneInput.value = '';
-    if (passwordInput) passwordInput.value = 'C@rolina1';
+    if (passwordInput) { passwordInput.value = ''; passwordInput.type = 'password'; }
     if (roleSelect) roleSelect.value = 'docente';
     if (titleInput) titleInput.value = 'PEM / Catedrático Titular';
     if (renglonSelect) renglonSelect.value = '011';
     if (genderSelect) genderSelect.value = 'Masculino';
-    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-gear" style="color:#15803d;"></i> Registrar Usuario / Maestro';
+    if (sysChk) sysChk.checked = false;
+    if (activeChk) activeChk.checked = true;
+    if (pwdCreateBox) pwdCreateBox.style.display = '';
+    if (pwdEditBox) pwdEditBox.style.display = 'none';
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-shield" style="color:#bae6fd;"></i> Registrar Usuario / Maestro';
+    onUserFormRoleChange();
 
     const modal = document.getElementById('userModal');
     if (modal) {
@@ -4518,6 +4612,10 @@ function openEditUserModal(userId) {
         showToast('Usuario no encontrado.', 'warning');
         return;
     }
+    if (user.role === 'admin' && !(typeof isSuperUserRole === 'function' && isSuperUserRole())) {
+        showToast('Acceso restringido: solo un Super Usuario Maestro puede editar cuentas de Super Administrador.', 'danger');
+        return;
+    }
     if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions(user.role);
 
     const idInput = document.getElementById('userFormId');
@@ -4529,18 +4627,29 @@ function openEditUserModal(userId) {
     const titleInput = document.getElementById('userFormTitle');
     const renglonSelect = document.getElementById('userFormRenglon');
     const genderSelect = document.getElementById('userFormGender');
+    const sysChk = document.getElementById('userFormSystemOnly');
+    const activeChk = document.getElementById('userFormActive');
+    const pwdCreateBox = document.getElementById('userFormPasswordCreateBox');
+    const pwdEditBox = document.getElementById('userFormPasswordEditBox');
     const titleEl = document.getElementById('userModalTitle');
 
+    const isSysOnly = Boolean(user.isSystemOnly || (user.role === 'admin' && (user.renglon === 'N/A' || !user.renglon)));
     if (idInput) idInput.value = user.id;
     if (nameInput) nameInput.value = user.name || '';
     if (emailInput) emailInput.value = user.email || '';
     if (phoneInput) phoneInput.value = user.telefono || '';
-    if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
+    if (passwordInput) { passwordInput.value = ''; passwordInput.type = 'password'; }
     if (roleSelect) roleSelect.value = user.role || 'docente';
-    if (titleInput) titleInput.value = user.title || 'PEM / Catedrático Titular';
-    if (renglonSelect) renglonSelect.value = user.renglon || '011';
+    if (titleInput) titleInput.value = user.title || (user.role === 'admin' ? 'Super Usuario Maestro / Administración del Sistema' : 'PEM / Catedrático Titular');
+    if (renglonSelect) renglonSelect.value = isSysOnly ? 'N/A' : (user.renglon || '011');
     if (genderSelect) genderSelect.value = user.gender || 'Masculino';
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen" style="color:#15803d;"></i> Editar Usuario: ${user.name}`;
+    if (sysChk) sysChk.checked = isSysOnly;
+    if (activeChk) activeChk.checked = (user.active !== false);
+    if (pwdCreateBox) pwdCreateBox.style.display = 'none';
+    if (pwdEditBox) pwdEditBox.style.display = '';
+    updateUserFormStatusBadge();
+    onUserFormRoleChange(true);
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen" style="color:#bae6fd;"></i> Editar Usuario: ${typeof escapeHtml === 'function' ? escapeHtml(user.name) : user.name}`;
 
     const modal = document.getElementById('userModal');
     if (modal) {
@@ -4617,11 +4726,11 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
             username: u.username || '',
             email: u.email || '',
             telefono: u.telefono || '',
-            password: u.password || 'C@rolina1',
             role: u.role || 'docente',
             title: u.title || '',
-            renglon: u.renglon || '011',
+            renglon: u.isSystemOnly ? 'N/A' : (u.renglon || '011'),
             gender: u.gender || 'Masculino',
+            isSystemOnly: Boolean(u.isSystemOnly),
             active: u.active !== false,
             classes: u.classes || ''
         }));
@@ -4701,14 +4810,34 @@ async function saveUserForm(e) {
     const name = nameInput ? nameInput.value.trim() : '';
     const email = emailInput ? emailInput.value.trim() : '';
     const telefono = phoneInput ? phoneInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
+    const sysChk = document.getElementById('userFormSystemOnly');
+    const activeChk = document.getElementById('userFormActive');
+    const password = passwordInput ? passwordInput.value.trim() : '';
     const role = roleSelect ? roleSelect.value : 'docente';
-    const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
-    const renglon = renglonSelect ? renglonSelect.value : '011';
+    const isSystemOnly = Boolean(sysChk && sysChk.checked);
+    const isActive = !activeChk || activeChk.checked;
+    const title = titleInput ? titleInput.value.trim() : (role === 'admin' ? 'Super Usuario Maestro / Administración del Sistema' : 'PEM / Catedrático Titular');
+    const renglon = isSystemOnly ? 'N/A' : (renglonSelect ? renglonSelect.value : '011');
     const gender = genderSelect ? genderSelect.value : 'Masculino';
 
     const titleEl = document.getElementById('userModalTitle');
     const isEditing = Boolean(userId) || (titleEl && titleEl.textContent && titleEl.textContent.includes('Editar'));
+
+    // 🛡️ Protección de Super Usuario Maestro: solo otro Super Admin puede crear/editar cuentas admin
+    const existingBeforeEdit = isEditing ? (STATE.users || []).find(u => u.id === userId) : null;
+    const touchesAdminRole = (role === 'admin') || (existingBeforeEdit && existingBeforeEdit.role === 'admin');
+    if (touchesAdminRole && !(typeof isSuperUserRole === 'function' && isSuperUserRole())) {
+        showToast('Solo un Super Usuario Maestro puede crear o modificar cuentas de Super Administrador.', 'danger');
+        return;
+    }
+    if (!email || !email.includes('@')) {
+        showToast('El correo electrónico institucional es obligatorio para sincronizar con Firebase Auth.', 'warning');
+        return;
+    }
+    if (!isEditing && password.length < 6) {
+        showToast('La contraseña inicial debe tener al menos 6 caracteres (requisito de Firebase Auth).', 'warning');
+        return;
+    }
 
     // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
     if (isEditing) {
@@ -4781,7 +4910,12 @@ async function saveUserForm(e) {
                 STATE.users[idx].title = title;
                 STATE.users[idx].renglon = renglon;
                 STATE.users[idx].gender = gender;
+                STATE.users[idx].isSystemOnly = isSystemOnly;
+                STATE.users[idx].active = isActive;
                 savedUserObj = STATE.users[idx];
+                if (!isActive && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.revokeAuthorizedUser === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
+                    window.EnccoFirebaseAuthBridge.revokeAuthorizedUser(email, getFirebaseDatabaseUrl()).catch(() => {});
+                }
 
                 // Cascada en cátedras
                 (STATE.pensum || []).forEach(a => {
@@ -4845,6 +4979,7 @@ async function saveUserForm(e) {
                 title: title,
                 renglon: renglon,
                 gender: gender,
+                isSystemOnly: isSystemOnly,
                 active: true,
                 classes: ''
             };
@@ -47968,6 +48103,21 @@ async function deleteUser(userId) {
         showToast("Usuario no encontrado.", "warning");
         return;
     }
+    if (STATE.currentUser && STATE.currentUser.id === userId) {
+        showToast('No puede eliminar su propia cuenta mientras tiene sesión activa.', 'danger');
+        return;
+    }
+    if (user.role === 'admin') {
+        if (!(typeof isSuperUserRole === 'function' && isSuperUserRole())) {
+            showToast('Solo un Super Usuario Maestro puede eliminar otra cuenta de Super Administrador.', 'danger');
+            return;
+        }
+        const remainingAdmins = (STATE.users || []).filter(u => u && u.id !== userId && u.role === 'admin' && u.active !== false);
+        if (remainingAdmins.length === 0) {
+            showToast('Operación bloqueada: debe existir al menos un Super Usuario Maestro activo en la plataforma.', 'danger');
+            return;
+        }
+    }
 
     const oldName = user.name;
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
@@ -50048,7 +50198,7 @@ function updateClassAssignmentSelects() {
     const modalTeacherSelect = document.getElementById('classAssignmentFormTeacher');
 
     const teachers = (STATE.users || []).filter(u => 
-        u && u.active !== false && (
+        u && u.active !== false && !u.isSystemOnly && !(u.role === 'admin' && u.isSystemOnly !== false) && (
             u.role === 'docente' || 
             u.role === 'catedratico' || 
             u.role === 'profesor' || 

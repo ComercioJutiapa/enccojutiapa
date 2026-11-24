@@ -6437,82 +6437,118 @@
 
         <!-- MODAL USUARIO Y DOCENTE (RECONSTRUIDO AL 100% - GARANTIZADO) -->
     <div id="userModal" class="modal-overlay" style="display:none !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.72) !important; backdrop-filter:blur(5px) !important; z-index:999999 !important; align-items:center !important; justify-content:center !important; padding:16px !important; box-sizing:border-box !important;" onclick="if(event.target===this) closeUserModal()">
-        <div class="modal-container" style="background:#ffffff !important; border:2px solid #16a34a !important; border-radius:14px !important; width:100% !important; max-width:540px !important; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35) !important; overflow:hidden !important; display:flex !important; flex-direction:column !important;">
-            <!-- ENCABEZADO -->
-            <div class="modal-header" style="padding:16px 20px; background:#f0fdf4; border-bottom:1.5px solid #dcfce7; display:flex; justify-content:space-between; align-items:center;">
-                <h3 id="userModalTitle" style="margin:0; font-size:1.1rem; color:#166534; font-weight:800; display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-user-gear" style="color:#15803d;"></i> Registrar Usuario / Maestro
+        <div class="modal-container" style="background:#ffffff !important; border:2px solid #0369a1 !important; border-radius:14px !important; width:100% !important; max-width:560px !important; box-shadow:0 25px 50px -12px rgba(15,43,92,0.38) !important; overflow:hidden !important; display:flex !important; flex-direction:column !important;">
+            <!-- ENCABEZADO AZUL INSTITUCIONAL -->
+            <div class="modal-header" style="padding:16px 20px; background:linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%); border-bottom:1.5px solid #0284c7; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="userModalTitle" style="margin:0; font-size:1.08rem; color:#ffffff; font-weight:800; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-user-shield" style="color:#bae6fd;"></i> Registrar Usuario / Maestro
                 </h3>
-                <button type="button" onclick="closeUserModal()" style="background:transparent; border:none; font-size:1.6rem; line-height:1; color:#64748b; cursor:pointer; padding:0 6px; border-radius:6px; transition:color 0.15s;" title="Cerrar">&times;</button>
+                <button type="button" onclick="closeUserModal()" style="background:transparent; border:none; font-size:1.6rem; line-height:1; color:#e0f2fe; cursor:pointer; padding:0 6px; border-radius:6px; transition:color 0.15s;" title="Cerrar">&times;</button>
             </div>
 
             <!-- FORMULARIO -->
             <form id="userModalMainForm" onsubmit="submitUserForm(event); return false;">
                 <input type="hidden" id="userFormId" value="">
                 <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px; max-height:calc(85vh - 130px); overflow-y:auto;">
-                    
+
                     <!-- NOMBRE COMPLETO -->
                     <div class="form-group" style="margin:0;">
-                        <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Nombre Completo *</label>
-                        <input type="text" id="userFormName" class="form-control" required placeholder="Ej: Licda. Jhoana Najarro" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-size:0.95rem;">
+                        <label for="userFormName" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Nombre Completo *</label>
+                        <input type="text" id="userFormName" class="form-control" required placeholder="Ej: Licda. Jhoana Najarro" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-size:0.94rem; box-sizing:border-box;">
                     </div>
 
-                    <!-- RENGLÓN Y GÉNERO -->
-                    <div style="display:flex; gap:12px;">
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Renglón Presupuestario *</label>
-                            <select id="userFormRenglon" class="form-control" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700;">
-                                <option value="011" selected>011 — Personal Permanente (Presupuestado)</option>
-                                <option value="021">021 — Personal por Contrato</option>
-                            </select>
-                        </div>
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Género *</label>
-                            <select id="userFormGender" class="form-control" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700;">
-                                <option value="Masculino">👦 Masculino</option>
-                                <option value="Femenino" selected>👩 Femenino</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- CORREO ELECTRÓNICO Y TELÉFONO -->
-                    <div style="display:flex; gap:12px;">
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Correo Electrónico (Opcional)</label>
-                            <input type="email" id="userFormEmail" class="form-control" placeholder="correo electrónico" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px;">
-                        </div>
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Teléfono (Opcional)</label>
-                            <input type="text" id="userFormPhone" class="form-control" placeholder="Ej. 42114100" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px;">
-                        </div>
-                    </div>
-
-                    <!-- CONTRASEÑA -->
-                    <div class="form-group" style="margin:0;">
-                        <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Contraseña de Acceso *</label>
-                        <div style="position:relative; display:flex; align-items:center;">
-                            <input type="password" id="userFormPassword" class="form-control" required placeholder="Asignar contraseña" value="C@rolina1" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 40px 9px 12px;">
-                            <button type="button" onclick="togglePasswordVisibility('userFormPassword')" style="position:absolute; right:10px; background:transparent; border:none; color:#64748b; cursor:pointer; font-size:1rem; padding:4px;">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- ROL Y CARGO -->
-                    <div style="display:flex; gap:12px;">
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Rol de Usuario *</label>
-                            <select id="userFormRole" class="form-control" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700;">
-                                <option value="admin">Super Administrador</option>
+                    <!-- ROL DE USUARIO Y CARGO (ARRIBA PARA ADAPTAR EL FORMULARIO) -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                        <div>
+                            <label for="userFormRole" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Rol de Usuario *</label>
+                            <select id="userFormRole" class="form-control" onchange="if(typeof onUserFormRoleChange==='function') onUserFormRoleChange()" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700; box-sizing:border-box;">
+                                <option value="admin">Super Usuario Maestro (Admin)</option>
                                 <option value="director">Director / Directora</option>
                                 <option value="secretaria">Secretaría Académica</option>
                                 <option value="profesor_auxiliar">Profesor Auxiliar / Disciplina</option>
                                 <option value="docente" selected>Docente / Catedrático Titular</option>
                             </select>
                         </div>
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:5px;">Especialidad / Cargo *</label>
-                            <input type="text" id="userFormTitle" class="form-control" required placeholder="Ej: PEM / Catedrático Titular" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px;">
+                        <div>
+                            <label for="userFormTitle" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Especialidad / Cargo *</label>
+                            <input type="text" id="userFormTitle" class="form-control" required placeholder="Ej: PEM / Catedrático Titular" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <!-- CUENTA DE SISTEMA (NO DOCENTE) -->
+                    <div id="userFormSystemOnlyBox" style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px;">
+                        <input type="checkbox" id="userFormSystemOnly" onchange="if(typeof onUserFormRoleChange==='function') onUserFormRoleChange(true)" style="margin-top:3px; width:16px; height:16px; accent-color:#0369a1; cursor:pointer;">
+                        <label for="userFormSystemOnly" style="margin:0; font-size:0.82rem; color:#0f2b5c; line-height:1.35; cursor:pointer;">
+                            <strong>Cuenta exclusiva de sistema (no imparte cátedras)</strong><br>
+                            <span style="color:#475569; font-weight:500;">Omite el Renglón Presupuestario y excluye esta cuenta de selectores de catedráticos y estadísticas docentes.</span>
+                        </label>
+                    </div>
+
+                    <!-- RENGLÓN Y GÉNERO -->
+                    <div id="userFormRenglonRow" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                        <div id="userFormRenglonGroup">
+                            <label for="userFormRenglon" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Renglón Presupuestario *</label>
+                            <select id="userFormRenglon" class="form-control" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700; box-sizing:border-box;">
+                                <option value="011" selected>011 — Permanente</option>
+                                <option value="021">021 — Contrato</option>
+                                <option value="022">022 — Contrato (022)</option>
+                                <option value="N/A">N/A — Sistema</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="userFormGender" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Género *</label>
+                            <select id="userFormGender" class="form-control" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-weight:700; box-sizing:border-box;">
+                                <option value="Masculino">👦 Masculino</option>
+                                <option value="Femenino" selected>👩 Femenino</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- CORREO ELECTRÓNICO (OBLIGATORIO PARA FIREBASE AUTH) Y TELÉFONO -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                        <div>
+                            <label for="userFormEmail" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Correo Electrónico *</label>
+                            <input type="email" id="userFormEmail" class="form-control" required placeholder="usuario@dominio.com" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; box-sizing:border-box;">
+                            <small style="display:block; margin-top:4px; font-size:0.74rem; color:#0369a1; font-weight:600;">Credencial oficial de acceso en Firebase Auth</small>
+                        </div>
+                        <div>
+                            <label for="userFormPhone" style="display:block; font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Teléfono (Opcional)</label>
+                            <input type="text" id="userFormPhone" class="form-control" placeholder="Ej. 42114100" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <!-- CONTRASEÑA (SOLO CREACIÓN) -->
+                    <div id="userFormPasswordCreateBox" class="form-group" style="margin:0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <label for="userFormPassword" style="font-size:0.84rem; font-weight:700; color:#1e293b; margin:0;">Contraseña Inicial *</label>
+                            <button type="button" onclick="if(typeof generateSecureUserPassword==='function') generateSecureUserPassword()" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; border-radius:6px; padding:3px 9px; font-size:0.75rem; font-weight:700; cursor:pointer;">
+                                <i class="fa-solid fa-key"></i> Generar clave segura
+                            </button>
+                        </div>
+                        <div style="position:relative; display:flex; align-items:center;">
+                            <input type="password" id="userFormPassword" class="form-control" minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres (Firebase Auth)" value="" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 40px 9px 12px; box-sizing:border-box;">
+                            <button type="button" onclick="togglePasswordVisibility('userFormPassword')" style="position:absolute; right:10px; background:transparent; border:none; color:#64748b; cursor:pointer; font-size:1rem; padding:4px;" title="Mostrar u ocultar">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- GESTIÓN DE ACCESO Y RESTABLECIMIENTO (SOLO EDICIÓN) -->
+                    <div id="userFormPasswordEditBox" style="display:none; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:12px 14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                            <span id="userFormAuthStatusBadge" style="display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:800; color:#0369a1; background:#e0f2fe; padding:4px 10px; border-radius:999px;">
+                                <i class="fa-solid fa-shield-check"></i> Cuenta activa en Firebase Auth
+                            </span>
+                            <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; color:#334155; cursor:pointer; margin:0;">
+                                <input type="checkbox" id="userFormActive" checked onchange="if(typeof updateUserFormStatusBadge==='function') updateUserFormStatusBadge()" style="width:15px; height:15px; accent-color:#0369a1;">
+                                Acceso habilitado
+                            </label>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <small style="font-size:0.75rem; color:#475569;">Las contraseñas están cifradas en Google Firebase Auth.</small>
+                            <button type="button" onclick="sendUserPasswordResetEmail()" style="background:#0f2b5c; color:#ffffff; border:none; border-radius:7px; padding:6px 12px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-envelope-open-text"></i> Enviar correo de restablecimiento
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -6522,7 +6558,7 @@
                     <button type="button" onclick="closeUserModal()" class="btn btn-secondary" style="padding:9px 20px; font-weight:700; border-radius:8px; cursor:pointer;">
                         Cancelar
                     </button>
-                    <button type="button" id="userFormSubmitBtn" onclick="submitUserForm(event)" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#15803d; border-color:#166534; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
+                    <button type="button" id="userFormSubmitBtn" onclick="submitUserForm(event)" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#0369a1; border-color:#0f2b5c; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Usuario
                     </button>
                 </div>
