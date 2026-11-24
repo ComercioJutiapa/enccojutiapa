@@ -166,8 +166,8 @@
                         console.warn('[AuthBridge] Aviso al obtener ID Token:', e.message || e);
                     }
                 } else {
-                    _storeToken(null);
-                    if (_tokenRefreshTimer) {
+                    // Solo limpiar token si NO había un token válido recién guardado en sessionStorage o tras cierre explícito
+                    if (!_cachedIdToken && _tokenRefreshTimer) {
                         clearInterval(_tokenRefreshTimer);
                         _tokenRefreshTimer = null;
                     }

@@ -94,7 +94,7 @@
                         storageBucket: "encco-jutiapa-live-2026.firebasestorage.app",
                         appId: "1:511250190229:web:a7bc5e9acfcaa6c605709c"
                     };
-                    const app = appMod.initializeApp(firebaseConfig, 'maestrosGuiasApp_' + Date.now());
+                    const app = (typeof appMod.getApps === 'function' && appMod.getApps().find(a => a.name === 'enccoInstitutionalApp')) || appMod.initializeApp(firebaseConfig, 'enccoInstitutionalApp');
                     const db = fsMod.initializeFirestore(app, {
                         localCache: fsMod.memoryLocalCache()
                     });
@@ -413,7 +413,7 @@
             }
         }
     </style>
-    <script src="firebase_auth_bridge.js?v=20261123_v298" charset="UTF-8"></script>
+    <script src="firebase_auth_bridge.js?v=20261123_v299" charset="UTF-8"></script>
 </head>
 <body>
 

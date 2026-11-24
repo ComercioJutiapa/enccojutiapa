@@ -189,7 +189,12 @@ console.log('  ✅ 3. Resolución de alias sin contraseñas y derivación compat
     const fbJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'firebase.json'), 'utf8'));
     const allHeaders = (fbJson.hosting.headers || []).flatMap(h => h.headers || []);
     assert.ok(allHeaders.some(h => h.key === 'Content-Security-Policy' && h.value.includes("object-src 'none'")), 'firebase.json debe incluir Content-Security-Policy');
-    console.log('  ✅ 6. Fase 3 verificada: revocación UID dual, lista blanca Firestore, roles en RTDB y CSP.');
+
+    for (const htmlPage of ['login.html', 'plataforma.html', 'datos-sire.html', 'bloqueo-notas.html', 'maestros-guias.html']) {
+        const pageTxt = fs.readFileSync(path.join(projectRoot, htmlPage), 'utf8');
+        assert.ok(pageTxt.includes("'enccoInstitutionalApp'"), `${htmlPage} debe usar nombre determinístico enccoInstitutionalApp para persistencia de Firebase Auth`);
+    }
+    console.log('  ✅ 6. Fase 3 verificada: revocación UID dual, lista blanca Firestore, roles en RTDB, CSP y enccoInstitutionalApp unificado.');
 
     console.log('\n🎯 ¡TODAS LAS PRUEBAS DE AUTENTICACIÓN REAL (PASO 2 / OPCIÓN A) PASARON AL 100%!');
     process.exit(0);
