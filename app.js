@@ -2473,6 +2473,9 @@ const EnccoCloudSync = {
             return true;
         }
         try {
+            if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.getCurrentIdToken === 'function' && !window.EnccoFirebaseAuthBridge.getCurrentIdToken() && typeof window.EnccoFirebaseAuthBridge.refreshIdTokenNow === 'function') {
+                await window.EnccoFirebaseAuthBridge.refreshIdTokenNow();
+            }
             const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
             const rootNodeEndpoint = `${firebaseUrl}/${nodeName}.json`;
             const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
@@ -6484,24 +6487,33 @@ function initFirebaseRealtimeConnection() {
                 } catch(err) {}
             });
             _firebaseEventSource.onerror = () => {
-                // ⚡ [v186] Reconexión automática SSE para móvil
+                // ⚡ [v298] Reconexión automática SSE con refresco de JWT (sin falsos 'Sin Conexión a Internet')
                 if (typeof navigator !== 'undefined' && navigator.onLine === false) {
                     updateDbSyncStatus('disconnected');
                     return;
                 }
-                // Si estamos online pero SSE falló, intentar reconexión automática
-                updateDbSyncStatus('disconnected');
+                updateDbSyncStatus('syncing', '🔄 Reconectando con Firebase...');
                 if (_sseReconnectTimeout) clearTimeout(_sseReconnectTimeout);
-                _sseReconnectTimeout = setTimeout(() => {
+                _sseReconnectTimeout = setTimeout(async () => {
                     _sseReconnectTimeout = null;
                     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
-                        console.log("📱 [v186] Reconexión automática SSE...");
+                        if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.refreshIdTokenNow === 'function') {
+                            try { await window.EnccoFirebaseAuthBridge.refreshIdTokenNow(); } catch(_) {}
+                        }
                         if (typeof initFirebaseRealtimeConnection === 'function') {
                             initFirebaseRealtimeConnection();
                         }
                     }
-                }, 5000);
+                }, 3500);
             };
+            if (!window._enccoTokenReadySseBound && typeof window.addEventListener === 'function') {
+                window._enccoTokenReadySseBound = true;
+                window.addEventListener('EnccoAuthTokenReady', () => {
+                    if (!_firebaseEventSource || _firebaseEventSource.readyState !== 1) {
+                        if (typeof initFirebaseRealtimeConnection === 'function') initFirebaseRealtimeConnection();
+                    }
+                });
+            }
         } catch(e) {}
     }
 

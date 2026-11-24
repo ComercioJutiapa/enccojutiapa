@@ -153,9 +153,15 @@
             mod.authMod.onIdTokenChanged(mod.auth, async (user) => {
                 if (user && typeof user.getIdToken === 'function') {
                     try {
+                        const prevToken = _cachedIdToken;
                         const fresh = await user.getIdToken();
                         _storeToken(fresh);
                         scheduleTokenRefresh(user);
+                        if (fresh && fresh !== prevToken && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+                            try {
+                                window.dispatchEvent(new CustomEvent('EnccoAuthTokenReady', { detail: { token: fresh, uid: user.uid } }));
+                            } catch (_) {}
+                        }
                     } catch (e) {
                         console.warn('[AuthBridge] Aviso al obtener ID Token:', e.message || e);
                     }
@@ -188,11 +194,16 @@
 
     async function refreshIdTokenNow() {
         try {
-            const mod = await waitForFirebaseModular(2500);
-            if (mod && mod.auth && mod.auth.currentUser && typeof mod.auth.currentUser.getIdToken === 'function') {
-                const fresh = await mod.auth.currentUser.getIdToken(true);
-                _storeToken(fresh);
-                return fresh;
+            const mod = await waitForFirebaseModular(4000);
+            if (mod && mod.auth) {
+                if (typeof mod.auth.authStateReady === 'function') {
+                    try { await mod.auth.authStateReady(); } catch (_) {}
+                }
+                if (mod.auth.currentUser && typeof mod.auth.currentUser.getIdToken === 'function') {
+                    const fresh = await mod.auth.currentUser.getIdToken(true);
+                    _storeToken(fresh);
+                    return fresh;
+                }
             }
         } catch (e) {}
         return null;
@@ -474,6 +485,7 @@
         revokeAuthorizedUser,
         sendPasswordReset,
         signOutSilently,
+        refreshIdTokenNow,
         getCurrentIdToken,
         _setCachedIdTokenForTest: setCachedIdTokenForTest
     };
