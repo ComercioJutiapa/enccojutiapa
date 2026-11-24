@@ -463,11 +463,11 @@
             }).catch(() => {});
         } catch (e) {}
     </script>
-    <script src="firebase_auth_bridge.js?v=20261123_v294" charset="UTF-8"></script>
-    <script src="auth.js?v=20261123_v294" charset="UTF-8"></script>
-    <script src="db.js?v=20261123_v294" charset="UTF-8"></script>
-    <script src="ui.js?v=20261123_v294" charset="UTF-8"></script>
-    <script src="app.js?v=20261123_v294" charset="UTF-8"></script>
+    <script src="firebase_auth_bridge.js?v=20261123_v295" charset="UTF-8"></script>
+    <script src="auth.js?v=20261123_v295" charset="UTF-8"></script>
+    <script src="db.js?v=20261123_v295" charset="UTF-8"></script>
+    <script src="ui.js?v=20261123_v295" charset="UTF-8"></script>
+    <script src="app.js?v=20261123_v295" charset="UTF-8"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -497,58 +497,14 @@
             }
         }
 
-        // ⚡ [v189] Cargar usuarios en vivo directamente desde Firebase Realtime DB al abrir login
-        document.addEventListener('DOMContentLoaded', async () => {
+        // 🔐 [Paso 2] Sin descarga pública de users.json antes de autenticar contra Google Firebase Auth
+        document.addEventListener('DOMContentLoaded', () => {
+            try { localStorage.removeItem('ENCCO_USERS_CACHE'); } catch(e) {}
             const lockout = (typeof checkLoginLockout === 'function') ? checkLoginLockout() : { locked: false };
             if (!lockout.locked) {
                 if (typeof resetLoginSecurityRecord === 'function') resetLoginSecurityRecord();
             } else {
                 if (typeof applyLockoutCountdownIfActive === 'function') applyLockoutCountdownIfActive();
-            }
-
-            try {
-                const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-                const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
-                const [uRes, rRes] = await Promise.all([
-                    fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now(), { signal: controller ? controller.signal : undefined }),
-                    fetch(fbUrl + '/encc_school_state/rolesConfig.json?t=' + Date.now(), { signal: controller ? controller.signal : undefined })
-                ]);
-                if (timeoutId) clearTimeout(timeoutId);
-                if (uRes.ok) {
-                    const uData = await uRes.json();
-                    if (Array.isArray(uData) && uData.length > 0) {
-                        window.STATE = window.STATE || {};
-                        window.STATE.users = uData;
-                        try { localStorage.setItem('ENCCO_USERS_CACHE', JSON.stringify(uData)); } catch(e) {}
-                    }
-                }
-                if (rRes.ok) {
-                    const rData = await rRes.json();
-                    if (Array.isArray(rData) && rData.length > 0) {
-                        window.STATE = window.STATE || {};
-                        window.STATE.rolesConfig = rData;
-                    }
-                }
-            } catch(e) {
-                console.warn('Aviso al consultar usuarios en Firebase:', e);
-            }
-
-            // Sanitizar cuentas oficiales en STATE (sin exponer contraseñas en texto plano en código fuente)
-            if (window.STATE && Array.isArray(window.STATE.users)) {
-                const adminN = window.STATE.users.find(u => u.id === 'usr-aux-01' || u.role === 'admin');
-                if (adminN) {
-                    adminN.email = 'nehemias.salguero1982@gmail.com';
-                    adminN.role = 'admin';
-                    adminN.roles = ['admin'];
-                    adminN.classes = '';
-                    adminN.title = 'Super Administrador del Sistema';
-                }
-                const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
-                if (docN) {
-                    if (!docN.email) docN.email = 'yalilsag@gmail.com';
-                    docN.secondaryEmail = '';
-                }
             }
         });
 
@@ -594,75 +550,75 @@
                 submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Verificando credenciales...';
             }
 
-            // ⚡ [v189] Cargar usuarios directamente desde Firebase Realtime DB con timeout seguro
-            try {
-                const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-                const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
-                const uRes = await fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now(), {
-                    signal: controller ? controller.signal : undefined
-                });
-                if (timeoutId) clearTimeout(timeoutId);
-                if (uRes.ok) {
-                    const uData = await uRes.json();
-                    if (Array.isArray(uData) && uData.length > 0) {
-                        window.STATE = window.STATE || {};
-                        window.STATE.users = uData;
-                        try { localStorage.setItem('ENCCO_USERS_CACHE', JSON.stringify(uData)); } catch(e) {}
-                    }
-                }
-            } catch(err) {
-                console.warn('Aviso al consultar credenciales en Firebase (usando respaldo):', err);
-            }
+            // 🔐 [Paso 2] Autenticación estricta en servidor contra Google Firebase Authentication (JWT)
+            const fbAuthRes = (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.signInStrict === 'function')
+                ? await window.EnccoFirebaseAuthBridge.signInStrict(username, password, 9000)
+                : { authenticated: false, message: 'Módulo de autenticación segura no disponible. Recargue la página.' };
 
-            if (typeof ensureMasterAccount === 'function') {
-                try { ensureMasterAccount(); } catch(e) {}
-            }
-            // Autenticación directa contra los datos de la Base de Datos
-
-            let usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
-                ? window.STATE.users
-                : [];
-
-            if (usersList.length === 0) {
-                try {
-                    const cachedUsers = JSON.parse(localStorage.getItem('ENCCO_USERS_CACHE') || 'null');
-                    if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
-                        usersList = cachedUsers;
-                        window.STATE = window.STATE || {};
-                        window.STATE.users = cachedUsers;
-                    }
-                } catch(e) {}
-            }
-
-            const studentsList = (window.STATE && Array.isArray(window.STATE.students) && window.STATE.students.length > 0)
-                ? window.STATE.students
-                : [];
-
-            // 3. Verificación de credenciales oficiales del usuario
-            const authRes = (typeof verifyUserAuthCredentials === 'function')
-                ? verifyUserAuthCredentials(username, password, usersList, studentsList)
-                : { success: false, error: 'Función de autenticación no disponible.' };
-
-            if (!authRes.success) {
+            if (!fbAuthRes || !fbAuthRes.authenticated) {
                 if (typeof recordFailedLoginAttempt === 'function') recordFailedLoginAttempt();
                 const curLock = (typeof checkLoginLockout === 'function') ? checkLoginLockout() : { locked: false };
-                if (submitBtn) {
-                    if (!curLock.locked) {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = origBtnHtml;
-                    }
+                if (submitBtn && !curLock.locked) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
                 }
                 if (alertBox) {
                     alertBox.style.display = 'flex';
                     if (alertText) {
-                        alertText.textContent = curLock.locked ? curLock.message : (authRes.error || 'Credenciales no válidas. Verifique su usuario y contraseña.');
+                        alertText.textContent = curLock.locked ? curLock.message : (fbAuthRes.message || 'Credenciales no válidas. Verifique su correo/usuario y contraseña.');
                     }
                 }
                 return;
             }
 
-            // Acceso verificado: resetear contador de seguridad
+            // ✅ Usuario verificado por Google Firebase Auth: ahora descargar perfil y roles usando el token JWT oficial
+            try {
+                const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+                const [uRes, rRes] = await Promise.all([
+                    fetch(fbUrl + '/encc_school_state/users.json?t=' + Date.now()),
+                    fetch(fbUrl + '/encc_school_state/rolesConfig.json?t=' + Date.now())
+                ]);
+                window.STATE = window.STATE || {};
+                if (uRes.ok) {
+                    const uData = await uRes.json();
+                    if (Array.isArray(uData) && uData.length > 0) window.STATE.users = uData;
+                }
+                if (rRes.ok) {
+                    const rData = await rRes.json();
+                    if (Array.isArray(rData) && rData.length > 0) window.STATE.rolesConfig = rData;
+                }
+            } catch (err) {
+                console.warn('Aviso al cargar perfil autenticado desde Firebase:', err);
+            }
+
+            const authedEmail = String(fbAuthRes.email || '').trim().toLowerCase();
+            const usersList = (window.STATE && Array.isArray(window.STATE.users)) ? window.STATE.users : [];
+            let matchedUser = usersList.find(u => u && String(u.email || '').trim().toLowerCase() === authedEmail);
+            if (!matchedUser && authedEmail === 'nehemias.salguero1982@gmail.com') {
+                matchedUser = { id: 'usr-aux-01', username: 'nehemias', name: 'Nehemias Yalil Salguero', role: 'admin', roles: ['admin'], email: authedEmail, title: 'Super Administrador del Sistema' };
+            } else if (!matchedUser && authedEmail === 'yalilsag@gmail.com') {
+                matchedUser = { id: 'usr-doc-01', username: 'nehemias.doc', name: 'Nehemias Yalil Salguero Sagastume', role: 'docente', roles: ['docente'], email: authedEmail, title: 'PEM / Catedrático Titular' };
+            }
+
+            if (!matchedUser) {
+                if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.signOutSilently === 'function') {
+                    try { await window.EnccoFirebaseAuthBridge.signOutSilently(); } catch(e) {}
+                }
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+                if (alertBox) {
+                    alertBox.style.display = 'flex';
+                    if (alertText) alertText.textContent = 'Su cuenta está autenticada en Google, pero no tiene perfil activo en la plataforma. Contacte a Dirección.';
+                }
+                return;
+            }
+
+            const authRes = {
+                success: true,
+                user: matchedUser,
+                role: matchedUser.role || 'docente',
+                availableRoles: Array.isArray(matchedUser.roles) && matchedUser.roles.length > 0 ? matchedUser.roles : [matchedUser.role || 'docente']
+            };
+
             if (typeof resetLoginSecurityRecord === 'function') resetLoginSecurityRecord();
 
             // 3.5 Verificación de rol activo / pausado (100% dinámico y seguro)
@@ -672,6 +628,9 @@
                 if (normRole !== 'admin' && normRole !== 'director' && normRole !== 'super_usuario' && normRole !== 'direccion') {
                     const matchedRole = window.STATE.rolesConfig.find(r => r && (r.key === normRole || (r.name && r.name.toLowerCase() === normRole)));
                     if (matchedRole && matchedRole.active === false) {
+                        if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.signOutSilently === 'function') {
+                            try { await window.EnccoFirebaseAuthBridge.signOutSilently(); } catch(e) {}
+                        }
                         if (submitBtn) {
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = origBtnHtml;
@@ -685,13 +644,6 @@
                         return;
                     }
                 }
-            }
-
-            // 🔐 Paso 1 (Transición Silenciosa): Aprovisionar/autenticar sesión JWT en Firebase Auth sin afectar al docente
-            if (window.EnccoFirebaseAuthBridge && authRes.user && authRes.user.email) {
-                try {
-                    await window.EnccoFirebaseAuthBridge.signInSilently(authRes.user.email, password, 3500);
-                } catch (fbAuthErr) {}
             }
 
             if (submitBtn) {

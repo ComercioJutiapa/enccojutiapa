@@ -1,15 +1,15 @@
 /**
  * ======================================================================
- * 🔐 ENCCO FIREBASE AUTH BRIDGE (Paso 1 — Transición Silenciosa)
+ * 🔐 ENCCO FIREBASE AUTH BRIDGE (Paso 2 — Autenticación Real en Servidor)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
  * ----------------------------------------------------------------------
- * - Autentica silenciosamente al usuario en Firebase Authentication (JWT)
- *   sin cambiar correos ni contraseñas actuales de los docentes.
- * - Adjunta automáticamente ?auth=<idToken> a las peticiones hacia
+ * - Autentica contra Google Firebase Authentication (JWT verificado en
+ *   servidor, scrypt + anti-fuerza bruta real de Google).
+ * - Adjunta automáticamente ?auth=<idToken> a todas las peticiones hacia
  *   Firebase Realtime Database (fetch y EventSource) sin filtrar el token
  *   a ningún dominio externo.
- * - Si Email/Password aún no está habilitado en Firebase Console, opera
- *   en modo transparente con 0% impacto en el acceso actual.
+ * - Soporta ingreso con correo electrónico o alias institucional de docente
+ *   sin almacenar contraseñas ni hashes en el frontend.
  * ======================================================================
  */
 (function (window) {
@@ -20,6 +20,39 @@
         'firebasedatabase.app'
     ];
 
+    // Mapa público SIN contraseñas para que los docentes puedan escribir su alias corto o su correo
+    const INSTITUTIONAL_LOGIN_ALIASES = {
+        'nehemias': ['nehemias.salguero1982@gmail.com', 'yalilsag@gmail.com'],
+        'admin': ['nehemias.salguero1982@gmail.com'],
+        'administrador': ['nehemias.salguero1982@gmail.com'],
+        'nehemias.doc': ['yalilsag@gmail.com'],
+        'yalilsag': ['yalilsag@gmail.com'],
+        'director': ['mirzaaragon6@gmail.com'],
+        'directora': ['mirzaaragon6@gmail.com'],
+        'secretaria': ['jhoanajarro@gmail.com'],
+        'secretario': ['jhoanajarro@gmail.com'],
+        'carlos.augusto': ['cajuarez2004@hotmail.com'],
+        'aleida': ['alemarescobarflores@gmail.com'],
+        'roberto': ['trobertoac1@gmail.com'],
+        'williams': ['wiliamsesmely@gmail.com'],
+        'lilian': ['lilyalas917@gmail.com'],
+        'nery': ['nebegara47@gmail.com'],
+        'edwin': ['ledvintrabajo@gmail.com'],
+        'gamaliel': ['gum31777@outlook.com'],
+        'hector': ['hectorelkatocho@gmail.com'],
+        'wilder': ['wilder.porfirio@gmail.com'],
+        'sandra': ['aranajulissa21@gmail.com'],
+        'damaris': ['dalessandra2014@gmail.com'],
+        'elda': ['eldaargentinalopez@gmail.com'],
+        'enma': ['enlemagt@gmail.com'],
+        'maria': ['salguerocomercio@gmail.com'],
+        'sandra.paola': ['paolabernal0310@gmail.com'],
+        'milvia': ['milvia_jacobo2010@hotmail.com'],
+        'carlos': ['carlosvgrijalva@gmail.com'],
+        'juan': ['juancarlospereiraquan@gmail.com'],
+        'licdafrancis': ['licdafrancisgonzalez@gmail.com']
+    };
+
     let _cachedIdToken = null;
     let _tokenRefreshTimer = null;
     let _fetchWrapped = false;
@@ -27,13 +60,23 @@
 
     /**
      * Normaliza la contraseña para cumplir el mínimo de 6 caracteres de Firebase Auth
-     * sin obligar a los 5 docentes con claves de 5 caracteres a cambiar su contraseña hoy.
+     * sin obligar a los docentes con claves de 5 caracteres a cambiar su contraseña.
      */
     function deriveFirebaseAuthPassword(rawPassword) {
         const clean = String(rawPassword || '').trim();
         if (!clean) return '';
         if (clean.length >= 6) return clean;
         return clean + '#Encco70';
+    }
+
+    function resolveLoginCandidateEmails(usernameOrEmail) {
+        const raw = String(usernameOrEmail || '').trim().toLowerCase();
+        if (!raw) return [];
+        if (raw.includes('@')) return [raw];
+        if (INSTITUTIONAL_LOGIN_ALIASES[raw]) {
+            return [...INSTITUTIONAL_LOGIN_ALIASES[raw]];
+        }
+        return [];
     }
 
     function isRtdbUrl(urlStr) {
@@ -59,6 +102,28 @@
         } catch (e) {
             return urlStr;
         }
+    }
+
+    function waitForFirebaseModular(timeoutMs = 5000) {
+        if (window.FirebaseModular && window.FirebaseModular.auth && window.FirebaseModular.authMod) {
+            return Promise.resolve(window.FirebaseModular);
+        }
+        return new Promise((resolve) => {
+            let done = false;
+            const finish = (val) => {
+                if (done) return;
+                done = true;
+                if (typeof window.removeEventListener === 'function') {
+                    window.removeEventListener('FirebaseModularReady', onReady);
+                }
+                resolve(val);
+            };
+            const onReady = () => finish(window.FirebaseModular || null);
+            if (typeof window.addEventListener === 'function') {
+                window.addEventListener('FirebaseModularReady', onReady);
+            }
+            setTimeout(() => finish(window.FirebaseModular || null), timeoutMs);
+        });
     }
 
     function bindAuthTokenListener() {
@@ -92,7 +157,6 @@
     function scheduleTokenRefresh(user) {
         if (_tokenRefreshTimer) clearInterval(_tokenRefreshTimer);
         if (!user || typeof user.getIdToken !== 'function') return;
-        // Renovar silenciosamente cada 45 minutos (los JWT de Firebase expiran a los 60 min)
         _tokenRefreshTimer = setInterval(async () => {
             try {
                 const mod = window.FirebaseModular;
@@ -104,10 +168,6 @@
         }, 45 * 60 * 1000);
     }
 
-    /**
-     * Interceptor seguro de window.fetch que adjunta ?auth=<idToken> únicamente
-     * a peticiones destinadas a Firebase Realtime Database cuando existe sesión Auth activa.
-     */
     function installRtdbTokenInterceptor() {
         if (_fetchWrapped || typeof window.fetch !== 'function') return;
         _fetchWrapped = true;
@@ -131,73 +191,138 @@
     }
 
     /**
-     * Inicia sesión silenciosamente en Firebase Auth con correo + contraseña.
-     * Si la cuenta aún no existe en Firebase Auth durante la fase de transición,
-     * la aprovisiona automáticamente (solo tras haber validado el login institucional).
+     * Autenticación estricta en el servidor de Google Firebase Authentication (Paso 2).
+     * Resuelve correo o alias institucional y valida contra Firebase Auth ANTES de leer la BD.
      */
-    async function signInSilently(email, rawPassword, timeoutMs = 3500) {
-        const cleanEmail = String(email || '').trim().toLowerCase();
+    async function signInStrict(usernameOrEmail, rawPassword, timeoutMs = 8000) {
+        const candidates = resolveLoginCandidateEmails(usernameOrEmail);
         const authPass = deriveFirebaseAuthPassword(rawPassword);
-        if (!cleanEmail || !cleanEmail.includes('@') || !authPass) {
-            return { authenticated: false, reason: 'missing_credentials' };
+
+        if (candidates.length === 0) {
+            return { authenticated: false, reason: 'user_not_found', message: 'Usuario o correo institucional no reconocido. Ingrese su correo electrónico registrado.' };
+        }
+        if (!authPass) {
+            return { authenticated: false, reason: 'missing_password', message: 'Por favor ingrese su contraseña.' };
         }
 
-        const mod = window.FirebaseModular;
-        if (!mod || !mod.auth || !mod.authMod) {
-            return { authenticated: false, reason: 'sdk_not_ready' };
+        const mod = await waitForFirebaseModular(4500);
+        if (!mod || !mod.auth || !mod.authMod || typeof mod.authMod.signInWithEmailAndPassword !== 'function') {
+            return { authenticated: false, reason: 'sdk_not_ready', message: 'No se pudo conectar con el servicio de autenticación de Google Firebase. Verifique su internet y recargue.' };
         }
 
-        const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = mod.authMod;
-        if (typeof signInWithEmailAndPassword !== 'function') {
-            return { authenticated: false, reason: 'auth_method_unavailable' };
-        }
+        const { signInWithEmailAndPassword } = mod.authMod;
 
-        const runAuth = async () => {
-            try {
-                const cred = await signInWithEmailAndPassword(mod.auth, cleanEmail, authPass);
-                if (cred && cred.user) {
-                    _cachedIdToken = await cred.user.getIdToken();
-                    bindAuthTokenListener();
-                    scheduleTokenRefresh(cred.user);
-                    return { authenticated: true, uid: cred.user.uid, provisioned: false };
-                }
-                return { authenticated: false, reason: 'empty_credential' };
-            } catch (err) {
-                const code = String((err && err.code) || '');
-                // Si el proveedor Email/Password aún no se habilita en Firebase Console: modo transparente sin error
-                if (code.includes('configuration-not-found') || code.includes('operation-not-allowed')) {
-                    console.info('[AuthBridge] Email/Password aún pendiente de habilitar en Firebase Console. Operando en modo transición.');
-                    return { authenticated: false, reason: 'provider_not_enabled' };
-                }
-                // Auto-aprovisionamiento silencioso durante Paso 1 para cuentas institucionales ya validadas
-                if (
-                    typeof createUserWithEmailAndPassword === 'function' &&
-                    (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials')
-                ) {
-                    try {
-                        const created = await createUserWithEmailAndPassword(mod.auth, cleanEmail, authPass);
-                        if (created && created.user) {
-                            _cachedIdToken = await created.user.getIdToken();
-                            bindAuthTokenListener();
-                            scheduleTokenRefresh(created.user);
-                            return { authenticated: true, uid: created.user.uid, provisioned: true };
-                        }
-                    } catch (createErr) {
-                        const cCode = String((createErr && createErr.code) || '');
-                        return { authenticated: false, reason: cCode || 'provision_skipped' };
+        const attemptLogin = async () => {
+            let lastCode = '';
+            for (const email of candidates) {
+                try {
+                    const cred = await signInWithEmailAndPassword(mod.auth, email, authPass);
+                    if (cred && cred.user) {
+                        const token = await cred.user.getIdToken();
+                        _cachedIdToken = token;
+                        bindAuthTokenListener();
+                        scheduleTokenRefresh(cred.user);
+                        return { authenticated: true, email, uid: cred.user.uid, idToken: token };
+                    }
+                } catch (err) {
+                    lastCode = String((err && err.code) || '');
+                    if (lastCode === 'auth/too-many-requests') {
+                        return {
+                            authenticated: false,
+                            reason: 'too_many_requests',
+                            message: '🛡️ Demasiados intentos fallidos detectados por Google Firebase. Por seguridad, espere unos minutos antes de intentar nuevamente.'
+                        };
+                    }
+                    if (lastCode === 'auth/network-request-failed') {
+                        return {
+                            authenticated: false,
+                            reason: 'network_error',
+                            message: 'Error de red al conectar con Google Firebase. Verifique su conexión a Internet.'
+                        };
                     }
                 }
-                return { authenticated: false, reason: code || 'auth_error' };
             }
+            return {
+                authenticated: false,
+                reason: lastCode || 'invalid_credentials',
+                message: 'Correo/usuario o contraseña incorrectos. Verifique sus credenciales institucionales.'
+            };
         };
 
         try {
             const timeoutPromise = new Promise(resolve =>
-                setTimeout(() => resolve({ authenticated: false, reason: 'timeout' }), timeoutMs)
+                setTimeout(() => resolve({ authenticated: false, reason: 'timeout', message: 'Tiempo de espera agotado al autenticar con Firebase.' }), timeoutMs)
             );
-            return await Promise.race([runAuth(), timeoutPromise]);
+            return await Promise.race([attemptLogin(), timeoutPromise]);
         } catch (e) {
-            return { authenticated: false, reason: 'unexpected_error' };
+            return { authenticated: false, reason: 'unexpected_error', message: 'Error inesperado al iniciar sesión.' };
+        }
+    }
+
+    async function signInSilently(email, rawPassword, timeoutMs = 3500) {
+        return signInStrict(email, rawPassword, timeoutMs);
+    }
+
+    /**
+     * Crea automáticamente una nueva cuenta en Firebase Auth desde ENCCO
+     * usando REST Identity Toolkit con returnSecureToken: false, para NO cerrar
+     * la sesión activa del Administrador/Director.
+     */
+    async function provisionNewUserAccount(email, rawPassword) {
+        const cleanEmail = String(email || '').trim().toLowerCase();
+        const authPass = deriveFirebaseAuthPassword(rawPassword);
+        if (!cleanEmail || !cleanEmail.includes('@') || !authPass) {
+            return { created: false, reason: 'invalid_input' };
+        }
+        try {
+            const apiKey = (typeof atob === 'function')
+                ? atob('QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR')
+                : Buffer.from('QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR', 'base64').toString('utf8');
+            const res = await window.fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + apiKey, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: cleanEmail, password: authPass, returnSecureToken: false })
+            });
+            const body = await res.json().catch(() => ({}));
+            if (res.ok && body.localId) {
+                return { created: true, uid: body.localId, email: cleanEmail };
+            }
+            if (body && body.error && body.error.message === 'EMAIL_EXISTS') {
+                return { created: false, alreadyExists: true, email: cleanEmail };
+            }
+            return { created: false, reason: (body && body.error && body.error.message) || String(res.status) };
+        } catch (e) {
+            return { created: false, reason: e.message || 'network_error' };
+        }
+    }
+
+    /**
+     * Envía el correo oficial de Google Firebase para que el docente restablezca su contraseña.
+     */
+    async function sendPasswordReset(email) {
+        const cleanEmail = String(email || '').trim().toLowerCase();
+        if (!cleanEmail || !cleanEmail.includes('@')) {
+            return { sent: false, message: 'Ingrese un correo electrónico válido.' };
+        }
+        try {
+            const mod = await waitForFirebaseModular(3500);
+            if (mod && mod.auth && mod.authMod && typeof mod.authMod.sendPasswordResetEmail === 'function') {
+                await mod.authMod.sendPasswordResetEmail(mod.auth, cleanEmail);
+                return { sent: true, email: cleanEmail };
+            }
+            const apiKey = (typeof atob === 'function')
+                ? atob('QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR')
+                : Buffer.from('QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR', 'base64').toString('utf8');
+            const res = await window.fetch('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=' + apiKey, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestType: 'PASSWORD_RESET', email: cleanEmail })
+            });
+            if (res.ok) return { sent: true, email: cleanEmail };
+            const body = await res.json().catch(() => ({}));
+            return { sent: false, message: (body && body.error && body.error.message) || 'No se pudo enviar el correo.' };
+        } catch (e) {
+            return { sent: false, message: e.message || 'Error al enviar correo de restablecimiento.' };
         }
     }
 
@@ -223,7 +348,6 @@
         _cachedIdToken = token || null;
     }
 
-    // Activar interceptor desde el arranque y enlazar al evento FirebaseModularReady
     installRtdbTokenInterceptor();
     if (typeof window.addEventListener === 'function') {
         window.addEventListener('FirebaseModularReady', bindAuthTokenListener);
@@ -231,11 +355,17 @@
     bindAuthTokenListener();
 
     window.EnccoFirebaseAuthBridge = {
+        INSTITUTIONAL_LOGIN_ALIASES,
         deriveFirebaseAuthPassword,
+        resolveLoginCandidateEmails,
         isRtdbUrl,
         appendAuthTokenToUrl,
+        waitForFirebaseModular,
         installRtdbTokenInterceptor,
+        signInStrict,
         signInSilently,
+        provisionNewUserAccount,
+        sendPasswordReset,
         signOutSilently,
         getCurrentIdToken,
         _setCachedIdTokenForTest: setCachedIdTokenForTest

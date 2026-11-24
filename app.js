@@ -4551,6 +4551,26 @@ function submitUserForm() {
 }
 window.submitUserForm = submitUserForm;
 
+async function sendUserPasswordResetEmail(emailOverride) {
+    const email = String(emailOverride || document.getElementById('userFormEmail')?.value || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+        showToast('Ingrese un correo electrónico válido para enviar el enlace de restablecimiento.', 'warning');
+        return false;
+    }
+    if (!window.EnccoFirebaseAuthBridge || typeof window.EnccoFirebaseAuthBridge.sendPasswordReset !== 'function') {
+        showToast('El puente de Firebase Auth no está cargado.', 'danger');
+        return false;
+    }
+    const res = await window.EnccoFirebaseAuthBridge.sendPasswordReset(email);
+    if (res && res.sent) {
+        showToast(`Correo oficial de restablecimiento de contraseña enviado a ${email}.`, 'success');
+        return true;
+    }
+    showToast(`No se pudo enviar el correo: ${(res && res.message) || 'Error desconocido'}`, 'warning');
+    return false;
+}
+window.sendUserPasswordResetEmail = sendUserPasswordResetEmail;
+
 
 // ======================================================================
 // ☁️ [v183] SINCRONIZADOR DIRECTO Y GRANULAR DE USUARIOS CON FIREBASE (0ms)
@@ -4848,9 +4868,20 @@ async function saveUserForm(e) {
 
         showToast(`Usuario "${name}" guardado exitosamente.`, "success");
 
-        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
+        // 🌟 Persistencia atómica en Firebase Auth (nuevo usuario), Firestore y RTDB en segundo plano
         (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db) {
+            if (savedUserObj && savedUserObj.email && savedUserObj.password && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.provisionNewUserAccount === 'function') {
+                try {
+                    const provRes = await window.EnccoFirebaseAuthBridge.provisionNewUserAccount(savedUserObj.email, savedUserObj.password);
+                    if (provRes && provRes.created) {
+                        console.log(`🔐 [Firebase Auth] Cuenta sincronizada automáticamente para: ${savedUserObj.email}`);
+                    }
+                } catch (provErr) {
+                    console.warn('Aviso al sincronizar nuevo usuario en Firebase Auth:', provErr);
+                }
+            }
+
+            if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
                 try {
                     const { db, doc, setDoc, deleteDoc } = window.FirebaseModular;
                     const userDocRef = doc(db, 'users', savedUserObj.id);

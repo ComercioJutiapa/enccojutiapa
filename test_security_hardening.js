@@ -40,7 +40,11 @@ const rtdbPath = path.join(__dirname, 'database.rules.json');
 const rtdbContent = fs.readFileSync(rtdbPath, 'utf8');
 const rtdbJson = JSON.parse(rtdbContent);
 
-assert(rtdbJson.rules.encc_school_state.activityAuditLog['.write'] === '!data.exists() && newData.exists()', 'activityAuditLog en RTDB es estrictamente append-only (inmutable)');
+assert(
+    rtdbJson.rules.encc_school_state.activityAuditLog['.write'] === '!data.exists() && newData.exists()' ||
+    rtdbJson.rules.encc_school_state.activityAuditLog['.write'] === 'auth != null && !data.exists() && newData.exists()',
+    'activityAuditLog en RTDB es estrictamente append-only (inmutable)'
+);
 assert(rtdbJson.rules['.write'] !== 'newData.exists()', 'Regla de escritura raíz en RTDB ya no es permisiva sin restricción');
 
 // 3. Verificación de reglas Firestore

@@ -1,31 +1,31 @@
 {
   "rules": {
     "encc_school_state": {
-      ".read": true,
-      ".write": "auth != null || (newData.exists() && data.exists())",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "lastModified",
         "activeCycle"
       ],
       "rolesConfig": {
-        ".read": true,
-        ".write": "auth != null || newData.exists()"
+        ".read": "auth != null",
+        ".write": "auth != null"
       },
       "users": {
-        ".read": true,
-        ".write": "auth != null || (newData.exists() && newData.hasChildren(['username', 'role']))"
+        ".read": "auth != null",
+        ".write": "auth != null"
       },
       "pensum": {
-        ".read": true,
-        ".write": "auth != null || newData.exists()"
+        ".read": "auth != null",
+        ".write": "auth != null"
       },
       "pensumCatalog": {
-        ".read": true,
-        ".write": "auth != null || newData.exists()"
+        ".read": "auth != null",
+        ".write": "auth != null"
       },
       "students": {
-        ".read": true,
-        ".write": "auth != null || newData.exists()",
+        ".read": "auth != null",
+        ".write": "auth != null",
         ".indexOn": [
           "code",
           "cui",
@@ -35,12 +35,12 @@
         ]
       },
       "gradesList": {
-        ".read": true,
-        ".write": "auth != null || newData.exists()"
+        ".read": "auth != null",
+        ".write": "auth != null"
       },
       "activityAuditLog": {
-        ".read": true,
-        ".write": "!data.exists() && newData.exists()",
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists() && newData.exists()",
         ".indexOn": [
           "timestamp",
           "user",
@@ -48,13 +48,13 @@
         ]
       },
       "lockoutRecords": {
-        ".read": true,
-        ".write": true
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
     "students": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "code",
         "cui",
@@ -66,48 +66,48 @@
       ]
     },
     "pensum": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "pensumCatalog": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "gradesList": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "roles": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "rolesConfig": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "users": {
-      ".read": true,
-      ".write": "auth != null || (newData.exists() && newData.hasChildren(['username', 'role']))"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "secciones": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "config": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "cycles": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "gradingConfigs": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "attendance": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "date",
         "gradeCode",
@@ -116,16 +116,16 @@
       ]
     },
     "attendanceRecords": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "attendancePermissionsMeta": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "attendanceAlerts": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "timestamp",
         "status",
@@ -134,8 +134,8 @@
       ]
     },
     "studentAnnotations": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "studentId",
         "date",
@@ -143,8 +143,8 @@
       ]
     },
     "exoneraciones": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "studentId",
         "gradeCode",
@@ -152,8 +152,8 @@
       ]
     },
     "permissions": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "studentId",
         "date",
@@ -161,8 +161,8 @@
       ]
     },
     "auxiliatura_alerts": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "timestamp",
         "status",
@@ -170,16 +170,16 @@
       ]
     },
     "userAlertsDismissed": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "lockoutRecords": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "historico": {
-      ".read": true,
-      ".write": "auth != null || newData.exists()",
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "cycle",
         "archivedAt"
