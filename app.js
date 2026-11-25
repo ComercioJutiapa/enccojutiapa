@@ -4712,11 +4712,6 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
     const now = Date.now();
     STATE.lastModified = now;
     STATE._lastSavedLocally = now;
-    student._localModifiedAt = now;
-    student.lastModified = now;
-    window._lastLocalGradeEditTime = now;
-    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
-    window._locallyDirtyStudentIds.add(student.id);
     if (typeof localStorage !== 'undefined') {
         try { localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now)); } catch(e) {}
     }
@@ -8410,7 +8405,7 @@ window.updateCareerSelects = updateCareerSelects;
 
 
 function generateTeacherPassword(name) {
-    if (!name) return 'C@rolina1';
+    if (!name) return '';
     const firstWord = name.replace(/^(PEM\.|Licda\.|Lic\.|Prof\.|Ing\.|MA\.)\s*/i, '').trim().split(' ')[0] || 'Docente';
     return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase() + '1';
 }
@@ -11155,7 +11150,7 @@ async function initApp() {
         }
         if (u.telefono === undefined) u.telefono = "";
         if (!u.password) {
-            u.password = (typeof generateTeacherPassword === 'function') ? generateTeacherPassword(u.name) : 'Docente1';
+            u.password = '';
         }
     });
 
@@ -11362,7 +11357,7 @@ function ensureMasterAccount() {
         adminUser.roles = ['admin'];
         adminUser.classes = '';
         adminUser.title = 'Super Administrador del Sistema';
-        if (!adminUser.password) adminUser.password = 'C@rolina1';
+        // Contraseña gestionada en Firebase Auth
     }
 
     // 2. Garantizar cuenta Docente oficial de PEM. Nehemias Yalil Salguero Sagastume (yalilsag@gmail.com)
@@ -11370,7 +11365,7 @@ function ensureMasterAccount() {
     if (docUser) {
         docUser.email = 'yalilsag@gmail.com';
         docUser.secondaryEmail = '';
-        if (!docUser.password) docUser.password = 'Nehemias12';
+        // Contraseña gestionada en Firebase Auth
         docUser.role = 'docente';
         docUser.name = 'Nehemias Yalil Salguero Sagastume';
         docUser.title = 'PEM / Catedrático Titular';
@@ -11477,7 +11472,7 @@ function quickLoginAs(role) {
     const usernameInput = document.getElementById('gateUsername');
     const passwordInput = document.getElementById('gatePassword');
     if (usernameInput) usernameInput.value = user.email || user.name;
-    if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
+    if (passwordInput) passwordInput.value = '';
 
     completeLoginWithRole(role, user);
 }
@@ -24117,10 +24112,10 @@ function downloadTeacherTemplate() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
 
     const sampleTeachers = [
-        { no: 1, name: 'PEM. Nehemias Yalil Salguero', email: 'nehemias.salguero@encc.edu.gt', pass: 'C@rolina1', title: 'PEM en Computación', classes: "" },
-        { no: 2, name: 'Lic. Carlos Mendoza', email: 'carlos.mendoza@encc.edu.gt', pass: 'C@rolina1', title: 'Licenciado en Contaduría', classes: "" },
-        { no: 3, name: 'Prof. Mario Hernandez', email: 'mario.hernandez@encc.edu.gt', pass: 'C@rolina1', title: 'Catedrático de Física', classes: "" },
-        { no: 4, name: 'Licda. Elena Morales', email: 'elena.morales@encc.edu.gt', pass: 'C@rolina1', title: 'Catedrática de Inglés', classes: "" }
+        { no: 1, name: 'PEM. Nehemias Yalil Salguero', email: 'nehemias.salguero@encc.edu.gt', pass: 'Firebase Auth', title: 'PEM en Computación', classes: "" },
+        { no: 2, name: 'Lic. Carlos Mendoza', email: 'carlos.mendoza@encc.edu.gt', pass: 'Firebase Auth', title: 'Licenciado en Contaduría', classes: "" },
+        { no: 3, name: 'Prof. Mario Hernandez', email: 'mario.hernandez@encc.edu.gt', pass: 'Firebase Auth', title: 'Catedrático de Física', classes: "" },
+        { no: 4, name: 'Licda. Elena Morales', email: 'elena.morales@encc.edu.gt', pass: 'Firebase Auth', title: 'Catedrática de Inglés', classes: "" }
     ];
 
     const rowsHtml = sampleTeachers.map(t => `
@@ -24190,9 +24185,9 @@ function downloadAdminStaffTemplate() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
 
     const sampleAdmins = [
-        { no: 1, name: 'Nehemias Salguero', email: 'admin@encc.edu.gt', pass: 'C@rolina1', role: 'admin', title: 'Super Administrador / Desarrollador' },
-        { no: 2, name: 'Licda. Carmen Morales', email: 'director@encc.edu.gt', pass: 'C@rolina1', role: 'director', title: 'Directora General del Plantel' },
-        { no: 3, name: 'Sra. Beatriz Fuentes', email: 'secretaria@encc.edu.gt', pass: 'C@rolina1', role: 'secretaria', title: 'Secretaria Académica Oficial' }
+        { no: 1, name: 'Nehemias Salguero', email: 'admin@encc.edu.gt', pass: 'Firebase Auth', role: 'admin', title: 'Super Administrador / Desarrollador' },
+        { no: 2, name: 'Licda. Carmen Morales', email: 'director@encc.edu.gt', pass: 'Firebase Auth', role: 'director', title: 'Directora General del Plantel' },
+        { no: 3, name: 'Sra. Beatriz Fuentes', email: 'secretaria@encc.edu.gt', pass: 'Firebase Auth', role: 'secretaria', title: 'Secretaria Académica Oficial' }
     ];
 
     const rowsHtml = sampleAdmins.map(u => `
@@ -25083,21 +25078,21 @@ function importTeacherCSV(e) {
 
             let name = '';
             let email = '';
-            let password = 'C@rolina1';
+            let password = '';
             let role = 'docente';
             let title = 'Catedrático Titular';
 
             if (cols[0].match(/^\d+$/) && cols.length >= 3) {
                 name = cols[1];
                 email = cols[2];
-                password = cols[3] || 'C@rolina1';
+                password = cols[3] || '';
                 role = (cols[4] && cols[4].toLowerCase().includes('admin')) ? 'admin' : 'docente';
                 title = cols[5] || 'Catedrático Titular';
             } else {
                 name = cols[0];
                 email = cols[1];
                 title = cols[2] || 'Catedrático Titular';
-                password = cols[3] || 'C@rolina1';
+                password = cols[3] || '';
             }
 
             if (!name || !email || name.toLowerCase().includes('escuela') || name.toLowerCase().includes('catedr')) continue;
@@ -25156,21 +25151,21 @@ function importAdminStaffCSV(e) {
 
             let name = '';
             let email = '';
-            let password = 'C@rolina1';
+            let password = '';
             let role = 'admin';
             let title = 'Directivo / Administrativo';
 
             if (cols[0].match(/^\d+$/) && cols.length >= 3) {
                 name = cols[1];
                 email = cols[2];
-                password = cols[3] || 'C@rolina1';
+                password = cols[3] || '';
                 const roleRaw = (cols[4] || '').toLowerCase();
                 role = roleRaw.includes('director') ? 'director' : roleRaw.includes('secretar') ? 'secretaria' : 'admin';
                 title = cols[5] || (role === 'director' ? 'Directora General' : role === 'secretaria' ? 'Secretaria Académica' : 'Super Administrador');
             } else {
                 name = cols[0];
                 email = cols[1];
-                password = cols[2] || 'C@rolina1';
+                password = cols[2] || '';
                 const roleRaw = (cols[3] || '').toLowerCase();
                 role = roleRaw.includes('director') ? 'director' : roleRaw.includes('secretar') ? 'secretaria' : 'admin';
                 title = cols[4] || (role === 'director' ? 'Directora General' : role === 'secretaria' ? 'Secretaria Académica' : 'Super Administrador');
@@ -27130,7 +27125,7 @@ function toggleUserTableRowPassword(userId) {
     if (!codeEl || !user) return;
 
     if (codeEl.dataset.hidden === 'true') {
-        codeEl.textContent = user.password || 'C@rolina1';
+        codeEl.textContent = '🔐 Firebase Auth';
         codeEl.dataset.hidden = 'false';
         if (iconEl) iconEl.className = 'fa-solid fa-eye-slash';
     } else {
@@ -44302,7 +44297,7 @@ function exportTeachersOfficialExcel() {
                 t.renglon || '011',
                 t.gender || 'Masculino',
                 t.email || `${(t.username || 'docente')}@comercio.edu.gt`,
-                t.password || 'C@rolina1',
+                'Gestionada en Firebase Auth',
                 t.title || 'PEM / Catedrático Titular',
                 assignedClasses || 'Sin asignaciones',
                 t.active !== false ? 'Activo' : 'Inactivo'
@@ -44343,7 +44338,7 @@ function exportAdminStaffOfficialExcel() {
                 idx + 1,
                 (u.name || '').toUpperCase(),
                 u.email || '-',
-                u.password || 'C@rolina1',
+                'Gestionada en Firebase Auth',
                 roleLabel,
                 u.title || roleLabel,
                 'Activo'
@@ -44812,7 +44807,7 @@ function printUserCredentialsList() {
     const users = STATE.users || [];
     const portalOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:'))
         ? window.location.origin
-        : 'https://comerciojutiapa.github.io/enccojutiapa';
+        : 'https://encco-jutiapa-live-2026.web.app';
     const portalLoginUrl = `${portalOrigin}/login.html`;
 
     const cardsHtml = users.map((u, idx) => {
@@ -45108,7 +45103,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 grade: matchedStudent.grade,
                 section: matchedStudent.section,
                 studentId: matchedStudent.id,
-                password: matchedStudent.password || 'estudiante2026'
+                password: ''
             };
         }
     }
@@ -45133,9 +45128,9 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
         isPasswordValid = true;
     }
     // Compatibilidades oficiales específicas por usuario (tildes / variantes)
-    else if (matched.id === 'usr-aux-01' && pClean === 'c@rolina1') {
+    else if (false) { // Deshabilitado: autenticación exclusiva vía Firebase Auth
         isPasswordValid = true;
-    } else if (matched.id === 'usr-doc-01' && (pClean === 'nehemias12' || pClean === 'nehemias1')) {
+    } else if (false) { // Deshabilitado: autenticación exclusiva vía Firebase Auth
         isPasswordValid = true;
     } else if (matched.id === 'usr-doc-04' && (pClean === 'wiliams1' || pClean === 'williams1')) {
         isPasswordValid = true;
@@ -45149,7 +45144,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
         const carneClean = enccoNormalizeAuthStr(matched.carne);
         const cuiClean = enccoNormalizeAuthStr(matched.cui);
         const codeClean = enccoNormalizeAuthStr(matched.personalCode);
-        if (pClean === carneClean || pClean === cuiClean || pClean === codeClean || pClean === 'estudiante2026') {
+        if (pClean === carneClean || pClean === cuiClean || pClean === codeClean ) {
             isPasswordValid = true;
         }
     }

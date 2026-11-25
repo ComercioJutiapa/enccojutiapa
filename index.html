@@ -10,7 +10,7 @@
                 var isFile = (window.location.protocol === 'file:');
                 var isAllowed = isFile || host === 'comerciojutiapa.github.io' || host.endsWith('.github.io') || host === 'localhost' || host === '127.0.0.1';
                 if (!isAllowed || host.includes('web.app') || host.includes('firebaseapp.com')) {
-                    window.location.replace('https://comerciojutiapa.github.io/enccojutiapa/' + window.location.search + window.location.hash);
+                    window.location.replace('https://encco-jutiapa-live-2026.web.app/' + window.location.search + window.location.hash);
                     return;
                 }
             }
@@ -19,7 +19,7 @@
                     window.top.location = window.self.location.href;
                 } catch(e) {
                     if (document.documentElement) {
-                        document.documentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f172a;color:#fff;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;">⚠️ Acceso de Terceros Bloqueado</h2><p>El Portal Oficial ENCCO no permite incrustaciones externas.</p><a href="https://comerciojutiapa.github.io/enccojutiapa/" target="_blank" style="color:#22c55e;font-weight:bold;">Abrir en Sitio Oficial</a></div></div>';
+                        document.documentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f172a;color:#fff;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;">⚠️ Acceso de Terceros Bloqueado</h2><p>El Portal Oficial ENCCO no permite incrustaciones externas.</p><a href="https://encco-jutiapa-live-2026.web.app/" target="_blank" style="color:#22c55e;font-weight:bold;">Abrir en Sitio Oficial</a></div></div>';
                     }
                 }
             }
