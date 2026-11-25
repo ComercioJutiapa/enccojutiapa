@@ -49742,6 +49742,18 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
+    // 5b. Actualizar contador vivo y botón Limpiar filtros
+    window._lastFilteredAssignmentsList = list;
+    const counterEl = document.getElementById('assignmentsFilterCounter');
+    const clearBtn = document.getElementById('btnClearAssignmentsFilters');
+    const hasFilters = Boolean(activeQuickFilter !== 'ALL' || (teacherFilter && teacherFilter !== 'ALL') || (gradeFilter && gradeFilter !== 'ALL') || q);
+    if (counterEl) {
+        counterEl.innerHTML = `<i class="fa-solid fa-layer-group" style="color:#0369a1; margin-right:5px;"></i>Mostrando <strong>${list.length}</strong> de <strong>${fullList.length}</strong> cátedras${hasFilters ? ' (filtrado)' : ''}`;
+    }
+    if (clearBtn) {
+        clearBtn.style.display = hasFilters ? 'inline-flex' : 'none';
+    }
+
     // 6. Despachar según la vista activa
     if (currentAssignmentsViewMode === 'byGrade') {
         renderAssignmentsByGradeMatrix(list);
@@ -49753,6 +49765,92 @@ function renderAssignmentsTable(searchQuery = '') {
 }
 window.renderAssignmentsTable = renderAssignmentsTable;
 
+function clearAssignmentsFilters() {
+    window.currentAssignmentQuickFilter = 'ALL';
+    const searchEl = document.getElementById('assignmentSearchInput');
+    const tSel = document.getElementById('assignmentTeacherFilter');
+    const gSel = document.getElementById('assignmentGradeFilter');
+    if (searchEl) searchEl.value = '';
+    if (tSel) tSel.value = 'ALL';
+    if (gSel) gSel.value = 'ALL';
+    document.querySelectorAll('.asg-quick-grade-pill').forEach((btn, idx) => {
+        const isAll = idx === 0;
+        btn.classList.toggle('active', isAll);
+        btn.style.background = isAll ? '#0284c7' : '#f8fafc';
+        btn.style.color = isAll ? '#fff' : '#334155';
+        btn.style.borderColor = isAll ? '#0284c7' : '#cbd5e1';
+    });
+    renderAssignmentsTable('');
+}
+window.clearAssignmentsFilters = clearAssignmentsFilters;
+
+async function quickReassignAssignmentTeacher(asgId, newTeacherId) {
+    const isAdminOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isAdminOrDir && typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) {
+        renderAssignmentsTable();
+        return;
+    }
+    const pIdx = (STATE.pensum || []).findIndex(p => p && String(p.id) === String(asgId));
+    if (pIdx < 0) return;
+    const target = STATE.pensum[pIdx];
+    const teacherObj = newTeacherId ? (STATE.users || []).find(u => u && String(u.id) === String(newTeacherId)) : null;
+    const newName = teacherObj ? teacherObj.name : 'Sin asignar';
+    const nowMs = Date.now();
+    target.teacherId = teacherObj ? teacherObj.id : null;
+    target.teacher = newName;
+    target.teacherName = newName;
+    target.lastModified = nowMs;
+    STATE.lastModified = nowMs;
+    STATE._lastSavedLocally = nowMs;
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    renderAssignmentsTable();
+    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+    if (typeof showToast === 'function') showToast(`Cátedra "${target.subject || target.name}" asignada a ${newName}.`, 'success');
+    if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
+        await EnccoCloudSync.patchNode(`pensum/${pIdx}`, {
+            teacherId: target.teacherId,
+            teacher: target.teacher,
+            teacherName: target.teacherName,
+            lastModified: nowMs
+        }).catch(() => {});
+    }
+}
+window.quickReassignAssignmentTeacher = quickReassignAssignmentTeacher;
+
+function exportClassAssignmentsExcel() {
+    const rows = Array.isArray(window._lastFilteredAssignmentsList) && window._lastFilteredAssignmentsList.length > 0
+        ? window._lastFilteredAssignmentsList
+        : (STATE.pensum || []);
+    if (!rows.length) {
+        if (typeof showToast === 'function') showToast('No hay cátedras para exportar.', 'warning');
+        return;
+    }
+    const cycle = String((window.STATE && STATE.activeCycle) || new Date().getFullYear());
+    const sorted = [...rows].sort((a, b) => {
+        const ga = String(a.gradeCode || a.grade || '');
+        const gb = String(b.gradeCode || b.grade || '');
+        if (ga !== gb) return ga.localeCompare(gb, 'es');
+        return String(a.subject || a.name || '').localeCompare(String(b.subject || b.name || ''), 'es');
+    });
+    const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const trs = sorted.map((a, idx) => {
+        const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || 'Sin asignar');
+        return `<tr><td>${idx + 1}</td><td>${esc(a.grade || a.gradeCode)}</td><td>${esc(a.section || '')}</td><td>${esc(a.code || '')}</td><td>${esc(a.subject || a.name)}</td><td>${esc(tName)}</td><td>${a.periodsPerWeek || a.hours || a.periods || 4}</td></tr>`;
+    }).join('');
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><h3>ENCCO Jutiapa — Distribución de Cátedras (Ciclo ${esc(cycle)})</h3><table border="1"><thead><tr style="background:#0f2b5c;color:#ffffff;"><th>No.</th><th>Grado</th><th>Sección</th><th>Código</th><th>Asignatura</th><th>Catedrático Titular</th><th>Períodos/Sem</th></tr></thead><tbody>${trs}</tbody></table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const aEl = document.createElement('a');
+    aEl.href = url;
+    aEl.download = `ENCCO_Catedras_${cycle}.xls`;
+    document.body.appendChild(aEl);
+    aEl.click();
+    document.body.removeChild(aEl);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (typeof showToast === 'function') showToast(`Exportadas ${sorted.length} cátedras a Excel.`, 'success');
+}
+window.exportClassAssignmentsExcel = exportClassAssignmentsExcel;
+
 function renderAssignmentsTableBody(list) {
     const tbody = document.getElementById('assignmentsTableBody');
     if (!tbody) return;
@@ -49760,8 +49858,8 @@ function renderAssignmentsTableBody(list) {
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align:center; padding:35px; color:var(--text-muted);">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
+                <td colspan="5" style="text-align:center; padding:35px; color:var(--text-muted);">
+                    <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:#0369a1;"></i>
                     <strong>No hay asignaciones de cátedras que coincidan con los filtros seleccionados.</strong><br>
                     <span style="font-size:0.85rem;">Utilice el botón <strong>"+ Asignar Clase a Docente"</strong> o restablezca los filtros para visualizar la carga completa.</span>
                 </td>
@@ -49770,48 +49868,87 @@ function renderAssignmentsTableBody(list) {
         return;
     }
 
-    tbody.innerHTML = list.map(a => {
-        const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
-        let gGradeNum = 0;
-        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
-        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
-        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+    const gradeRank = (a) => {
+        const raw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+        if (raw.includes('4') || raw.includes('CUARTO')) return 4;
+        if (raw.includes('5') || raw.includes('QUINTO')) return 5;
+        if (raw.includes('6') || raw.includes('SEXTO')) return 6;
+        return 9;
+    };
+    const secLetter = (a) => {
+        if (typeof getCleanSectionLetter === 'function') return getCleanSectionLetter(a.section || a.gradeCode || 'A');
+        const m = String(a.section || a.gradeCode || 'A').toUpperCase().match(/([A-E])\b/);
+        return m ? m[1] : 'A';
+    };
+
+    // Ordenamiento automático coherente: Grado (4to->5to->6to) -> Sección (A->E) -> Asignatura (A-Z)
+    const sortedList = [...list].sort((a, b) => {
+        const gr = gradeRank(a) - gradeRank(b);
+        if (gr !== 0) return gr;
+        const sr = secLetter(a).localeCompare(secLetter(b), 'es');
+        if (sr !== 0) return sr;
+        return String(a.subject || a.name || '').localeCompare(String(b.subject || b.name || ''), 'es');
+    });
+
+    const canQuickEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    const eligibleTeachers = (STATE.users || []).filter(u => u && u.active !== false && !u.isSystemOnly && !(u.role === 'admin' && u.isSystemOnly !== false) && (u.role === 'docente' || u.role === 'catedratico' || u.role === 'profesor' || (u.id && u.id.startsWith('usr-doc')))).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+
+    let lastGroupKey = '';
+    const rowsHtml = [];
+    sortedList.forEach(a => {
+        const gGradeNum = gradeRank(a) <= 6 ? gradeRank(a) : 0;
+        const secL = secLetter(a);
+        const groupKey = `${gGradeNum}_${secL}`;
+        if (groupKey !== lastGroupKey) {
+            lastGroupKey = groupKey;
+            const groupLabel = `${a.grade || a.gradeCode || 'Grado'} — Sección ${secL}`;
+            rowsHtml.push(`
+                <tr class="asg-section-divider-row" style="background:linear-gradient(90deg, #f0f9ff 0%, #f8fafc 100%);">
+                    <td colspan="5" style="padding:6px 12px; font-weight:800; font-size:0.78rem; color:#0f2b5c; border-top:1.5px solid #bae6fd; border-bottom:1px solid #e0f2fe;">
+                        <i class="fa-solid fa-graduation-cap" style="color:#0369a1; margin-right:6px;"></i>${groupLabel}
+                    </td>
+                </tr>
+            `);
+        }
 
         const subName = getFullOfficialSubjectName(a.subject || a.name || 'Asignatura', gGradeNum);
         const cnbArea = getCnbAreaInfo(subName);
         const unassigned = isAssignmentUnassigned(a);
         const officialTeacher = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar');
 
-        return `
+        let teacherCellHtml = '';
+        if (canQuickEdit && eligibleTeachers.length > 0) {
+            const optsHtml = `<option value=""${unassigned ? ' selected' : ''}>⚠️ Sin asignar</option>` + eligibleTeachers.map(t => {
+                const isSel = !unassigned && (String(a.teacherId) === String(t.id) || String(officialTeacher).toLowerCase() === String(t.name).toLowerCase());
+                return `<option value="${t.id}"${isSel ? ' selected' : ''}>${t.name}</option>`;
+            }).join('');
+            teacherCellHtml = `<select class="form-control" onchange="quickReassignAssignmentTeacher('${a.id}', this.value)" aria-label="Reasignar docente para ${subName}" style="height:30px; padding:2px 8px; font-size:0.8rem; font-weight:700; border-radius:6px; border:1px solid ${unassigned ? '#fca5a5' : '#cbd5e1'}; background:${unassigned ? '#fef2f2' : '#ffffff'}; color:${unassigned ? '#b91c1c' : '#0f172a'}; width:100%; max-width:260px;">${optsHtml}</select>`;
+        } else {
+            teacherCellHtml = unassigned
+                ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-weight:700; font-size:0.78rem; padding:3px 8px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i> Sin Asignar</span>`
+                : `<strong style="color:var(--text-primary); font-size:0.86rem;"><i class="fa-solid fa-user-tie" style="color:#0369a1; margin-right:4px;"></i> ${officialTeacher}</strong>`;
+        }
+
+        rowsHtml.push(`
         <tr>
-            <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
-            <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
-            <td>
-                <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-weight:700; font-size:0.72rem; margin-right:4px;" title="${cnbArea.name}">
+            <td data-label="Grado y Sección"><strong style="color:#0f2b5c; font-size:0.84rem;">${a.gradeCode || (a.grade + ' ' + secL)}</strong><div style="font-size:0.7rem; color:#64748b;">${a.career || 'Perito Contador'}</div></td>
+            <td data-label="Asignatura">
+                <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-weight:700; font-size:0.70rem; margin-right:4px;" title="${cnbArea.name}">
                     <i class="fa-solid ${cnbArea.icon}" style="margin-right:3px;"></i>${cnbArea.shortName}
                 </span>
-                ${a.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.75rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-right:5px; font-weight:800;"><i class="fa-solid fa-barcode" style="font-size:0.7rem; margin-right:3px;"></i>${a.code}</span>` : ''}
-                <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong>
+                ${a.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.72rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-right:4px; font-weight:800;">${a.code}</span>` : ''}
+                <strong style="color:#0f2b5c; font-size:0.9rem;">${subName}</strong>
             </td>
-            <td>
-                ${unassigned ? `
-                    <span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-weight:700; font-size:0.8rem; padding:4px 8px;">
-                        <i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i> Sin Asignar
-                    </span>
-                ` : `
-                    <strong style="color:var(--text-primary);">
-                        <i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${officialTeacher}
-                    </strong>
-                `}
-            </td>
-            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
-            <td style="text-align:center; white-space:nowrap;">
+            <td data-label="Catedrático">${teacherCellHtml}</td>
+            <td data-label="Períodos" style="text-align:center; font-weight:700; font-size:0.84rem; color:#334155;">${a.periodsPerWeek || a.hours || a.periods || 4} / sem</td>
+            <td data-label="Acciones" style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>
-        `;
-    }).join('');
+        `);
+    });
+    tbody.innerHTML = rowsHtml.join('');
 }
 
 function renderAssignmentsByGradeMatrix(list) {
