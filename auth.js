@@ -314,7 +314,7 @@
                     role: 'estudiante',
                     username: foundStudent.carne || foundStudent.personalCode || 'estudiante',
                     email: foundStudent.email || '',
-                    password: (foundStudent.password || foundStudent.birthDate || 'estudiante2026').replace(/[^0-9a-zA-Z]/g, ''),
+                    password: (foundStudent.birthDate || '').replace(/[^0-9a-zA-Z]/g, ''),
                     carne: foundStudent.carne,
                     personalCode: foundStudent.personalCode,
                     grade: foundStudent.grade,
@@ -338,22 +338,10 @@
             passValid = true;
         } else if (storedPass && (p === storedPass || p.toLowerCase() === storedPass.toLowerCase())) {
             passValid = true;
-        }
-        // Variantes autorizadas específicas para ciertos docentes por tildes o compatibilidad
-        else if (matched.id === 'usr-doc-01' && (inputHash === DOCENTE_PASS_HASH || p === 'Nehemias12' || p === 'Nehemias1')) {
-            passValid = true;
-        } else if (matched.id === 'usr-doc-04' && (p.toLowerCase() === 'wiliams1' || p.toLowerCase() === 'williams1')) {
-            passValid = true;
-        } else if (matched.id === 'usr-doc-10' && (p === 'Héctor1' || p === 'Hector1' || p.toLowerCase() === 'hector1')) {
-            passValid = true;
-        } else if (matched.id === 'usr-doc-16' && (p === 'María1' || p === 'Maria1' || p.toLowerCase() === 'maria1')) {
-            passValid = true;
-        } else if (matched.id === 'usr-sec-01' && (p.toLowerCase() === 'sara1' || p.toLowerCase() === 'admin')) {
-            passValid = true;
         } else if (isStudent) {
             const stCleanCarne = (matched.carne || '').toLowerCase().trim();
             const stCleanCode = (matched.personalCode || '').toLowerCase().trim();
-            if (p.toLowerCase() === stCleanCarne || p.toLowerCase() === stCleanCode || p.toLowerCase() === 'estudiante2026') {
+            if ((stCleanCarne && p.toLowerCase() === stCleanCarne) || (stCleanCode && p.toLowerCase() === stCleanCode)) {
                 passValid = true;
             }
         }
