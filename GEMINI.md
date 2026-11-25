@@ -43,3 +43,10 @@ El usuario ha establecido de forma permanente la política de **"Modo Silencioso
    - **Responsivo (Ventana, Tablet y Móvil)**: Toda vista, tabla, modal y tarjeta debe ajustarse al **100% del ancho disponible sin cortes laterales** (`table-layout: fixed` / `min-width: 0` en escritorio y tablet horizontal, y tarjetas táctiles fluidas en tablet vertical y móvil `≤ 900px`).
    - **100% Funcional y Verificado**: Ejecutar siempre `node --check` en los archivos modificados y correr las pruebas automatizadas correspondientes antes de hacer commit y push.
    - **Cero Pérdida de Datos y Anti-Duplicidad**: Mantener aislamiento estricto entre ciclos escolares (`2026` ≠ `2027` ≠ `2028`), preservar historiales académicos, cohorte de Egresados (`egresadosSnapshot`), becas (`scholarshipsByCycle`) y expedientes, evitar duplicados por `id`/`personalCode`/`cui`/`carne`/nombre normalizado, y nunca introducir contraseñas en texto plano.
+
+9. **Protocolo de Impacto Transversal y Actualización en Cascada (Siempre Obligatorio)**:
+   - Ante cualquier cambio solicitado en un módulo, **auditar automáticamente su impacto en todos los apartados relacionados** y aplicar en la misma intervención los ajustes necesarios para mantener el sistema 100% conectado y sin datos huérfanos:
+     * **Datos y Relaciones**: verificar consistencia entre `students`, `pensum`, `gradesList`, `attendanceRecords`, `users`, `rolesConfig` y `/authorized_uids` (RTDB + Firestore).
+     * **Seguridad y Reglas**: verificar `database.rules.json`, `firestore.rules` (vía `firestore-rules-author`), `firebase.json` (CSP y cabeceras) y persistencia de sesión (`enccoInstitutionalApp`).
+     * **Caché y Rendimiento**: actualizar siempre el cache-busting (`?v=`) y `sw.js` (`CACHE_NAME`), priorizando escrituras atómicas (`patchNode` / `PATCH`) y evitando descargas masivas innecesarias en RTDB.
+     * **Confirmación de Publicación**: preparar y verificar siempre localmente primero (`node --check` + pruebas), y ejecutar `git push` / `firebase deploy` únicamente tras confirmación explícita del usuario (salvo cuando el usuario indique en el mismo mensaje publicar/subir de una vez).
