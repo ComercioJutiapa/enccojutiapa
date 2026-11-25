@@ -5551,8 +5551,32 @@ async function pullStateFromFirebaseCloud(force = false) {
     const firebaseUrl = getFirebaseDatabaseUrl();
     if (!firebaseUrl) return false;
 
+    // ⚡ [v300] Ahorro de ancho de banda RTDB (-85%): deduplicación en vuelo + enfriamiento + pre-chequeo de 16 bytes
+    if (window._enccoPullInFlightPromise) {
+        return window._enccoPullInFlightPromise;
+    }
+    const nowMs = Date.now();
+    const hasHydratedState = Boolean(window.STATE && Array.isArray(STATE.students) && STATE.students.length >= 50 && Array.isArray(STATE.users) && STATE.users.length >= 20);
+    if (!force && hasHydratedState && window._enccoLastPullCompletedAt && (nowMs - window._enccoLastPullCompletedAt) < 15000) {
+        return true;
+    }
+
+    const runPull = async () => {
     try {
         const _t = Date.now();
+        if (!force && hasHydratedState) {
+            try {
+                const lmRes = await fetch(`${firebaseUrl}/encc_school_state/lastModified.json?t=${_t}`);
+                if (lmRes && lmRes.ok) {
+                    const remoteLm = Number(await lmRes.json()) || 0;
+                    const localLm = Math.max(Number(window._enccoLastSyncedCloudTimestamp) || 0, Number(STATE._lastSavedLocally) || 0, Number(STATE.lastModified) || 0);
+                    if (remoteLm > 0 && remoteLm <= localLm) {
+                        window._enccoLastPullCompletedAt = Date.now();
+                        return true;
+                    }
+                }
+            } catch (_) {}
+        }
         const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes, delStudentsRes] = await Promise.all([
             fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
@@ -5637,6 +5661,18 @@ async function pullStateFromFirebaseCloud(force = false) {
         console.warn("Aviso al consultar Base de Datos Nube (Granular):", err);
     }
     return false;
+    };
+    window._enccoPullInFlightPromise = runPull().then((ok) => {
+        if (ok) {
+            window._enccoLastPullCompletedAt = Date.now();
+            window._enccoLastSyncedCloudTimestamp = Math.max(Number(window._enccoLastSyncedCloudTimestamp) || 0, Number(window.STATE && STATE.lastModified) || Date.now());
+            window._enccoInitialCloudPullDone = true;
+        }
+        return ok;
+    }).finally(() => {
+        window._enccoPullInFlightPromise = null;
+    });
+    return window._enccoPullInFlightPromise;
 }
 window.pullStateFromFirebaseCloud = pullStateFromFirebaseCloud;
 
@@ -6483,6 +6519,7 @@ function initFirebaseRealtimeConnection() {
                             pullStateFromFirebaseCloud(false);
                         }
                     }
+                    window._enccoSseRetryCount = 0;
                     updateDbSyncStatus('synced');
                 } catch(err) {}
             });
@@ -6493,6 +6530,8 @@ function initFirebaseRealtimeConnection() {
                     return;
                 }
                 updateDbSyncStatus('syncing', '🔄 Reconectando con Firebase...');
+                window._enccoSseRetryCount = Math.min((window._enccoSseRetryCount || 0) + 1, 4);
+                const retryDelayMs = Math.min(4000 * Math.pow(2, window._enccoSseRetryCount - 1), 30000);
                 if (_sseReconnectTimeout) clearTimeout(_sseReconnectTimeout);
                 _sseReconnectTimeout = setTimeout(async () => {
                     _sseReconnectTimeout = null;
@@ -6504,7 +6543,7 @@ function initFirebaseRealtimeConnection() {
                             initFirebaseRealtimeConnection();
                         }
                     }
-                }, 3500);
+                }, retryDelayMs);
             };
             if (!window._enccoTokenReadySseBound && typeof window.addEventListener === 'function') {
                 window._enccoTokenReadySseBound = true;
@@ -6517,8 +6556,8 @@ function initFirebaseRealtimeConnection() {
         } catch(e) {}
     }
 
-    // 2. Consulta inicial silenciosa de la nube con Jitter antirráfaga para múltiples usuarios
-    if (typeof pullStateFromFirebaseCloud === 'function') {
+    // 2. Consulta inicial silenciosa de la nube (solo una vez; reconexiones SSE usan pre-chequeo de 16 bytes)
+    if (!window._enccoInitialCloudPullDone && typeof pullStateFromFirebaseCloud === 'function') {
         const jitterMs = Math.floor(Math.random() * 350);
         setTimeout(() => {
             pullStateFromFirebaseCloud(false);
