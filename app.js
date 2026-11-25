@@ -5591,7 +5591,7 @@ async function pullStateFromFirebaseCloud(force = false, opts = {}) {
                 }
             } catch (_) {}
         }
-        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes, delStudentsRes] = await Promise.all([
+        const [usersRes, pensumRes, studentsRes, configRes, rolesRes, gradesListRes, headerRes, activeCycleRes, cyclesRes, exonRes, recupRes, delStudentsRes, attMetaRes] = await Promise.all([
             fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
             (shouldFetchStudents ? fetch(`${firebaseUrl}/encc_school_state/students.json?t=${_t}`).catch(() => null) : Promise.resolve(null)),
@@ -5603,7 +5603,8 @@ async function pullStateFromFirebaseCloud(force = false, opts = {}) {
             fetch(`${firebaseUrl}/encc_school_state/cycles.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${_t}`).catch(() => null),
             fetch(`${firebaseUrl}/encc_school_state/recuperaciones.json?t=${_t}`).catch(() => null),
-            fetch(`${firebaseUrl}/encc_school_state/deletedStudentIds.json?t=${_t}`).catch(() => null)
+            fetch(`${firebaseUrl}/encc_school_state/deletedStudentIds.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/attendancePermissionsMeta.json?t=${_t}`).catch(() => null)
         ]);
 
         const cloudState = {};
@@ -5660,6 +5661,10 @@ async function pullStateFromFirebaseCloud(force = false, opts = {}) {
         if (rolesRes && rolesRes.ok) {
             const r = await rolesRes.json();
             if (r) cloudState.rolesConfig = r;
+        }
+        if (attMetaRes && attMetaRes.ok) {
+            const am = await attMetaRes.json();
+            if (am && typeof am === 'object') cloudState.attendancePermissionsMeta = am;
         }
         if (exonRes && exonRes.ok) {
             const ex = await exonRes.json();
@@ -31857,26 +31862,19 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
             multiPathPayload['config/lastModified'] = now;
             multiPathPayload['lastModified'] = now;
 
-            await Promise.all([
-                fetch(`${firebaseUrl}/encc_school_state.json`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(multiPathPayload)
-                }).catch(() => {}),
-                fetch(`${firebaseUrl}/.json`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(multiPathPayload)
-                }).catch(() => {})
-            ]);
-
-            // Respaldo de sincronización individual directa por estudiante en RTDB
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-                for (const item of gradeRecords) {
-                    if (item.rtdbIdx !== -1) {
-                        EnccoCloudSync.patchNode(`students/${item.rtdbIdx}/gradebookDetails/${effectiveSubject}/${effectiveUnit}`, item.student.gradebookDetails[effectiveSubject][effectiveUnit]).catch(() => {});
-                        EnccoCloudSync.patchNode(`students/${item.rtdbIdx}/grades/${effectiveSubject}`, item.student.grades[effectiveSubject]).catch(() => {});
-                    }
+            // ⚡ [v304] Un único PATCH atómico verificado en /encc_school_state.json (elimina PATCH /.json 401 y ráfaga de 70+ peticiones redundantes)
+            if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.getCurrentIdToken === 'function' && !window.EnccoFirebaseAuthBridge.getCurrentIdToken() && typeof window.EnccoFirebaseAuthBridge.refreshIdTokenNow === 'function') {
+                await window.EnccoFirebaseAuthBridge.refreshIdTokenNow();
+            }
+            const rtdbGradeRes = await fetch(`${firebaseUrl}/encc_school_state.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(multiPathPayload)
+            });
+            if (!rtdbGradeRes || !rtdbGradeRes.ok) {
+                console.warn('⚠️ [Notas] RTDB rechazó el guardado atómico de calificaciones:', rtdbGradeRes && rtdbGradeRes.status);
+                if (typeof showToast === 'function') {
+                    showToast('⚠️ Error al sincronizar calificaciones con Firebase. Verifique su sesión e intente de nuevo.', 'danger');
                 }
             }
         } catch(re) {
@@ -37031,14 +37029,22 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
         if (typeof EnccoCloudSync !== 'undefined') {
             if (EnccoCloudSync.syncNode) {
                 if (targetRecordKey) {
-                    // 🛡️ Sincronización atómica exclusiva del curso/mes editado (cero riesgo de pisar studentPermissions concurrentes)
-                    EnccoCloudSync.syncNode(`attendanceRecords/${targetRecordKey}`, (STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) || {}).catch(rtErr => {
+                    // 🛡️ Sincronización atómica verificada del curso/mes editado (cero riesgo de pisar studentPermissions concurrentes)
+                    const okAtt = await EnccoCloudSync.syncNode(`attendanceRecords/${targetRecordKey}`, (STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
+                        return false;
                     });
+                    if (!okAtt && typeof showToast === 'function') {
+                        showToast('⚠️ No se pudo confirmar el guardado de asistencia en Firebase. Verifique su conexión o sesión.', 'warning');
+                    }
                 } else {
-                    EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
+                    const okAttAll = await EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+                        return false;
                     });
+                    if (!okAttAll && typeof showToast === 'function') {
+                        showToast('⚠️ No se pudo confirmar el guardado de asistencia en Firebase. Verifique su conexión o sesión.', 'warning');
+                    }
                     EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
                         console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
                     });

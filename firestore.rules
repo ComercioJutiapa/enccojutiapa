@@ -17,11 +17,6 @@ service cloud.firestore {
     //   - Por defecto (fail-closed): cualquier ruta no declarada se deniega.
     // ===============================================================
 
-    // Función de verificación de usuario autenticado
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
     // Verifica que el usuario autenticado pertenezca a la lista blanca institucional y esté activo
     function isAuthorizedStaff() {
       return request.auth != null &&
@@ -45,6 +40,10 @@ service cloud.firestore {
     match /configuracion/{document=**} {
       allow read: if isAuthorizedStaff();
       allow write: if isAdminOrDirector();
+    }
+    // Registro de asistencia accesible para docentes y personal auxiliar autorizado
+    match /config/asistencia {
+      allow read, write: if isAuthorizedStaff();
     }
     match /config/{document=**} {
       allow read: if isAuthorizedStaff();
@@ -107,6 +106,9 @@ service cloud.firestore {
     match /notas/{notaId} {
       allow read: if isAuthorizedStaff();
       allow write: if isAuthorizedStaff();
+    }
+    match /calificaciones/{gradeId} {
+      allow read, write: if isAuthorizedStaff();
     }
     match /gradesList/{gradeId} {
       allow read: if isAuthorizedStaff();
