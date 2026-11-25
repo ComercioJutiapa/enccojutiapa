@@ -176,6 +176,17 @@ console.log('  ✅ 3. Resolución de alias sin contraseñas y derivación compat
     assert.strictEqual(fsRevokedDocs.length, 1, 'Debe espejar active: false en Firestore authorized_uids');
     assert.strictEqual(fsRevokedDocs[0].payload.active, false, 'Debe marcar active: false en Firestore');
 
+    const roleSyncRes = await mockWin3.EnccoFirebaseAuthBridge.syncAuthorizedUserRoleAndStatus(
+        'docente.prueba@gmail.com',
+        'director',
+        true,
+        'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com'
+    );
+    assert.strictEqual(roleSyncRes.synced, true, 'Debe sincronizar cambio de rol en /authorized_uids');
+    assert.strictEqual(patchedUrls[1].body.role, 'director', 'Debe actualizar role a director en RTDB');
+    assert.strictEqual(patchedUrls[1].body.active, true, 'Debe actualizar active a true en RTDB');
+    assert.strictEqual(fsRevokedDocs[1].payload.role, 'director', 'Debe espejar role a director en Firestore');
+
     const projectRoot = path.join(__dirname, '..');
     const fsRulesText = fs.readFileSync(path.join(projectRoot, 'firestore.rules'), 'utf8');
     assert.ok(fsRulesText.includes('function isAuthorizedStaff()'), 'firestore.rules debe definir isAuthorizedStaff()');

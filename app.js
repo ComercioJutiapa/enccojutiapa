@@ -4926,7 +4926,9 @@ async function saveUserForm(e) {
                 STATE.users[idx].isSystemOnly = isSystemOnly;
                 STATE.users[idx].active = isActive;
                 savedUserObj = STATE.users[idx];
-                if (!isActive && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.revokeAuthorizedUser === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
+                if (window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.syncAuthorizedUserRoleAndStatus === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
+                    window.EnccoFirebaseAuthBridge.syncAuthorizedUserRoleAndStatus(email, role, isActive, getFirebaseDatabaseUrl()).catch(() => {});
+                } else if (!isActive && window.EnccoFirebaseAuthBridge && typeof window.EnccoFirebaseAuthBridge.revokeAuthorizedUser === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
                     window.EnccoFirebaseAuthBridge.revokeAuthorizedUser(email, getFirebaseDatabaseUrl()).catch(() => {});
                 }
 
@@ -9641,6 +9643,81 @@ function deduplicateUsersCollection(users) {
     return result;
 }
 window.deduplicateUsersCollection = deduplicateUsersCollection;
+
+// ==========================================================================
+// 🔗 [v305] MOTOR RELACIONAL DINÁMICO (CERO DATOS HUÉRFANOS)
+// ==========================================================================
+function _extractGradeLevelToken(gradeText) {
+    const s = String(gradeText || '').toLowerCase();
+    if (s.includes('4to') || s.includes('cuarto')) return '4to';
+    if (s.includes('5to') || s.includes('quinto')) return '5to';
+    if (s.includes('6to') || s.includes('sexto')) return '6to';
+    if (s.includes('1ro') || s.includes('primero')) return '1ro';
+    if (s.includes('2do') || s.includes('segundo')) return '2do';
+    if (s.includes('3ro') || s.includes('tercero')) return '3ro';
+    return s.trim();
+}
+
+function syncStudentGradesWithGradePensum(student) {
+    if (!student || typeof student !== 'object') return false;
+    const gradeToken = _extractGradeLevelToken(student.grade || student.gradeCode || student.gradeLabel);
+    if (!gradeToken) return false;
+    const pensumList = (window.STATE && Array.isArray(STATE.pensum)) ? STATE.pensum : [];
+    const officialSubjects = Array.from(new Set(
+        pensumList
+            .filter(p => p && _extractGradeLevelToken(p.grade || p.gradeCode) === gradeToken)
+            .map(p => String(p.subject || p.name || '').trim())
+            .filter(s => s && !s.includes('\ufffd'))
+    ));
+    if (!student.grades || typeof student.grades !== 'object') {
+        student.grades = {};
+    }
+    let changed = false;
+    officialSubjects.forEach(subj => {
+        if (!Array.isArray(student.grades[subj]) || student.grades[subj].length < 4) {
+            const prev = Array.isArray(student.grades[subj]) ? student.grades[subj] : [];
+            student.grades[subj] = [Number(prev[0]) || 0, Number(prev[1]) || 0, Number(prev[2]) || 0, Number(prev[3]) || 0];
+            changed = true;
+        }
+    });
+    return changed;
+}
+window.syncStudentGradesWithGradePensum = syncStudentGradesWithGradePensum;
+
+function propagatePensumSubjectToActiveStudents(gradeNameOrCode, subjectName) {
+    const cleanSubj = String(subjectName || '').trim();
+    const gradeToken = _extractGradeLevelToken(gradeNameOrCode);
+    if (!cleanSubj || !gradeToken || !window.STATE || !Array.isArray(STATE.students)) return 0;
+    const patchPayload = {};
+    let updatedCount = 0;
+    const nowMs = Date.now();
+    STATE.students.forEach((st, idx) => {
+        if (!st || st.active === false || st.status === 'Retirado' || st.status === 'Inactivo') return;
+        if (_extractGradeLevelToken(st.grade || st.gradeCode || st.gradeLabel) !== gradeToken) return;
+        if (!st.grades || typeof st.grades !== 'object') st.grades = {};
+        if (!Array.isArray(st.grades[cleanSubj]) || st.grades[cleanSubj].length < 4) {
+            st.grades[cleanSubj] = [0, 0, 0, 0];
+            st.lastModified = nowMs;
+            patchPayload[`students/${idx}/grades/${cleanSubj}`] = [0, 0, 0, 0];
+            patchPayload[`students/${idx}/lastModified`] = nowMs;
+            updatedCount++;
+        }
+    });
+    if (updatedCount > 0) {
+        patchPayload['lastModified'] = nowMs;
+        const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+        if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+            fetch(`${fbUrl}/encc_school_state.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patchPayload)
+            }).catch(() => {});
+        }
+        console.log(`🔗 [Pensum→Alumnos] Materia "${cleanSubj}" propagada automáticamente a ${updatedCount} estudiantes de ${gradeToken}.`);
+    }
+    return updatedCount;
+}
+window.propagatePensumSubjectToActiveStudents = propagatePensumSubjectToActiveStudents;
 
 function deduplicateStudentsCollection(students) {
     if (!students) return [];
@@ -17510,10 +17587,16 @@ async function saveStudentForm(e) {
                 editedByAuthority: true,
                 lastModifiedByRole: authRoleName,
                 lastModifiedBy: authUserName,
+                academicCycle: cycle || String((window.STATE && STATE.activeCycle) || new Date().getFullYear()),
+                grades: {},
                 _localModifiedAt: nowTime,
                 lastModified: nowTime
             };
             STATE.students.push(studentObj);
+        }
+        // 🔗 [v305] Inicialización automática y dinámica de materias oficiales del grado desde STATE.pensum
+        if (studentObj && typeof syncStudentGradesWithGradePensum === 'function') {
+            syncStudentGradesWithGradePensum(studentObj);
         }
 
         STATE.lastModified = nowTime;
@@ -17536,6 +17619,9 @@ async function saveStudentForm(e) {
         }
         if (typeof renderBoletasTable === 'function') renderBoletasTable();
         if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof synchronizeGlobalDynamicUI === 'function') { try { synchronizeGlobalDynamicUI(); } catch(_) {} }
+        if (STATE.activeView === 'gradebook' && typeof renderGradebookTable === 'function') { try { renderGradebookTable(); } catch(_) {} }
+        if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') { try { loadAttendanceList(); } catch(_) {} }
 
         showToast(`Estudiante "${firstName} ${lastName}" asignado y guardado en ${finalGrade} (${finalSection}).`, 'success');
         try {
@@ -50729,6 +50815,9 @@ async function saveClassAssignmentForm(e) {
         });
 
         STATE.lastModified = nowTime;
+        if (typeof propagatePensumSubjectToActiveStudents === 'function' && gradeName && fullSubjectName) {
+            propagatePensumSubjectToActiveStudents(gradeName, fullSubjectName);
+        }
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();

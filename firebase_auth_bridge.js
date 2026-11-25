@@ -443,6 +443,70 @@
         }
     }
 
+    /**
+     * Sincroniza dinámicamente el rol y estado (active) de un usuario en /authorized_uids
+     * tanto en RTDB como en Cloud Firestore cuando se edita su perfil en ENCCO.
+     */
+    async function syncAuthorizedUserRoleAndStatus(emailOrUid, role, active, dbUrl) {
+        const needle = String(emailOrUid || '').trim().toLowerCase();
+        const cleanRole = String(role || 'docente').trim().toLowerCase();
+        const isActive = active !== false;
+        if (!needle || !dbUrl) return { synced: false, count: 0, uids: [] };
+        const cleanDbUrl = String(dbUrl).replace(/\/+$/, '');
+        const nowIso = new Date().toISOString();
+        const syncedUids = [];
+
+        try {
+            const listRes = await window.fetch(`${cleanDbUrl}/authorized_uids.json`);
+            if (!listRes || !listRes.ok) {
+                return { synced: false, count: 0, uids: [], reason: 'read_failed' };
+            }
+            const allowlist = await listRes.json().catch(() => null);
+            if (!allowlist || typeof allowlist !== 'object') {
+                return { synced: false, count: 0, uids: [], reason: 'empty_allowlist' };
+            }
+
+            const matchedUids = Object.keys(allowlist).filter((uid) => {
+                if (uid.toLowerCase() === needle) return true;
+                const entry = allowlist[uid];
+                return entry && String(entry.email || '').trim().toLowerCase() === needle;
+            });
+
+            const patchBody = {
+                role: cleanRole,
+                active: isActive,
+                updatedAt: nowIso
+            };
+            if (!isActive) patchBody.revokedAt = nowIso;
+
+            for (const uid of matchedUids) {
+                try {
+                    const patchRes = await window.fetch(`${cleanDbUrl}/authorized_uids/${uid}.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patchBody)
+                    });
+                    if (patchRes && patchRes.ok) {
+                        syncedUids.push(uid);
+                    }
+                } catch (e) {}
+
+                try {
+                    if (window.FirebaseModular && window.FirebaseModular.db && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser) {
+                        const { db, doc, setDoc } = window.FirebaseModular;
+                        if (typeof doc === 'function' && typeof setDoc === 'function') {
+                            await setDoc(doc(db, 'authorized_uids', uid), patchBody, { merge: true });
+                        }
+                    }
+                } catch (fsErr) {}
+            }
+
+            return { synced: syncedUids.length > 0, count: syncedUids.length, uids: syncedUids };
+        } catch (e) {
+            return { synced: false, count: 0, uids: [], reason: e.message || 'network_error' };
+        }
+    }
+
     async function signOutSilently() {
         _storeToken(null);
         if (_tokenRefreshTimer) {
@@ -483,6 +547,7 @@
         signInSilently,
         provisionNewUserAccount,
         revokeAuthorizedUser,
+        syncAuthorizedUserRoleAndStatus,
         sendPasswordReset,
         signOutSilently,
         refreshIdTokenNow,
