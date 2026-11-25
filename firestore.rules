@@ -129,6 +129,53 @@ service cloud.firestore {
       allow write: if isAuthorizedStaff();
     }
 
+    // Reglas operativas de asistencia, disciplina, permisos y gestión académica
+    match /attendanceAlerts/{alertId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /studentPermissions/{permId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /disciplina/{docId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /disciplineReports/{reportId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /studentAnnotations/{noteId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /exoneraciones/{exonId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /gradeEditRequests/{reqId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /courseBitacora/{entryId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+    match /config_ponderaciones/{docId} {
+      allow read, write: if isAuthorizedStaff();
+    }
+
+    // Catálogos administrativos institucionales (escritura solo Admin/Director)
+    match /careers/{careerId} {
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
+    }
+    match /cycles/{cycleId} {
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
+    }
+    match /ciclos/{cycleId} {
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
+    }
+    match /secciones/{sectionId} {
+      allow read: if isAuthorizedStaff();
+      allow write: if isAdminOrDirector();
+    }
+
     // Denegación estricta por defecto (fail-closed) para cualquier documento no contemplado
     match /{document=**} {
       allow read, write: if false;
