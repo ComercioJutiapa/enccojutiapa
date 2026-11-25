@@ -518,6 +518,23 @@
             return;
         }
 
+        // 🔗 [v308] Carga automática bajo demanda de attendanceRecords si aún no están en memoria
+        if (!window._enccoAttLoadedForScholarships && (!window.STATE || !STATE.attendanceRecords || Object.keys(STATE.attendanceRecords).length === 0)) {
+            const fbUrl = (typeof window.getFirebaseDatabaseUrl === 'function') ? window.getFirebaseDatabaseUrl() : null;
+            if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+                window._enccoAttLoadedForScholarships = true;
+                fetch(`${fbUrl}/encc_school_state/attendanceRecords.json?t=${Date.now()}`)
+                    .then(r => (r && r.ok ? r.json() : null))
+                    .then(attData => {
+                        if (attData && typeof attData === 'object' && window.STATE) {
+                            STATE.attendanceRecords = { ...(STATE.attendanceRecords || {}), ...attData };
+                            renderScholarshipsView();
+                        }
+                    })
+                    .catch(() => { window._enccoAttLoadedForScholarships = false; });
+            }
+        }
+
         const { activeCycle, allBecados, rows, kpis } = buildScholarshipsDataset();
         const canEdit = canManageScholarships();
         const uniqueGrades = [...new Set(allBecados.map(r => r.gradeLabel))];

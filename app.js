@@ -35678,6 +35678,7 @@ function loadAttendanceList() {
     let daySuspensionTotals = new Array(daysInMonth + 1).fill(0);
     let totalClassLogs = 0;
     let totalClassPresent = 0;
+    let alertStudentCount = 0;
 
     students.forEach((s, idx) => {
         const sRecords = {
@@ -35968,6 +35969,37 @@ function loadAttendanceList() {
         const toDateAtt = (typeof getStudentAttendancePercentageToDate === 'function')
             ? getStudentAttendancePercentageToDate(s, String(year))
             : null;
+
+        // 🎓 [v308] Insignia dinámica de Beca/Bolsa de Estudio + semáforo de ausentismo (>=3 faltas) + WhatsApp encargado
+        let scholarshipBadgeHtml = '';
+        try {
+            const schCycleMap = (STATE.scholarshipsByCycle && STATE.scholarshipsByCycle[String(year)]) || {};
+            const schEntry = schCycleMap[s.id] || null;
+            const rawSch = (schEntry && schEntry.type) || s.scholarship || '';
+            const hasActiveSch = Boolean((schEntry && schEntry.active !== false) || (rawSch && !/^(ninguna|no|n\/a|-)$/i.test(String(rawSch).trim())));
+            if (hasActiveSch) {
+                const isBolsa = /bolsa/i.test(String(rawSch));
+                const atRiskSch = Boolean(toDateAtt && toDateAtt.computableDays > 0 && toDateAtt.percentage !== null && toDateAtt.percentage < 85);
+                const schBg = atRiskSch ? '#fee2e2' : '#e0f2fe';
+                const schCol = atRiskSch ? '#b91c1c' : '#0369a1';
+                const schBorder = atRiskSch ? '#fca5a5' : '#7dd3fc';
+                scholarshipBadgeHtml = `<span class="badge" style="font-size:0.65rem; margin-left:4px; background:${schBg}; color:${schCol}; border:1px solid ${schBorder}; font-weight:800; padding:1px 5px;" title="${isBolsa ? 'Bolsa de Estudio' : 'Estudiante Becado'}${atRiskSch ? ' — ⚠️ Riesgo por asistencia < 85%' : ''}">${isBolsa ? '📦 Bolsa' : '🎓 Beca'}${atRiskSch ? ' ⚠️' : ''}</span>`;
+            }
+        } catch (_) {}
+
+        let absenceAlertHtml = '';
+        if (!isMonthRetired && aCount >= 3) {
+            alertStudentCount++;
+            const isSevere = aCount >= 5;
+            const alBg = isSevere ? '#fee2e2' : '#fef3c7';
+            const alCol = isSevere ? '#b91c1c' : '#b45309';
+            const alBrd = isSevere ? '#fca5a5' : '#fcd34d';
+            const rawPhone = String(s.guardianPhone1 || s.guardianPhone || s.motherPhone1 || s.fatherPhone1 || s.phone || '').replace(/[^0-9]/g, '');
+            const waPhone = rawPhone.length === 8 ? ('502' + rawPhone) : (rawPhone.length >= 10 ? rawPhone : '');
+            const waMsg = encodeURIComponent(`Estimado encargado de ${studentFullName}, le saludamos de ENCCO Jutiapa. Registramos ${aCount} inasistencias en el mes actual; agradeceremos comunicarse con Auxiliatura para seguimiento.`);
+            const waBtn = waPhone ? ` <a href="https://wa.me/${waPhone}?text=${waMsg}" target="_blank" rel="noopener noreferrer" title="Contactar al encargado por WhatsApp" style="display:inline-flex; align-items:center; gap:2px; background:#16a34a; color:#ffffff; border-radius:4px; padding:1px 5px; font-size:0.64rem; font-weight:800; text-decoration:none; margin-left:3px;"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+            absenceAlertHtml = `<span class="badge" style="font-size:0.65rem; margin-left:4px; background:${alBg}; color:${alCol}; border:1px solid ${alBrd}; font-weight:800; padding:1px 5px;" title="Alerta temprana: ${aCount} inasistencias en el mes">⚠️ ${aCount}F</span>${waBtn}`;
+        }
         const toDateBadgeHtml = (toDateAtt && toDateAtt.computableDays > 0)
             ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:800; color:${toDateAtt.color}; background:${toDateAtt.bgColor}; border:1px solid ${toDateAtt.borderColor}; border-radius:4px; padding:1px 4px; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}) para Bolsas de Estudio y Becas: ${toDateAtt.displayText} (${toDateAtt.attendedDays}/${toDateAtt.computableDays} días hábiles | P:${toDateAtt.present}, T:${toDateAtt.tardy}, J:${toDateAtt.justified}, A:${toDateAtt.absent}) — ${toDateAtt.scholarshipLabel}">🎓 ${year}: ${toDateAtt.displayText}</div>`
             : `<div style="margin-top:2px; font-size:0.62rem; font-weight:700; color:#64748b; text-align:center; white-space:nowrap;" title="Asistencia acumulada a la fecha (Ciclo ${year}): Sin registros aún">🎓 ${year}: —</div>`;
@@ -36004,7 +36036,7 @@ function loadAttendanceList() {
                 <td class="col-name" title="${studentFullName}${isExonerated ? ' (Estudiante Exonerado Bimestre ' + attBim + ')' : ''}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1; border-right:2px solid #38bdf8;' : '')}">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
                         <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                            <strong style="${isMonthRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
+                            <strong style="${isMonthRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}${scholarshipBadgeHtml}${absenceAlertHtml}
                         </span>
                         <button type="button" class="btn-att-student-bitacora" onclick="openCourseBitacoraModal('${s.id}')" title="Bitácora de Asistencia y Notas de ${studentFullName.replace(/'/g, "\\'")}" style="padding: 2px 6px; font-size: 0.70rem; line-height: 1.1; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0369a1; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; font-weight: 700; transition: all 0.15s ease;" onmouseover="this.style.background='#e0f2fe'; this.style.borderColor='#38bdf8';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1';">
                             <i class="fa-solid fa-book-journal-whills" style="font-size:0.75rem; color:#0284c7;"></i>
@@ -36110,6 +36142,20 @@ function loadAttendanceList() {
         foot.innerHTML = totalPresentRow + overallRow;
     }
 
+    // 📊 [v308] Actualizar tira ejecutiva de 4 KPIs de asistencia en vivo
+    try {
+        const nowDateObj = new Date();
+        const todayDayNum = (nowDateObj.getMonth() + 1 === Number(month)) ? nowDateObj.getDate() : 0;
+        const monthPctVal = totalClassLogs > 0 ? Math.round((totalClassPresent / totalClassLogs) * 100) : null;
+        const kpiPctEl = document.getElementById('attKpiMonthPct');
+        const kpiPresEl = document.getElementById('attKpiPresentToday');
+        const kpiAbsEl = document.getElementById('attKpiAbsentToday');
+        const kpiAlertEl = document.getElementById('attKpiAlertCount');
+        if (kpiPctEl) kpiPctEl.textContent = monthPctVal !== null ? `${monthPctVal}%` : '—';
+        if (kpiPresEl) kpiPresEl.textContent = todayDayNum > 0 ? String((dayPresentTotals[todayDayNum] || 0) + (dayTardyTotals[todayDayNum] || 0)) : '—';
+        if (kpiAbsEl) kpiAbsEl.textContent = todayDayNum > 0 ? String(dayAbsentTotals[todayDayNum] || 0) : '—';
+        if (kpiAlertEl) kpiAlertEl.textContent = String(alertStudentCount);
+    } catch (_) {}
     if (statsSummary) {
         statsSummary.innerHTML = `
             <div class="attendance-stats-horizontal">

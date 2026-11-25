@@ -2622,57 +2622,65 @@
 
                 <!-- 7. CONTROL DE ASISTENCIA PLANILLA ESTILO EXCEL CON PORCENTAJES -->
                 <section class="app-view" id="view-attendance">
-                    <!-- BANNER INSTITUCIONAL DE SUPERVISIÓN DIRECTIVA -->
-                    <div id="attendanceDirectorBanner" style="display:none; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:10px 16px; margin-bottom:12px; box-shadow:var(--shadow-sm); align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span id="attendanceBannerRoleBadge" class="badge" style="background:#15803d; color:#ffffff; font-weight:800; font-size:0.85rem; padding:4px 10px;">
-                                <i class="fa-solid fa-crown"></i> Supervisión Directiva
+                    <!-- BANNER INSTITUCIONAL DE SUPERVISIÓN DIRECTIVA (AZUL INSTITUCIONAL) -->
+                    <div id="attendanceDirectorBanner" style="display:none; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1.5px solid #7dd3fc; border-radius:10px; padding:10px 16px; margin-bottom:12px; box-shadow:var(--shadow-sm); align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <span id="attendanceBannerRoleBadge" class="badge" style="background:#0f2b5c; color:#ffffff; font-weight:800; font-size:0.84rem; padding:4px 10px;">
+                                <i class="fa-solid fa-crown" style="color:#fde047;"></i> Supervisión Directiva
                             </span>
-                            <span id="attendanceBannerRoleText" style="font-size:0.88rem; color:#14532d; font-weight:700;">
+                            <span id="attendanceBannerRoleText" style="font-size:0.86rem; color:#0f2b5c; font-weight:700;">
                                 Panel de Monitoreo General de Asistencia a todas las Clases y Cátedras de la Escuela.
                             </span>
                         </div>
-                        <span id="attendanceCurrentTeacherBadge" class="badge" style="background:#ffffff; color:#15803d; border:1px solid #15803d; font-weight:800; font-size:0.82rem; padding:4px 10px;">
+                        <span id="attendanceCurrentTeacherBadge" class="badge" style="background:#ffffff; color:#0369a1; border:1.5px solid #0369a1; font-weight:800; font-size:0.82rem; padding:4px 10px;">
                             Cátedra Institucional
                         </span>
                     </div>
 
-                    <!-- BARRA DE TOMA RÁPIDA DE ASISTENCIA / ESCÁNER MÓVIL Y TABLET -->
-                    <div class="attendance-quick-scan-bar" style="background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(16,185,129,0.08);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
-                                <div style="width: 44px; height: 44px; border-radius: 10px; background: var(--brand-green-main, #10b981); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 8px rgba(16,185,129,0.25);">
+                    <!-- BARRA COLAPSABLE DE TOMA RÁPIDA DE ASISTENCIA / ESCÁNER QR (AZUL INSTITUCIONAL) -->
+                    <div class="attendance-quick-scan-bar" style="background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%); border: 1.5px solid #7dd3fc; border-radius: 12px; padding: 10px 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(3,105,161,0.08);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:34px; height:34px; border-radius:8px; background:linear-gradient(135deg, #0f2b5c, #0369a1); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0;">
                                     <i class="fa-solid fa-qrcode"></i>
                                 </div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 800; font-size: 0.95rem; color: #064e3b; display: flex; align-items: center; gap: 6px;">
-                                        Toma de Asistencia con Carné (QR / Código de Barras)
-                                        <span class="badge" style="background: #2563eb; color: #fff; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">Móvil & Tablet</span>
-                                    </div>
-                                    <div style="position: relative; margin-top: 6px;">
-                                        <input type="text" id="attendanceBarcodeInput" class="form-control" placeholder="Pase lector láser, escanee con cámara o ingrese carné..." onkeydown="handleAttendanceBarcodeInput(event)" style="padding-left: 36px; padding-right: 70px; height: 42px; font-size: 16px; font-weight: 600; border-color: #86efac; background: #ffffff;">
-                                        <i class="fa-solid fa-barcode" style="position: absolute; left: 12px; top: 13px; color: #10b981; font-size: 1.1rem;"></i>
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="submitAttendanceManualBarcodeInput()" style="position: absolute; right: 4px; top: 4px; height: 34px; padding: 0 12px; font-size: 0.82rem; font-weight: 700;">
+                                <div style="font-weight:800; font-size:0.9rem; color:#0f2b5c; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    Toma Rápida con Carné (QR / Código de Barras)
+                                    <span class="badge" style="background:#0369a1; color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:4px;">Móvil &amp; Tablet</span>
+                                </div>
+                            </div>
+                            <button type="button" id="btnToggleAttendanceScanner" onclick="var b=document.getElementById('attendanceScannerCollapseBody'); if(b){var open=b.style.display==='none'; b.style.display=open?'':'none'; this.innerHTML=open?'<i class=&quot;fa-solid fa-chevron-up&quot;></i> Ocultar Escáner':'<i class=&quot;fa-solid fa-qrcode&quot;></i> Abrir Escáner QR';}" style="background:#ffffff; color:#0f2b5c; border:1.5px solid #7dd3fc; border-radius:8px; padding:5px 12px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-qrcode"></i> Abrir Escáner QR
+                            </button>
+                        </div>
+
+                        <div id="attendanceScannerCollapseBody" style="display:none; margin-top:12px; padding-top:10px; border-top:1px dashed #7dd3fc;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                <div style="flex: 1; min-width: 260px;">
+                                    <div style="position: relative;">
+                                        <input type="text" id="attendanceBarcodeInput" class="form-control" placeholder="Pase lector láser, escanee con cámara o ingrese carné..." onkeydown="handleAttendanceBarcodeInput(event)" style="padding-left: 36px; padding-right: 84px; height: 40px; font-size: 15px; font-weight: 600; border-color: #7dd3fc; background: #ffffff;">
+                                        <i class="fa-solid fa-barcode" style="position: absolute; left: 12px; top: 12px; color: #0369a1; font-size: 1.05rem;"></i>
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="submitAttendanceManualBarcodeInput()" style="position: absolute; right: 4px; top: 4px; height: 32px; padding: 0 12px; font-size: 0.8rem; font-weight: 700; background:#0369a1; border-color:#0f2b5c;">
                                             <i class="fa-solid fa-arrow-right"></i> Marcar
                                         </button>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <button type="button" class="btn btn-warning" onclick="openAttendanceCameraScanner()" style="height: 42px; font-weight: 800; font-size: 0.9rem; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; background: #ea580c; border-color: #c2410c; color: #ffffff; box-shadow: 0 3px 8px rgba(234,88,12,0.25);">
-                                    <i class="fa-solid fa-camera"></i> Escáner con Cámara
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="focusAttendanceBarcodeInput()" title="Enfocar campo para lector láser externo" style="height: 42px; padding: 0 12px; font-weight: 700; background: #fff;">
-                                    <i class="fa-solid fa-crosshairs"></i> Modo Lector
-                                </button>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-primary" onclick="openAttendanceCameraScanner()" style="height: 40px; font-weight: 800; font-size: 0.86rem; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; background: #0f2b5c; border-color: #0f2b5c; color: #ffffff;">
+                                        <i class="fa-solid fa-camera"></i> Escáner con Cámara
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="focusAttendanceBarcodeInput()" title="Enfocar campo para lector láser externo" style="height: 40px; padding: 0 12px; font-weight: 700; background: #fff;">
+                                        <i class="fa-solid fa-crosshairs"></i> Modo Lector
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <!-- BANNER DE ÚLTIMO ALUMNO ESCANEADO -->
-                        <div id="attendanceLastScannedBanner" style="display: none; margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: #ffffff; border: 1.5px solid #86efac; box-shadow: 0 2px 6px rgba(0,0,0,0.04); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div id="attendanceLastScannedBanner" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: #ffffff; border: 1.5px solid #7dd3fc; box-shadow: 0 2px 6px rgba(0,0,0,0.04); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <div id="attendanceBannerAvatar" style="width: 38px; height: 38px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; overflow: hidden; border: 2px solid #86efac;">
+                                <div id="attendanceBannerAvatar" style="width: 38px; height: 38px; border-radius: 50%; background: #0369a1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; overflow: hidden; border: 2px solid #7dd3fc;">
                                     <i class="fa-solid fa-user-check"></i>
                                 </div>
                                 <div>
@@ -2689,15 +2697,47 @@
                         </div>
                     </div>
 
+                    <!-- TIRA EJECUTIVA DE 4 KPIS DE ASISTENCIA EN VIVO -->
+                    <div id="attendanceExecutiveKpiBar" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:12px;">
+                        <div style="background:#ffffff; border:1.5px solid #bae6fd; border-left:4px solid #0369a1; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase;">Asistencia del Mes</div>
+                                <div id="attKpiMonthPct" style="font-size:1.3rem; font-weight:900; color:#0f2b5c;">—</div>
+                            </div>
+                            <i class="fa-solid fa-chart-pie" style="font-size:1.35rem; color:#0284c7; opacity:0.85;"></i>
+                        </div>
+                        <div style="background:#ffffff; border:1.5px solid #bbf7d0; border-left:4px solid #16a34a; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase;">Presentes Hoy</div>
+                                <div id="attKpiPresentToday" style="font-size:1.3rem; font-weight:900; color:#15803d;">0</div>
+                            </div>
+                            <i class="fa-solid fa-user-check" style="font-size:1.35rem; color:#16a34a; opacity:0.85;"></i>
+                        </div>
+                        <div style="background:#ffffff; border:1.5px solid #fecaca; border-left:4px solid #dc2626; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase;">Ausentes Hoy</div>
+                                <div id="attKpiAbsentToday" style="font-size:1.3rem; font-weight:900; color:#b91c1c;">0</div>
+                            </div>
+                            <i class="fa-solid fa-user-xmark" style="font-size:1.35rem; color:#dc2626; opacity:0.85;"></i>
+                        </div>
+                        <div style="background:#ffffff; border:1.5px solid #fde68a; border-left:4px solid #d97706; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase;">En Alerta (≥3 Faltas)</div>
+                                <div id="attKpiAlertCount" style="font-size:1.3rem; font-weight:900; color:#b45309;">0</div>
+                            </div>
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size:1.35rem; color:#d97706; opacity:0.85;"></i>
+                        </div>
+                    </div>
+
                     <div class="attendance-control-bar" style="background:#ffffff; padding:16px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:14px; box-shadow:var(--shadow-sm);">
                         <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
                             <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; flex:1;">
                                 <!-- FILTRO EXCLUSIVO DE DIRECCIÓN: SUPERVISIÓN POR MAESTRO -->
                                 <div id="attendanceTeacherFilterGroup" style="display:none;">
-                                    <label style="font-size:0.82rem; font-weight:800; color:#0f5127; display:block; margin-bottom:4px;">
-                                        <i class="fa-solid fa-user-tie"></i> 1. Supervisión por Maestro:
+                                    <label style="font-size:0.82rem; font-weight:800; color:#0f2b5c; display:block; margin-bottom:4px;">
+                                        <i class="fa-solid fa-user-tie" style="color:#0369a1;"></i> 1. Supervisión por Maestro:
                                     </label>
-                                    <select id="attendanceTeacherSelect" class="form-control" style="min-width:220px; height:38px; font-size:0.88rem; font-weight:700; background:#f0fdf4; border-color:#86efac; color:#14532d;" onchange="onAttendanceTeacherFilterChange()">
+                                    <select id="attendanceTeacherSelect" class="form-control" style="min-width:220px; height:38px; font-size:0.88rem; font-weight:700; background:#f0f9ff; border-color:#7dd3fc; color:#0f2b5c;" onchange="onAttendanceTeacherFilterChange()">
                                         <option value="">📋 General por Grado (Todos los Maestros)</option>
                                     </select>
                                 </div>
@@ -6774,8 +6814,8 @@
         };
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
-    <script src="firebase_auth_bridge.js?v=20261125_v307" charset="UTF-8"></script>
-    <script src="app.js?v=20261125_v307" charset="UTF-8"></script>
+    <script src="firebase_auth_bridge.js?v=20261125_v308" charset="UTF-8"></script>
+    <script src="app.js?v=20261125_v308" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
