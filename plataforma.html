@@ -2415,18 +2415,18 @@
 
                 <!-- 6. LIBRO DE CALIFICACIONES DE DOCENTES (10 CASILLAS, EXAMEN Y PROMEDIOS) -->
                 <section class="app-view" id="view-gradebook">
-                    <div id="gradebookTeacherBimestreNotice" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:var(--radius-sm); padding:8px 14px; margin-bottom:14px; color:#065f46; font-size:0.88rem; font-weight:700;">
-                        <i class="fa-solid fa-circle-check"></i> <span id="gradebookTeacherBimestreNoticeText">Bimestre Activo Oficial: Unidad 2 / II Bimestre (Habilitado por Dirección y Secretaría).</span>
+                    <div id="gradebookTeacherBimestreNotice" style="display:none; background:#f0f9ff; border:1.5px solid #7dd3fc; border-radius:10px; padding:7px 14px; margin-bottom:10px; color:#0f2b5c; font-size:0.82rem; font-weight:700;">
+                        <span id="gradebookTeacherBimestreNoticeText">Bimestre Activo Oficial: Unidad 2 / II Bimestre (Habilitado por Dirección y Secretaría).</span>
                     </div>
 
                     <!-- PANEL DE MONITOREO DE DOCENTES PARA DIRECCIÓN, SECRETARÍA Y ADMINISTRADOR -->
-                    <div id="gradebookDirectorSupervisionPanel" style="display:none; background:var(--bg-surface); border:1.5px solid var(--border-color); border-radius:var(--radius-md); padding:16px; margin-bottom:18px; box-shadow:var(--shadow-sm);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                    <div id="gradebookDirectorSupervisionPanel" style="display:none; background:var(--bg-surface); border:1.5px solid var(--border-color); border-radius:var(--radius-md); padding:14px; margin-bottom:12px; box-shadow:var(--shadow-sm);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
                             <div>
-                                <h4 style="margin:0; font-size:1rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                                <h4 style="margin:0; font-size:0.96rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
                                     <i class="fa-solid fa-clipboard-check" style="color:var(--brand-blue);"></i> Control Directivo: Estado de Ingreso de Calificaciones por Docente
                                 </h4>
-                                <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-secondary);">
+                                <p style="margin:2px 0 0 0; font-size:0.8rem; color:var(--text-secondary);">
                                     Supervisión en tiempo real del cumplimiento de ingreso de notas por bimestre para el claustro docente.
                                 </p>
                             </div>
@@ -2455,83 +2455,96 @@
                         </div>
                     </div>
 
-                    <!-- BANDA VISUAL DE CÁTEDRAS ASIGNADAS (ACCESO RÁPIDO PARA EL DOCENTE) -->
-                    <div id="teacherCourseCardsBar" style="display:none; margin-bottom:16px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; box-shadow:0 1px 4px rgba(0,0,0,0.03);">
-                        <div style="font-size:0.84rem; font-weight:800; color:var(--text-secondary); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
-                            <span><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green);"></i> Mis Cátedras Asignadas (Haga clic para cambiar de clase):</span>
-                            <span id="teacherCourseCompletionGlobal" style="font-size:0.78rem; font-weight:700; color:var(--brand-green-dark);"></span>
-                        </div>
-                        <div id="teacherCourseCardsContainer" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;">
-                            <!-- Generado dinámicamente con las materias del docente -->
-                        </div>
-                    </div>
+                    <!-- TARJETA PRINCIPAL COMPACTA DE CONTROL DE CALIFICACIONES (AZUL INSTITUCIONAL) -->
+                    <div class="gradebook-header-bar" style="display:block; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px 15px; margin-bottom:12px; box-shadow:0 4px 14px rgba(15,43,92,0.06);">
 
-                    <div class="gradebook-header-bar" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; margin-bottom:16px;">
-                        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; flex:1;">
-                            <div class="course-selector-box" style="min-width:280px; flex:1;">
-                                <label style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;"><i class="fa-solid fa-book"></i> Asignatura / Clase Asignada:</label>
-                                <select class="form-control" id="teacherCourseSelect" onchange="loadTeacherGradebook()">
-                                    <!-- Cargado dinámicamente según la clase del docente -->
-                                </select>
+                        <!-- BANDA COMPACTA DE CÁTEDRAS ASIGNADAS (PÍLDORAS DESLIZABLES) -->
+                        <div id="teacherCourseCardsBar" style="display:none; margin-bottom:9px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+                            <div style="font-size:0.75rem; font-weight:800; color:#0f2b5c; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                                <span><i class="fa-solid fa-chalkboard-user" style="color:#0369a1;"></i> Mis Cátedras Asignadas (clic para cambiar):</span>
+                                <span id="teacherCourseCompletionGlobal" style="font-size:0.75rem; font-weight:800; color:#0369a1;"></span>
                             </div>
-
-                            <div style="min-width:180px;">
-                                <label style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;"><i class="fa-solid fa-calendar-days"></i> Unidad / Bimestre:</label>
-                                <select class="form-control" id="gradebookBimestreSelect" onchange="loadTeacherGradebook()" style="font-weight:700;" aria-label="Seleccionar unidad o bimestre de calificaciones">
-                                    <option value="1">Unidad 1 / I Bimestre</option>
-                                    <option value="2">Unidad 2 / II Bimestre</option>
-                                    <option value="3">Unidad 3 / III Bimestre</option>
-                                    <option value="4">Unidad 4 / IV Bimestre</option>
-                                </select>
+                            <div id="teacherCourseCardsContainer" style="display:flex; gap:7px; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin;">
+                                <!-- Generado dinámicamente con las materias del docente -->
                             </div>
                         </div>
 
-                        <div class="gradebook-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <span id="gradebookSaveStatusBadge" class="badge" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:6px 12px; font-weight:700; border-radius:6px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;" title="Estado de guardado de calificaciones">
-                                <i class="fa-solid fa-circle-check"></i> Calificaciones guardadas
-                            </span>
-                            <button type="button" class="btn btn-outline-secondary" id="btnToggleZenMode" onclick="toggleGradebookZenMode()" title="Ampliar pantalla para concentrarse en el ingreso de notas">
-                                <i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Modo Enfoque</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" onclick="exportGradebookOfficialExcel()" title="Descargar libro de Microsoft Excel (.xlsx) con formato y notas">
-                                <i class="fa-solid fa-file-excel"></i> Exportar Notas (Excel)
-                            </button>
-                            <button type="button" class="btn btn-outline-success" onclick="triggerGradebookExcelImport()" title="Importar o actualizar calificaciones desde un archivo de Excel (.xlsx)">
-                                <i class="fa-solid fa-file-arrow-up"></i> Importar Notas (Excel)
-                            </button>
-                            <input type="file" id="gradebookExcelFileInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleGradebookExcelImport(event)">
-                            <button type="button" class="btn btn-primary" onclick="printGradebookOfficialList()" title="Imprimir cuadro de calificaciones oficial con membrete ENCCO y notas asentadas">
-                                <i class="fa-solid fa-print"></i> Imprimir Cuadro de Notas
-                            </button>
-                            <button type="button" class="btn btn-success" onclick="saveGradebookChanges(event)">
-                                <i class="fa-solid fa-floppy-disk"></i> Guardar Calificaciones
-                            </button>
-                        </div>
-                    </div>
+                        <!-- BARRA DE SELECTORES Y ACCIONES EN 1 SOLA FILA -->
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding-bottom:9px; border-bottom:1px solid #e2e8f0;">
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; flex:1; min-width:260px;">
+                                <div class="course-selector-box" style="flex:1 1 210px; max-width:300px; min-width:180px;">
+                                    <select class="form-control" id="teacherCourseSelect" onchange="loadTeacherGradebook()" title="Asignatura / Clase Asignada" aria-label="Seleccionar asignatura o clase asignada" style="height:35px; font-size:0.82rem; font-weight:700; color:#0f2b5c; background:#f8fafc; border-color:#cbd5e1; padding:0 10px;">
+                                        <!-- Cargado dinámicamente según la clase del docente -->
+                                    </select>
+                                </div>
 
-                    <!-- BARRA INFORMATIVA DE PONDERACIÓN VIGENTE DEL BIMESTRE Y AVANCE DE SECCIÓN -->
-                    <div id="gradebookWeightInfoBar" style="display:flex; flex-direction:column; gap:8px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:var(--radius-sm); padding:10px 16px; margin-bottom:14px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                                <span style="font-weight:800; color:#166534; font-size:0.92rem;"><i class="fa-solid fa-scale-balanced"></i> Ponderación Bimestral:</span>
-                                <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeZonaMaxDisplay">Zona: 40 pts</span>
-                                <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeExamMaxDisplay">Examen: 60 pts</span>
-                                <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:900; font-size:0.85rem; padding:4px 10px;">Total: 100 pts</span>
-                                <span class="badge" id="gradebookProgressBadge" style="display:none; font-weight:800; font-size:0.85rem; padding:4px 10px; align-items:center; gap:6px;"></span>
+                                <div style="flex:0 1 235px; min-width:175px;">
+                                    <select class="form-control" id="gradebookBimestreSelect" onchange="loadTeacherGradebook()" title="Unidad / Bimestre" aria-label="Seleccionar unidad o bimestre de calificaciones" style="height:35px; font-size:0.82rem; font-weight:700; color:#0f2b5c; background:#f8fafc; border-color:#cbd5e1; padding:0 10px;">
+                                        <option value="1">Unidad 1 / I Bimestre</option>
+                                        <option value="2">Unidad 2 / II Bimestre</option>
+                                        <option value="3">Unidad 3 / III Bimestre</option>
+                                        <option value="4">Unidad 4 / IV Bimestre</option>
+                                    </select>
+                                </div>
+
+                                <span id="gradebookSaveStatusBadge" class="badge" style="display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; padding:4px 10px; font-weight:800; border-radius:999px; background:#dcfce7; color:#166534; border:1px solid #86efac; white-space:nowrap;" title="Estado de guardado de calificaciones">
+                                    <i class="fa-solid fa-circle-check"></i> Guardado
+                                </span>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradingConfigModal()" style="font-weight:700;">
-                                <i class="fa-solid fa-pen-to-square"></i> Cambiar Valor de Zona y Examen
-                            </button>
+
+                            <div class="gradebook-actions" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-sm" onclick="openGradingConfigModal()" title="Cambiar valor de zona y examen" style="height:35px; padding:0 11px; border-radius:8px; background:#f0f9ff; color:#0f2b5c; border:1.5px solid #7dd3fc; font-size:0.79rem; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-sliders" style="color:#0369a1;"></i> Ponderación
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnToggleZenMode" onclick="toggleGradebookZenMode()" title="Ampliar pantalla para concentrarse en el ingreso de notas" style="height:35px; padding:0 10px; border-radius:8px; font-size:0.79rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                                    <i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Enfoque</span>
+                                </button>
+
+                                <!-- MENÚ EXCEL / IMPRIMIR -->
+                                <div class="att-toolbar-dropdown" style="position:relative; display:inline-block;">
+                                    <button type="button" onclick="var m=this.nextElementSibling; var isOpen=m.style.display==='block'; document.querySelectorAll('.att-dropdown-menu').forEach(function(el){el.style.display='none';}); m.style.display=isOpen?'none':'block';" style="height:35px; padding:0 11px; border-radius:8px; background:#ffffff; color:#1e293b; border:1.5px solid #cbd5e1; font-size:0.79rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-file-export" style="color:#0369a1;"></i> Excel / Imprimir <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;"></i>
+                                    </button>
+                                    <div class="att-dropdown-menu" style="display:none; position:absolute; right:0; top:39px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:10px; min-width:225px; box-shadow:0 10px 24px rgba(15,43,92,0.14); z-index:40; padding:6px;">
+                                        <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; printGradebookOfficialList();" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#0f2b5c; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-print" style="color:#0369a1;"></i> Imprimir Cuadro de Notas
+                                        </button>
+                                        <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; exportGradebookOfficialExcel();" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#1e293b; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i> Exportar Notas (Excel)
+                                        </button>
+                                        <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; triggerGradebookExcelImport();" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#1e293b; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-file-arrow-up" style="color:#0284c7;"></i> Importar Notas (Excel)
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="file" id="gradebookExcelFileInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleGradebookExcelImport(event)">
+
+                                <button type="button" class="btn btn-primary btn-sm" onclick="saveGradebookChanges(event)" style="height:35px; padding:0 14px; border-radius:8px; background:#0369a1; border-color:#0f2b5c; color:#ffffff; font-size:0.81rem; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-floppy-disk"></i> Guardar Calificaciones
+                                </button>
+                            </div>
                         </div>
-                        <div id="gradebookProgressBarContainer" style="display:none; width:100%; background:#e2e8f0; border-radius:10px; height:7px; overflow:hidden;">
-                            <div id="gradebookProgressBarFill" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #059669); transition:width 0.3s ease;"></div>
+
+                        <!-- TIRA UNIFICADA DE PONDERACIÓN + AVANCE + MÉTRICAS EN VIVO (1 SOLA LÍNEA AZUL INSTITUCIONAL) -->
+                        <div id="gradebookWeightInfoBar" style="display:flex; flex-direction:column; gap:6px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:9px; padding:7px 12px; margin-top:9px; margin-bottom:0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <span class="badge" style="background:#e0f2fe; color:#0f2b5c; border:1px solid #7dd3fc; font-weight:800; font-size:0.76rem; padding:3px 9px; border-radius:999px;" id="badgeZonaMaxDisplay">Zona: 40 pts</span>
+                                    <span class="badge" style="background:#ffedd5; color:#9a3412; border:1px solid #fdba74; font-weight:800; font-size:0.76rem; padding:3px 9px; border-radius:999px;" id="badgeExamMaxDisplay">Examen: 60 pts</span>
+                                    <span class="badge" style="background:#ffffff; color:#0f2b5c; border:1px solid #cbd5e1; font-weight:800; font-size:0.76rem; padding:3px 9px; border-radius:999px;">Total: 100 pts</span>
+                                    <span class="badge" id="gradebookProgressBadge" style="display:none; font-weight:800; font-size:0.76rem; padding:3px 9px; border-radius:999px; align-items:center; gap:5px;"></span>
+                                </div>
+                                <!-- KPI Strip en Vivo para Docente (inline a la derecha) -->
+                                <div id="gradebookLiveKpiStrip" style="display:none;"></div>
+                            </div>
+                            <div id="gradebookProgressBarContainer" style="display:none; width:100%; background:#e2e8f0; border-radius:999px; height:4px; overflow:hidden;">
+                                <div id="gradebookProgressBarFill" style="height:100%; width:0%; background:linear-gradient(90deg, #0284c7, #0369a1); transition:width 0.3s ease;"></div>
+                            </div>
                         </div>
-                        <!-- KPI Strip en Vivo para Docente -->
-                        <div id="gradebookLiveKpiStrip" style="display:none;"></div>
                     </div>
 
                     <!-- Pestañas de Modo de Calificación (10 Casillas, Examen/Resumen, Totales de Evaluación) -->
-                    <div class="gradebook-tabs-nav" style="display:flex; gap:8px; margin-bottom:16px; border-bottom:2px solid var(--border-color); padding-bottom:8px; flex-wrap:wrap;">
+                    <div class="gradebook-tabs-nav" style="display:flex; gap:8px; margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:6px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-outline gb-tab-btn active" id="gbTabBtn-activities" onclick="switchGradebookTab('activities')">
                             <i class="fa-solid fa-table-cells"></i> 10 Casillas de Zona (Actividades)
                         </button>
@@ -6823,7 +6836,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261125_v309" charset="UTF-8"></script>
+    <script src="app.js?v=20261125_v311" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>

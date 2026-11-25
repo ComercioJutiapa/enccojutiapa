@@ -33247,7 +33247,7 @@ function refreshLiveGradeProgressBadge(subjectName, unit) {
     const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
 
     if (badge) {
-        badge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance de Sección: <strong>${completedCount}/${totalActive}</strong> (${pct}%)`;
+        badge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance: <strong>${completedCount}/${totalActive}</strong> (${pct}%)`;
         badge.style.display = 'inline-flex';
         if (pct === 100) {
             badge.style.background = '#dcfce7';
@@ -33258,8 +33258,8 @@ function refreshLiveGradeProgressBadge(subjectName, unit) {
             badge.style.color = '#854d0e';
             badge.style.border = '1px solid #fde047';
         } else {
-            badge.style.background = '#f1f5f9';
-            badge.style.color = '#475569';
+            badge.style.background = '#ffffff';
+            badge.style.color = '#0f2b5c';
             badge.style.border = '1px solid #cbd5e1';
         }
     }
@@ -33336,21 +33336,18 @@ function updateGradebookLiveKpis(subjectName, unit) {
     const totalActive = activeStudents.length;
 
     strip.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.83rem; padding-top:6px; border-top:1px dashed #bbf7d0;">
-            <span style="font-weight:800; color:#15803d; font-size:0.82rem; display:inline-flex; align-items:center; gap:5px;">
-                <i class="fa-solid fa-gauge-high"></i> Métricas en Vivo del Grupo:
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:0.75rem;">
+            <span class="badge" style="background:#ffffff; color:#0f2b5c; border:1px solid #cbd5e1; font-weight:800; padding:3px 9px; border-radius:999px;" title="Promedio general de los estudiantes con notas ingresadas">
+                <i class="fa-solid fa-calculator" style="color:#0369a1;"></i> Promedio: <strong>${average} pts</strong>
             </span>
-            <span class="badge" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; font-weight:800; padding:4px 8px;" title="Promedio general de los estudiantes con notas ingresadas">
-                <i class="fa-solid fa-calculator" style="color:#16a34a;"></i> Promedio: <strong>${average} pts</strong>
+            <span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:800; padding:3px 9px; border-radius:999px;" title="Estudiantes con nota final mayor o igual a 60">
+                <i class="fa-solid fa-circle-check" style="color:#16a34a;"></i> Aprobados: <strong>${passingCount}</strong>
             </span>
-            <span class="badge" style="background:#ecfdf5; color:#15803d; border:1px solid #86efac; font-weight:800; padding:4px 8px;" title="Estudiantes con nota final mayor o igual a 60">
-                <i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> Aprobados: <strong>${passingCount}</strong>
+            <span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-weight:800; padding:3px 9px; border-radius:999px;" title="Estudiantes calificados con nota menor a 60">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626;"></i> En Riesgo: <strong>${failingCount}</strong>
             </span>
-            <span class="badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:800; padding:4px 8px;" title="Estudiantes calificados con nota menor a 60">
-                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i> En Riesgo: <strong>${failingCount}</strong>
-            </span>
-            <span class="badge" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-weight:800; padding:4px 8px;" title="Avance de estudiantes con al menos una nota o zona registrada">
-                <i class="fa-solid fa-users" style="color:#64748b;"></i> Evaluados: <strong>${gradedCount}/${totalActive}</strong>
+            <span class="badge" style="background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight:800; padding:3px 9px; border-radius:999px;" title="Avance de estudiantes con al menos una nota o zona registrada">
+                <i class="fa-solid fa-users" style="color:#0369a1;"></i> Evaluados: <strong>${gradedCount}/${totalActive}</strong>
             </span>
         </div>
     `;
@@ -33364,13 +33361,13 @@ function toggleGradebookZenMode() {
     const btn = document.getElementById('btnToggleZenMode');
     if (btn) {
         btn.innerHTML = isZen 
-            ? `<i class="fa-solid fa-compress"></i> <span id="btnToggleZenModeText">Salir de Enfoque</span>`
-            : `<i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Modo Enfoque</span>`;
+            ? `<i class="fa-solid fa-compress"></i> <span id="btnToggleZenModeText">Salir</span>`
+            : `<i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Enfoque</span>`;
         if (isZen) {
-            btn.classList.add('btn-success');
+            btn.classList.add('btn-primary');
             btn.classList.remove('btn-outline-secondary');
         } else {
-            btn.classList.remove('btn-success');
+            btn.classList.remove('btn-primary');
             btn.classList.add('btn-outline-secondary');
         }
     }
@@ -34112,13 +34109,13 @@ function updateGradebookSaveStatus(isDirty) {
         badge.style.color = '#854d0e';
         badge.style.borderColor = '#fde047';
         badge.title = 'Hay cambios locales sin guardar. Recuerde presionar Guardar Calificaciones.';
-        badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#d97706;"></i> <span>Cambios pendientes de guardar</span>';
+        badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#d97706;"></i> <span>Sin guardar</span>';
     } else {
-        badge.style.background = '#f0fdf4';
+        badge.style.background = '#dcfce7';
         badge.style.color = '#166534';
-        badge.style.borderColor = '#bbf7d0';
+        badge.style.borderColor = '#86efac';
         badge.title = 'Todas las calificaciones se encuentran guardadas.';
-        badge.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#16a34a;"></i> <span>Calificaciones guardadas</span>';
+        badge.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#16a34a;"></i> <span>Guardado</span>';
     }
 }
 window.updateGradebookSaveStatus = updateGradebookSaveStatus;
@@ -34204,27 +34201,20 @@ function renderTeacherCourseCards() {
             badgeText = `0% (${activeStudents.length})`;
         }
 
-        const borderStyle = isSelected ? '2px solid #16a34a' : '1.5px solid #e2e8f0';
-        const bgStyle = isSelected ? '#f0fdf4' : '#ffffff';
-        const shadowStyle = isSelected ? '0 4px 12px rgba(22,163,74,0.18)' : '0 1px 3px rgba(0,0,0,0.05)';
+        const borderStyle = isSelected ? '1.5px solid #0369a1' : '1.5px solid #cbd5e1';
+        const bgStyle = isSelected ? 'linear-gradient(135deg, #e0f2fe, #f0f9ff)' : '#f8fafc';
+        const shadowStyle = isSelected ? '0 2px 6px rgba(3,105,161,0.16)' : 'none';
+        const shortGrade = (p.grade || '').replace(/Perito Contador/i, 'PC').trim();
 
         return `
             <div onclick="window.selectTeacherCourseCard('${p.id}')" 
-                 style="min-width:200px; max-width:230px; flex:0 0 auto; background:${bgStyle}; border:${borderStyle}; border-radius:10px; padding:10px 12px; cursor:pointer; box-shadow:${shadowStyle}; transition:all 0.15s ease; user-select:none; display:flex; flex-direction:column; justify-content:space-between; gap:6px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                    <span style="font-size:0.78rem; font-weight:800; color:#0f172a; background:#e2e8f0; padding:2px 8px; border-radius:6px; letter-spacing:0.3px;">
-                        ${p.grade} "${secLabel}"
-                    </span>
-                    ${isSelected ? '<span style="font-size:0.72rem; font-weight:800; color:#16a34a;"><i class="fa-solid fa-circle-check"></i> Activo</span>' : ''}
+                 style="min-width:155px; max-width:210px; flex:0 0 auto; background:${bgStyle}; border:${borderStyle}; border-radius:9px; padding:6px 10px; cursor:pointer; box-shadow:${shadowStyle}; transition:all 0.15s ease; user-select:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:0.7rem; font-weight:800; color:#0369a1;">
+                    <span>${escapeHtml(shortGrade)} "${secLabel}"</span>
+                    <span style="background:${badgeBg}; color:${badgeColor}; padding:1px 6px; border-radius:999px; font-size:0.68rem;">${badgeText}</span>
                 </div>
-                <div style="font-size:0.86rem; font-weight:700; color:#1e293b; line-height:1.25; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.subject)}">
-                    ${escapeHtml(p.subject)}
-                </div>
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:2px;">
-                    <span style="font-size:0.72rem; font-weight:800; background:${badgeBg}; color:${badgeColor}; padding:2px 8px; border-radius:12px;">
-                        ${badgeText}
-                    </span>
-                    <span style="font-size:0.70rem; color:#64748b; font-weight:600;">Bim ${currentUnit}</span>
+                <div style="font-size:0.81rem; font-weight:800; color:#0f2b5c; line-height:1.25; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.subject)} — ${escapeHtml(p.grade)} &quot;${secLabel}&quot;">
+                    ${isSelected ? '<i class="fa-solid fa-circle-check" style="color:#0369a1; font-size:0.72rem; margin-right:3px;"></i>' : ''}${escapeHtml(p.subject)}
                 </div>
             </div>
         `;
