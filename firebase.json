@@ -27,7 +27,9 @@
       "*.pem",
       "*.rules",
       "database.rules.json",
-      "package*.json"
+      "package*.json",
+      "Informe_Auditoria_Estadistica_Oficial_2026.html",
+      "cuadro_resumen_estadistico_2026.html"
     ],
     "headers": [
       {

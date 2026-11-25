@@ -2183,6 +2183,29 @@ function updateDbStatusIndicator(connected = true) {
 }
 window.updateDbStatusIndicator = updateDbStatusIndicator;
 
+function recordAndRenderLastBackupBadge(markNow = false) {
+    try {
+        if (markNow && typeof localStorage !== 'undefined') {
+            localStorage.setItem('ENCCO_LAST_BACKUP_AT', new Date().toISOString());
+        }
+        const badge = document.getElementById('dbLastBackupBadge');
+        if (!badge) return;
+        const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem('ENCCO_LAST_BACKUP_AT') : null;
+        if (!raw) {
+            badge.textContent = '⚠️ Aún no se ha registrado respaldo preventivo en este equipo.';
+            badge.style.color = '#b45309';
+            return;
+        }
+        const d = new Date(raw);
+        const days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+        const fmt = d.toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        badge.textContent = days >= 15 ? `⚠️ Último respaldo: ${fmt} (hace ${days} días — recomendado respaldar)` : `✅ Último respaldo: ${fmt}`;
+        badge.style.color = days >= 15 ? '#b45309' : '#0369a1';
+    } catch (_) {}
+}
+window.recordAndRenderLastBackupBadge = recordAndRenderLastBackupBadge;
+if (typeof document !== 'undefined') { document.addEventListener('DOMContentLoaded', () => recordAndRenderLastBackupBadge(false)); }
+
 async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperUserRole() && !isDirectorRole()) {
         console.warn("⚠️ [Solo Lectura] Operación push a la nube cancelada: Modo copia local de respaldo activo.");
@@ -2317,15 +2340,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
                             body: JSON.stringify(cleanPayload[nodeKey])
                         }).catch(e => console.warn(`Aviso al sincronizar colección ${nodeKey}:`, e))
                     );
-                    if (nodeKey === 'students') {
-                        syncPromises.push(
-                            fetch(`${firebaseUrl}/students.json`, {
-                                method: "PUT",
-                                headers: headers,
-                                body: JSON.stringify(cleanPayload.students)
-                            }).catch(e => console.warn(`Aviso al sincronizar colección raíz students:`, e))
-                        );
-                    }
+                    // [v302] Eliminado espejo redundante en raíz /students.json (ahorra 50% de escritura y acelera 2x)
                 }
             }
             if (cleanPayload.lastModified !== undefined) {
@@ -2625,20 +2640,15 @@ const EnccoCloudSync = {
 
         try {
             const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
-            const rootNodeEndpoint = `${firebaseUrl}/${nodeName}.json`;
             const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
 
+            // [v302] Escritura única en /encc_school_state (sin duplicar 1.11 MB en raíz)
             const [resNode, resTime] = await Promise.all([
                 fetch(nodeEndpoint, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 }),
-                fetch(rootNodeEndpoint, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                }).catch(() => null),
                 fetch(timeEndpoint, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -19630,8 +19640,13 @@ async function addStudentExpedienteComment() {
             const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
             setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore comentario:", e));
         }
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB comentario:", e));
+        if (typeof EnccoCloudSync !== 'undefined') {
+            const sIdx = (STATE.students || []).findIndex(s => s && String(s.id) === String(student.id));
+            if (sIdx >= 0 && typeof EnccoCloudSync.patchNode === 'function') {
+                EnccoCloudSync.patchNode(`students/${sIdx}`, { expediente: student.expediente, lastModified: nowTime }).catch(e => console.warn("Aviso RTDB comentario atómico:", e));
+            } else if (EnccoCloudSync.syncNode) {
+                EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB comentario:", e));
+            }
         }
     } catch(err) {
         console.warn("Aviso de sincronización:", err);
@@ -19675,8 +19690,13 @@ async function deleteStudentExpedienteComment(commentId) {
             const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') ? sanitizePayloadForFirestore(student) : student;
             setDoc(stuRef, cleanStudent, { merge: true }).catch(e => console.warn("Aviso Firestore borrado comentario:", e));
         }
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB borrado comentario:", e));
+        if (typeof EnccoCloudSync !== 'undefined') {
+            const sIdx = (STATE.students || []).findIndex(s => s && String(s.id) === String(student.id));
+            if (sIdx >= 0 && typeof EnccoCloudSync.patchNode === 'function') {
+                EnccoCloudSync.patchNode(`students/${sIdx}`, { expediente: student.expediente, lastModified: nowTime }).catch(e => console.warn("Aviso RTDB borrado comentario atómico:", e));
+            } else if (EnccoCloudSync.syncNode) {
+                EnccoCloudSync.syncNode('students', STATE.students).catch(e => console.warn("Aviso RTDB borrado comentario:", e));
+            }
         }
     } catch(err) {
         console.warn("Aviso al eliminar comentario:", err);
@@ -26889,16 +26909,21 @@ function renderUsersTable(filterVal = '') {
     let countTotal_H = 0, countTotal_M = 0;
 
     allUsers.forEach(u => {
-        const r = u.renglon || '011';
+        const isSys = Boolean(u.isSystemOnly || u.renglon === 'N/A');
+        const r = isSys ? 'N/A' : (u.renglon || '011');
         const g = u.gender || 'Masculino';
         if (g === 'Femenino') {
             countTotal_M++;
-            if (r === '021') count021_M++;
-            else count011_M++;
+            if (!isSys) {
+                if (r === '021' || r === '022') count021_M++;
+                else count011_M++;
+            }
         } else {
             countTotal_H++;
-            if (r === '021') count021_H++;
-            else count011_H++;
+            if (!isSys) {
+                if (r === '021' || r === '022') count021_H++;
+                else count011_H++;
+            }
         }
     });
 
@@ -26946,23 +26971,27 @@ function renderUsersTable(filterVal = '') {
     const canEditUsers = isSuperOrDir || (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
 
     tbody.innerHTML = list.map(u => {
-        const renglonBadge = u.renglon === '021' 
-            ? `<span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fed7aa; font-weight:800; font-size:0.70rem; padding:1px 4px;">021</span>`
-            : `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.70rem; padding:1px 4px;">011</span>`;
+        const isSysAccount = Boolean(u.isSystemOnly || u.renglon === 'N/A');
+        const renglonBadge = isSysAccount
+            ? `<span class="badge" style="background:#e0f2fe; color:#0f2b5c; border:1px solid #7dd3fc; font-weight:800; font-size:0.68rem; padding:1px 5px;">SISTEMA</span>`
+            : (u.renglon === '021' || u.renglon === '022')
+                ? `<span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fed7aa; font-weight:800; font-size:0.70rem; padding:1px 4px;">${u.renglon}</span>`
+                : `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.70rem; padding:1px 4px;">011</span>`;
 
         const genderBadge = u.gender === 'Femenino'
             ? `<span class="badge" style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; font-weight:700; font-size:0.70rem; padding:1px 4px;">Femenino</span>`
             : `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700; font-size:0.70rem; padding:1px 4px;">Masculino</span>`;
 
         const isMaster = (u.id === 'usr-admin-master');
+        const safeEmailForReset = String(u.email || '').replace(/['"\\]/g, '');
         const passCell = canViewPasswords ? 
-            `<div style="display:flex; align-items:center; gap:4px;">
-                <code id="userPassCode_${u.id}" style="color:var(--brand-orange); font-weight:700; font-size:0.75rem;">${u.password || 'C@rolina1'}</code>
-                <button class="btn btn-secondary btn-xs" onclick="toggleUserTableRowPassword('${u.id}')" title="Ver/Ocultar" style="padding:1px 4px; font-size:0.70rem; height:20px; min-width:20px;">
-                    <i class="fa-solid fa-eye-slash" id="userPassIcon_${u.id}"></i>
-                </button>
+            `<div style="display:flex; align-items:center; gap:5px; flex-wrap:nowrap;">
+                <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700; font-size:0.68rem; padding:2px 6px; white-space:nowrap;" title="Contraseña cifrada en Google Firebase Auth">
+                    <i class="fa-solid fa-shield-halved"></i> Firebase Auth
+                </span>
+                ${safeEmailForReset ? `<button class="btn btn-secondary btn-xs" onclick="sendUserPasswordResetEmail('${safeEmailForReset}')" title="Enviar correo oficial de restablecimiento de contraseña" style="padding:1px 6px; font-size:0.68rem; height:21px; color:#0f2b5c; border-color:#7dd3fc; background:#f0f9ff; white-space:nowrap;"><i class="fa-solid fa-key"></i> Restablecer</button>` : ''}
             </div>` : 
-            `<code style="font-size:0.75rem;">••••••••</code>`;
+            `<span style="font-size:0.72rem; color:#64748b; font-weight:600;"><i class="fa-solid fa-lock"></i> Protegida</span>`;
 
         const roleBadge = `<span class="user-role-badge role-${u.role}" style="font-size:0.70rem; padding:1px 5px; text-transform:uppercase;">${u.role}</span>`;
 

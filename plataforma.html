@@ -6569,23 +6569,23 @@
     <!-- MODAL DE CONFIGURACIÓN Y SINCRONIZACIÓN DE SERVIDOR NUBE / BD -->
         <!-- MODAL DE CONFIGURACIÓN DE BASE DE DATOS FIREBASE REALTIME -->
     <div class="modal-overlay" id="dbConfigModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeDbConfigModal()">
-        <div class="modal-container" style="max-width: 640px; width:100%; border-radius:14px; overflow:hidden; border:2px solid #10b981; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
-            <div class="modal-header" style="background:linear-gradient(135deg, #065f46, #047857); color:#ffffff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-container" style="max-width: 640px; width:100%; border-radius:14px; overflow:hidden; border:2px solid #0369a1; box-shadow:0 25px 50px -12px rgba(15,43,92,0.38);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #0f2b5c, #0369a1); color:#ffffff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; font-size:1.15rem; color:#ffffff; display:flex; align-items:center; gap:8px; font-weight:800;">
                     <i class="fa-brands fa-google"></i> Base de Datos: Google Firebase Realtime
                 </h3>
-                <button type="button" class="modal-close" onclick="closeDbConfigModal()" style="color:#fff; background:transparent; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
+                <button type="button" class="modal-close" onclick="closeDbConfigModal()" style="color:#e0f2fe; background:transparent; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
             </div>
             <div class="modal-body" style="padding:22px;">
-                <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-                        <strong style="color:#166534; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
-                            <i class="fa-solid fa-bolt" style="color:#eab308;"></i> Sincronización Automática en Tiempo Real
+                <div style="background:#f0f9ff; border:1.5px solid #7dd3fc; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                        <strong style="color:#0f2b5c; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-bolt" style="color:#0284c7;"></i> Sincronización Inteligente (Ahorro RTDB)
                         </strong>
-                        <span class="badge badge-success" id="dbModalStatusBadge" style="font-weight:800; background:#16a34a; color:#ffffff; padding:4px 10px; border-radius:12px;">SINCRONIZACIÓN AUTOMÁTICA ACTIVA</span>
+                        <span class="badge badge-success" id="dbModalStatusBadge" style="font-weight:800; background:#0369a1; color:#ffffff; padding:4px 10px; border-radius:12px;">SINCRONIZACIÓN AUTOMÁTICA ACTIVA</span>
                     </div>
-                    <p style="font-size:0.84rem; color:#15803d; margin:0; line-height:1.5;">
-                        Cada cambio que realice (estudiantes, notas, pensum, maestros, asistencia o roles) se sincroniza en <strong>0 milisegundos</strong> con Google Firebase Realtime Database para que todas las computadoras del colegio vean los cambios inmediatamente.
+                    <p style="font-size:0.84rem; color:#0c4a6e; margin:0; line-height:1.5;">
+                        Cada guardado se sincroniza en <strong>0ms</strong> en <code>/encc_school_state</code> sin duplicar nodos raíz, con pre-chequeo de 16 bytes para mantener el consumo dentro del plan gratuito.
                     </p>
                 </div>
 
@@ -6617,19 +6617,25 @@
                     </button>
                 </div>
 
-                <!-- RESPALDO OFICIAL DE BASE DE DATOS (RECOMENDADO) -->
-                <div class="role-restricted" data-allowed="director,secretaria,admin" style="margin-bottom:14px; padding:12px 14px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                    <div>
-                        <strong style="color:#166534; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
-                            <i class="fa-solid fa-cloud-arrow-down"></i> Respaldo Preventivo en Formato JSON
+                <!-- RESPALDO OFICIAL DE BASE DE DATOS Y MONITOREO DE CUOTA -->
+                <div class="role-restricted" data-allowed="director,secretaria,admin" style="margin-bottom:14px; padding:12px 14px; background:#f0f9ff; border:1.5px solid #7dd3fc; border-radius:8px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="flex:1; min-width:220px;">
+                        <strong style="color:#0f2b5c; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-cloud-arrow-down" style="color:#0369a1;"></i> Respaldo Preventivo JSON (Cierre de Bimestre)
                         </strong>
-                        <span style="color:#15803d; font-size:0.75rem; display:block; margin-top:2px;">
-                            Descarga una copia completa de seguridad del estado institucional, estudiantes y pensum.
+                        <span style="color:#334155; font-size:0.75rem; display:block; margin-top:2px;">
+                            Descarga copia íntegra del ciclo activo, estudiantes, usuarios y pensum.
                         </span>
+                        <small id="dbLastBackupBadge" style="display:inline-block; margin-top:4px; font-size:0.72rem; font-weight:700; color:#0369a1;"></small>
                     </div>
-                    <button type="button" class="btn btn-success btn-sm" onclick="exportDatabaseBackupJSON()" style="background:#16a34a; color:#ffffff; border:none; font-weight:800; padding:6px 14px; border-radius:6px; white-space:nowrap; cursor:pointer;" title="Descargar Respaldo JSON">
-                        <i class="fa-solid fa-download"></i> Descargar Respaldo
-                    </button>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="exportDatabaseBackupJSON(); if(typeof recordAndRenderLastBackupBadge==='function') recordAndRenderLastBackupBadge(true);" style="background:#0369a1; color:#ffffff; border:none; font-weight:800; padding:6px 14px; border-radius:6px; white-space:nowrap; cursor:pointer;" title="Descargar Respaldo JSON">
+                            <i class="fa-solid fa-download"></i> Descargar Respaldo
+                        </button>
+                        <a href="https://console.firebase.google.com/project/encco-jutiapa-live-2026/usage" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm" style="border:1.5px solid #0369a1; color:#0f2b5c; font-weight:700; padding:5px 11px; border-radius:6px; text-decoration:none; white-space:nowrap;" title="Ver consumo mensual de descargas en Firebase Console">
+                            <i class="fa-solid fa-chart-line"></i> Ver Cuota Firebase
+                        </a>
+                    </div>
                 </div>
 
                 <!-- ZONA DE PELIGRO: EXCLUSIVA ADMINISTRADOR -->
@@ -6752,10 +6758,24 @@
     <script src="db.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="ui.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="sire.js?v=20261119_v280" charset="UTF-8"></script>
-    <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
+    <!-- Parches históricos 2026 cargados bajo demanda (ahorra 1.08 MB en cada carga normal del ciclo activo) -->
+    <script>
+        window.ensureOfficialHistoricalPatchesLoaded = function() {
+            if (window._enccoHistoricalPatchesPromise) return window._enccoHistoricalPatchesPromise;
+            window._enccoHistoricalPatchesPromise = new Promise(function(resolve) {
+                var s = document.createElement('script');
+                s.src = 'official_historical_patches.js?v=20261014_v1';
+                s.charset = 'UTF-8';
+                s.onload = function() { resolve(true); };
+                s.onerror = function() { resolve(false); };
+                document.head.appendChild(s);
+            });
+            return window._enccoHistoricalPatchesPromise;
+        };
+    </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
-    <script src="firebase_auth_bridge.js?v=20261125_v301" charset="UTF-8"></script>
-    <script src="app.js?v=20261125_v301" charset="UTF-8"></script>
+    <script src="firebase_auth_bridge.js?v=20261125_v303" charset="UTF-8"></script>
+    <script src="app.js?v=20261125_v303" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
