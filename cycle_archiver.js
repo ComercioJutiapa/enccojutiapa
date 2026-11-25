@@ -847,7 +847,7 @@
 
                 // Guardar respaldo íntegro del estado activo antes de entrar a modo histórico (memoria + sessionStorage)
                 if (!this._originalStateBeforeHistory && window.STATE && !window.STATE.isHistoricalReadOnlyMode) {
-                    const currentActive = String(window.STATE.activeCycle || '2027').trim();
+                    const currentActive = String(window.STATE.activeCycle || String(new Date().getFullYear())).trim();
                     const cleanActiveCycle = (currentActive !== targetCycle) ? currentActive : '2027';
                     this._originalStateBeforeHistory = {
                         activeCycle: cleanActiveCycle,
@@ -873,7 +873,7 @@
 
                 // Preservar en RAM un respaldo inmutable de los estudiantes del ciclo activo (2027, 2028, 2029+) para retorno instantáneo
                 if (window.STATE && Array.isArray(window.STATE.students)) {
-                    const liveCycle = String(window.STATE.activeCycle || window.STATE.academicCycle || '2027').trim();
+                    const liveCycle = String(window.STATE.activeCycle || window.STATE.academicCycle || String(new Date().getFullYear())).trim();
                     const activeLiveStudents = window.STATE.students.filter(s => s && (
                         String(s.cycle || '') === liveCycle ||
                         String(s.academicCycle || '') === liveCycle ||

@@ -1476,7 +1476,7 @@ function renderCuadroEstadisticoOficial() {
     const viewingCycle = String(
         STATE.viewingHistoricalCycle || 
         STATE.historicalViewingCycle || 
-        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || '2027'))
+        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || String(new Date().getFullYear())))
     ).trim();
 
     const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
@@ -2566,7 +2566,7 @@ function computeCourseAnnualAverage(scoresArray, courseName, gradeKey) {
     if (!Array.isArray(scoresArray) || scoresArray.length === 0) return null;
     const lowerC = String(courseName || '').toLowerCase();
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
-    const activeCyc = String(st.activeCycle || '2026').trim();
+    const activeCyc = String(st.activeCycle || String(new Date().getFullYear())).trim();
     const viewingCyc = String(st.viewingHistoricalCycle || st.historicalViewingCycle || (st.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
     const isHistCycle = !!(st.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
     const activeBim = parseInt(st.config?.activeBimestre) || (isHistCycle ? 4 : 1);
@@ -2877,7 +2877,7 @@ function _sanitizeRecupKeyToken(raw) {
 function _getRecupCycleUrlPath(cycle, codeKey, subjSlug) {
     const cleanCyc = String(cycle || '').trim();
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
-    const activeCyc = String(st.activeCycle || '2027').trim();
+    const activeCyc = String(st.activeCycle || String(new Date().getFullYear())).trim();
     const isHistCycle = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle || (cleanCyc && cleanCyc !== activeCyc));
     const baseNode = isHistCycle
         ? `/encc_school_state/historico/${encodeURIComponent(cleanCyc || '2026')}/recuperacionesSnapshot`
@@ -2893,13 +2893,13 @@ function _getRecupMemoryStore(cycle) {
         cycle ||
         st.viewingHistoricalCycle ||
         st.historicalViewingCycle ||
-        (st.isHistoricalReadOnlyMode ? '2026' : (st.activeCycle || '2027'))
+        (st.isHistoricalReadOnlyMode ? '2026' : (st.activeCycle || String(new Date().getFullYear())))
     ).trim();
     if (!st.recuperacionesByCycle || typeof st.recuperacionesByCycle !== 'object') {
         st.recuperacionesByCycle = {};
     }
     // Si está viendo el ciclo activo (y no histórico), usar STATE.recuperaciones directamente
-    const isCurrentActive = !st.isHistoricalReadOnlyMode && cleanCyc === String(st.activeCycle || '2027').trim();
+    const isCurrentActive = !st.isHistoricalReadOnlyMode && cleanCyc === String(st.activeCycle || String(new Date().getFullYear())).trim();
     if (isCurrentActive) {
         if (!st.recuperaciones || typeof st.recuperaciones !== 'object') st.recuperaciones = {};
         return st.recuperaciones;
@@ -3075,7 +3075,7 @@ function canEditRecoveryGrade(courseTeacher = '', cycle = '') {
         return true;
     }
     const cleanCyc = String(cycle || '').trim();
-    const isHist = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle || (cleanCyc && cleanCyc !== String(st.activeCycle || '2027').trim()));
+    const isHist = !!(st.isHistoricalReadOnlyMode || st.historicalViewingCycle || st.viewingHistoricalCycle || (cleanCyc && cleanCyc !== String(st.activeCycle || String(new Date().getFullYear())).trim()));
     if (!isHist && (role === 'docente' || role === 'catedratico')) {
         const myName = String((st.currentUser && (st.currentUser.name || st.currentUser.fullName)) || '').toLowerCase().trim();
         const tName = String(courseTeacher || '').toLowerCase().trim();
@@ -3221,7 +3221,7 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
     const viewingCycle = String(
         STATE.viewingHistoricalCycle || 
         STATE.historicalViewingCycle || 
-        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || '2027'))
+        (STATE.isHistoricalReadOnlyMode ? '2026' : (STATE.activeCycle || String(new Date().getFullYear())))
     ).trim();
 
     const is2026Official = (viewingCycle === '2026' || (STATE.isHistoricalReadOnlyMode && (STATE.historicalViewingCycle === '2026' || STATE.viewingHistoricalCycle === '2026')));
@@ -3334,7 +3334,7 @@ function renderReprobadosRecuperacionView(renderOpts = {}) {
             }
             const sCycle = String(s.academicCycle || s.cycle || s.ciclo || '').trim();
             if (sCycle) return sCycle === viewingCycle;
-            return viewingCycle === (STATE.activeCycle || '2027');
+            return viewingCycle === (STATE.activeCycle || String(new Date().getFullYear()));
         });
 
         cycleStudents.forEach((s, idx) => {
@@ -4147,7 +4147,7 @@ function _getConDerechoViewingCycle() {
     const d = (typeof window !== 'undefined' && window._lastReprobadosReportData) ? window._lastReprobadosReportData : null;
     if (d && d.cycle) return String(d.cycle).trim();
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {};
-    return String(st.viewingHistoricalCycle || st.historicalViewingCycle || st.activeCycle || '2027').trim();
+    return String(st.viewingHistoricalCycle || st.historicalViewingCycle || st.activeCycle || String(new Date().getFullYear())).trim();
 }
 
 function _getPostRecupBadgeHtml(postRecup, mode = 'screen') {
@@ -4492,7 +4492,7 @@ function _normRecoveryName(name) {
 }
 
 function _getLiveTargetCycleRoster(targetCycle = '2027') {
-    const tgtStr = String(targetCycle || '2027').trim();
+    const tgtStr = String(targetCycle || String(new Date().getFullYear())).trim();
     const sources = [];
 
     // 1. Caché fresca de la nube / migraciones en vivo
@@ -4548,7 +4548,7 @@ function _getLiveTargetCycleRoster(targetCycle = '2027') {
 }
 
 function _prefetchLiveTargetCycleStudentsIfNeeded(targetCycle = '2027') {
-    const tgtStr = String(targetCycle || '2027').trim();
+    const tgtStr = String(targetCycle || String(new Date().getFullYear())).trim();
     if (typeof fetch !== 'function') return;
     if (!window._liveTargetCycleFetchState) window._liveTargetCycleFetchState = {};
     const state = window._liveTargetCycleFetchState[tgtStr];

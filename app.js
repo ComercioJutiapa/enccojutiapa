@@ -2221,7 +2221,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
     // Paquete institucional protegido: PATCH granular que NUNCA sobreescribe colecciones con arreglos vacíos ni resetea config/bimestre
     const cleanPayload = {
-        activeCycle: STATE.activeCycle || '2026',
+        activeCycle: STATE.activeCycle || String(new Date().getFullYear()),
         theme: STATE.theme || 'light',
         lastModified: STATE.lastModified || Date.now()
     };
@@ -2269,7 +2269,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 
     if (Array.isArray(STATE.students) && STATE.students.length >= 200) {
-        const activeCycleNum = parseInt(String(STATE.activeCycle || '2027').trim(), 10);
+        const activeCycleNum = parseInt(String(STATE.activeCycle || String(new Date().getFullYear())).trim(), 10);
         cleanPayload.students = STATE.students.filter(s => {
             if (!s || !s.id || !s.name) return false;
             const stLower = String(s.status || '').toLowerCase().trim();
@@ -2545,7 +2545,7 @@ const EnccoCloudSync = {
             return false;
         }
         if (nodeName === 'students' && Array.isArray(data)) {
-            const activeCycleNum = (typeof STATE !== 'undefined' && STATE) ? parseInt(String(STATE.activeCycle || '2027').trim(), 10) : NaN;
+            const activeCycleNum = (typeof STATE !== 'undefined' && STATE) ? parseInt(String(STATE.activeCycle || String(new Date().getFullYear())).trim(), 10) : NaN;
             data = data.filter(s => {
                 if (!s) return false;
                 const stLower = String(s.status || '').toLowerCase().trim();
@@ -6244,7 +6244,7 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'attendanceAlerts' || cleanPath.startsWith('attendanceAlerts')) {
                         if (nodeData && typeof nodeData === 'object') {
                             if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
-                            const activeCycle = String(STATE.activeCycle || '2026').trim();
+                            const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
                             if (cleanPath === 'attendanceAlerts') {
                                 const rawList = Array.isArray(nodeData) ? nodeData : Object.values(nodeData);
                                 rawList.forEach(a => {
@@ -6519,7 +6519,7 @@ function initFirebaseRealtimeConnection() {
                         } else if (data.path === '/attendanceAlerts' || data.path.startsWith('/attendanceAlerts')) {
                             // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch (con aislamiento de ciclo)
                             if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
-                            const activeCycle = String(STATE.activeCycle || '2026').trim();
+                            const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
                             const subPath = data.path.replace(/^\/attendanceAlerts\/?/, '');
                             const alertId = subPath || (data.data && data.data.id);
                             let incomingAlert = (data.data && typeof data.data === 'object') ? data.data : null;
@@ -6957,7 +6957,7 @@ window.asignarMaestroGuia = asignarMaestroGuia;
 
 function printGuideTeachersOfficialDirectory() {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const list = sortGrades(STATE.gradesList || []);
 
     // Filtros activos en la vista
@@ -8083,7 +8083,7 @@ function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '
     const cleanGName = (gradeName || '').toLowerCase().trim();
     const gWord = cleanGName.split(' ')[0]; // '4to', '5to', '6to'
     const formCycle = cycleOverride || (typeof document !== 'undefined' ? document.getElementById('studentFormCycle')?.value : null);
-    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '2026').trim();
+    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || String(new Date().getFullYear())).trim();
 
     return window.STATE.students.filter(s => {
         if (!s || s.status === 'Retirado' || s.status === 'Egresado' || s.status === 'Inactivo') return false;
@@ -8185,7 +8185,7 @@ function renderEnrollmentSectionsDistribution() {
     if (!container) return;
 
     const formCycle = typeof document !== 'undefined' ? document.getElementById('studentFormCycle')?.value : null;
-    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '2026').trim();
+    const targetCycle = String(formCycle || window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || String(new Date().getFullYear())).trim();
 
     // Actualizar encabezado del modal/panel para reflejar dinámicamente el ciclo
     const titleEl = document.getElementById('enrollmentAllSectionsSummaryTitle');
@@ -12603,7 +12603,7 @@ try {
                     const incomingAlert = event.data.alert || event.data.data;
                     if (incomingAlert && incomingAlert.id) {
                         if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
-                        const activeCycle = String(STATE.activeCycle || '2026').trim();
+                        const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
                         if (!incomingAlert.cycle) {
                             incomingAlert.cycle = String(incomingAlert.date ? incomingAlert.date.substring(0, 4) : (incomingAlert.timestamp ? new Date(incomingAlert.timestamp).getFullYear() : '2026')).trim();
                         }
@@ -12727,7 +12727,7 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (!isHistoryActive && Array.isArray(incomingState.students)) {
         const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
-        const activeCyc = String(STATE.activeCycle || '2027').trim();
+        const activeCyc = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
         const activeCycNum = parseInt(activeCyc, 10);
         const archivedCycles = new Set(
             (Array.isArray(STATE.cycles) ? STATE.cycles : [])
@@ -14621,7 +14621,7 @@ function renderDashboard() {
             <div style="border-top:1px solid var(--border-color); padding-top:14px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <h4 style="color:var(--brand-green-dark); margin:0; font-size:0.95rem; font-weight:800;">
-                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || '2026'}):
+                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || String(new Date().getFullYear())}):
                     </h4>
                     <button class="btn btn-outline-primary btn-xs" onclick="navigateTo('grades')" style="font-size:0.78rem;">
                         <i class="fa-solid fa-graduation-cap"></i> Gestionar Grados
@@ -14852,7 +14852,7 @@ function renderDashboard() {
             <div style="margin-bottom:18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <h4 style="color:var(--brand-green-dark); margin:0; font-size:0.95rem; font-weight:800;">
-                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || '2026'}):
+                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || String(new Date().getFullYear())}):
                     </h4>
                     <button class="btn btn-outline-primary btn-xs" onclick="navigateTo('grades')" style="font-size:0.78rem;">
                         <i class="fa-solid fa-graduation-cap"></i> Gestionar Grados
@@ -15232,7 +15232,7 @@ function printCourseStudentList(courseId) {
                 <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:44px; width:auto; max-width:55px;" onerror="this.style.display='none'">
                 <div>
                     <h1 class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                    <div class="school-sub">ENCCO Jutiapa (1970) | Jornada Matutina — Ciclo Lectivo ${STATE.activeCycle || '2026'}</div>
+                    <div class="school-sub">ENCCO Jutiapa (1970) | Jornada Matutina — Ciclo Lectivo ${STATE.activeCycle || String(new Date().getFullYear())}</div>
                 </div>
             </div>
             <div style="text-align:right;">
@@ -16656,7 +16656,7 @@ async function deleteStudent(studentId) {
         return false;
     }
 
-    const activeCycleName = String(window.STATE.activeCycle || window.STATE.academicCycle || '2027').trim();
+    const activeCycleName = String(window.STATE.activeCycle || window.STATE.academicCycle || String(new Date().getFullYear())).trim();
 
     const student = (STATE.students || []).find(s => s && (
         String(s.id) === String(studentId) ||
@@ -16897,7 +16897,7 @@ function resetStudentEnrollmentForm(showNotification = true) {
     
     // 🛡️ REGLA INSTITUCIONAL: Retener la sección y el ciclo previamente elegidos
     const currentGradeVal = document.getElementById('studentFormGrade')?.value || window._lastSelectedEnrollmentGrade || '';
-    const currentCycleVal = document.getElementById('studentFormCycle')?.value || window._lastSelectedEnrollmentCycle || STATE.activeCycle || '2027';
+    const currentCycleVal = document.getElementById('studentFormCycle')?.value || window._lastSelectedEnrollmentCycle || STATE.activeCycle || String(new Date().getFullYear());
 
     updateGradeSelects();
     updateCycleSelects();
@@ -17092,7 +17092,7 @@ function openEditStudentModal(studentId) {
         }
     }
 
-    setVal('studentFormCycle', student.cycle || STATE.activeCycle || '2026');
+    setVal('studentFormCycle', student.cycle || STATE.activeCycle || String(new Date().getFullYear()));
     setVal('studentFormShift', student.shift || 'Matutina');
 
     // Datos de la mamá
@@ -19849,7 +19849,7 @@ function printStudentExpedienteRecord(studentId) {
     const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(student) : { grade: student.grade || '', section: student.section || '' };
     const dateFormatted = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || student.cycle || STATE.activeCycle || '2026').trim();
+    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || student.cycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const attPctObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
         ? window.getStudentAttendancePercentageToDate(student.id, effectiveCycle)
         : null;
@@ -20140,7 +20140,7 @@ function openStudentProfileModal(id) {
     if (carneDisp) {
         const pCode = String(student.personalCode || '').trim();
         const cuiVal = String(student.cui || '').trim();
-        const cycVal = student.cycle || STATE.activeCycle || '2027';
+        const cycVal = student.cycle || STATE.activeCycle || String(new Date().getFullYear());
         const copyBtnStyle = 'display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:6px; border:1px solid #cbd5e1; background:#ffffff; color:#0f2b5c; font-family:monospace; font-size:0.76rem; font-weight:700; cursor:pointer; vertical-align:middle;';
         const codeHtml = pCode
             ? `<button type="button" onclick="copyStudentProfileCode('${escapeHtml(pCode)}', this)" title="Copiar Código Personal para SIRE" style="${copyBtnStyle}">Cód: ${escapeHtml(pCode)} <i class="fa-regular fa-copy" style="color:#0284c7;"></i></button>`
@@ -20416,7 +20416,7 @@ function openStudentProfileModal(id) {
                     </div>
                     <div>
                         <h4 style="margin:0; font-size:0.94rem; font-weight:800; color:#0f172a;">Resumen Integral de Asistencia, Faltas y Disciplina</h4>
-                        <p style="margin:1px 0 0 0; font-size:0.75rem; color:#475569;">Sincronizado en tiempo real con listas de asistencia, Auxiliatura y Dirección (Ciclo ${STATE.activeCycle || '2026'})</p>
+                        <p style="margin:1px 0 0 0; font-size:0.75rem; color:#475569;">Sincronizado en tiempo real con listas de asistencia, Auxiliatura y Dirección (Ciclo ${STATE.activeCycle || String(new Date().getFullYear())})</p>
                     </div>
                 </div>
                 <span class="badge" style="background:${semaforoBg}; color:${semaforoColor}; border:1px solid ${semaforoBorder}; font-size:0.76rem; font-weight:800; padding:5px 10px; display:inline-flex; align-items:center; gap:6px;">
@@ -21310,7 +21310,7 @@ function printStudentFullFicha(studentId) {
             </tr>
         `).join('');
 
-    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const effectiveCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const attPctToDate = (typeof window.getStudentAttendancePercentageToDate === 'function')
         ? window.getStudentAttendancePercentageToDate(student.id, effectiveCycle)
         : null;
@@ -22004,7 +22004,7 @@ function loadSchoolHeaderConfig() {
 
     if (prevName) prevName.textContent = h.schoolName || 'Escuela Nacional de Ciencias Comerciales';
     if (prevTeacher) prevTeacher.textContent = h.teacherName || 'PEM. Nehemias Yalil Salguero';
-    if (prevCycle) prevCycle.textContent = STATE.activeCycle || '2026';
+    if (prevCycle) prevCycle.textContent = STATE.activeCycle || String(new Date().getFullYear());
 }
 
 function saveSchoolHeaderConfig() {
@@ -22221,7 +22221,7 @@ function updatePrintModelStats(gradeCode) {
         return;
     }
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
-    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const cycleStudents = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], activeCycle)
         : (STATE.students || []);
@@ -22653,7 +22653,7 @@ function generateOfficialPrintList(opts = null) {
         const rowHeight = totalStudents > 35 ? '15px' : '17px';
         const rowLineHeight = totalStudents > 35 ? '1.05' : '1.1';
 
-        const cycle = STATE.activeCycle || '2026';
+        const cycle = STATE.activeCycle || String(new Date().getFullYear());
         // Título oficial según modelo
         let headerDocTitle = '';
         let docTitle = '';
@@ -23464,7 +23464,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
 window.applyInstitutionalStylesToWorksheet = applyInstitutionalStylesToWorksheet;
 
 function generateOfficialExcelList(opts = null) {
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
     let gradeCode = opts?.gradeCode || opts?.gradeVal || document.getElementById('printModelGradeSelect')?.value;
@@ -24017,7 +24017,7 @@ window.generateOfficialPrintList = generateOfficialPrintList;
 
 function downloadStudentTemplate(targetBim = null) {
     const activeBim = targetBim || document.getElementById('printModelBimestreSelect')?.value || document.getElementById('gradebookBimestreSelect')?.value || (STATE.config?.activeBimestre ? String(STATE.config.activeBimestre) : '1');
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : (STATE.schoolHeader || {}));
     
     const sampleStudents = [
@@ -24113,7 +24113,7 @@ function downloadStudentTemplate(targetBim = null) {
 
 function downloadTeacherTemplate() {
     const activeBim = STATE.config?.activeBimestre || '1';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
 
     const sampleTeachers = [
@@ -24186,7 +24186,7 @@ function downloadTeacherTemplate() {
 
 function downloadAdminStaffTemplate() {
     const activeBim = STATE.config?.activeBimestre || '1';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
 
     const sampleAdmins = [
@@ -24601,7 +24601,7 @@ function previewStudentImport(e) {
         let detectedSchool = 'Escuela Nacional de Ciencias Comerciales';
         let detectedSubject = '';
         let detectedTeacher = '';
-        let detectedCycle = STATE.activeCycle || '2026';
+        let detectedCycle = STATE.activeCycle || String(new Date().getFullYear());
         let detectedGradeStr = '';
         let detectedSection = '';
         let detectedBimestre = '2';
@@ -24778,7 +24778,7 @@ function previewStudentImport(e) {
 
             const personalCode = (cols[colIdxCodPersonal] || '').trim().toUpperCase();
             const cui = cols[colIdxCui] || '';
-            const carne = cols[colIdxCarne] || ('ENCCO-' + (STATE.activeCycle || '2026') + '-' + Math.floor(100 + Math.random()*900));
+            const carne = cols[colIdxCarne] || ('ENCCO-' + (STATE.activeCycle || String(new Date().getFullYear())) + '-' + Math.floor(100 + Math.random()*900));
             const phone = cols[colIdxTelefono] || '';
             const tutorName = cols[colIdxEncargado] || 'No registrado';
             const tutorPhone = phone || 'Sin tel.';
@@ -25223,7 +25223,7 @@ function printStudentsOfficialList(targetGrade = null) {
         return;
     }
 
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
     let list = (typeof getCycleFilteredStudents === 'function')
@@ -25492,7 +25492,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
         return;
     }
 
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
     let list = (typeof getCycleFilteredStudents === 'function')
@@ -26419,7 +26419,7 @@ function isGradebookEditableForUser(pensumId, unit) {
 
     // Verificar si existe solicitud aprobada y vigente para este docente, curso y bimestre
     const now = Date.now();
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const approvedRequest = requests.find(req => {
         const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
@@ -26467,7 +26467,7 @@ window.isGradebookEditableForUser = isGradebookEditableForUser;
 
 function getPendingGradeEditRequest(teacherId, pensumId, unit) {
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     return requests.find(req => {
         const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
         if (activeCycle === '2027' && reqCycle === '2026') return false;
@@ -26584,7 +26584,7 @@ async function submitGradeEditRequest(event) {
         const nowIso = new Date().toISOString();
         const newRequest = {
             id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-            cycle: String(STATE.activeCycle || '2027').trim(),
+            cycle: String(STATE.activeCycle || String(new Date().getFullYear())).trim(),
             teacherId: currentUser?.id || 'DOCENTE_ID',
             teacherName: currentUser?.name || 'Catedrático Titular',
             teacherEmail: currentUser?.email || '',
@@ -26686,7 +26686,7 @@ window.filterGradeEditRequests = filterGradeEditRequests;
 function updatePendingRequestsBadge() {
     const badge = document.getElementById('pendingGradeRequestsBadge');
     if (!badge) return;
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const pendingCount = requests.filter(r => {
         if (r.status !== 'pending') return false;
@@ -26707,7 +26707,7 @@ function renderGradeEditRequestsTable() {
     const tbody = document.getElementById('gradeEditRequestsTableBody');
     if (!tbody) return;
 
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const rawRequests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const requests = rawRequests.filter(r => {
         const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : '2026')).trim();
@@ -27220,7 +27220,7 @@ function getStudentsAtAttendanceRisk(filterGradeCodes = null) {
 
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
-    const cycleKey = String(STATE.activeCycle || '2026').trim();
+    const cycleKey = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     if (cycleKey === '2026') {
         // 🛡️ El ciclo 2026 está concluido y todas sus alertas están formalmente resueltas: no generar riesgos activos
         return [];
@@ -27333,7 +27333,7 @@ function requestBrowserNotificationPermission() {
 window.requestBrowserNotificationPermission = requestBrowserNotificationPermission;
 
 function getUserAlerts() {
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     // 🛡️ REGLA INSTITUCIONAL ESTRICTA:
     // En el Ciclo Escolar 2027: no existen notificaciones (inicio en blanco y limpio).
     // En el Ciclo Escolar 2026: todas las notificaciones ya fueron 100% resueltas.
@@ -27878,7 +27878,7 @@ function dismissAlert(alertId, e, showToastNotice = true) {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
 
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
 
@@ -27959,7 +27959,7 @@ function dismissAllAlerts() {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
 
     if (!STATE.dismissedAlerts) STATE.dismissedAlerts = {};
 
@@ -28011,7 +28011,7 @@ function restoreAllAlerts() {
     const currentUser = STATE.currentUser || STATE.users[0];
     const currentUserId = currentUser ? (currentUser.id || STATE.currentRole) : STATE.currentRole;
     const role = STATE.currentRole || 'admin';
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
 
     if (STATE.dismissedAlerts) {
         STATE.dismissedAlerts[currentUserId] = [];
@@ -29302,7 +29302,7 @@ function getReportCardSubjectGrades(student, subject) {
     // Detectar si el ciclo lectivo visualizado está cerrado (2026/histórico o 4to Bimestre cerrado)
     // o si está en curso (ej. 2027 en Bimestre 1, 2 o 3)
     const st = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : {});
-    const activeCyc = String(st.activeCycle || '2026').trim();
+    const activeCyc = String(st.activeCycle || String(new Date().getFullYear())).trim();
     const viewingCyc = String(st.viewingHistoricalCycle || st.historicalViewingCycle || (st.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
     const isHistMode = !!(st.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
     const activeBim = parseInt(st.config?.activeBimestre) || (isHistMode ? 4 : 1);
@@ -29504,7 +29504,7 @@ function buildStudentReportCardInnerHtml(s) {
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
     // Detectar cierre del ciclo para las etiquetas del resumen inferior
-    const activeCyc = String(STATE.activeCycle || '2026').trim();
+    const activeCyc = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const viewingCyc = String(STATE.viewingHistoricalCycle || STATE.historicalViewingCycle || (STATE.isHistoricalReadOnlyMode ? '2026' : activeCyc)).trim();
     const isHistCycle = !!(STATE.isHistoricalReadOnlyMode || (activeCyc && viewingCyc !== activeCyc));
     const isCycleClosed = isHistCycle || activeBim >= 4;
@@ -29572,7 +29572,7 @@ function buildStudentReportCardInnerHtml(s) {
                         <div style="font-size:10px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase; line-height:1.15;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
                         <div style="font-size:16px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15; letter-spacing:0.3px;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                         <div style="font-size:9.5px; font-weight:700; color:#475569; letter-spacing:0.2px; line-height:1.15;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:11px; font-weight:900; padding:2px 14px; border-radius:5px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">BOLETÍN OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
+                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:11px; font-weight:900; padding:2px 14px; border-radius:5px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">BOLETÍN OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || String(new Date().getFullYear())}</div>
                     </div>
                     <div style="width:56px; text-align:center; flex-shrink:0;">
                         <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:2px 2px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
@@ -29589,7 +29589,7 @@ function buildStudentReportCardInnerHtml(s) {
                     <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span style="font-weight:700; color:#000;">${s.personalCode || "—"}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span style="font-weight:700; color:#000;">${gradeName}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span style="font-weight:700; color:#000;">${s.career || "Perito Contador"}</span></div>
-                    <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span style="font-weight:700; color:#000;">${STATE.activeCycle || "2026"} — Jornada Matutina</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span style="font-weight:700; color:#000;">${STATE.activeCycle || String(new Date().getFullYear())} — Jornada Matutina</span></div>
                 </div>
 
                 <!-- TABLA DE CALIFICACIONES (4 BIMESTRES, PROMEDIO Y RESULTADO) -->
@@ -30563,7 +30563,7 @@ window.populateGradebookBimestreSelect = populateGradebookBimestreSelect;
 // [getTeacherAssignedCourses unificada en definición canónica superior]
 
 function calculateClassBimesterMetrics(c, bimester) {
-    const activeCycleStr = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const activeCycleStr = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const fallbackPool = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], activeCycleStr)
         : (STATE.students || []);
@@ -31411,7 +31411,7 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     // 🏛️ REGLA HISTÓRICA ENCCO: Si estamos en modo de consulta histórica (ej: Ciclo 2026),
     // persistir la corrección autorizada directamente en el archivo histórico sin tocar la base activa 2027.
     if (isHistorical) {
-        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || '2026');
+        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || String(new Date().getFullYear()));
         const cleanSub = String(subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
         const califKey = `${student.id}_${cleanSub}_b${uNum}`;
         const califPayload = {
@@ -31805,7 +31805,7 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
     // 🏛️ REGLA HISTÓRICA ENCCO: Si estamos en modo de consulta histórica (ej: Ciclo 2026),
     // persistir el lote autorizado directamente en el archivo histórico sin tocar la base activa 2027.
     if (isHistorical) {
-        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || '2026');
+        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || String(new Date().getFullYear()));
         const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
         if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
             try {
@@ -32155,7 +32155,7 @@ function openGradingConfigModal() {
     const teacherBadge = document.getElementById('cfgModalTeacherBadge');
 
     if (courseTitle) courseTitle.textContent = `Cátedra: ${targetPensum.subject} (${targetPensum.grade} "${targetPensum.section || 'A'}")`;
-    if (bimTitle) bimTitle.textContent = `Bimestre: ${currentUnit}º Bimestre | Ciclo: ${STATE.activeCycle || '2026'}`;
+    if (bimTitle) bimTitle.textContent = `Bimestre: ${currentUnit}º Bimestre | Ciclo: ${STATE.activeCycle || String(new Date().getFullYear())}`;
     if (teacherBadge) teacherBadge.textContent = targetPensum.teacher || (currentUser ? currentUser.name : 'Docente');
 
     const zInput = document.getElementById('cfgFormZonaMax');
@@ -34949,7 +34949,7 @@ function isDirectorRole(role = null) {
 window.isDirectorRole = isDirectorRole;
 
 function getAttendanceRecordKey(gradeCode, month, courseId) {
-    const cycleKey = STATE.activeCycle || '2026';
+    const cycleKey = STATE.activeCycle || String(new Date().getFullYear());
     if (courseId && courseId !== 'GENERAL') {
         return `${cycleKey}_M${month}_${gradeCode}_${courseId}`;
     }
@@ -34958,7 +34958,7 @@ function getAttendanceRecordKey(gradeCode, month, courseId) {
 
 function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-    const cycleKey = STATE.activeCycle || '2026';
+    const cycleKey = STATE.activeCycle || String(new Date().getFullYear());
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
 
@@ -35671,7 +35671,7 @@ function loadAttendanceList() {
 
     // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON RESOLUCIÓN INTELIGENTE DE ALIAS) (INDIVIDUAL POR DOCENTE, JUSTIFICACIÓN OFICIAL UNIVERSAL)
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-    const cycleKey = STATE.activeCycle || '2026';
+    const cycleKey = STATE.activeCycle || String(new Date().getFullYear());
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
 
@@ -36481,7 +36481,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         }
         const genKey = (typeof getAttendanceRecordKey === 'function') 
             ? getAttendanceRecordKey(gradeCode, month, 'GENERAL') 
-            : `${STATE.activeCycle || '2026'}_M${month}_${gradeCode}`;
+            : `${STATE.activeCycle || String(new Date().getFullYear())}_M${month}_${gradeCode}`;
         if (!next && isAuditRole && courseId === 'GENERAL' && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
             delete STATE.attendanceRecords[genKey][studentId][day];
         }
@@ -37842,7 +37842,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                         <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
                         <div>
                             <h1>${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO ESCOLAR ${STATE.activeCycle || '2026'}</div>
+                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO ESCOLAR ${STATE.activeCycle || String(new Date().getFullYear())}</div>
                         </div>
                     </div>
                     <div style="text-align:right;">
@@ -40808,7 +40808,7 @@ function printHonorRoll() {
                         <div class="header-info">
                             <h2>Ministerio de Educación — Guatemala</h2>
                             <h1>${escapeHtml(h.schoolName || 'Escuela Nacional de Ciencias Comerciales')}</h1>
-                            <h2>Jutiapa | Ciclo Lectivo ${escapeHtml(STATE.activeCycle || '2026')}</h2>
+                            <h2>Jutiapa | Ciclo Lectivo ${escapeHtml(STATE.activeCycle || String(new Date().getFullYear()))}</h2>
                             <div class="report-title">${escapeHtml(titleText)} (${studentsToPrint.length} Estudiantes)</div>
                         </div>
                         <div class="header-meta">
@@ -42105,7 +42105,7 @@ function printStudentDemographicsReport() {
                         <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
                         <div>
                             <h1>${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || '2026'}</div>
+                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || String(new Date().getFullYear())}</div>
                         </div>
                     </div>
                     <div style="background:#166534; color:#fff; font-size:10px; font-weight:900; padding:4px 12px; border-radius:12px; border:1px solid #86efac; text-transform:uppercase;">
@@ -42339,7 +42339,7 @@ function exportGradebookOfficialExcel() {
     });
 
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const cfg = (typeof getGradingConfig === 'function') 
         ? getGradingConfig(targetPensum, currentUnit) 
         : { zonaMax: 40, examMax: 60, activities: [] };
@@ -42551,7 +42551,7 @@ window.exportGradebookOfficialExcel = exportGradebookOfficialExcel;
 window.exportGradebookOfficialCSV = exportGradebookOfficialExcel;
 
 function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConfig, cfg, fileName) {
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const h = STATE.schoolHeader || {};
     const classCode = targetPensum.code || targetPensum.classCode || targetPensum.id || '';
     const dynamicTeacher = targetPensum.teacher || 'Claustro Docente';
@@ -43940,7 +43940,7 @@ function triggerBlobDownload(blob, filename) {
 
 function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, colWidths = []) {
     const cleanFileName = filename.replace(/\.[^/.]+$/, "") + ".xlsx";
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
     const numCols = (headers && headers.length) ? headers.length : 9;
 
@@ -44277,7 +44277,7 @@ function exportTeachersOfficialExcel() {
             return;
         }
 
-        const cycle = STATE.activeCycle || '2026';
+        const cycle = STATE.activeCycle || String(new Date().getFullYear());
         const headers = [
             "No.", 
             "Nombre Completo del Catedrático", 
@@ -44324,7 +44324,7 @@ function exportTeachersOfficialCSV() {
 function exportAdminStaffOfficialExcel() {
     try {
         const admins = (STATE.users || []).filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
-        const cycle = STATE.activeCycle || '2026';
+        const cycle = STATE.activeCycle || String(new Date().getFullYear());
         const headers = [
             "No.",
             "Nombre Completo",
@@ -44372,7 +44372,7 @@ function exportStudentsOfficialExcel() {
     try {
         const gradeFilterSel = document.getElementById('gradeFilterSelect');
         const gradeVal = gradeFilterSel ? gradeFilterSel.value : '';
-        const cycle = STATE.activeCycle || '2026';
+        const cycle = STATE.activeCycle || String(new Date().getFullYear());
         let students = (typeof getCycleFilteredStudents === 'function')
             ? getCycleFilteredStudents(STATE.students || [], cycle)
             : (STATE.students || []).filter(s => {
@@ -44727,7 +44727,7 @@ window.enccoSafePrintHtml = enccoSafePrintHtml;
 // ──────────────────────────────────────────────────────────────────────────
 
 function printOfficialUsersRoster() {
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const roleFilter = document.getElementById('userRoleFilterSelect')?.value || 'ALL';
     let users = STATE.users || [];
     let titleRoleText = 'NÓMINA GENERAL DE PERSONAL DOCENTE Y ADMINISTRATIVO';
@@ -44808,7 +44808,7 @@ function printOfficialUsersRoster() {
 }
 
 function printUserCredentialsList() {
-    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || '2026').trim();
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const users = STATE.users || [];
     const portalOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:'))
         ? window.location.origin
@@ -44866,7 +44866,7 @@ function printUserCredentialsList() {
 }
 
 function printRenglonGenderReport() {
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const teachers = (STATE.users || []).filter(u => u.role === 'docente' || (u.id && String(u.id).startsWith('usr-doc-')));
     
     let c011_H = 0, c011_M = 0;
@@ -45536,7 +45536,7 @@ function printSectionStudentsList(gradeCode, section) {
         }
     }
 
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const baseStudents = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], cycle)
         : (STATE.students || []);
@@ -46598,7 +46598,7 @@ function printPensumCurriculumReport(targetGrade, isBlank = false, options = {})
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
     const schoolName = h.schoolName || 'Escuela Nacional de Ciencias Comerciales';
     const location = h.location || 'Jutiapa, Guatemala';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const now = new Date();
     const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -48773,7 +48773,7 @@ async function deleteGrade(gradeId) {
     if (!g) return;
 
     // 🛡️ Protección anti-pérdida de datos: verificar si existen alumnos inscritos en esta sección
-    const targetCycle = String(STATE.activeCycle || '2026').trim();
+    const targetCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const cycleStudents = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], targetCycle)
         : (STATE.students || []);
@@ -50104,7 +50104,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
     const schoolName = h.schoolName || 'Escuela Nacional de Ciencias Comerciales';
     const location = h.location || 'Jutiapa, Guatemala';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
 
     const now = new Date();
     const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -51172,7 +51172,7 @@ function renderPromotionStudentsTable() {
 
     if (!tableBody) return;
 
-    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || String(new Date().getFullYear()));
     const criteria = criteriaSelect ? criteriaSelect.value : 'MINEDUC_STRICT';
     const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
     const filterGrade = gradeFilter ? gradeFilter.value : 'ALL';
@@ -51387,7 +51387,7 @@ async function executeCyclePromotion(e) {
 
     const originSelect = document.getElementById('promoOriginCycleSelect');
     const targetInput = document.getElementById('promoTargetCycleInput');
-    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || String(new Date().getFullYear()));
     const targetCycle = targetInput ? targetInput.value.trim() : '';
 
     if (!targetCycle || !/^\d{4}$/.test(targetCycle)) {
@@ -51507,7 +51507,7 @@ function printCyclePromotionAct() {
 
     const originSelect = document.getElementById('promoOriginCycleSelect');
     const criteriaSelect = document.getElementById('promoCriteriaSelect');
-    const cycleYear = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const cycleYear = originSelect ? originSelect.value : (window.STATE?.activeCycle || String(new Date().getFullYear()));
     const criteria = criteriaSelect ? criteriaSelect.value : 'MINEDUC_STRICT';
 
     const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
@@ -52399,7 +52399,7 @@ function initFirestoreModularLiveListeners() {
         try {
             const unsubAlerts = onSnapshot(collection(db, 'attendanceAlerts'), (snap) => {
                 if (!snap || snap.empty) return;
-                const activeCycle = String(STATE.activeCycle || '2026').trim();
+                const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
                 snap.docChanges().forEach(change => {
                     if (change.type === 'added' || change.type === 'modified') {
                         const alertData = change.doc.data();
@@ -53173,7 +53173,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     const alertId = 'alert_' + timestamp + '_' + Math.random().toString(36).substring(2, 7);
     const alertObj = {
         id: alertId,
-        cycle: String(STATE.activeCycle || '2026').trim(),
+        cycle: String(STATE.activeCycle || String(new Date().getFullYear())).trim(),
         studentId: studentId,
         studentName: studentName,
         carne: (student && (student.carne || student.personalCode)) ? (student.carne || student.personalCode) : '---',
@@ -53271,7 +53271,7 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
 
     // 1. 🛡️ Aislamiento Categórico por Ciclo Escolar (100% Dinámico):
-    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || '2027').trim();
+    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const alertCycle = String(alertObj.cycle || (alertObj.date ? alertObj.date.substring(0, 4) : (alertObj.timestamp ? new Date(alertObj.timestamp).getFullYear() : activeCycle))).trim();
 
     // En modo histórico de solo lectura (ciclos pasados sellados) o si la alerta pertenece a otro ciclo, no emitir en vivo
@@ -53349,7 +53349,7 @@ function notifyAuxiliaturaAlert(alertObj, options = {}) {
 function updateAuxiliaturaBadge() {
     const badge = document.getElementById('auxiliaturaAlertsBadge');
     if (!badge) return;
-    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || '2027').trim();
+    const activeCycle = (typeof getPlatformActiveCycle === 'function') ? getPlatformActiveCycle() : String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     if (STATE.isHistoricalReadOnlyMode) {
         badge.style.display = 'none';
         badge.textContent = '0';
@@ -53504,7 +53504,7 @@ function renderAuxiliaturaLogView() {
     const selectedStatus = statusSelect ? statusSelect.value : 'ALL';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
@@ -53841,7 +53841,7 @@ function printAuxiliaturaLog() {
     const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
     const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
 
-    const activeCycle = String(STATE.activeCycle || '2026').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
@@ -53860,7 +53860,7 @@ function printAuxiliaturaLog() {
 
     const parts = targetDate.split('-');
     const formattedDate = (parts.length === 3) ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
 
     const totalCount = filtered.length;
     const justCount = filtered.filter(a => a.status === 'justificada').length;
@@ -55390,7 +55390,7 @@ function printGlobalIncidentsOfficialReport() {
     const schoolName = h.schoolName || "ESCUELA NACIONAL DE CIENCIAS COMERCIALES";
     const schoolCode = h.schoolCode || "22-01-0014-46";
     const location = h.location || "JUTIAPA, GUATEMALA";
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const today = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const totalA = incidents.reduce((acc, x) => acc + x.faltasA, 0);
@@ -55609,7 +55609,7 @@ function printCourseBitacoraOfficial() {
     const schoolName = h.schoolName || "ESCUELA NACIONAL DE CIENCIAS COMERCIALES";
     const schoolCode = h.schoolCode || "22-01-0014-46";
     const location = h.location || "JUTIAPA, GUATEMALA";
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const today = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
@@ -56829,7 +56829,7 @@ function openExonerationDetailModal(studentId, subjectName, unit, exonId = null,
     }
     const finalReason = directItem?.reason || (matchedEx && (matchedEx.reason || matchedEx.details || matchedEx.observation)) || 'Exoneración y dispensa autorizada oficialmente por la Dirección del Plantel.';
     const finalAuthorizedBy = directItem?.authorizedBy || (matchedEx && (matchedEx.authorizedBy || matchedEx.authorizer)) || 'Dirección del Plantel';
-    const finalDate = directItem?.date || (matchedEx && (matchedEx.date || matchedEx.createdAt)) || (STATE.activeCycle || '2026');
+    const finalDate = directItem?.date || (matchedEx && (matchedEx.date || matchedEx.createdAt)) || (STATE.activeCycle || String(new Date().getFullYear()));
 
     // Asignar a campos del modal
     const nameEl = document.getElementById('exonDocModalStudentName');
@@ -56911,7 +56911,7 @@ function printStudentExonerationOfficialCertificate(data) {
         return;
     }
 
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
     const baseUrl = window.location.href.split('#')[0].split('?')[0];
     const folioCode = `CONST-EXON-${cycle}-${(data.carne || data.studentId || '001').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase()}`;
     const todayStr = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -57360,7 +57360,7 @@ function renderExoneracionesLogView() {
                     bimestre: ex.bimestre || 'ALL',
                     reason: ex.reason || ex.details || ex.observation || 'Exoneración y dispensa autorizada oficialmente.',
                     authorizedBy: ex.authorizedBy || ex.authorizer || 'Dirección del Plantel',
-                    date: ex.date || ex.createdAt || (STATE.activeCycle || '2026'),
+                    date: ex.date || ex.createdAt || (STATE.activeCycle || String(new Date().getFullYear())),
                     rawExon: ex
                 });
             });
@@ -57458,7 +57458,7 @@ function printExoneracionesLog() {
     const bimSelect = document.getElementById('exoneracionesLogBimestreFilter');
     const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const targetBim = bimSelect ? bimSelect.value : 'ALL';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
 
     const allExonsList = [];
     (STATE.students || []).forEach(s => {
@@ -58072,7 +58072,7 @@ function printPermissionsLog() {
     const targetCat = catSelect ? catSelect.value : 'ALL';
     const dateFromRaw = fromInput ? (fromInput.value || '').trim() : '';
     const dateToRaw = toInput ? (toInput.value || '').trim() : '';
-    const cycle = STATE.activeCycle || '2026';
+    const cycle = STATE.activeCycle || String(new Date().getFullYear());
 
     const dateFrom = normalizePermissionDateStr(dateFromRaw);
     const dateTo = normalizePermissionDateStr(dateToRaw);
@@ -58650,7 +58650,7 @@ if (typeof window !== 'undefined' && !window._hasSessionRevocationInterval) {
 
 // 🛡️ [Resolución Masiva de Inasistencias y Notificaciones]
 async function marcarTodasLasAlertasComoResueltas(targetCycle = null) {
-    const cycleToResolve = String(targetCycle || STATE.activeCycle || '2026').trim();
+    const cycleToResolve = String(targetCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     if (!STATE.attendanceAlerts || !Array.isArray(STATE.attendanceAlerts)) {
         STATE.attendanceAlerts = [];
     }
@@ -58727,7 +58727,7 @@ window.sanitizeResolved2026AttendanceAlerts = sanitizeResolved2026AttendanceAler
 
 // 🛡️ [Garantía Institucional Multi-Ciclo (2027, 2028, 2029...): Exclusión Universal de Egresados y Residuos de Ciclos Cerrados]
 function sanitizeCycle2027PristineState() {
-    const activeCycle = String(STATE.activeCycle || '2027').trim();
+    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
     const activeCycleNum = parseInt(activeCycle, 10);
     const isHist = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
     if (isHist) return;
