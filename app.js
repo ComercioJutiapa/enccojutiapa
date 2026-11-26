@@ -42705,18 +42705,10 @@ function exportGradebookOfficialExcel() {
 
             // 🛡️ PROTECCIÓN DE HOJA EXCEL: Bloquear encabezados, metadatos, códigos personales, nombres, fórmulas y firmas.
             // ÚNICAMENTE quedan desbloqueadas para edición las celdas de actividades (E..N) y Examen (P) de alumnos activos.
+            // Nota OOXML Excel: omitir selectLockedCells/selectUnlockedCells (o false) permite seleccionar/editar celdas desbloqueadas
             ws['!protect'] = {
-                selectLockedCells: true,
-                selectUnlockedCells: true,
-                formatCells: false,
-                formatColumns: false,
-                formatRows: false,
-                insertColumns: false,
-                insertRows: false,
-                deleteColumns: false,
-                deleteRows: false,
-                sort: false,
-                autoFilter: false
+                selectLockedCells: false,
+                selectUnlockedCells: false
             };
 
             const wb = xlsxLib.utils.book_new();
@@ -42780,6 +42772,8 @@ function exportGradebookOfficialExcel() {
                             });
 
                             if (newXfs.length > 0) {
+                                // Normalizar <sheetProtection> al estándar ECMA-376 para que Excel permita editar SOLO celdas locked="0"
+                                sheetXml = sheetXml.replace(/<sheetProtection[^>]*\/>/, '<sheetProtection sheet="1" objects="1" scenarios="1"/>');
                                 const updatedCellXfs = `<cellXfs count="${origCount + newXfs.length}">${innerXfs}${newXfs.join('')}</cellXfs>`;
                                 stylesXml = stylesXml.replace(cellXfsMatch[0], () => updatedCellXfs);
                                 stylesEntry.content = Array.from(enc.encode(stylesXml));
