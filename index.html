@@ -1184,30 +1184,30 @@
         .footer {
             background: #03060d;
             color: #94a3b8;
-            padding: 56px 0 32px;
+            padding: 38px 0 24px;
             border-top: 1px solid var(--border-glass);
         }
 
         .footer-grid {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr;
-            gap: 32px;
-            margin-bottom: 36px;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 28px;
+            margin-bottom: 24px;
         }
 
         .footer h3, .footer h4 {
             color: #ffffff;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .footer-bottom {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
+            gap: 3px;
             text-align: center;
-            padding-top: 22px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         /* RESPONSIVO */
@@ -1557,25 +1557,16 @@
             <div class="footer-grid">
                 <div>
                     <h3>ENCCO Jutiapa</h3>
-                    <p style="font-size:0.9rem;">Escuela Nacional de Ciencias Comerciales. Fundada en 1970.</p>
+                    <p style="font-size:0.88rem;">Escuela Nacional de Ciencias Comerciales. Fundada en 1970.</p>
                 </div>
                 <div>
                     <h4>Contacto &amp; Ubicación</h4>
-                    <p style="font-size:0.88rem;">Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
-                </div>
-                <div>
-                    <h4>Redes Oficiales</h4>
-                    <div style="display:flex; gap:10px; margin-top:8px;">
-                        <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
-                        <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
-                        <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
-                    </div>
+                    <p style="font-size:0.86rem;">Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p style="margin:0; font-size:0.92rem; font-weight:700; color:#f8fafc;">© <span id="dynamicFooterYear">2026</span> Escuela Nacional de Ciencias Comerciales (ENCCO). Todos los derechos reservados.</p>
-                <p style="margin:0; font-size:0.86rem; color:#94a3b8;">Desarrollado y Diseñado por <strong style="color:#ffffff;">Nehemias Salguero</strong> • Jutiapa, Guatemala</p>
-                <p style="margin:0; font-size:0.78rem; color:#64748b;">Complejo Educativo, Barrio El Cóndor, Jutiapa, Guatemala</p>
+                <p style="margin:0; font-size:0.74rem; font-weight:600; color:#94a3b8;">© <span id="dynamicFooterYear">2026</span> Escuela Nacional de Ciencias Comerciales (ENCCO). Todos los derechos reservados.</p>
+                <p style="margin:0; font-size:0.71rem; color:#64748b;">Desarrollado y Diseñado por <strong style="color:#94a3b8; font-weight:600;">Nehemias Salguero</strong> • Complejo Educativo, Barrio El Cóndor, Jutiapa, Guatemala</p>
             </div>
         </div>
     </footer>
@@ -1796,7 +1787,7 @@
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261126_v322').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261126_v323').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
