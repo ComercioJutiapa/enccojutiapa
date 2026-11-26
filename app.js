@@ -42703,12 +42703,114 @@ function exportGradebookOfficialExcel() {
                 applyInstitutionalStylesToWorksheet(ws, colHeaders.length, 6, students.length);
             }
 
+            // 🛡️ PROTECCIÓN DE HOJA EXCEL: Bloquear encabezados, metadatos, códigos personales, nombres, fórmulas y firmas.
+            // ÚNICAMENTE quedan desbloqueadas para edición las celdas de actividades (E..N) y Examen (P) de alumnos activos.
+            ws['!protect'] = {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: false,
+                formatColumns: false,
+                formatRows: false,
+                insertColumns: false,
+                insertRows: false,
+                deleteColumns: false,
+                deleteRows: false,
+                sort: false,
+                autoFilter: false
+            };
+
             const wb = xlsxLib.utils.book_new();
             const sheetTitle = `${(targetPensum.grade || 'Grado').slice(0, 10)} ${targetPensum.section || ''} - B${currentUnit}`.replace(/[\\/:*?"<>|]/g, '_');
             xlsxLib.utils.book_append_sheet(wb, ws, sheetTitle);
 
-            xlsxLib.writeFile(wb, fileName);
-            showToast(`Cuadro de notas exportado exitosamente como "${fileName}".`, "success");
+            let exportedProtected = false;
+            try {
+                if (xlsxLib.CFB && typeof TextDecoder !== 'undefined' && typeof TextEncoder !== 'undefined' && ws['!ref']) {
+                    const unlockedSet = new Set();
+                    for (let idxS = 0; idxS < students.length; idxS++) {
+                        const sObj = students[idxS];
+                        const isRet = (sObj && (sObj.status === 'Retirado' || sObj.status === 'Inactivo')) && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, currentUnit) : true);
+                        if (isRet) continue;
+                        const rIdx = startRowIdx + idxS;
+                        for (let cIdx = 4; cIdx <= 13; cIdx++) {
+                            unlockedSet.add(xlsxLib.utils.encode_cell({ r: rIdx, c: cIdx }));
+                        }
+                        unlockedSet.add(xlsxLib.utils.encode_cell({ r: rIdx, c: 15 })); // Columna P: Examen
+                    }
+
+                    const rawBytes = xlsxLib.write(wb, { type: 'array', bookType: 'xlsx' });
+                    const cfb = xlsxLib.CFB.read(new Uint8Array(rawBytes), { type: 'array' });
+                    const stylesEntry = xlsxLib.CFB.find(cfb, '/xl/styles.xml');
+                    const sheetEntry = xlsxLib.CFB.find(cfb, '/xl/worksheets/sheet1.xml');
+
+                    if (stylesEntry && sheetEntry && unlockedSet.size > 0) {
+                        const dec = new TextDecoder('utf-8');
+                        const enc = new TextEncoder();
+                        let stylesXml = dec.decode(new Uint8Array(stylesEntry.content));
+                        let sheetXml = dec.decode(new Uint8Array(sheetEntry.content));
+
+                        const cellXfsMatch = stylesXml.match(/<cellXfs\s+count="(\d+)">([\s\S]*?)<\/cellXfs>/);
+                        if (cellXfsMatch) {
+                            const origCount = parseInt(cellXfsMatch[1], 10);
+                            const innerXfs = cellXfsMatch[2];
+                            const xfList = innerXfs.match(/<xf\b[^>]*?(?:\/>|>[\s\S]*?<\/xf>)/g) || [];
+                            const unlockedXfMap = {};
+                            const newXfs = [];
+
+                            sheetXml = sheetXml.replace(/<c\s+r="([A-Z]+\d+)"([^>]*)>/g, (full, addr, rest) => {
+                                if (!unlockedSet.has(addr)) return full;
+                                const sMatch = rest.match(/\bs="(\d+)"/);
+                                const origS = sMatch ? parseInt(sMatch[1], 10) : 0;
+                                if (unlockedXfMap[origS] === undefined) {
+                                    const baseXf = xfList[origS] || '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>';
+                                    let unlockedXf;
+                                    if (baseXf.endsWith('/>')) {
+                                        unlockedXf = baseXf.slice(0, -2) + ' applyProtection="1"><protection locked="0"/></xf>';
+                                    } else {
+                                        unlockedXf = baseXf.replace(/<xf\b/, '<xf applyProtection="1"').replace(/<\/xf>$/, '<protection locked="0"/></xf>');
+                                    }
+                                    unlockedXfMap[origS] = origCount + newXfs.length;
+                                    newXfs.push(unlockedXf);
+                                }
+                                const newS = unlockedXfMap[origS];
+                                if (sMatch) {
+                                    return `<c r="${addr}"${rest.replace(/\bs="\d+"/, `s="${newS}"`)}>`;
+                                }
+                                return `<c r="${addr}" s="${newS}"${rest}>`;
+                            });
+
+                            if (newXfs.length > 0) {
+                                const updatedCellXfs = `<cellXfs count="${origCount + newXfs.length}">${innerXfs}${newXfs.join('')}</cellXfs>`;
+                                stylesXml = stylesXml.replace(cellXfsMatch[0], () => updatedCellXfs);
+                                stylesEntry.content = Array.from(enc.encode(stylesXml));
+                                stylesEntry.size = stylesEntry.content.length;
+                                sheetEntry.content = Array.from(enc.encode(sheetXml));
+                                sheetEntry.size = sheetEntry.content.length;
+
+                                const protectedZip = new Uint8Array(xlsxLib.CFB.write(cfb, { type: 'array', fileType: 'zip' }));
+                                const blob = new Blob([protectedZip], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                                const dlUrl = URL.createObjectURL(blob);
+                                const dlLink = document.createElement('a');
+                                dlLink.href = dlUrl;
+                                dlLink.download = fileName;
+                                document.body.appendChild(dlLink);
+                                dlLink.click();
+                                document.body.removeChild(dlLink);
+                                setTimeout(() => URL.revokeObjectURL(dlUrl), 1500);
+                                exportedProtected = true;
+                            }
+                        }
+                    }
+                }
+            } catch (protErr) {
+                console.warn("Aviso al aplicar protección de celdas en Excel, usando descarga estándar:", protErr);
+            }
+
+            if (!exportedProtected) {
+                delete ws['!protect'];
+                xlsxLib.writeFile(wb, fileName);
+            }
+            showToast(`Cuadro de notas protegido exportado exitosamente como "${fileName}" (solo celdas de actividades y examen editables).`, "success");
             return;
         } catch (err) {
             console.error("Error al exportar con SheetJS:", err);
@@ -43197,6 +43299,18 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             examValInHeader = parseInt(row[14]) || 0;
         }
 
+        // Leer ponderación oficial en Fila 5 de Plantilla Oficial ENCCO (ej: "Zona Maxima: 40 pts" / "Examen / Evaluacion: 60 pts")
+        const zMaxMatch = rowStr.match(/zona\s*m[aá]xima\s*:?\s*(\d+)/i);
+        if (zMaxMatch && !zonaValInHeader) {
+            const zParsed = parseInt(zMaxMatch[1]);
+            if (zParsed > 0 && zParsed <= 100) zonaValInHeader = zParsed;
+        }
+        const eMaxMatch = rowStr.match(/examen\s*(?:\/\s*evaluaci[oó]n)?\s*:?\s*(\d+)/i);
+        if (eMaxMatch && !examValInHeader) {
+            const eParsed = parseInt(eMaxMatch[1]);
+            if (eParsed >= 0 && eParsed <= 100) examValInHeader = eParsed;
+        }
+
         const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|º|°|er|do|to|er\.)?\s*(?:bimestre|unidad)/i) ||
                          rowStr.match(/bimestre\s*:?\s*(\d+)/i);
         if (bimMatch) {
@@ -43291,9 +43405,32 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         for (const pool of candidatePools) {
             if (autoPensum) break;
 
-            // 0. Coincidencia prioritaria por Código de Clase / Cátedra
+            // 0. Coincidencia prioritaria por Código de Clase + Sección + Grado (+ Docente si viene)
+            // Evita colisiones cuando un mismo código CNB (ej. 348) existe en varias secciones (5to A, 5to B, 5to C)
             if (detectedClassCode) {
-                autoPensum = pool.find(p => p && (p.id === detectedClassCode || p.code === detectedClassCode || p.classCode === detectedClassCode));
+                const codeMatches = pool.filter(p => p && (
+                    String(p.id || '') === String(detectedClassCode) ||
+                    String(p.code || '') === String(detectedClassCode) ||
+                    String(p.classCode || '') === String(detectedClassCode)
+                ));
+                if (codeMatches.length === 1) {
+                    autoPensum = codeMatches[0];
+                } else if (codeMatches.length > 1) {
+                    autoPensum =
+                        codeMatches.find(p =>
+                            (!secFile || extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile) &&
+                            (!gNumFile || extractGradeNumber(p.grade || p.gradeCode) === gNumFile) &&
+                            (!detectedTeacher || doesTeacherMatch(p.teacher, detectedTeacher))
+                        ) ||
+                        codeMatches.find(p =>
+                            (!secFile || extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile) &&
+                            (!gNumFile || extractGradeNumber(p.grade || p.gradeCode) === gNumFile)
+                        ) ||
+                        codeMatches.find(p =>
+                            !secFile || extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile
+                        ) ||
+                        null;
+                }
             }
 
             // 1. Coincidencia completa: DOCENTE + CLASE + SECCIÓN + GRADO
@@ -43407,8 +43544,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
     // REGLA DE ORO: Verificación estricta de Código de Clase / Cátedra
     if (detectedClassCode && activePensum) {
-        const activeClassCode = activePensum.code || activePensum.classCode || activePensum.id || '';
-        if (activeClassCode && detectedClassCode !== activeClassCode && detectedClassCode !== activePensum.id) {
+        const activeClassCode = String(activePensum.code || activePensum.classCode || activePensum.id || '').trim();
+        const activeClassId = String(activePensum.id || '').trim();
+        const fileClassCode = String(detectedClassCode || '').trim();
+        if (activeClassCode && fileClassCode !== activeClassCode && fileClassCode !== activeClassId) {
             showToast(`¡Código de Clase Incorrecto! El archivo cargado corresponde al código "${detectedClassCode}", pero la clase activa seleccionada es "${activeClassCode}". Importación cancelada para proteger sus calificaciones.`, "danger");
             return;
         }
@@ -43663,11 +43802,22 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
     }
 
-    // 6. Actualización y sincronización de Ponderación si el archivo especifica actividades
+    // 6. Respetar la ponderación de Zona y Examen configurada por el docente (solo actualizar si el archivo trae punteos > 0 o ponderación explícita)
+    const existingTeacherCfg = (targetPensum && typeof getGradingConfig === 'function')
+        ? getGradingConfig(targetPensum, effectiveUnit)
+        : { zonaMax: 40, examMax: 60 };
+    let effectiveZonaMax = Number(existingTeacherCfg?.zonaMax) || 40;
+    let effectiveExamMax = Number(existingTeacherCfg?.examMax) || 60;
+
     if (actColumns.length > 0 && targetPensum) {
         const sumActsMax = actColumns.reduce((acc, a) => acc + (a.max || 0), 0);
-        const configuredZonaMax = sumActsMax > 0 ? sumActsMax : (zonaValInHeader || 40);
-        const configuredExamMax = (100 - configuredZonaMax > 0) ? (100 - configuredZonaMax) : (examValInHeader || 60);
+        const hasExplicitHeaderWeight = (zonaValInHeader > 0 && examValInHeader >= 0 && (zonaValInHeader + examValInHeader === 100));
+        // Solo sobreescribir la configuración del docente si el archivo especifica punteos de actividades > 0
+        if (sumActsMax > 0) {
+            const configuredZonaMax = sumActsMax;
+            const configuredExamMax = Math.max(0, 100 - configuredZonaMax);
+            effectiveZonaMax = configuredZonaMax;
+            effectiveExamMax = configuredExamMax;
 
         const normalizedActivities = [];
         for (let i = 0; i < 10; i++) {
@@ -43716,6 +43866,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 });
             }
             saveStateToLocalStorage();
+        }
+        } else if (hasExplicitHeaderWeight && !existingTeacherCfg?.updatedAt) {
+            effectiveZonaMax = zonaValInHeader;
+            effectiveExamMax = examValInHeader;
         }
     }
 
@@ -43789,6 +43943,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     let updatedCount = 0;
     let omittedCount = 0;
     const actuallyUpdatedStudents = [];
+    const weightingWarnings = [];
 
     for (let r = dataStartRow; r < rawRows.length; r++) {
         const row = rawRows[r];
@@ -43887,38 +44042,29 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             });
         }
 
-        // Zona: Si hay actividades desglosadas, es la suma; si viene columna directa de Zona con valor > 0, sobreescribe
+        // Zona: si hay actividades > 0, manda su suma; si todas las casillas vienen en 0 pero Total Zona > 0, se guarda en Act 1 para evitar pérdida al editar en pantalla
         let sumZona = hasActValues ? newActs.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
         let finalZona = sumZona;
         if (colIdxZona !== -1) {
             const parsedZona = parseNumericScore(row[colIdxZona]);
-            if (parsedZona !== null && parsedZona > 0) {
+            if (parsedZona !== null && parsedZona > 0 && sumZona === 0) {
                 finalZona = Math.max(0, parsedZona);
-                if (!hasActValues) {
-                    newActs[0] = finalZona;
-                    sumZona = finalZona;
-                }
-            } else if (parsedZona !== null && !hasActValues) {
-                finalZona = 0;
-                newActs[0] = 0;
-            } else if (!hasActValues) {
+                newActs[0] = finalZona;
+                sumZona = finalZona;
+            } else if (parsedZona !== null && sumZona === 0) {
                 finalZona = 0;
             }
         } else if (!hasActValues) {
             finalZona = 0;
         }
 
-        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN Y TOTAL CON PRESERVACIÓN DEL EXAMEN FINAL
+        // 🎯 SOBREESCRITURA TOTAL EN RE-IMPORTACIONES (Política ENCCO: el nuevo cuadro siempre reemplaza al anterior)
         let examScore = 0;
-        let examExplicitlyInFile = false;
         let directExamVal = null;
 
         if (colIdxExam !== -1) {
             const parsedExam = parseNumericScore(row[colIdxExam]);
-            if (parsedExam !== null) {
-                directExamVal = Math.max(0, parsedExam);
-                examExplicitlyInFile = true;
-            }
+            directExamVal = parsedExam !== null ? Math.max(0, parsedExam) : 0;
         }
 
         let directTotal = null;
@@ -43929,43 +44075,22 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
 
-        // 🛡️ Obtener historial de notas previas del alumno para NUNCA borrar el examen final existente
-        const prevExam = (gDetail && gDetail.exam !== undefined && gDetail.exam !== null && !isNaN(Number(gDetail.exam))) ? Number(gDetail.exam) : 0;
-        const prevTotal = (matched.grades && matched.grades[canonImportSubj] && matched.grades[canonImportSubj][effectiveUnit - 1] !== undefined) 
-            ? (Number(matched.grades[canonImportSubj][effectiveUnit - 1]) || 0) 
-            : ((gDetail && gDetail.total !== undefined && gDetail.total !== null) ? (Number(gDetail.total) || 0) : 0);
-        const prevZona = (gDetail && gDetail.zona !== undefined && gDetail.zona !== null) ? (Number(gDetail.zona) || 0) : 0;
-        const effectivePrevExam = (prevExam > 0) ? prevExam : (prevTotal > prevZona ? (prevTotal - prevZona) : 0);
-
-        let finalTotal = finalZona;
-
-        // Resolución armónica e inteligente de calificaciones:
-        if (directExamVal !== null && directExamVal > 0) {
-            // A. El archivo trae una nota explícita de examen > 0: actualizar con la nota del archivo
+        if (colIdxExam !== -1) {
+            // La columna Examen existe en el cuadro: SIEMPRE sobreescribir (incluso con 0)
             examScore = directExamVal;
-            if (directTotal !== null && directTotal > finalZona) {
-                finalTotal = Math.max(directTotal, finalZona + examScore);
-            } else {
-                finalTotal = finalZona + examScore;
-            }
-        } else if (directTotal !== null && directTotal > finalZona) {
-            // B. El archivo trae una columna de Total que supera a la zona (ej. Total 80, Zona 40): examen = Total - Zona
+        } else if (directTotal !== null && directTotal >= finalZona) {
             examScore = directTotal - finalZona;
-            finalTotal = directTotal;
-        } else if (effectivePrevExam > 0) {
-            // C. 🛡️ PRESERVACIÓN ESTRICTA DEL EXAMEN FINAL:
-            // Si el archivo no trae examen (o viene vacío, en 0 o solo con columnas de actividades/zona),
-            // NUNCA borrar ni poner en 0 el campo de examen final previamente registrado en la plataforma.
-            examScore = effectivePrevExam;
-            finalTotal = finalZona + examScore;
         } else {
-            // D. Sin examen previo y sin examen en el archivo
-            examScore = (directExamVal !== null && directExamVal > 0) ? directExamVal : 0;
-            finalTotal = (directTotal !== null && directTotal > 0) ? directTotal : (finalZona + examScore);
+            examScore = 0;
+        }
+
+        // Validar contra ponderación configurada del docente (avisar si excede)
+        if (finalZona > effectiveZonaMax || examScore > effectiveExamMax || (finalZona + examScore) > 100) {
+            weightingWarnings.push(normPCode || matched.personalCode || matched.name || 'Alumno');
         }
 
         // 🛡️ REGLA MATEMÁTICA INSTITUCIONAL ENCCO: Total = Zona + Examen (Normalizado a máx 100)
-        finalTotal = Math.min(100, Math.max(0, finalZona + examScore));
+        const finalTotal = Math.min(100, Math.max(0, finalZona + examScore));
 
         // Sobreescribir las notas del estudiante con los nuevos valores del archivo
         gDetail.activities = newActs;
@@ -44049,8 +44174,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         renderTeacherCourseCards();
     }
 
-    const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s))` : '';
-    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se sincronizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
+    const omittedMsg = omittedCount > 0 ? ` • ${omittedCount} omitida(s)` : '';
+    const warnMsg = weightingWarnings.length > 0 ? ` • ⚠️ ${weightingWarnings.length} excede(n) ponderación ${effectiveZonaMax}/${effectiveExamMax} (${weightingWarnings.slice(0, 3).join(', ')})` : '';
+    showToast(`¡Notas importadas (${effectiveZonaMax}/${effectiveExamMax})! ${updatedCount} estudiantes actualizados en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bim ${effectiveUnit})${omittedMsg}${warnMsg}.`, weightingWarnings.length > 0 ? "warning" : "success");
 
     // 9. 🛡️ Sincronización atómica en la nube de ÚNICAMENTE los estudiantes procesados en el Excel
     const studentsToSync = (actuallyUpdatedStudents.length > 0) ? actuallyUpdatedStudents : courseStudents;
