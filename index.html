@@ -795,107 +795,251 @@
             line-height: 1.75;
         }
 
-        /* 7. GALERÍA VIDA ESTUDIANTIL — CARRUSEL DESLIZANTE SIN NOMBRES */
-        .gallery-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }
-
-        .gtab {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(186, 230, 253, 0.22);
-            color: #cbd5e1;
-            padding: 8px 18px;
-            border-radius: 999px;
-            font-family: var(--font-display);
-            font-size: 0.84rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .gtab:hover {
-            border-color: var(--sky);
-            color: #ffffff;
-        }
-
-        .gtab.active {
-            background: var(--gold-grad);
-            color: #050811;
-            border-color: transparent;
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
-        }
-
-        .slider-viewport {
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            padding: 6px 2px 14px;
-        }
-
-        .slider-viewport::-webkit-scrollbar {
-            display: none;
-        }
-
-        .slider-track {
-            display: flex;
-            gap: 16px;
-            width: max-content;
-        }
-
-        .slide-photo {
-            flex: 0 0 340px;
-            height: 255px;
-            border-radius: 18px;
+        /* 7. GALERÍA VIDA ESTUDIANTIL — SLIDER 3D COVERFLOW GLAMUROSO Y AUTOMÁTICO */
+        .glam-slider-stage {
+            position: relative;
+            width: 100%;
+            max-width: 1220px;
+            margin: 0 auto;
+            padding: 18px 0 10px;
             overflow: hidden;
-            border: 1.5px solid var(--border-glass);
+        }
+
+        .glam-stage-glow {
+            position: absolute;
+            left: 50%;
+            top: 48%;
+            transform: translate(-50%, -50%);
+            width: 68%;
+            height: 78%;
+            background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.2) 0%, rgba(56, 189, 248, 0.14) 45%, transparent 72%);
+            filter: blur(42px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .coverflow-viewport {
+            position: relative;
+            z-index: 2;
+            height: 430px;
+            perspective: 1400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            touch-action: pan-y;
+        }
+
+        .cf-slide {
+            position: absolute;
+            width: min(620px, 78vw);
+            height: 390px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1.5px solid rgba(186, 230, 253, 0.18);
             background: #0a1224;
             cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+            transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease, filter 0.6s ease, box-shadow 0.6s ease, border-color 0.6s ease;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(0) scale(0.6) translateZ(-260px);
         }
 
-        .slide-photo:hover {
-            transform: translateY(-5px);
-            border-color: rgba(251, 191, 36, 0.6);
-        }
-
-        .slide-photo img {
+        .cf-slide img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
-            transition: transform 0.5s ease;
         }
 
-        .slide-photo.portrait img {
-            object-position: center 22%;
+        .cf-slide.portrait img {
+            object-position: center 20%;
         }
 
-        .slide-photo:hover img {
-            transform: scale(1.05);
+        .cf-slide.pos-center {
+            opacity: 1;
+            z-index: 5;
+            pointer-events: auto;
+            transform: translateX(0) scale(1) rotateY(0deg);
+            border: 2px solid rgba(251, 191, 36, 0.65);
+            box-shadow: 0 30px 75px rgba(0, 0, 0, 0.72), 0 0 42px rgba(245, 158, 11, 0.24);
+            filter: brightness(1.03);
         }
 
-        .slider-controls {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 14px;
-            margin-top: 14px;
+        .cf-slide.pos-left-1 {
+            opacity: 0.74;
+            z-index: 4;
+            pointer-events: auto;
+            transform: translateX(-56%) scale(0.82) rotateY(24deg);
+            filter: brightness(0.68) saturate(0.85);
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
         }
 
-        .snav-btn {
-            width: 42px;
-            height: 42px;
+        .cf-slide.pos-right-1 {
+            opacity: 0.74;
+            z-index: 4;
+            pointer-events: auto;
+            transform: translateX(56%) scale(0.82) rotateY(-24deg);
+            filter: brightness(0.68) saturate(0.85);
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .cf-slide.pos-left-2 {
+            opacity: 0.32;
+            z-index: 3;
+            pointer-events: auto;
+            transform: translateX(-96%) scale(0.66) rotateY(34deg);
+            filter: brightness(0.45) blur(1px);
+        }
+
+        .cf-slide.pos-right-2 {
+            opacity: 0.32;
+            z-index: 3;
+            pointer-events: auto;
+            transform: translateX(96%) scale(0.66) rotateY(-34deg);
+            filter: brightness(0.45) blur(1px);
+        }
+
+        .cf-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            border: 1.5px solid rgba(186, 230, 253, 0.3);
-            background: rgba(15, 43, 92, 0.55);
+            border: 1.5px solid rgba(251, 191, 36, 0.45);
+            background: rgba(5, 12, 28, 0.78);
+            backdrop-filter: blur(12px);
+            color: var(--gold-light);
+            font-size: 1.05rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+        }
+
+        .cf-arrow:hover {
+            background: var(--gold-grad);
+            color: #050811;
+            border-color: transparent;
+            transform: translateY(-50%) scale(1.08);
+        }
+
+        .cf-arrow.prev { left: 16px; }
+        .cf-arrow.next { right: 16px; }
+
+        .cf-controls-bar {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .cf-counter {
+            font-family: var(--font-tech);
+            font-size: 0.84rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            color: var(--gold-light);
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            padding: 5px 14px;
+            border-radius: 999px;
+        }
+
+        .cf-progress-track {
+            width: 180px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+            overflow: hidden;
+        }
+
+        .cf-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--gold-grad);
+            border-radius: 999px;
+        }
+
+        .cf-play-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(186, 230, 253, 0.25);
+            color: #e2e8f0;
+            padding: 5px 13px;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+
+        .cf-play-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold-light);
+        }
+
+        .cf-thumbs {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 14px 4px 6px;
+            margin-top: 10px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .cf-thumbs::-webkit-scrollbar { display: none; }
+
+        .cf-thumb {
+            flex: 0 0 68px;
+            height: 46px;
+            border-radius: 9px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            opacity: 0.45;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .cf-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .cf-thumb:hover { opacity: 0.85; }
+        .cf-thumb.active {
+            opacity: 1;
+            border-color: var(--gold);
+            transform: scale(1.08);
+            box-shadow: 0 0 16px rgba(245, 158, 11, 0.45);
+        }
+
+        .lb-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255, 255, 255, 0.28);
+            background: rgba(15, 43, 92, 0.72);
             color: #ffffff;
-            font-size: 0.95rem;
+            font-size: 1.05rem;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
@@ -903,17 +1047,14 @@
             transition: var(--transition);
         }
 
-        .snav-btn:hover {
+        .lb-nav:hover {
             background: var(--gold-grad);
             color: #050811;
             border-color: transparent;
         }
 
-        .slider-hint {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
+        .lb-nav.prev { left: 22px; }
+        .lb-nav.next { right: 22px; }
 
         /* 8. SECCIÓN UNIFICADA: ORGULLO ENCCO + REDES OFICIALES EN UN SOLO CUADRO */
         .unified-social-banner {
@@ -1075,7 +1216,8 @@
             .split-sticky { position: static; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .hero-facade-img { height: 320px; }
-            .slide-photo { flex: 0 0 270px; height: 205px; }
+            .coverflow-viewport { height: 310px; }
+            .cf-slide { height: 270px; width: 84vw; }
             .nav-links { display: none; }
             .mobile-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
         }
@@ -1179,9 +1321,9 @@
         </div>
     </div>
 
-    <!-- 3. HERO CINEMATOGRÁFICO OSCURO CON FOTO SEDE PRINCIPAL MÁS GRANDE -->
+    <!-- 3. HERO CINEMATOGRÁFICO OSCURO CON PORTADA 2 EN SEDE PRINCIPAL -->
     <section class="hero-section" id="inicio" onmousemove="this.style.setProperty('--mx', event.clientX+'px'); this.style.setProperty('--my', event.clientY+'px');">
-        <img src="images/portada-comercio-principal.webp" alt="Fachada ENCCO" class="hero-bg-img">
+        <img src="images/galeria/portada2.webp" alt="Fachada ENCCO" class="hero-bg-img">
         <div class="hero-spotlight"></div>
 
         <div class="container hero-grid">
@@ -1212,7 +1354,7 @@
             </div>
 
             <div class="hero-facade-card">
-                <img src="images/portada-comercio-principal.webp" alt="Sede Principal ENCCO Jutiapa" class="hero-facade-img">
+                <img src="images/galeria/portada2.webp" alt="Sede Principal ENCCO Jutiapa" class="hero-facade-img">
                 <div class="hero-facade-badge">
                     <div>
                         <h4>Sede Principal ENCCO Jutiapa</h4>
@@ -1293,14 +1435,11 @@
                 </div>
 
                 <div class="split-photos">
-                    <div class="clean-photo-frame" onclick="openLightbox('images/galeria/maestros.webp')">
+                    <div class="clean-photo-frame" onclick="openLightboxBySrc('images/galeria/edificio6.webp')">
+                        <img src="images/galeria/edificio6.webp" loading="lazy" alt="Instalaciones ENCCO Jutiapa">
+                    </div>
+                    <div class="clean-photo-frame" onclick="openLightboxBySrc('images/galeria/maestros.webp')">
                         <img src="images/galeria/maestros.webp" loading="lazy" alt="Claustro Docente ENCCO">
-                    </div>
-                    <div class="clean-photo-frame" onclick="openLightbox('images/galeria/laboratorio.webp')">
-                        <img src="images/galeria/laboratorio.webp" loading="lazy" alt="Laboratorio de Computación ENCCO">
-                    </div>
-                    <div class="clean-photo-frame" onclick="openLightbox('images/galeria/portada2.webp')">
-                        <img src="images/galeria/portada2.webp" loading="lazy" alt="Instalaciones ENCCO Jutiapa">
                     </div>
                 </div>
             </div>
@@ -1339,7 +1478,7 @@
         </div>
     </section>
 
-    <!-- 7. VIDA ESTUDIANTIL — CARRUSEL DESLIZANTE SIN NOMBRES (31 FOTOS ÚNICAS) -->
+    <!-- 7. VIDA ESTUDIANTIL — SLIDER 3D COVERFLOW GLAMUROSO Y AUTOMÁTICO -->
     <section class="section" id="vida-estudiantil">
         <div class="container">
             <div class="section-header">
@@ -1347,22 +1486,19 @@
                 <h2 class="section-title">Vida Estudiantil</h2>
             </div>
 
-            <div class="gallery-tabs">
-                <button type="button" class="gtab active" onclick="filterGallery('all', this)">Todas (31)</button>
-                <button type="button" class="gtab" onclick="filterGallery('actividades', this)">Actividades (11)</button>
-                <button type="button" class="gtab" onclick="filterGallery('edificio', this)">Edificio e Instalaciones (13)</button>
-                <button type="button" class="gtab" onclick="filterGallery('eventos', this)">Eventos y Tradición (7)</button>
-            </div>
+            <div class="glam-slider-stage" id="glamSliderStage" onmouseenter="window._cfHover=true" onmouseleave="window._cfHover=false">
+                <div class="glam-stage-glow"></div>
+                <button type="button" class="cf-arrow prev" onclick="stepCoverflow(-1)" aria-label="Foto anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                <div class="coverflow-viewport" id="coverflowViewport"></div>
+                <button type="button" class="cf-arrow next" onclick="stepCoverflow(1)" aria-label="Foto siguiente"><i class="fa-solid fa-chevron-right"></i></button>
 
-            <div onmouseenter="window._pauseEnccoSlider=true" onmouseleave="window._pauseEnccoSlider=false">
-                <div class="slider-viewport" id="sliderViewport">
-                    <div class="slider-track" id="sliderTrack"></div>
+                <div class="cf-controls-bar">
+                    <span class="cf-counter" id="cfCounter">01 / 37</span>
+                    <div class="cf-progress-track"><div class="cf-progress-fill" id="cfProgressFill"></div></div>
+                    <button type="button" class="cf-play-btn" id="cfPlayBtn" onclick="toggleCoverflowAuto()"><i class="fa-solid fa-pause"></i> Auto</button>
                 </div>
-                <div class="slider-controls">
-                    <button type="button" class="snav-btn" onclick="stepEnccoSlider(-1)" aria-label="Fotos anteriores"><i class="fa-solid fa-chevron-left"></i></button>
-                    <span class="slider-hint">Deslizamiento automático • Haz clic en cualquier foto para ampliar</span>
-                    <button type="button" class="snav-btn" onclick="stepEnccoSlider(1)" aria-label="Fotos siguientes"><i class="fa-solid fa-chevron-right"></i></button>
-                </div>
+
+                <div class="cf-thumbs" id="cfThumbs"></div>
             </div>
         </div>
     </section>
@@ -1407,10 +1543,12 @@
         </div>
     </section>
 
-    <!-- VISOR LIGHTBOX PARA AMPLIAR FOTOS -->
-    <div class="lightbox" id="enccoLightbox" onclick="closeLightbox()">
+    <!-- VISOR LIGHTBOX PARA AMPLIAR FOTOS CON NAVEGACIÓN -->
+    <div class="lightbox" id="enccoLightbox" onclick="if(event.target===this) closeLightbox()">
         <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Cerrar imagen"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="lb-nav prev" onclick="stepLightbox(-1)" aria-label="Foto anterior"><i class="fa-solid fa-chevron-left"></i></button>
         <img id="enccoLightboxImg" src="" alt="Vista ampliada ENCCO">
+        <button type="button" class="lb-nav next" onclick="stepLightbox(1)" aria-label="Foto siguiente"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
 
     <!-- 9. FOOTER -->
@@ -1459,65 +1597,155 @@
         }
 
         const ENCCO_GALLERY_PHOTOS = [
-            { f: 'actividad1.webp', cat: 'actividades' },
-            { f: 'actividad2.webp', cat: 'actividades' },
-            { f: 'actividad3.webp', cat: 'actividades' },
-            { f: 'actividad4.webp', cat: 'actividades' },
-            { f: 'actividad5.webp', cat: 'actividades' },
-            { f: 'actividad6.webp', cat: 'actividades' },
-            { f: 'actividad7.webp', cat: 'actividades', portrait: true },
-            { f: 'actividad8.webp', cat: 'actividades' },
-            { f: 'actividad9.webp', cat: 'actividades' },
-            { f: 'meca.webp', cat: 'actividades' },
-            { f: 'meca2.webp', cat: 'actividades' },
-            { f: 'edificio1.webp', cat: 'edificio' },
-            { f: 'edificio2.webp', cat: 'edificio' },
-            { f: 'edificio3.webp', cat: 'edificio' },
-            { f: 'edificio4.webp', cat: 'edificio' },
-            { f: 'edificio5.webp', cat: 'edificio' },
-            { f: 'edificio6.webp', cat: 'edificio' },
-            { f: 'edificio7.webp', cat: 'edificio' },
-            { f: 'edificio8.webp', cat: 'edificio' },
-            { f: 'edificio9.webp', cat: 'edificio' },
-            { f: 'edificio10.webp', cat: 'edificio' },
-            { f: 'cancha.webp', cat: 'edificio' },
-            { f: 'salon1.webp', cat: 'edificio' },
-            { f: 'salon2.webp', cat: 'edificio' },
-            { f: 'septiembre.webp', cat: 'eventos' },
-            { f: 'encuentro_nacional.webp', cat: 'eventos' },
-            { f: 'banda1.webp', cat: 'eventos', portrait: true },
-            { f: 'banda2.webp', cat: 'eventos', portrait: true },
-            { f: 'banda3.webp', cat: 'eventos', portrait: true },
-            { f: 'fut2025.webp', cat: 'eventos' },
-            { f: 'simulacro.webp', cat: 'eventos', portrait: true }
+            // Originales institucionales + nuevas (sin repetir portada2, edificio6 ni maestros)
+            { src: 'images/portada-comercio-principal.webp' },
+            { src: 'images/campus-instalaciones.webp' },
+            { src: 'images/estudiantes-uniformados.webp' },
+            { src: 'images/senorita-comercio-peritos.webp' },
+            { src: 'images/actividades-estudiantiles.webp' },
+            { src: 'images/galeria/laboratorio.webp' },
+            { src: 'images/galeria/sele_futbol_2026.webp' },
+            { src: 'images/galeria/actividad1.webp' },
+            { src: 'images/galeria/septiembre.webp' },
+            { src: 'images/galeria/edificio1.webp' },
+            { src: 'images/galeria/actividad2.webp' },
+            { src: 'images/galeria/meca.webp' },
+            { src: 'images/galeria/banda1.webp', portrait: true },
+            { src: 'images/galeria/edificio2.webp' },
+            { src: 'images/galeria/actividad3.webp' },
+            { src: 'images/galeria/encuentro_nacional.webp' },
+            { src: 'images/galeria/salon1.webp' },
+            { src: 'images/galeria/actividad4.webp' },
+            { src: 'images/galeria/edificio3.webp' },
+            { src: 'images/galeria/fut2025.webp' },
+            { src: 'images/galeria/actividad5.webp' },
+            { src: 'images/galeria/banda2.webp', portrait: true },
+            { src: 'images/galeria/edificio4.webp' },
+            { src: 'images/galeria/meca2.webp' },
+            { src: 'images/galeria/actividad6.webp' },
+            { src: 'images/galeria/cancha.webp' },
+            { src: 'images/galeria/edificio5.webp' },
+            { src: 'images/galeria/actividad7.webp', portrait: true },
+            { src: 'images/galeria/salon2.webp' },
+            { src: 'images/galeria/edificio7.webp' },
+            { src: 'images/galeria/actividad8.webp' },
+            { src: 'images/galeria/banda3.webp', portrait: true },
+            { src: 'images/galeria/edificio8.webp' },
+            { src: 'images/galeria/actividad9.webp' },
+            { src: 'images/galeria/edificio9.webp' },
+            { src: 'images/galeria/simulacro.webp', portrait: true },
+            { src: 'images/galeria/edificio10.webp' }
         ];
 
-        window._pauseEnccoSlider = false;
+        let _lbIndex = 0;
+        let _cfIndex = 0;
+        let _cfAuto = true;
+        window._cfHover = false;
+        let _cfElapsed = 0;
+        const CF_INTERVAL_MS = 3400;
 
-        function renderEnccoGallery(cat) {
-            const track = document.getElementById('sliderTrack');
-            const vp = document.getElementById('sliderViewport');
-            if (!track) return;
-            const list = (cat === 'all') ? ENCCO_GALLERY_PHOTOS : ENCCO_GALLERY_PHOTOS.filter(function(p) { return p.cat === cat; });
-            track.innerHTML = list.map(function(p) {
-                const src = 'images/galeria/' + p.f;
-                return '<div class="slide-photo' + (p.portrait ? ' portrait' : '') + '" onclick="openLightbox(\'' + src + '\')"><img src="' + src + '" loading="lazy" alt="Vida Estudiantil ENCCO"></div>';
+        function initGlamCoverflow() {
+            const vp = document.getElementById('coverflowViewport');
+            const thumbs = document.getElementById('cfThumbs');
+            if (!vp || !thumbs) return;
+
+            vp.innerHTML = ENCCO_GALLERY_PHOTOS.map(function(p, i) {
+                return '<div class="cf-slide' + (p.portrait ? ' portrait' : '') + '" data-idx="' + i + '" onclick="onCoverflowSlideClick(' + i + ')"><img src="' + p.src + '" loading="lazy" alt="Vida Estudiantil ENCCO"></div>';
             }).join('');
-            if (vp) vp.scrollLeft = 0;
+
+            thumbs.innerHTML = ENCCO_GALLERY_PHOTOS.map(function(p, i) {
+                return '<div class="cf-thumb" data-tidx="' + i + '" onclick="goCoverflow(' + i + ')"><img src="' + p.src + '" loading="lazy" alt="Miniatura ENCCO"></div>';
+            }).join('');
+
+            // Soporte de deslizamiento táctil (swipe) en celulares y tablets
+            let touchStartX = 0;
+            vp.addEventListener('touchstart', function(e) { touchStartX = e.changedTouches[0].clientX; }, { passive: true });
+            vp.addEventListener('touchend', function(e) {
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                if (Math.abs(dx) > 40) stepCoverflow(dx < 0 ? 1 : -1);
+            }, { passive: true });
+
+            updateCoverflowPositions();
         }
 
-        function filterGallery(cat, btn) {
-            document.querySelectorAll('.gtab').forEach(function(b) { b.classList.remove('active'); });
-            if (btn) btn.classList.add('active');
-            renderEnccoGallery(cat);
+        function updateCoverflowPositions() {
+            const n = ENCCO_GALLERY_PHOTOS.length;
+            const slides = document.querySelectorAll('#coverflowViewport .cf-slide');
+            slides.forEach(function(el, i) {
+                el.classList.remove('pos-center', 'pos-left-1', 'pos-right-1', 'pos-left-2', 'pos-right-2');
+                let diff = i - _cfIndex;
+                if (diff > n / 2) diff -= n;
+                if (diff < -n / 2) diff += n;
+                if (diff === 0) el.classList.add('pos-center');
+                else if (diff === -1) el.classList.add('pos-left-1');
+                else if (diff === 1) el.classList.add('pos-right-1');
+                else if (diff === -2) el.classList.add('pos-left-2');
+                else if (diff === 2) el.classList.add('pos-right-2');
+            });
+
+            const counter = document.getElementById('cfCounter');
+            if (counter) {
+                const cur = String(_cfIndex + 1).padStart(2, '0');
+                const tot = String(n).padStart(2, '0');
+                counter.textContent = cur + ' / ' + tot;
+            }
+
+            const thumbEls = document.querySelectorAll('#cfThumbs .cf-thumb');
+            thumbEls.forEach(function(t, i) {
+                const isAct = (i === _cfIndex);
+                t.classList.toggle('active', isAct);
+                if (isAct) {
+                    const parent = document.getElementById('cfThumbs');
+                    if (parent) {
+                        const targetLeft = t.offsetLeft - (parent.clientWidth / 2) + (t.clientWidth / 2);
+                        parent.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                    }
+                }
+            });
+            _cfElapsed = 0;
         }
 
-        function stepEnccoSlider(dir) {
-            const vp = document.getElementById('sliderViewport');
-            if (vp) vp.scrollBy({ left: dir * 356, behavior: 'smooth' });
+        function goCoverflow(idx) {
+            const n = ENCCO_GALLERY_PHOTOS.length;
+            _cfIndex = ((idx % n) + n) % n;
+            updateCoverflowPositions();
         }
 
-        function openLightbox(src) {
+        function stepCoverflow(dir) {
+            goCoverflow(_cfIndex + dir);
+        }
+
+        function onCoverflowSlideClick(i) {
+            if (i === _cfIndex) openLightboxIndex(i);
+            else goCoverflow(i);
+        }
+
+        function toggleCoverflowAuto() {
+            _cfAuto = !_cfAuto;
+            const btn = document.getElementById('cfPlayBtn');
+            if (btn) {
+                btn.innerHTML = _cfAuto ? '<i class="fa-solid fa-pause"></i> Auto' : '<i class="fa-solid fa-play"></i> Pausado';
+            }
+        }
+
+        setInterval(function() {
+            const fill = document.getElementById('cfProgressFill');
+            if (!_cfAuto || window._cfHover) return;
+            _cfElapsed += 80;
+            if (fill) fill.style.width = Math.min(100, (_cfElapsed / CF_INTERVAL_MS) * 100) + '%';
+            if (_cfElapsed >= CF_INTERVAL_MS) {
+                stepCoverflow(1);
+            }
+        }, 80);
+
+        initGlamCoverflow();
+
+        function openLightboxIndex(idx) {
+            _lbIndex = ((idx % ENCCO_GALLERY_PHOTOS.length) + ENCCO_GALLERY_PHOTOS.length) % ENCCO_GALLERY_PHOTOS.length;
+            openLightboxBySrc(ENCCO_GALLERY_PHOTOS[_lbIndex].src);
+        }
+
+        function openLightboxBySrc(src) {
             const lb = document.getElementById('enccoLightbox');
             const img = document.getElementById('enccoLightboxImg');
             if (lb && img) {
@@ -1526,23 +1754,22 @@
             }
         }
 
+        function stepLightbox(dir) {
+            openLightboxIndex(_lbIndex + dir);
+        }
+
         function closeLightbox() {
             const lb = document.getElementById('enccoLightbox');
             if (lb) lb.classList.remove('open');
         }
 
-        setInterval(function() {
-            if (window._pauseEnccoSlider) return;
-            const vp = document.getElementById('sliderViewport');
-            if (!vp) return;
-            if (vp.scrollLeft + vp.clientWidth >= vp.scrollWidth - 8) {
-                vp.scrollTo({ left: 0, behavior: 'smooth' });
-            } else {
-                vp.scrollBy({ left: 356, behavior: 'smooth' });
-            }
-        }, 3200);
-
-        renderEnccoGallery('all');
+        document.addEventListener('keydown', function(e) {
+            const lb = document.getElementById('enccoLightbox');
+            if (!lb || !lb.classList.contains('open')) return;
+            if (e.key === 'Escape') closeLightbox();
+            else if (e.key === 'ArrowRight') stepLightbox(1);
+            else if (e.key === 'ArrowLeft') stepLightbox(-1);
+        });
 
         window.addEventListener('scroll', function() {
             const h = document.documentElement;
@@ -1569,7 +1796,7 @@
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261126_v321').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261126_v322').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
