@@ -14191,6 +14191,39 @@ function renderQuickActionsHub() {
         ];
     }
 
+    if (role === 'docente') {
+        const canSeeGuides = (typeof hasRolePermission === 'function' && hasRolePermission('guide-teachers', STATE.currentRole));
+        hub.style.marginTop = '0';
+        hub.style.marginBottom = '12px';
+        hub.innerHTML = `
+            <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; box-shadow:0 2px 8px rgba(15,43,92,0.04);">
+                <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" onclick="navigateTo('attendance')" style="height:34px; border-radius:8px; padding:0 12px; font-size:0.79rem; font-weight:800; border:1.5px solid #0f2b5c; background:#0369a1; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-calendar-check"></i> Tomar Asistencia Hoy
+                    </button>
+                    <button type="button" onclick="navigateTo('gradebook')" style="height:34px; border-radius:8px; padding:0 12px; font-size:0.79rem; font-weight:800; border:1.5px solid #7dd3fc; background:#f0f9ff; color:#0f2b5c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-pen-to-square" style="color:#0369a1;"></i> Ingresar Calificaciones
+                    </button>
+                    <button type="button" onclick="navigateTo('reports')" style="height:34px; border-radius:8px; padding:0 12px; font-size:0.79rem; font-weight:800; border:1.5px solid #cbd5e1; background:#f8fafc; color:#0f2b5c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-print" style="color:#0369a1;"></i> Boletines de Notas
+                    </button>
+                </div>
+                <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" onclick="showNotificationToast()" style="height:34px; border-radius:8px; padding:0 11px; font-size:0.78rem; font-weight:800; border:1.5px solid #cbd5e1; background:#ffffff; color:#0f2b5c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Ver notificaciones y avisos del sistema">
+                        <i class="fa-solid fa-bell" style="color:#d97706;"></i> Avisos
+                    </button>
+                    ${canSeeGuides ? `
+                    <button type="button" onclick="openGradesDirectoryModal(event)" style="height:34px; border-radius:8px; padding:0 11px; font-size:0.78rem; font-weight:800; border:1.5px solid #cbd5e1; background:#ffffff; color:#0f2b5c; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Consultar directorio de maestros guías">
+                        <i class="fa-solid fa-person-chalkboard" style="color:#0369a1;"></i> Maestros Guías
+                    </button>` : ''}
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    hub.style.marginTop = '14px';
+    hub.style.marginBottom = '18px';
     hub.innerHTML = `
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -14220,6 +14253,28 @@ function renderQuickActionsHub() {
 }
 window.renderQuickActionsHub = renderQuickActionsHub;
 
+window._teacherDashActiveGrade = 'ALL';
+window.filterTeacherDashCards = function(grade, btn) {
+    window._teacherDashActiveGrade = grade || 'ALL';
+    document.querySelectorAll('#teacherDashFilterPills .teacher-fpill').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const q = (document.getElementById('teacherDashSearchInput')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('#teacherDashCoursesGrid .teacher-course-card').forEach(card => {
+        const matchGrade = (window._teacherDashActiveGrade === 'ALL' || card.dataset.grade === window._teacherDashActiveGrade);
+        const matchQuery = (!q || (card.dataset.search || '').includes(q));
+        card.style.display = (matchGrade && matchQuery) ? '' : 'none';
+    });
+};
+window.searchTeacherDashCards = function(query) {
+    const q = (query || '').toLowerCase().trim();
+    const activeG = window._teacherDashActiveGrade || 'ALL';
+    document.querySelectorAll('#teacherDashCoursesGrid .teacher-course-card').forEach(card => {
+        const matchGrade = (activeG === 'ALL' || card.dataset.grade === activeG);
+        const matchQuery = (!q || (card.dataset.search || '').includes(q));
+        card.style.display = (matchGrade && matchQuery) ? '' : 'none';
+    });
+};
+
 function renderDashboard() {
     const kpiGrid = document.getElementById('kpiGrid');
     const mainBody = document.getElementById('dashCardMainBody');
@@ -14241,206 +14296,201 @@ function renderDashboard() {
 
     const currentUser = STATE.currentUser || STATE.users[0];
     const isDocente = (STATE.currentRole === 'docente');
+    const dashViewEl = document.getElementById('view-dashboard');
+    const teacherHeroKpis = document.getElementById('teacherHeroKpis');
+
+    if (dashViewEl) {
+        dashViewEl.classList.toggle('teacher-dash-mode', isDocente);
+    }
+    if (!isDocente) {
+        kpiGrid.style.display = '';
+        if (dateChip) dateChip.style.display = '';
+        if (teacherHeroKpis) { teacherHeroKpis.style.display = 'none'; teacherHeroKpis.innerHTML = ''; }
+    }
 
     if (isDocente) {
-        welcomeTitle.textContent = `¡Bienvenido Catedrático, ${currentUser.name}!`;
-        welcomeSubtitle.textContent = `Portal de Ingreso de Calificaciones, Control de Asistencia e Impresión de Listados.`;
+        const todayStrDoc = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const capDateDoc = todayStrDoc.charAt(0).toUpperCase() + todayStrDoc.slice(1);
+        welcomeTitle.innerHTML = `<i class="fa-solid fa-chalkboard-user" style="color:#7dd3fc; margin-right:6px;"></i>¡Bienvenido, ${escapeHtml(currentUser.name)}!`;
+        welcomeSubtitle.innerHTML = `<i class="fa-regular fa-calendar"></i> ${capDateDoc}${STATE.activeCycle ? ' &nbsp;•&nbsp; Ciclo ' + STATE.activeCycle : ''} &nbsp;•&nbsp; Portal Docente ENCCO`;
+        if (dateChip) dateChip.style.display = 'none';
+        kpiGrid.style.display = 'none';
+        kpiGrid.innerHTML = '';
 
         // Filtrar clases asignadas al docente de forma dinámica y universal
         const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : (p.teacherId === currentUser.id || (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())));
 
-        // Agrupar clases separadas por grado y sección
-        const groupedGrades = {};
-        myClasses.forEach(c => {
-            const sec = (c.section || 'A').trim();
-            const key = `${c.grade || ''}__${sec}__${c.career || ''}`;
-            if (!groupedGrades[key]) {
-                groupedGrades[key] = {
-                    grade: c.grade,
-                    section: sec,
-                    career: c.career || '',
-                    classes: []
-                };
-            }
-            groupedGrades[key].classes.push(c);
+        // Ordenar de forma coherente: 4to -> 5to -> 6to, Sección A -> E, Materia A-Z
+        const gradeRank = (gStr) => {
+            const s = (gStr || '').toLowerCase();
+            if (s.includes('4to') || s.includes('cuarto')) return 4;
+            if (s.includes('5to') || s.includes('quinto')) return 5;
+            if (s.includes('6to') || s.includes('sexto')) return 6;
+            return 9;
+        };
+        const sortedClasses = [...myClasses].sort((a, b) => {
+            const gr = gradeRank(a.grade) - gradeRank(b.grade);
+            if (gr !== 0) return gr;
+            const secA = (a.section || 'A').trim().toUpperCase();
+            const secB = (b.section || 'A').trim().toUpperCase();
+            if (secA !== secB) return secA.localeCompare(secB, 'es');
+            return (a.subject || '').localeCompare(b.subject || '', 'es');
         });
 
-        const gradeKeys = Object.keys(groupedGrades);
+        // Calcular secciones únicas y total de estudiantes sin duplicar por materia
+        const uniqueSections = {};
+        sortedClasses.forEach(c => {
+            const sec = (c.section || 'A').trim();
+            const key = `${c.grade || ''}__${sec}__${c.career || ''}`;
+            if (!uniqueSections[key]) {
+                uniqueSections[key] = { grade: c.grade, section: sec, career: c.career || '' };
+            }
+        });
+        const sectionKeys = Object.keys(uniqueSections);
         let totalStudentsCount = 0;
-        gradeKeys.forEach(k => {
-            const g = groupedGrades[k];
+        sectionKeys.forEach(k => {
+            const g = uniqueSections[k];
             totalStudentsCount += getStudentCountByGradeAndSection(g.grade, g.grade, g.section);
         });
 
         const activeBimestreDisplay = STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre || 1;
-
         let completedClassesCount = 0;
-        myClasses.forEach(c => {
+
+        // Precalcular métricas de cada cátedra y conteos por grado para filtros dinámicos
+        const gradeFilterCounts = {};
+        const enrichedClasses = sortedClasses.map(c => {
+            const sec = (c.section || 'A').trim();
+            const secLetter = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(sec) : sec.replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
             const gradeCode = c.gradeCode || c.grade;
-            const students = (typeof getSortedGradebookStudents === 'function')
+            const classStudents = (typeof getSortedGradebookStudents === 'function')
                 ? getSortedGradebookStudents(gradeCode, c)
-                : (STATE.students || []).filter(s => s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(c.grade)));
-            const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
-            if (activeStudents.length === 0) return;
-            const allGraded = activeStudents.every(s => {
+                : (STATE.students || []).filter(s => s && (s.grade === c.grade || (s.gradeLabel && s.gradeLabel.includes(c.grade))));
+            const activeClassStudents = classStudents.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
+            let gradedCount = 0;
+            activeClassStudents.forEach(s => {
                 const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, c.subject, activeBimestreDisplay);
-                if (isExon) return true;
+                if (isExon) { gradedCount++; return; }
                 const uData = s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][activeBimestreDisplay];
                 const acts = uData ? (uData.activities || []) : [];
                 const exam = uData ? (parseInt(uData.exam) || 0) : 0;
-                return acts.some(v => (parseInt(v) || 0) > 0) || exam > 0;
+                if (acts.some(v => (parseInt(v) || 0) > 0) || exam > 0) gradedCount++;
             });
-            if (allGraded) completedClassesCount++;
+            const totalSt = activeClassStudents.length;
+            const pct = totalSt > 0 ? Math.round((gradedCount / totalSt) * 100) : 0;
+            if (totalSt > 0 && gradedCount === totalSt) completedClassesCount++;
+
+            const editPerm = (typeof isGradebookEditableForUser === 'function')
+                ? isGradebookEditableForUser(c.id, activeBimestreDisplay)
+                : { editable: true };
+            const isEditable = !!(editPerm && editPerm.editable);
+
+            const isGuide = (STATE.gradesList || []).some(gl => {
+                if (!gl) return false;
+                const matchG = gl.name === c.grade || gl.code === c.grade || (gl.name && gl.name.includes(c.grade));
+                const matchS = (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(gl.section) : gl.section) === secLetter;
+                const glTName = (gl.guideTeacher || '').toLowerCase();
+                const curName = (currentUser.name || '').toLowerCase();
+                return matchG && matchS && (gl.guideTeacherId === currentUser.id || glTName === curName || (curName && glTName.includes(curName)));
+            });
+
+            const gradeKeyLabel = (c.grade || 'Sin Grado').trim();
+            gradeFilterCounts[gradeKeyLabel] = (gradeFilterCounts[gradeKeyLabel] || 0) + 1;
+
+            return { c, sec, secLetter, totalSt, gradedCount, pct, isEditable, isGuide, gradeKeyLabel };
         });
 
-        kpiGrid.innerHTML = `
-            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-book-bookmark"></i></div><div class="kpi-info"><h4>Clases Asignadas</h4><h2>${myClasses.length}</h2><p>Cursos a su cargo</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Grados que Imparte</h4><h2>${gradeKeys.length}</h2><p>Secciones asignadas</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-users"></i></div><div class="kpi-info"><h4>Total Estudiantes</h4><h2>${totalStudentsCount}</h2><p>Inscritos en sus grados</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon ${completedClassesCount === myClasses.length && myClasses.length > 0 ? 'green' : 'purple'}"><i class="fa-solid fa-clipboard-check"></i></div><div class="kpi-info"><h4>Notas Bimestre ${activeBimestreDisplay}°</h4><h2>${completedClassesCount}/${myClasses.length}</h2><p>${completedClassesCount === myClasses.length && myClasses.length > 0 ? '✓ Todas completadas' : 'Cátedras al 100%'}</p></div></div>
-        `;
+        // KPIs integrados dentro del Hero Banner compacto (ahorra ~160px)
+        if (teacherHeroKpis) {
+            teacherHeroKpis.style.display = 'flex';
+            teacherHeroKpis.innerHTML = `
+                <div class="teacher-kpi-chip"><div class="kv">${sortedClasses.length}</div><div class="kl">Cátedras</div></div>
+                <div class="teacher-kpi-chip"><div class="kv">${sectionKeys.length}</div><div class="kl">Secciones</div></div>
+                <div class="teacher-kpi-chip"><div class="kv">${totalStudentsCount}</div><div class="kl">Alumnos</div></div>
+                <div class="teacher-kpi-chip"><div class="kv">${completedClassesCount}/${sortedClasses.length}</div><div class="kl">Bim ${activeBimestreDisplay} al 100%</div></div>
+            `;
+        }
 
-        if (gradeKeys.length === 0) {
+        if (enrichedClasses.length === 0) {
             mainBody.innerHTML = `
-                <div style="text-align:center; padding:35px 20px;">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:3rem; color:var(--brand-green); margin-bottom:12px; display:block;"></i>
-                    <h4 style="color:var(--text-primary); margin-bottom:6px;">Sin Clases Asignadas Actualmente</h4>
-                    <p style="color:var(--text-secondary); max-width:480px; margin:0 auto; font-size:0.9rem;">
+                <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; text-align:center; padding:35px 20px;">
+                    <i class="fa-solid fa-chalkboard-user" style="font-size:2.8rem; color:#0369a1; margin-bottom:12px; display:block;"></i>
+                    <h4 style="color:#0f2b5c; margin-bottom:6px; font-weight:800;">Sin Clases Asignadas Actualmente</h4>
+                    <p style="color:#475569; max-width:480px; margin:0 auto; font-size:0.88rem;">
                         No tiene cursos ni cátedras asignadas a su nombre en el pensum escolar. Solicite a Dirección o Administración la asignación de sus materias.
                     </p>
                 </div>
             `;
         } else {
-            let cardsHtml = '';
-            gradeKeys.forEach(k => {
-                const g = groupedGrades[k];
-                const studentCount = getStudentCountByGradeAndSection(g.grade, g.grade, g.section);
-                const secClean = (g.section || '').toLowerCase().startsWith('secci') ? g.section : 'Sección ' + (g.section || 'A');
+            const gradeFilterKeys = Object.keys(gradeFilterCounts).sort((a, b) => gradeRank(a) - gradeRank(b) || a.localeCompare(b, 'es'));
+            const filterPillsHtml = `
+                <button type="button" class="teacher-fpill active" onclick="window.filterTeacherDashCards('ALL', this)">Todas (${enrichedClasses.length})</button>
+                ${gradeFilterKeys.map(gk => `
+                    <button type="button" class="teacher-fpill" onclick="window.filterTeacherDashCards('${escapeHtml(gk).replace(/'/g, "\\'")}', this)">${escapeHtml(gk)} (${gradeFilterCounts[gk]})</button>
+                `).join('')}
+            `;
 
-                const isGuideTeacherForThisSection = (STATE.gradesList || []).some(gl => {
-                    if (!gl) return false;
-                    const matchG = gl.name === g.grade || gl.code === g.grade || (gl.name && gl.name.includes(g.grade));
-                    const matchS = getCleanSectionLetter(gl.section) === getCleanSectionLetter(g.section);
-                    const glTName = (gl.guideTeacher || '').toLowerCase();
-                    const curName = (currentUser.name || '').toLowerCase();
-                    return matchG && matchS && (gl.guideTeacherId === currentUser.id || glTName === curName || (curName && glTName.includes(curName)));
-                });
+            const gridCardsHtml = enrichedClasses.map(({ c, sec, secLetter, totalSt, gradedCount, pct, isEditable, isGuide, gradeKeyLabel }) => {
+                const shortGrade = (c.grade || '').replace(/Perito Contador/i, 'PC').trim();
+                const searchKey = `${c.grade || ''} ${sec} ${secLetter} ${c.subject || ''} ${c.code || ''}`.toLowerCase();
+                const barColor = pct === 100 ? '#16a34a' : (pct >= 50 ? '#0284c7' : '#0369a1');
+                const safeGradeArg = escapeHtml(c.grade || '').replace(/'/g, "\\'");
+                const safeSecArg = escapeHtml(sec || '').replace(/'/g, "\\'");
+                const safeSubjArg = escapeHtml(c.subject || '').replace(/'/g, "\\'");
 
-                const guideBadge = isGuideTeacherForThisSection ? `
-                    <span class="badge" style="background:#fef08a; color:#854d0e; border:1px solid #fde047; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
-                        <i class="fa-solid fa-crown" style="color:#ca8a04;"></i> Maestro Guía
-                    </span>
-                ` : '';
-
-                cardsHtml += `
-                    <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:10px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-                        <!-- ENCABEZADO DEL GRADO Y SECCIÓN -->
-                        <div style="background:linear-gradient(135deg, #15803d, #166534); color:white; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <div style="width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                                    <i class="fa-solid fa-graduation-cap"></i>
-                                </div>
-                                <div>
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <strong style="font-size:1.08rem; display:block; letter-spacing:0.3px;">${g.grade} — ${secClean}</strong>
-                                        ${guideBadge}
-                                    </div>
-                                    <span style="font-size:0.82rem; opacity:0.92;"><i class="fa-solid fa-award"></i> ${g.career}</span>
-                                </div>
-                            </div>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <span class="badge" style="background:rgba(255,255,255,0.25); color:white; font-size:0.84rem; padding:5px 12px; border-radius:20px; font-weight:700;">
-                                    <i class="fa-solid fa-users"></i> ${studentCount} Estudiantes
-                                </span>
-                                <button type="button" class="btn btn-xs" onclick="openAttendanceForGrade('${g.grade}', '${g.section}')" style="background:white; color:#15803d; font-weight:800; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem; box-shadow:0 1px 3px rgba(0,0,0,0.1);" title="Tomar asistencia para esta sección">
-                                    <i class="fa-solid fa-calendar-check"></i> Asistencia Grado
-                                </button>
-                            </div>
+                return `
+                    <div class="teacher-course-card" data-grade="${escapeHtml(gradeKeyLabel)}" data-search="${escapeHtml(searchKey)}">
+                        <div style="background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-bottom:1px solid #bae6fd; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                            <span style="font-size:0.76rem; font-weight:900; color:#0f2b5c; display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                                <i class="fa-solid fa-graduation-cap" style="color:#0369a1;"></i> ${escapeHtml(shortGrade)} — Sección ${escapeHtml(secLetter)}
+                                ${isGuide ? '<span style="background:#fef08a; color:#854d0e; border:1px solid #fde047; font-size:0.65rem; padding:1px 6px; border-radius:999px; font-weight:800;"><i class="fa-solid fa-crown" style="color:#ca8a04;"></i> Guía</span>' : ''}
+                            </span>
+                            <span style="font-size:0.71rem; font-weight:800; color:#0369a1; background:#ffffff; border:1px solid #7dd3fc; padding:2px 8px; border-radius:999px; white-space:nowrap;" title="Estudiantes activos en esta sección">
+                                <i class="fa-solid fa-users"></i> ${totalSt}
+                            </span>
                         </div>
-
-                        <!-- LISTADO DE MATERIAS / CLASES DE ESTE GRADO -->
-                        <div style="padding:16px;">
-                            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:14px;">
-                                ${g.classes.map(c => {
-                                    const classStudents = (typeof getSortedGradebookStudents === 'function')
-                                        ? getSortedGradebookStudents(c.gradeCode || c.grade, c)
-                                        : (STATE.students || []).filter(s => s && (s.grade === c.grade || (s.gradeLabel && s.gradeLabel.includes(c.grade))));
-                                    const activeClassStudents = classStudents.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
-                                    let gradedCount = 0;
-                                    activeClassStudents.forEach(s => {
-                                        const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, c.subject, activeBimestreDisplay);
-                                        if (isExon) { gradedCount++; return; }
-                                        const uData = s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][activeBimestreDisplay];
-                                        const acts = uData ? (uData.activities || []) : [];
-                                        const exam = uData ? (parseInt(uData.exam) || 0) : 0;
-                                        if (acts.some(v => (parseInt(v) || 0) > 0) || exam > 0) gradedCount++;
-                                    });
-                                    const totalSt = activeClassStudents.length;
-                                    const pct = totalSt > 0 ? Math.round((gradedCount / totalSt) * 100) : 0;
-
-                                    const editPerm = (typeof isGradebookEditableForUser === 'function')
-                                        ? isGradebookEditableForUser(c.id, activeBimestreDisplay)
-                                        : { editable: true };
-                                    const isEditable = editPerm && editPerm.editable;
-
-                                    return `
-                                    <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:box-shadow 0.2s;">
-                                        <div>
-                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                                                <strong style="font-size:0.98rem; color:var(--text-primary);"><i class="fa-solid fa-book-open" style="color:var(--brand-green); margin-right:8px;"></i>${escapeHtml(c.subject)}</strong>
-                                                <span class="badge" style="background:${isEditable ? '#ecfdf5' : '#fffbeb'}; color:${isEditable ? '#15803d' : '#b45309'}; border:1px solid ${isEditable ? '#a7f3d0' : '#fde68a'}; font-size:0.72rem; padding:3px 7px; font-weight:800; white-space:nowrap;">
-                                                    <i class="fa-solid ${isEditable ? 'fa-lock-open' : 'fa-lock'}"></i> ${isEditable ? 'Habilitado' : 'Cerrado'}
-                                                </span>
-                                            </div>
-                                            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:6px; display:flex; flex-direction:column; gap:3px;">
-                                                <span>Código: <code>${c.code || c.id}</code></span>
-                                                <span>Bimestre: <strong style="color:var(--brand-green-dark);">${activeBimestreDisplay}° Bimestre</strong></span>
-                                                
-                                                <div style="margin-top:4px;">
-                                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; margin-bottom:2px;">
-                                                        <span style="font-weight:700; color:var(--text-secondary);">Avance Notas:</span>
-                                                        <span style="font-weight:800; color:${pct === 100 ? '#15803d' : (pct >= 50 ? '#0284c7' : '#b45309')};">${gradedCount}/${totalSt} (${pct}%)</span>
-                                                    </div>
-                                                    <div style="background:#e2e8f0; border-radius:999px; height:6px; overflow:hidden;">
-                                                        <div style="width:${pct}%; height:100%; background:${pct === 100 ? '#16a34a' : (pct >= 50 ? '#0284c7' : '#f59e0b')}; border-radius:999px; transition:width 0.3s ease;"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style="display:flex; gap:6px; border-top:1px dashed var(--border-color); padding-top:10px; flex-wrap:wrap;">
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="openGradebookForCourse('${c.id}')" style="flex:2; font-weight:700; padding:4px 8px; font-size:0.82rem;">
-                                                <i class="fa-solid fa-pen-to-square"></i> Ingresar Notas
-                                            </button>
-                                            <button type="button" class="btn btn-outline-success btn-sm" onclick="openAttendanceForGrade('${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${c.id}')" style="flex:1.2; font-weight:700; padding:4px 8px; font-size:0.82rem;" title="Pase de lista de hoy para este curso">
-                                                <i class="fa-solid fa-calendar-check"></i> Asistencia
-                                            </button>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCoursePrintModal('${c.id}', '${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${escapeHtml(c.subject)}')" style="flex:1; padding:4px 8px; font-size:0.82rem;" title="Imprimir Listas Oficiales">
-                                                <i class="fa-solid fa-print"></i> Lista
-                                            </button>
-                                        </div>
+                        <div style="padding:11px 12px; flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:9px;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                                    <div style="font-size:0.93rem; font-weight:800; color:#0f2b5c; line-height:1.25;">${escapeHtml(c.subject)}</div>
+                                    <span style="font-size:0.67rem; font-weight:800; padding:2px 7px; border-radius:999px; white-space:nowrap; background:${isEditable ? '#dcfce7' : '#fef3c7'}; color:${isEditable ? '#166534' : '#92400e'}; border:1px solid ${isEditable ? '#86efac' : '#fcd34d'};">
+                                        <i class="fa-solid ${isEditable ? 'fa-lock-open' : 'fa-lock'}"></i> ${isEditable ? 'Habilitado' : 'Cerrado'}
+                                    </span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px; font-size:0.73rem; font-weight:700; color:#475569; margin-top:8px;">
+                                    <span style="white-space:nowrap;">Bim ${activeBimestreDisplay}: <strong style="color:#0f2b5c;">${pct}%</strong> (${gradedCount}/${totalSt})</span>
+                                    <div style="flex:1; height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:999px; transition:width 0.3s ease;"></div>
                                     </div>
-                                    `;
-                                }).join('')}
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:6px; padding-top:4px;">
+                                <button type="button" onclick="openGradebookForCourse('${c.id}')" style="flex:1.4; height:31px; border-radius:7px; font-size:0.76rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:#0369a1; color:#ffffff; border:1.5px solid #0f2b5c;">
+                                    <i class="fa-solid fa-pen-to-square"></i> Notas
+                                </button>
+                                <button type="button" onclick="openAttendanceForGrade('${safeGradeArg}', '${safeSecArg}', '${c.id}')" style="flex:1.3; height:31px; border-radius:7px; font-size:0.76rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:#f8fafc; color:#0f2b5c; border:1.5px solid #cbd5e1;" title="Pase de lista de hoy para este curso">
+                                    <i class="fa-solid fa-clipboard-user" style="color:#0369a1;"></i> Asistencia
+                                </button>
+                                <button type="button" onclick="openCoursePrintModal('${c.id}', '${safeGradeArg}', '${safeSecArg}', '${safeSubjArg}')" style="width:34px; height:31px; border-radius:7px; font-size:0.78rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; background:#ffffff; color:#475569; border:1.5px solid #cbd5e1;" title="Imprimir Listas Oficiales">
+                                    <i class="fa-solid fa-print"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                 `;
-            });
-
-            const guideBtnHtml = (typeof hasRolePermission === 'function' && hasRolePermission('guide-teachers', STATE.currentRole)) ? `
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradesDirectoryModal(event)" style="font-weight:700;">
-                            <i class="fa-solid fa-person-chalkboard"></i> Directorio de Maestros Guías
-                        </button>` : '';
+            }).join('');
 
             mainBody.innerHTML = `
-                <div style="padding:4px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-                        <h4 style="color:var(--brand-green-dark); margin:0; font-size:1.02rem; font-weight:800;">
-                            <i class="fa-solid fa-layer-group"></i> Clases Asignadas Agrupadas por Grado y Sección:
-                        </h4>
-                        ${guideBtnHtml}
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <div id="teacherDashFilterPills" style="display:flex; gap:6px; flex-wrap:wrap;">
+                        ${filterPillsHtml}
                     </div>
-                    ${cardsHtml}
+                    <div style="position:relative; min-width:210px; flex:0 1 250px;">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.75rem; pointer-events:none;"></i>
+                        <input type="text" id="teacherDashSearchInput" placeholder="Buscar curso o sección..." oninput="window.searchTeacherDashCards(this.value)" style="height:31px; padding:0 10px 0 30px; border-radius:8px; border:1.5px solid #cbd5e1; font-size:0.78rem; width:100%; background:#ffffff; box-sizing:border-box;">
+                    </div>
+                </div>
+                <div id="teacherDashCoursesGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(305px, 1fr)); gap:12px;">
+                    ${gridCardsHtml}
                 </div>
             `;
         }

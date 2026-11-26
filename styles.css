@@ -593,25 +593,84 @@ body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 .welcome-banner {
-    background: linear-gradient(135deg, #0f2b5c 0%, #1d4ed8 45%, #059669 88%, #047857 100%);
+    background: linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%);
     color: #ffffff;
     border-radius: var(--radius-lg);
-    padding: 24px 30px;
+    padding: 16px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 24px;
-    border-left: 6px solid var(--brand-orange);
-    box-shadow: 0 10px 25px rgba(15, 43, 92, 0.22);
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 14px;
+    border-left: 5px solid #38bdf8;
+    box-shadow: 0 8px 20px rgba(15, 43, 92, 0.18);
     position: relative;
     overflow: hidden;
 }
 
-.banner-watermark-logo { position: absolute; right: -20px; top: -20px; width: 180px; height: 180px; opacity: 0.12; pointer-events: none; }
-.banner-text h2 { font-size: 1.45rem; font-weight: 800; margin-bottom: 4px; }
-.banner-text p { font-size: 0.9rem; opacity: 0.95; }
-.date-chip { background: rgba(255, 255, 255, 0.2); backdrop-filter: none; padding: 8px 16px; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+.banner-watermark-logo { position: absolute; right: -20px; top: -20px; width: 160px; height: 160px; opacity: 0.10; pointer-events: none; }
+.banner-text h2 { font-size: 1.24rem; font-weight: 800; margin-bottom: 3px; }
+.banner-text p { font-size: 0.84rem; opacity: 0.92; margin: 0; }
+.date-chip { background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(186, 230, 253, 0.32); backdrop-filter: none; padding: 6px 13px; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; }
+
+/* Modo compacto exclusivo del Panel Docente (Mis Clases Asignadas) */
+#view-dashboard.teacher-dash-mode .card-main {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+#view-dashboard.teacher-dash-mode .card-main > .card-header {
+    display: none !important;
+}
+#view-dashboard.teacher-dash-mode .card-main > .card-body {
+    padding: 0 !important;
+}
+.teacher-hero-kpis {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.teacher-kpi-chip {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(186, 230, 253, 0.32);
+    border-radius: 10px;
+    padding: 6px 12px;
+    min-width: 88px;
+    text-align: center;
+}
+.teacher-kpi-chip .kv { font-size: 1.02rem; font-weight: 900; line-height: 1.1; color: #ffffff; }
+.teacher-kpi-chip .kl { font-size: 0.65rem; font-weight: 700; color: #bae6fd; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+.teacher-course-card {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(15, 43, 92, 0.05);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+}
+.teacher-course-card:hover {
+    transform: translateY(-2px);
+    border-color: #0369a1;
+    box-shadow: 0 6px 16px rgba(3, 105, 161, 0.12);
+}
+.teacher-fpill {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.teacher-fpill:hover { border-color: #7dd3fc; background: #f0f9ff; color: #0f2b5c; }
+.teacher-fpill.active { background: #0f2b5c; color: #ffffff; border-color: #0f2b5c; }
 
 /* KPIs & Grids */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin-bottom: 24px; }
