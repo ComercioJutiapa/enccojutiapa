@@ -352,6 +352,42 @@
             -webkit-text-fill-color: transparent;
         }
 
+        .hero-motto {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            margin: 2px 0 22px;
+            flex-wrap: wrap;
+        }
+
+        .hero-motto-line {
+            width: 38px;
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, transparent, #f59e0b);
+        }
+
+        .hero-motto-line.right {
+            background: linear-gradient(90deg, #f59e0b, transparent);
+        }
+
+        .hero-motto-text {
+            font-family: var(--font-tech);
+            font-size: clamp(0.95rem, 1.8vw, 1.28rem);
+            font-weight: 700;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: #f8fafc;
+            text-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+        }
+
+        .hero-motto-accent {
+            background: var(--gold-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.45));
+        }
+
         .hero-subtitle {
             font-size: 1.06rem;
             color: var(--text-soft);
@@ -1057,6 +1093,11 @@
                     ESCUELA NACIONAL DE<br>
                     <span class="outline-text">CIENCIAS</span> <span class="gold-text">COMERCIALES</span>
                 </h1>
+                <div class="hero-motto" aria-label="Donde nace tu futuro">
+                    <span class="hero-motto-line"></span>
+                    <span class="hero-motto-text">DONDE NACE <span class="hero-motto-accent">TU FUTURO</span></span>
+                    <span class="hero-motto-line right"></span>
+                </div>
                 <p class="hero-subtitle">
                     Formación técnica profesional en perito contador y ciencias comerciales en Jutiapa. Compromiso, ética y preparación de alto nivel.
                 </p>
@@ -1086,8 +1127,8 @@
     <!-- 3. CINTA CINÉTICA INSTITUCIONAL -->
     <div class="marquee-wrap">
         <div class="marquee-track">
-            ★ ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; NIVEL DIVERSIFICADO OFICIAL MINEDUC &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
-            ★ ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; NIVEL DIVERSIFICADO OFICIAL MINEDUC &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
+            ★ DONDE NACE TU FUTURO &nbsp;•&nbsp; ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
+            ★ DONDE NACE TU FUTURO &nbsp;•&nbsp; ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
         </div>
     </div>
 
@@ -1378,7 +1419,7 @@
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261125_v313').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261125_v314').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
