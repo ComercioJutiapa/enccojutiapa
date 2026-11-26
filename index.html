@@ -8,8 +8,14 @@
             if (typeof window !== 'undefined' && window.location) {
                 var host = (window.location.hostname || '').toLowerCase();
                 var isFile = (window.location.protocol === 'file:');
-                var isAllowed = isFile || host === 'comerciojutiapa.github.io' || host.endsWith('.github.io') || host === 'localhost' || host === '127.0.0.1';
-                if (!isAllowed || host.includes('web.app') || host.includes('firebaseapp.com')) {
+                var isAllowed = isFile
+                    || host === 'encco-jutiapa-live-2026.web.app'
+                    || host === 'encco-jutiapa-live-2026.firebaseapp.com'
+                    || host === 'comerciojutiapa.github.io'
+                    || host.endsWith('.github.io')
+                    || host === 'localhost'
+                    || host === '127.0.0.1';
+                if (!isAllowed) {
                     window.location.replace('https://encco-jutiapa-live-2026.web.app/' + window.location.search + window.location.hash);
                     return;
                 }
@@ -19,19 +25,19 @@
                     window.top.location = window.self.location.href;
                 } catch(e) {
                     if (document.documentElement) {
-                        document.documentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f172a;color:#fff;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;">⚠️ Acceso de Terceros Bloqueado</h2><p>El Portal Oficial ENCCO no permite incrustaciones externas.</p><a href="https://encco-jutiapa-live-2026.web.app/" target="_blank" style="color:#22c55e;font-weight:bold;">Abrir en Sitio Oficial</a></div></div>';
+                        document.documentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#050811;color:#fff;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;">⚠️ Acceso de Terceros Bloqueado</h2><p>El Portal Oficial ENCCO no permite incrustaciones externas.</p><a href="https://encco-jutiapa-live-2026.web.app/" target="_blank" style="color:#38bdf8;font-weight:bold;">Abrir en Sitio Oficial</a></div></div>';
                     }
                 }
             }
             if (typeof console !== 'undefined' && console.log) {
-                console.log("%c🛑 PORTAL OFICIAL ENCCO JUTIAPA 1970", "color: #15803d; font-size: 18px; font-weight: 900;");
-                console.log("%cSitio protegido institucionalmente. Acceso seguro verificado.", "color: #334155; font-size: 11px;");
+                console.log("%c🛑 PORTAL OFICIAL ENCCO JUTIAPA 1970", "color: #0369a1; font-size: 18px; font-weight: 900;");
+                console.log("%cSitio protegido institucionalmente. Acceso seguro verificado.", "color: #64748b; font-size: 11px;");
             }
         })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escuela Nacional de Ciencias Comerciales | ENCCO Jutiapa 1970</title>
-    <meta name="description" content="Portal Informativo Oficial de la Escuela Nacional de Ciencias Comerciales de Jutiapa - Fundada en 1970. Quiénes somos, misión, visión, vida estudiantil y acceso a plataforma académica.">
+    <meta name="description" content="Portal Informativo Oficial de la Escuela Nacional de Ciencias Comerciales de Jutiapa - Fundada en 1970. Quiénes somos, misión, visión, enseñanza de tecnología y vida estudiantil.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -41,277 +47,258 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0369a1">
-    
+
     <!-- Fuentes Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
     <!-- Iconos Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
         :root {
-            --color-primary: #15803d;
-            --color-primary-dark: #0f5127;
-            --color-primary-light: #22c55e;
-            --color-accent: #d97706;
-            --color-accent-light: #fbbf24;
-            --color-dark: #0b132b;
-            --color-dark-surface: #1c2541;
-            --color-light-bg: #f8fafc;
-            --color-white: #ffffff;
-            --font-heading: 'Outfit', sans-serif;
-            --font-body: 'Plus Jakarta Sans', sans-serif;
-            --shadow-subtle: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
-            --shadow-card: 0 12px 30px -4px rgba(15, 23, 42, 0.12);
-            --shadow-glow: 0 0 25px rgba(34, 197, 94, 0.35);
-            --transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            --bg-oled: #050811;
+            --bg-elevated: #0a1224;
+            --navy: #0f2b5c;
+            --blue: #0369a1;
+            --sky: #38bdf8;
+            --gold: #f59e0b;
+            --gold-light: #fde68a;
+            --gold-grad: linear-gradient(135deg, #fef08a 0%, #f59e0b 55%, #d97706 100%);
+            --blue-grad: linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%);
+            --border-glass: rgba(186, 230, 253, 0.14);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-soft: #cbd5e1;
+            --font-display: 'Outfit', sans-serif;
+            --font-tech: 'Space Grotesk', sans-serif;
+            --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        html { scroll-behavior: smooth; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        html { scroll-behavior: smooth; }
         body {
             font-family: var(--font-body);
-            background-color: var(--color-light-bg);
-            color: #334155;
-            line-height: 1.6;
+            background: var(--bg-oled);
+            color: var(--text-main);
+            line-height: 1.65;
             overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: var(--font-display);
+            letter-spacing: -0.025em;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1220px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* 1. ENCABEZADO FLOTANTE GLASSMORPHISM */
+        .main-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(5, 8, 17, 0.78);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
         }
 
         .scroll-progress-line {
             position: absolute;
             bottom: 0;
             left: 0;
-            height: 3px;
+            height: 2.5px;
             width: 0%;
-            background: linear-gradient(90deg, var(--color-primary-light), var(--color-accent-light));
+            background: linear-gradient(90deg, var(--sky), var(--gold-light), var(--gold));
             z-index: 1001;
-            transition: width 0.1s ease-out;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-family: var(--font-heading);
-            letter-spacing: -0.02em;
-        }
-
-        /* 1. BARRA SUPERIOR */
-        .top-announcement-bar {
-            background: linear-gradient(90deg, #0f5127 0%, #15803d 50%, #166534 100%);
-            color: #f8fafc;
-            padding: 10px 0;
-            font-size: 0.86rem;
-            font-weight: 600;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .top-bar-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .top-social-links {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .top-social-links a {
-            color: rgba(255,255,255,0.9);
-            font-size: 1rem;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        .top-social-links a:hover {
-            color: var(--color-accent-light);
-            transform: translateY(-2px) scale(1.1);
-        }
-
-        /* 2. ENCABEZADO NAVEGACIÓN */
-        .main-header {
-            position: sticky;
-            top: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
-            z-index: 1000;
-            border-bottom: 2px solid rgba(21, 128, 61, 0.12);
+            transition: width 0.08s ease-out;
         }
 
         .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 0;
+            padding: 13px 0;
+            gap: 16px;
         }
 
         .brand-logo-group {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             text-decoration: none;
+            color: var(--text-main);
         }
 
         .brand-logo-img {
-            width: 52px;
-            height: 52px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
             object-fit: contain;
-            box-shadow: 0 4px 12px rgba(21, 128, 61, 0.2);
-            border: 2px solid var(--color-primary);
+            background: #ffffff;
+            padding: 2px;
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
             transition: var(--transition);
         }
 
         .brand-logo-group:hover .brand-logo-img {
-            transform: rotate(5deg) scale(1.05);
+            transform: rotate(6deg) scale(1.06);
         }
 
         .brand-text h1 {
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: var(--color-dark);
-            margin: 0;
-            line-height: 1.25;
+            font-size: 0.98rem;
+            font-weight: 900;
+            line-height: 1.15;
             text-transform: uppercase;
+            color: #ffffff;
         }
 
         .brand-text span {
-            font-size: 0.78rem;
+            display: block;
+            font-family: var(--font-tech);
+            font-size: 0.7rem;
             font-weight: 700;
-            color: var(--color-primary);
-            letter-spacing: 0.5px;
+            color: var(--gold-light);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 28px;
+            gap: 24px;
             list-style: none;
-            margin: 0;
-            padding: 0;
         }
 
         .nav-links a {
-            font-family: var(--font-heading);
+            font-family: var(--font-display);
             font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--color-dark);
-            position: relative;
-            padding: 8px 0;
+            font-size: 0.88rem;
+            color: rgba(248, 250, 252, 0.86);
             text-decoration: none;
             transition: var(--transition);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 3px;
-            background: var(--color-primary);
-            transition: var(--transition);
-            border-radius: 4px;
+            position: relative;
         }
 
         .nav-links a:hover {
-            color: var(--color-primary);
+            color: var(--gold-light);
         }
 
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .nav-cta-btn {
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-            color: white !important;
-            padding: 10px 24px !important;
-            border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(21, 128, 61, 0.3);
-            display: inline-flex;
+        .nav-social-group {
+            display: flex;
             align-items: center;
             gap: 8px;
-            font-weight: 800 !important;
+            padding-left: 14px;
+            border-left: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .nav-social-ico {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.86rem;
             text-decoration: none;
-            transition: var(--transition) !important;
+            transition: var(--transition);
         }
 
-        .nav-cta-btn::after {
-            display: none !important;
-        }
-
-        .nav-cta-btn:hover {
+        .nav-social-ico:hover {
+            background: var(--gold-grad);
+            color: #050811 !important;
+            border-color: transparent;
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(21, 128, 61, 0.45);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
         }
 
         .mobile-menu-toggle {
             display: none;
-            background: none;
-            border: none;
-            font-size: 1.6rem;
-            color: var(--color-primary-dark);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-glass);
+            color: #ffffff;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 1.2rem;
             cursor: pointer;
         }
 
-        /* 3. HERO PRINCIPAL */
-        .hero-section {
-            position: relative;
-            background: var(--color-dark);
-            color: white;
-            padding: 70px 0 90px 0;
-            overflow: hidden;
+        .mobile-nav-menu {
+            display: none;
+            background: rgba(8, 14, 30, 0.98);
+            border-top: 1px solid var(--border-glass);
+            padding: 18px 24px 24px;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .hero-bg-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
+        .mobile-nav-menu.active {
+            display: flex;
+        }
+
+        .mobile-nav-menu a {
+            color: #f8fafc;
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.96rem;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* 2. HERO CINEMATOGRÁFICO OSCURO CON LUZ REACTIVA AL CURSOR */
+        .hero-section {
+            position: relative;
+            min-height: 94vh;
+            display: flex;
+            align-items: center;
+            padding: 124px 0 84px;
+            overflow: hidden;
+            background: var(--bg-oled);
         }
 
         .hero-bg-img {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            object-position: center;
-            filter: brightness(0.4) contrast(1.1);
+            opacity: 0.28;
+            filter: contrast(1.12) saturate(1.08);
+            transform: scale(1.03);
         }
 
-        .hero-overlay {
+        .hero-spotlight {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at top right, rgba(34, 197, 94, 0.25) 0%, transparent 60%),
-                        linear-gradient(180deg, rgba(11, 19, 43, 0.85) 0%, rgba(15, 81, 39, 0.9) 100%);
+            background:
+                radial-gradient(650px circle at var(--mx, 72%) var(--my, 32%), rgba(56, 189, 248, 0.2), transparent 58%),
+                radial-gradient(500px circle at 18% 75%, rgba(245, 158, 11, 0.14), transparent 55%),
+                linear-gradient(180deg, rgba(5, 8, 17, 0.55) 0%, rgba(5, 8, 17, 0.85) 70%, #050811 100%);
+            pointer-events: none;
+            z-index: 1;
         }
 
-        .hero-container {
+        .hero-grid {
             position: relative;
-            z-index: 3;
-        }
-
-        .hero-grid-split {
+            z-index: 2;
             display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 40px;
+            grid-template-columns: 1.22fr 0.78fr;
+            gap: 44px;
             align-items: center;
         }
 
@@ -319,536 +306,534 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            background: rgba(251, 191, 36, 0.15);
+            font-family: var(--font-tech);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gold-light);
             border: 1px solid rgba(251, 191, 36, 0.4);
-            color: #fef08a;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-weight: 800;
-            font-size: 0.85rem;
-            margin-bottom: 24px;
+            background: rgba(251, 191, 36, 0.09);
+            padding: 7px 16px;
+            border-radius: 999px;
+            margin-bottom: 22px;
             backdrop-filter: blur(8px);
         }
 
-        .hero-title {
-            font-size: 3.4rem;
-            font-weight: 900;
-            line-height: 1.1;
-            margin-bottom: 22px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fde047;
+            box-shadow: 0 0 12px #fde047;
+            animation: pulseGlow 2s infinite;
         }
 
-        .hero-title span {
-            color: var(--color-accent-light);
-            background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.35); }
+        }
+
+        .hero-title {
+            font-size: clamp(2.6rem, 5.4vw, 4.65rem);
+            font-weight: 900;
+            line-height: 0.99;
+            margin-bottom: 22px;
+        }
+
+        .hero-title .outline-text {
+            -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.62);
+            color: transparent;
+        }
+
+        .hero-title .gold-text {
+            background: var(--gold-grad);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .hero-subtitle {
-            font-size: 1.15rem;
+            font-size: 1.06rem;
+            color: var(--text-soft);
+            max-width: 590px;
+            margin-bottom: 30px;
             line-height: 1.7;
-            margin-bottom: 35px;
-            color: #cbd5e1;
-            max-width: 620px;
         }
 
         .hero-buttons-wrapper {
             display: flex;
-            gap: 16px;
+            gap: 14px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .btn-primary-hero {
-            background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
-            color: #0b132b !important;
-            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
-            font-weight: 800;
-            font-size: 1.02rem;
+            background: var(--gold-grad);
+            color: #050811;
+            padding: 14px 30px;
+            border-radius: 999px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 0.95rem;
             text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 30px;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 9px;
+            box-shadow: 0 0 32px rgba(245, 158, 11, 0.42);
             transition: var(--transition);
         }
 
         .btn-primary-hero:hover {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 12px 30px rgba(34, 197, 94, 0.55);
+            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.6);
         }
 
         .btn-secondary-hero {
-            background: rgba(255, 255, 255, 0.12);
-            color: white !important;
-            border: 2px solid rgba(255, 255, 255, 0.35);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            font-weight: 700;
-            font-size: 1.02rem;
+            border: 1.5px solid rgba(186, 230, 253, 0.35);
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            padding: 14px 26px;
+            border-radius: 999px;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 0.93rem;
             text-decoration: none;
-            padding: 16px 30px;
-            border-radius: 30px;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            backdrop-filter: blur(10px);
             transition: var(--transition);
         }
 
         .btn-secondary-hero:hover {
-            background: white;
-            color: var(--color-dark) !important;
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-        }
-
-        /* TARJETA DE FACHADA */
-        @keyframes floatHeroCard {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-7px); }
+            border-color: var(--sky);
+            color: var(--sky);
+            background: rgba(56, 189, 248, 0.08);
+            transform: translateY(-2px);
         }
 
         .hero-facade-card {
-            position: relative;
-            border-radius: 26px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
-            border: 3px solid rgba(255, 255, 255, 0.2);
-            background: var(--color-dark-surface);
-            animation: floatHeroCard 6s ease-in-out infinite;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(186, 230, 253, 0.2);
+            border-radius: 22px;
+            padding: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.55);
             transition: var(--transition);
         }
 
         .hero-facade-card:hover {
-            animation-play-state: paused;
-            transform: translateY(-8px) scale(1.01);
-            border-color: var(--color-primary-light);
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.7), var(--shadow-glow);
+            border-color: rgba(251, 191, 36, 0.5);
+            transform: translateY(-4px);
         }
 
         .hero-facade-img {
             width: 100%;
-            height: 360px;
+            height: 330px;
             object-fit: cover;
-            object-position: center;
+            border-radius: 14px;
             display: block;
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .hero-facade-card:hover .hero-facade-img {
-            transform: scale(1.04);
         }
 
         .hero-facade-badge {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(180deg, transparent 0%, rgba(11, 19, 43, 0.95) 100%);
-            padding: 22px;
-            color: white;
+            padding: 14px 8px 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
         }
 
         .hero-facade-badge h4 {
-            font-size: 1.05rem;
+            font-size: 0.96rem;
             font-weight: 800;
-            margin: 0 0 4px 0;
-            color: var(--color-accent-light);
+            color: #ffffff;
         }
 
         .hero-facade-badge p {
-            font-size: 0.84rem;
-            margin: 0;
-            color: #cbd5e1;
+            font-size: 0.78rem;
+            color: #94a3b8;
         }
 
-        /* 4. ESTADÍSTICAS */
-        .stats-bar {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-radius: 24px;
-            box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(21, 128, 61, 0.08);
-            margin-top: -45px;
-            position: relative;
-            z-index: 10;
-            padding: 32px 20px;
-            border: 1px solid rgba(226, 232, 240, 0.9);
+        .hero-year-seal {
+            background: var(--gold-grad);
+            color: #050811;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-family: var(--font-tech);
+            font-size: 0.74rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        /* 3. CINTA CINÉTICA INFINITA (MARQUEE) */
+        .marquee-wrap {
+            border-top: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border-glass);
+            background: linear-gradient(90deg, rgba(15, 43, 92, 0.45), rgba(3, 105, 161, 0.25), rgba(15, 43, 92, 0.45));
+            padding: 14px 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .marquee-track {
+            display: inline-block;
+            animation: marqueeScroll 28s linear infinite;
+            font-family: var(--font-tech);
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            color: var(--gold-light);
+        }
+
+        @keyframes marqueeScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* 4. ESTADÍSTICAS DINÁMICAS */
+        .stats-section {
+            padding: 46px 0 18px;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 16px;
-            text-align: center;
         }
 
         .stat-item {
-            padding: 0 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 18px;
+            padding: 24px 18px;
+            text-align: center;
             transition: var(--transition);
         }
 
         .stat-item:hover {
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(15, 43, 92, 0.22);
             transform: translateY(-4px);
         }
 
-        @media (min-width: 993px) {
-            .stat-item:not(:last-child) {
-                border-right: 1px solid #e2e8f0;
-            }
-        }
-
         .stat-item h3 {
-            font-size: 2.6rem;
+            font-size: 2.25rem;
             font-weight: 900;
-            background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+            background: var(--gold-grad);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin: 0 0 4px 0;
-            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 6px;
         }
 
         .stat-item p {
-            font-size: 0.9rem;
+            font-size: 0.82rem;
             font-weight: 700;
-            color: #64748b;
-            margin: 0;
+            color: var(--text-soft);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
 
-        /* 5. SECCIONES GENERALES */
+        /* 5. SECCIONES GENERALES & SPLIT-SCREEN ASIMÉTRICO */
         .section {
-            padding: 90px 0;
-        }
-
-        .section-header {
-            text-align: center;
-            max-width: 700px;
-            margin: 0 auto 55px auto;
+            padding: 78px 0;
         }
 
         .section-tag {
             display: inline-block;
-            background: #dcfce7;
-            color: #15803d;
-            font-weight: 800;
-            font-size: 0.82rem;
+            font-family: var(--font-tech);
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 6px 16px;
-            border-radius: 20px;
+            color: var(--gold-light);
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            padding: 5px 14px;
+            border-radius: 999px;
             margin-bottom: 14px;
         }
 
+        .section-header {
+            text-align: center;
+            max-width: 680px;
+            margin: 0 auto 48px;
+        }
+
         .section-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--color-dark);
-            margin-bottom: 16px;
-        }
-
-        .section-desc {
-            font-size: 1.05rem;
-            color: #64748b;
-        }
-
-        /* QUIÉNES SOMOS */
-        .about-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 48px;
-            align-items: stretch;
-        }
-
-        .about-img-wrapper {
-            position: relative;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.16);
-            border: 4px solid white;
-            background: #0f172a;
-            min-height: 380px;
-            height: 100%;
-            transition: var(--transition);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-
-        .about-img-wrapper:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 25px 50px -10px rgba(15, 23, 42, 0.22);
-        }
-
-        .about-img-wrapper img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center 25%;
-            display: block;
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .about-img-wrapper:hover img {
-            transform: scale(1.03);
-        }
-
-        .about-img-badge {
-            position: relative;
-            z-index: 2;
-            background: linear-gradient(180deg, transparent 0%, rgba(11, 19, 43, 0.92) 100%);
-            padding: 24px 22px 18px;
-            color: white;
-            backdrop-filter: blur(2px);
-        }
-
-        .about-img-badge h4 {
-            font-size: 0.98rem;
-            font-weight: 700;
-            margin: 0 0 4px 0;
+            font-size: clamp(2rem, 3.4vw, 2.85rem);
+            font-weight: 900;
+            line-height: 1.1;
             color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        .about-img-badge h4 i {
-            color: var(--color-accent-light);
+        .section-lead {
+            color: var(--text-muted);
+            font-size: 0.98rem;
         }
 
-        .about-img-badge p {
-            font-size: 0.82rem;
-            margin: 0;
-            color: #cbd5e1;
-            line-height: 1.35;
+        .split-grid {
+            display: grid;
+            grid-template-columns: 0.92fr 1.08fr;
+            gap: 44px;
+            align-items: start;
         }
 
-        .about-content {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 24px;
+        .split-sticky {
+            position: sticky;
+            top: 96px;
         }
 
         .about-text {
-            font-size: 1.05rem;
-            color: #475569;
-            line-height: 1.7;
-            margin-top: 16px;
-            margin-bottom: 0;
+            font-size: 1rem;
+            color: var(--text-soft);
+            margin: 14px 0 26px;
+            line-height: 1.75;
         }
 
         .about-features {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
 
         .feature-box {
-            background: white;
-            padding: 20px 18px;
-            border-radius: 18px;
-            box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06);
-            border: 1px solid #e2e8f0;
-            border-left: 4px solid var(--color-primary);
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 18px;
             display: flex;
-            gap: 14px;
             align-items: flex-start;
+            gap: 14px;
             transition: var(--transition);
         }
 
         .feature-box:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-card);
-            border-left-color: var(--color-accent);
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(15, 43, 92, 0.24);
+            transform: translateX(4px);
         }
 
         .feature-icon-wrap {
-            width: 42px;
-            height: 42px;
-            min-width: 42px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
-            background: rgba(30, 77, 43, 0.08);
+            background: var(--blue-grad);
+            color: var(--gold-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: var(--transition);
-        }
-
-        .feature-icon-wrap i {
-            font-size: 1.25rem;
-            color: var(--color-primary);
-            transition: var(--transition);
-        }
-
-        .feature-box:hover .feature-icon-wrap {
-            background: var(--color-primary);
-        }
-
-        .feature-box:hover .feature-icon-wrap i {
-            color: white;
-            transform: scale(1.1);
-        }
-
-        .feature-text {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            border: 1px solid rgba(125, 211, 252, 0.35);
         }
 
         .feature-text strong {
             display: block;
-            font-size: 0.98rem;
-            font-weight: 700;
-            color: var(--color-dark);
-            line-height: 1.25;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 3px;
         }
 
         .feature-text small {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
             display: block;
-            font-size: 0.82rem;
-            color: #64748b;
-            line-height: 1.35;
         }
 
-        /* MISIÓN Y VISIÓN */
+        .split-photos {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .cinematic-photo-card {
+            position: relative;
+            border-radius: 22px;
+            overflow: hidden;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 22px 48px rgba(0, 0, 0, 0.45);
+        }
+
+        .cinematic-photo-card img {
+            width: 100%;
+            height: 360px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.6s ease;
+        }
+
+        .cinematic-photo-card:hover img {
+            transform: scale(1.04);
+        }
+
+        .photo-caption-bar {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            background: rgba(5, 8, 17, 0.82);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 191, 36, 0.32);
+            border-radius: 14px;
+            padding: 12px 16px;
+        }
+
+        .photo-caption-bar h4 {
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: var(--gold-light);
+            margin-bottom: 2px;
+        }
+
+        .photo-caption-bar p {
+            font-size: 0.8rem;
+            color: var(--text-soft);
+        }
+
+        /* 6. MISIÓN Y VISIÓN */
         .mv-section {
-            background: #f1f5f9;
+            background: linear-gradient(180deg, rgba(15, 43, 92, 0.16) 0%, rgba(5, 8, 17, 0) 100%);
+            border-top: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border-glass);
         }
 
         .mv-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 35px;
+            gap: 24px;
         }
 
         .mv-card {
-            background: white;
-            border-radius: 26px;
-            padding: 46px 40px;
-            box-shadow: var(--shadow-card);
-            border: 1px solid #e2e8f0;
-            border-top: 4px solid var(--color-primary);
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--border-glass);
+            border-radius: 22px;
+            padding: 34px 30px;
+            position: relative;
+            overflow: hidden;
             transition: var(--transition);
         }
 
-        .mv-card:nth-child(2) {
-            border-top-color: var(--color-accent);
+        .mv-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--sky), var(--gold));
         }
 
         .mv-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.16);
+            transform: translateY(-6px);
+            border-color: rgba(251, 191, 36, 0.4);
+            background: rgba(15, 43, 92, 0.2);
         }
 
         .mv-icon {
-            width: 58px;
-            height: 58px;
-            border-radius: 18px;
-            background: #dcfce7;
-            color: var(--color-primary);
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            background: var(--blue-grad);
+            color: var(--gold-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.6rem;
-            margin-bottom: 22px;
-            box-shadow: 0 4px 14px rgba(21, 128, 61, 0.15);
-            transition: var(--transition);
+            font-size: 1.4rem;
+            margin-bottom: 18px;
+            border: 1px solid rgba(125, 211, 252, 0.35);
         }
 
-        .mv-card:nth-child(2) .mv-icon {
-            background: #fef3c7;
-            color: var(--color-accent);
-            box-shadow: 0 4px 14px rgba(217, 119, 6, 0.15);
+        .mv-card h3 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 12px;
         }
 
-        .mv-card:hover .mv-icon {
-            transform: scale(1.1) rotate(6deg);
+        .mv-card p {
+            font-size: 0.95rem;
+            color: var(--text-soft);
+            line-height: 1.75;
         }
 
-        /* GALERÍA */
+        /* 7. GALERÍA VIDA ESTUDIANTIL */
         .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 18px;
         }
 
         .gallery-item {
             position: relative;
-            border-radius: 24px;
+            border-radius: 20px;
             overflow: hidden;
-            height: 330px;
-            box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.12);
-            transition: var(--transition);
+            min-height: 290px;
+            border: 1px solid var(--border-glass);
         }
 
-        .gallery-item.span-2 {
-            grid-column: span 2;
-        }
-
-        .gallery-item:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.2);
-        }
+        .gallery-item.span-7 { grid-column: span 7; }
+        .gallery-item.span-5 { grid-column: span 5; }
+        .gallery-item.span-6 { grid-column: span 6; }
 
         .gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            display: block;
+            transition: transform 0.55s ease;
         }
 
         .gallery-item:hover img {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
 
         .gallery-overlay {
             position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, transparent 40%, rgba(11, 19, 43, 0.92) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 26px;
-            color: white;
-            transition: var(--transition);
+            inset: auto 0 0 0;
+            padding: 24px 20px 18px;
+            background: linear-gradient(transparent, rgba(5, 8, 17, 0.92));
+        }
+
+        .gallery-overlay span {
+            font-family: var(--font-tech);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--gold-light);
         }
 
         .gallery-overlay h4 {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 800;
-            margin: 0;
-            transition: var(--transition);
+            color: #ffffff;
+            margin-top: 2px;
         }
 
-        .gallery-item:hover .gallery-overlay h4 {
-            color: var(--color-accent-light);
-        }
-
-        /* REDES SOCIALES */
+        /* 8. REDES SOCIALES OFICIALES */
         .social-section {
-            background: var(--color-dark);
-            color: white;
+            background: radial-gradient(circle at 50% 0%, rgba(3, 105, 161, 0.22), transparent 60%);
+            border-top: 1px solid var(--border-glass);
         }
 
         .social-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
+            gap: 22px;
         }
 
         .social-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 26px;
-            padding: 38px 26px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            border-radius: 22px;
+            padding: 34px 24px;
             text-align: center;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
             transition: var(--transition);
         }
 
@@ -856,112 +841,130 @@
             transform: translateY(-8px);
         }
 
-        .social-card.facebook:hover {
-            border-color: rgba(24, 119, 242, 0.6);
-            box-shadow: 0 20px 40px -10px rgba(24, 119, 242, 0.28);
+        .social-card.facebook:hover { border-color: rgba(59, 130, 246, 0.65); box-shadow: 0 20px 44px rgba(24, 119, 242, 0.24); }
+        .social-card.instagram:hover { border-color: rgba(236, 72, 153, 0.65); box-shadow: 0 20px 44px rgba(225, 48, 108, 0.24); }
+        .social-card.tiktok:hover { border-color: rgba(254, 44, 85, 0.65); box-shadow: 0 20px 44px rgba(254, 44, 85, 0.24); }
+
+        .social-card h3 {
+            font-size: 1.3rem;
+            color: #ffffff;
+            margin: 14px 0 8px;
         }
 
-        .social-card.instagram:hover {
-            border-color: rgba(225, 48, 108, 0.6);
-            box-shadow: 0 20px 40px -10px rgba(225, 48, 108, 0.28);
-        }
-
-        .social-card.tiktok:hover {
-            border-color: rgba(254, 44, 85, 0.6);
-            box-shadow: 0 20px 40px -10px rgba(254, 44, 85, 0.28);
+        .social-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
         }
 
         .btn-social {
-            padding: 13px 26px;
-            border-radius: 30px;
+            padding: 12px 24px;
+            border-radius: 999px;
+            font-family: var(--font-display);
             font-weight: 800;
+            font-size: 0.9rem;
             text-decoration: none;
-            color: white !important;
-            display: inline-block;
+            color: #ffffff !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             width: 100%;
-            box-sizing: border-box;
-            margin-top: 16px;
             transition: var(--transition);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
         }
 
         .btn-social:hover {
             transform: translateY(-2px);
             filter: brightness(1.12);
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
         }
 
         .social-card.facebook .btn-social { background: #1877f2; }
-        .social-card.instagram .btn-social { background: linear-gradient(45deg, #f09433, #bc1888); }
-        .social-card.tiktok .btn-social { background: #000000; border: 1px solid #fe2c55; }
+        .social-card.instagram .btn-social { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); }
+        .social-card.tiktok .btn-social { background: #0f172a; border: 1.5px solid #fe2c55; }
 
-        /* FOOTER */
+        /* BANNER FINAL DE INVITACIÓN GLAMUROSO */
+        .cta-banner {
+            margin-top: 42px;
+            background: radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.22), transparent 48%),
+                        linear-gradient(135deg, #07142b 0%, #0f2b5c 52%, #0369a1 100%);
+            border: 1px solid rgba(125, 211, 252, 0.32);
+            border-radius: 24px;
+            padding: 46px 32px;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(3, 105, 161, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-banner h2 {
+            font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .cta-banner p {
+            color: #dbeafe;
+            max-width: 620px;
+            margin: 0 auto 26px;
+            font-size: 0.98rem;
+        }
+
+        .cta-banner-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* 9. FOOTER */
         .footer {
-            background: #070a13;
+            background: #03060d;
             color: #94a3b8;
-            padding: 70px 0 30px 0;
+            padding: 56px 0 32px;
+            border-top: 1px solid var(--border-glass);
         }
 
         .footer-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1.5fr;
-            gap: 40px;
-            margin-bottom: 50px;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 36px;
+        }
+
+        .footer h3, .footer h4 {
+            color: #ffffff;
+            margin-bottom: 10px;
         }
 
         .footer-bottom {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 30px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
+            gap: 6px;
+            text-align: center;
+            padding-top: 22px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* RESPONSIVO */
         @media (max-width: 992px) {
-            .hero-grid-split { grid-template-columns: 1fr; gap: 30px; }
-            .hero-title { font-size: 2.7rem; }
+            .hero-grid, .split-grid, .mv-grid, .social-grid, .footer-grid { grid-template-columns: 1fr; }
+            .split-sticky { position: static; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .about-grid, .mv-grid, .social-grid { grid-template-columns: 1fr; }
-            .about-img-wrapper { min-height: 320px; height: 320px; }
-            .gallery-grid { grid-template-columns: 1fr; }
-            .gallery-item.span-2 { grid-column: span 1; }
-            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .gallery-item.span-7, .gallery-item.span-5, .gallery-item.span-6 { grid-column: span 12; }
             .nav-links { display: none; }
-            .mobile-menu-toggle { display: block; }
+            .mobile-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
         }
 
         @media (max-width: 576px) {
-            .hero-title { font-size: 2.1rem; }
             .stats-grid { grid-template-columns: 1fr; }
-            .about-features { grid-template-columns: 1fr; }
-            .about-img-wrapper { min-height: 260px; height: 260px; }
-            .footer-grid { grid-template-columns: 1fr; }
-            .hero-buttons-wrapper { flex-direction: column; }
-            .btn-primary-hero, .btn-secondary-hero { width: 100%; justify-content: center; }
-        }
-
-        .mobile-nav-menu {
-            display: none;
-            background: white;
-            padding: 20px;
-            box-shadow: var(--shadow-card);
-        }
-
-        .mobile-nav-menu.active {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .mobile-nav-menu a {
-            font-weight: 700;
-            padding: 8px 0;
-            color: var(--color-dark);
-            text-decoration: none;
-            border-bottom: 1px solid #f1f5f9;
+            .hero-buttons-wrapper { flex-direction: column; align-items: stretch; }
+            .btn-primary-hero, .btn-secondary-hero { justify-content: center; }
+            .cinematic-photo-card img, .hero-facade-img { height: 250px; }
         }
     </style>
+
     <script>
         // Blindaje contra retorno accidental a páginas privadas tras cierre de sesión
         if (typeof window !== 'undefined' && window.history && window.history.pushState) {
@@ -974,6 +977,7 @@
             }
         }
     </script>
+
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -993,30 +997,13 @@
 </head>
 <body>
 
-    <!-- 1. BARRA SUPERIOR -->
-    <div class="top-announcement-bar">
-        <div class="container">
-            <div class="top-bar-content">
-                <div>
-                    <i class="fa-solid fa-graduation-cap"></i> <strong>Escuela Nacional de Ciencias Comerciales</strong> | Jutiapa — Fundada en 1970
-                </div>
-                <div class="top-social-links">
-                    <span>Síguenos:</span>
-                    <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener"><i class="fa-brands fa-facebook"></i></a>
-                    <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a>
-                    <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener"><i class="fa-brands fa-tiktok"></i></a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. NAVEGACIÓN -->
+    <!-- 1. NAVEGACIÓN FLOTANTE -->
     <header class="main-header" id="mainHeader">
         <div class="scroll-progress-line" id="scrollProgressLine"></div>
         <div class="container">
             <nav class="navbar">
                 <a href="#inicio" class="brand-logo-group">
-                    <img src="logo.png" alt="Escudo ENCCO" class="brand-logo-img" onerror="this.onerror=null; this.src='logo.png';">
+                    <img src="logo.png" alt="Escudo ENCCO" class="brand-logo-img">
                     <div class="brand-text">
                         <h1>Escuela Nacional de Ciencias Comerciales</h1>
                         <span>JUTIAPA | FUNDADA EN 1970</span>
@@ -1029,7 +1016,11 @@
                     <li><a href="#mision-vision">Misión y Visión</a></li>
                     <li><a href="#vida-estudiantil">Galería</a></li>
                     <li><a href="#redes-sociales">Redes Sociales</a></li>
-                    <li><a href="login.html" class="nav-cta-btn"><i class="fa-solid fa-right-to-bracket"></i> Plataforma Virtual</a></li>
+                    <li class="nav-social-group">
+                        <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Facebook Oficial"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Instagram Oficial"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="TikTok Oficial"><i class="fa-brands fa-tiktok"></i></a>
+                    </li>
                 </ul>
 
                 <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menú principal de navegación" aria-expanded="false" aria-controls="mobileNavMenu">
@@ -1044,53 +1035,65 @@
             <a href="#mision-vision" onclick="toggleMobileMenu()">Misión y Visión</a>
             <a href="#vida-estudiantil" onclick="toggleMobileMenu()">Galería</a>
             <a href="#redes-sociales" onclick="toggleMobileMenu()">Redes Sociales</a>
-            <a href="login.html" class="btn-primary-hero" style="text-align:center; padding:12px; margin-top:8px; border-radius:30px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <i class="fa-solid fa-right-to-bracket"></i> Acceso Plataforma Virtual
-            </a>
+            <div style="display:flex; gap:10px; padding-top:8px;">
+                <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-instagram"></i></a>
+                <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-tiktok"></i></a>
+            </div>
         </div>
     </header>
 
-    <!-- 3. HERO PRINCIPAL -->
-    <section class="hero-section" id="inicio">
-        <div class="hero-bg-wrapper">
-            <img src="images/portada-comercio-principal.webp" alt="Fachada ENCCO" class="hero-bg-img" onerror="this.onerror=null; this.src='images/portada-comercio-principal.webp';">
-            <div class="hero-overlay"></div>
-        </div>
+    <!-- 2. HERO CINEMATOGRÁFICO OSCURO -->
+    <section class="hero-section" id="inicio" onmousemove="this.style.setProperty('--mx', event.clientX+'px'); this.style.setProperty('--my', event.clientY+'px');">
+        <img src="images/portada-comercio-principal.webp" alt="Fachada ENCCO" class="hero-bg-img">
+        <div class="hero-spotlight"></div>
 
-        <div class="container hero-container">
-            <div class="hero-grid-split">
-                <div class="hero-content">
-                    <div class="hero-badge-pill">
-                        <i class="fa-solid fa-star"></i> Excelencia Académica e Innovación
-                    </div>
-                    <h1 class="hero-title">
-                        Escuela Nacional de<br>
-                        <span>Ciencias Comerciales</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Formación técnica profesional en perito contador y ciencias comerciales en Jutiapa. Compromiso, ética y preparación de alto nivel.
-                    </p>
-                    <div class="hero-buttons-wrapper">
-                        <a href="#quienes-somos" class="btn-primary-hero">
-                            <i class="fa-solid fa-compass"></i> Conocer la Escuela
-                        </a>
-                    </div>
+        <div class="container hero-grid">
+            <div>
+                <div class="hero-badge-pill">
+                    <span class="pulse-dot"></span> Excelencia Académica e Innovación
                 </div>
+                <h1 class="hero-title">
+                    ESCUELA NACIONAL DE<br>
+                    <span class="outline-text">CIENCIAS</span> <span class="gold-text">COMERCIALES</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Formación técnica profesional en perito contador y ciencias comerciales en Jutiapa. Compromiso, ética y preparación de alto nivel.
+                </p>
+                <div class="hero-buttons-wrapper">
+                    <a href="#quienes-somos" class="btn-primary-hero">
+                        <i class="fa-solid fa-compass"></i> Conocer la Escuela
+                    </a>
+                    <a href="#redes-sociales" class="btn-secondary-hero">
+                        <i class="fa-solid fa-share-nodes"></i> Canales Oficiales
+                    </a>
+                </div>
+            </div>
 
-                <div class="hero-facade-card">
-                    <img src="images/portada-comercio-principal.webp" alt="Sede Principal ENCCO" class="hero-facade-img" onerror="this.onerror=null; this.src='images/portada-comercio-principal.webp';">
-                    <div class="hero-facade-badge">
+            <div class="hero-facade-card">
+                <img src="images/portada-comercio-principal.webp" alt="Sede Principal ENCCO Jutiapa" class="hero-facade-img">
+                <div class="hero-facade-badge">
+                    <div>
                         <h4>Sede Principal ENCCO Jutiapa</h4>
-                        <p>Complejo Educativo, Barrio El Condor, Jutiapa</p>
+                        <p>Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
                     </div>
+                    <span class="hero-year-seal">★ 1970</span>
                 </div>
             </div>
         </div>
     </section>
 
+    <!-- 3. CINTA CINÉTICA INSTITUCIONAL -->
+    <div class="marquee-wrap">
+        <div class="marquee-track">
+            ★ ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; NIVEL DIVERSIFICADO OFICIAL MINEDUC &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
+            ★ ESCUELA NACIONAL DE CIENCIAS COMERCIALES &nbsp;•&nbsp; PERITO CONTADOR &nbsp;•&nbsp; ENSEÑANZA DE TECNOLOGÍA &nbsp;•&nbsp; FUNDADA EN 1970 &nbsp;•&nbsp; NIVEL DIVERSIFICADO OFICIAL MINEDUC &nbsp;•&nbsp; JUTIAPA, GUATEMALA &nbsp;•&nbsp;
+        </div>
+    </div>
+
     <!-- 4. ESTADÍSTICAS DINÁMICAS -->
-    <div class="container">
-        <div class="stats-bar">
+    <section class="stats-section">
+        <div class="container">
             <div class="stats-grid">
                 <div class="stat-item">
                     <h3>1970</h3>
@@ -1110,27 +1113,19 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- 5. QUIÉNES SOMOS -->
+    <!-- 5. QUIÉNES SOMOS (SPLIT-SCREEN ASIMÉTRICO STICKY) -->
     <section class="section" id="quienes-somos">
         <div class="container">
-            <div class="about-grid">
-                <div class="about-img-wrapper">
-                    <img src="images/estudiantes-uniformados.webp" alt="Estudiantes ENCCO" onerror="this.onerror=null; this.src='images/estudiantes-uniformados.webp';">
-                    <div class="about-img-badge">
-                        <h4><i class="fa-solid fa-graduation-cap"></i> Comunidad Estudiantil ENCCO</h4>
-                        <p>Liderazgo académico, ética y formación profesional en Jutiapa</p>
-                    </div>
-                </div>
-                <div class="about-content">
-                    <div>
-                        <span class="section-tag">Identidad Institucional</span>
-                        <h2 class="section-title">Quiénes Somos</h2>
-                        <p class="about-text">
-                            La <strong>Escuela Nacional de Ciencias Comerciales (ENCCO) de Jutiapa</strong> es una institución del Estado de Guatemala comprometida con la formación de profesionales técnicos competentes, íntegros y preparados con visión de futuro.
-                        </p>
-                    </div>
+            <div class="split-grid">
+                <div class="split-sticky">
+                    <span class="section-tag">Identidad Institucional</span>
+                    <h2 class="section-title">Quiénes Somos</h2>
+                    <p class="about-text">
+                        La <strong>Escuela Nacional de Ciencias Comerciales (ENCCO) de Jutiapa</strong> es una institución del Estado de Guatemala comprometida con la formación de profesionales técnicos competentes, íntegros y preparados con visión de futuro.
+                    </p>
+
                     <div class="about-features">
                         <div class="feature-box">
                             <div class="feature-icon-wrap">
@@ -1141,6 +1136,17 @@
                                 <small>Especialidad técnica avanzada con formación contable integral.</small>
                             </div>
                         </div>
+
+                        <div class="feature-box">
+                            <div class="feature-icon-wrap">
+                                <i class="fa-solid fa-laptop-code"></i>
+                            </div>
+                            <div class="feature-text">
+                                <strong>Enseñanza de Tecnología</strong>
+                                <small>Formación práctica en computación, ofimática y herramientas tecnológicas aplicadas al ámbito comercial y financiero.</small>
+                            </div>
+                        </div>
+
                         <div class="feature-box">
                             <div class="feature-icon-wrap">
                                 <i class="fa-solid fa-shield-halved"></i>
@@ -1149,6 +1155,24 @@
                                 <strong>Valores Éticos</strong>
                                 <small>Disciplina, integridad y excelencia en el servicio cívico.</small>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-photos">
+                    <div class="cinematic-photo-card">
+                        <img src="images/estudiantes-uniformados.webp" alt="Estudiantes ENCCO">
+                        <div class="photo-caption-bar">
+                            <h4><i class="fa-solid fa-graduation-cap"></i> Comunidad Estudiantil ENCCO</h4>
+                            <p>Liderazgo académico, ética y formación profesional en Jutiapa</p>
+                        </div>
+                    </div>
+
+                    <div class="cinematic-photo-card">
+                        <img src="images/campus-instalaciones.webp" alt="Campus e Instalaciones ENCCO">
+                        <div class="photo-caption-bar">
+                            <h4><i class="fa-solid fa-building-columns"></i> Campus e Instalaciones</h4>
+                            <p>Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
                         </div>
                     </div>
                 </div>
@@ -1163,6 +1187,7 @@
                 <span class="section-tag">Propósito</span>
                 <h2 class="section-title">Misión y Visión Institucional</h2>
             </div>
+
             <div class="mv-grid">
                 <div class="mv-card">
                     <div class="mv-icon">
@@ -1173,6 +1198,7 @@
                         Formar Peritos Contadores con sólidos principios éticos, cívicos y morales, dotados de conocimientos científicos, técnicos y humanísticos actualizados, capaces de integrarse productivamente al desarrollo socioeconómico de Guatemala.
                     </p>
                 </div>
+
                 <div class="mv-card">
                     <div class="mv-icon">
                         <i class="fa-solid fa-eye"></i>
@@ -1186,55 +1212,97 @@
         </div>
     </section>
 
-    <!-- 7. GALERÍA -->
+    <!-- 7. GALERÍA / VIDA ESTUDIANTIL -->
     <section class="section" id="vida-estudiantil">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag">Galería</span>
                 <h2 class="section-title">Vida Estudiantil</h2>
             </div>
+
             <div class="gallery-grid">
-                <div class="gallery-item span-2">
-                    <img src="images/campus-instalaciones.webp" alt="Campus Central" onerror="this.onerror=null; this.src='images/campus-instalaciones.webp';">
+                <div class="gallery-item span-7">
+                    <img src="images/campus-instalaciones.webp" alt="Campus e Instalaciones">
                     <div class="gallery-overlay">
+                        <span>Sede Oficial</span>
                         <h4>Campus e Instalaciones</h4>
                     </div>
                 </div>
-                <div class="gallery-item">
-                    <img src="images/senorita-comercio-peritos.webp" alt="Actividades Culturales" onerror="this.onerror=null; this.src='images/senorita-comercio-peritos.webp';">
+                <div class="gallery-item span-5">
+                    <img src="images/senorita-comercio-peritos.webp" alt="Tradición y Cultura">
                     <div class="gallery-overlay">
+                        <span>Orgullo ENCCO</span>
                         <h4>Tradición y Cultura</h4>
+                    </div>
+                </div>
+                <div class="gallery-item span-6">
+                    <img src="images/actividades-estudiantiles.webp" alt="Actividades Estudiantiles">
+                    <div class="gallery-overlay">
+                        <span>Comunidad</span>
+                        <h4>Actividades Estudiantiles</h4>
+                    </div>
+                </div>
+                <div class="gallery-item span-6">
+                    <img src="images/estudiantes-uniformados.webp" alt="Comunidad Estudiantil ENCCO">
+                    <div class="gallery-overlay">
+                        <span>Disciplina y Liderazgo</span>
+                        <h4>Comunidad Estudiantil ENCCO</h4>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 8. REDES SOCIALES -->
+    <!-- 8. REDES SOCIALES OFICIALES -->
     <section class="section social-section" id="redes-sociales">
         <div class="container">
             <div class="section-header">
-                <span class="section-tag" style="background:rgba(255,255,255,0.1); color:white;">Redes Oficiales</span>
-                <h2 class="section-title" style="color:white;">Canales de Comunicación</h2>
+                <span class="section-tag">Redes Oficiales</span>
+                <h2 class="section-title">Canales de Comunicación</h2>
             </div>
+
             <div class="social-grid">
                 <div class="social-card facebook">
-                    <i class="fa-brands fa-facebook fa-3x" style="color:#1877f2; margin-bottom:15px;"></i>
+                    <i class="fa-brands fa-facebook fa-3x" style="color:#3b82f6;"></i>
                     <h3>Facebook</h3>
                     <p>Avisos y comunicados oficiales.</p>
-                    <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="btn-social">Seguir en Facebook</a>
+                    <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="btn-social">
+                        <i class="fa-brands fa-facebook-f"></i> Seguir en Facebook
+                    </a>
                 </div>
                 <div class="social-card instagram">
-                    <i class="fa-brands fa-instagram fa-3x" style="color:#bc1888; margin-bottom:15px;"></i>
+                    <i class="fa-brands fa-instagram fa-3x" style="color:#ec4899;"></i>
                     <h3>Instagram</h3>
                     <p>Fotos y actividades diarias.</p>
-                    <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="btn-social">Seguir en Instagram</a>
+                    <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="btn-social">
+                        <i class="fa-brands fa-instagram"></i> Seguir en Instagram
+                    </a>
                 </div>
                 <div class="social-card tiktok">
-                    <i class="fa-brands fa-tiktok fa-3x" style="color:white; margin-bottom:15px;"></i>
+                    <i class="fa-brands fa-tiktok fa-3x" style="color:#ffffff;"></i>
                     <h3>TikTok</h3>
                     <p>Contenido dinámico estudiantil.</p>
-                    <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="btn-social">Ver en TikTok</a>
+                    <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="btn-social">
+                        <i class="fa-brands fa-tiktok"></i> Ver en TikTok
+                    </a>
+                </div>
+            </div>
+
+            <!-- BANNER FINAL DE INVITACIÓN -->
+            <div class="cta-banner">
+                <span class="section-tag" style="margin-bottom:14px;">★ Orgullo ENCCO desde 1970</span>
+                <h2>Sé Parte de la Próxima Generación ENCCO</h2>
+                <p>Te esperamos en el Complejo Educativo, Barrio El Cóndor, Jutiapa. Síguenos en nuestras redes oficiales para enterarte de inscripciones, convocatorias y actividades.</p>
+                <div class="cta-banner-actions">
+                    <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="btn-primary-hero">
+                        <i class="fa-brands fa-facebook"></i> Convocatorias en Facebook
+                    </a>
+                    <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="btn-secondary-hero">
+                        <i class="fa-brands fa-instagram"></i> Instagram Oficial
+                    </a>
+                    <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="btn-secondary-hero">
+                        <i class="fa-brands fa-tiktok"></i> TikTok Oficial
+                    </a>
                 </div>
             </div>
         </div>
@@ -1245,16 +1313,24 @@
         <div class="container">
             <div class="footer-grid">
                 <div>
-                    <h3 style="color:white;">ENCCO Jutiapa</h3>
-                    <p>Escuela Nacional de Ciencias Comerciales. Fundada en 1970.</p>
+                    <h3>ENCCO Jutiapa</h3>
+                    <p style="font-size:0.9rem;">Escuela Nacional de Ciencias Comerciales. Fundada en 1970.</p>
                 </div>
                 <div>
-                    <h4 style="color:white;">Contacto & Ubicación</h4>
-                    <p style="color:#94a3b8; font-size:0.88rem;">Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
+                    <h4>Contacto &amp; Ubicación</h4>
+                    <p style="font-size:0.88rem;">Complejo Educativo, Barrio El Cóndor, Jutiapa</p>
+                </div>
+                <div>
+                    <h4>Redes Oficiales</h4>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+                    </div>
                 </div>
             </div>
-            <div class="footer-bottom" style="display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding-top:16px; border-top:1px solid rgba(255,255,255,0.12);">
-                <p style="margin:0; font-size:0.92rem; font-weight:700; color:#f8fafc;">© 2026 Escuela Nacional de Ciencias Comerciales (ENCCO). Todos los derechos reservados.</p>
+            <div class="footer-bottom">
+                <p style="margin:0; font-size:0.92rem; font-weight:700; color:#f8fafc;">© <span id="dynamicFooterYear">2026</span> Escuela Nacional de Ciencias Comerciales (ENCCO). Todos los derechos reservados.</p>
                 <p style="margin:0; font-size:0.86rem; color:#94a3b8;">Desarrollado y Diseñado por <strong style="color:#ffffff;">Nehemias Salguero</strong> • Jutiapa, Guatemala</p>
                 <p style="margin:0; font-size:0.78rem; color:#64748b;">Complejo Educativo, Barrio El Cóndor, Jutiapa, Guatemala</p>
             </div>
@@ -1280,7 +1356,8 @@
         window.addEventListener('scroll', function() {
             const h = document.documentElement;
             const b = document.body;
-            const percent = ((h.scrollTop || b.scrollTop) / ((h.scrollHeight || b.scrollHeight) - h.clientHeight)) * 100;
+            const maxScroll = (h.scrollHeight || b.scrollHeight) - h.clientHeight;
+            const percent = maxScroll > 0 ? ((h.scrollTop || b.scrollTop) / maxScroll) * 100 : 0;
             const line = document.getElementById('scrollProgressLine');
             if (line) line.style.width = Math.min(100, Math.max(0, percent)) + '%';
         }, { passive: true });
@@ -1291,15 +1368,17 @@
 
             const currentYear = new Date().getFullYear();
             const totalPromotions = currentYear - 1973;
-            document.querySelectorAll('.dynamic-promotions-count').forEach(el => {
+            document.querySelectorAll('.dynamic-promotions-count').forEach(function(el) {
                 el.textContent = totalPromotions;
             });
+            const footerYear = document.getElementById('dynamicFooterYear');
+            if (footerYear) footerYear.textContent = currentYear;
         })();
 
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261017_v270_persistence_fix').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261125_v313').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
