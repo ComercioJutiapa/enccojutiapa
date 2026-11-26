@@ -49933,15 +49933,26 @@ async function quickReassignAssignmentTeacher(asgId, newTeacherId) {
     if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
     renderAssignmentsTable();
     if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+    if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+    if (typeof populateAttendanceControls === 'function') populateAttendanceControls();
+    if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
     if (typeof showToast === 'function') showToast(`Cátedra "${target.subject || target.name}" asignada a ${newName}.`, 'success');
+    const syncTasks = [];
     if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
-        await EnccoCloudSync.patchNode(`pensum/${pIdx}`, {
+        syncTasks.push(EnccoCloudSync.patchNode(`pensum/${pIdx}`, {
             teacherId: target.teacherId,
             teacher: target.teacher,
             teacherName: target.teacherName,
             lastModified: nowMs
-        }).catch(() => {});
+        }).catch(() => {}));
     }
+    if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.setDoc === 'function') {
+        const { db, doc, setDoc } = window.FirebaseModular;
+        syncTasks.push(setDoc(doc(db, 'pensum', String(target.id || asgId)), { ...target }, { merge: true }).catch(() => {}));
+    }
+    if (syncTasks.length > 0) await Promise.all(syncTasks);
 }
 window.quickReassignAssignmentTeacher = quickReassignAssignmentTeacher;
 
@@ -50068,7 +50079,7 @@ function renderAssignmentsTableBody(list) {
                 <strong style="color:#0f2b5c; font-size:0.9rem;">${subName}</strong>
             </td>
             <td data-label="Catedrático">${teacherCellHtml}</td>
-            <td data-label="Períodos" style="text-align:center; font-weight:700; font-size:0.84rem; color:#334155;">${a.periodsPerWeek || a.hours || a.periods || 4} / sem</td>
+            <td data-label="Períodos" style="text-align:center;"><span style="background:#f0f9ff; border:1px solid #bae6fd; color:#0369a1; padding:3px 9px; border-radius:999px; font-weight:800; font-size:0.76rem; white-space:nowrap;">${a.periodsPerWeek || a.hours || a.periods || 4} / sem</span></td>
             <td data-label="Acciones" style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
