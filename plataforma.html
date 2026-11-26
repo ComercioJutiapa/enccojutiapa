@@ -236,7 +236,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261125_v312">
+    <link rel="stylesheet" href="styles.css?v=20261126_v324">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -928,6 +928,10 @@
                 <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" onclick="navigateTo('permissions-history', event)">
                     <i class="fa-solid fa-clipboard-list"></i>
                     <span>Permisos y Ausencias</span>
+                </a>
+                <a href="#" class="nav-item" data-view="teacher-permissions" data-perm="teacher-permissions" onclick="navigateTo('teacher-permissions', event)">
+                    <i class="fa-solid fa-user-clock"></i>
+                    <span>Permisos Docentes</span>
                 </a>
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
@@ -2861,6 +2865,9 @@
 
                 <!-- 7.0.1. AUXILIATURAS DE EXÁMENES (AUXILIATURA, DIRECCIÓN Y SECRETARÍA) -->
                 <section class="app-view" id="view-exam-schedules"></section>
+
+                <!-- 7.0.2. CONTROL DE PERMISOS DOCENTES (AUXILIATURA, SECRETARÍA Y DIRECCIÓN) -->
+                <section class="app-view" id="view-teacher-permissions"></section>
 
                 <!-- 7.1. BITÁCORA DIARIA DE AUSENCIAS Y ALERTAS (AUXILIATURA, SECRETARÍA Y DIRECCIÓN) -->
                 <section class="app-view" id="view-auxiliatura-log">
@@ -6811,7 +6818,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261125_v320" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v324" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
@@ -6825,6 +6832,7 @@
     <script src="db_repository.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="exam_schedules_module.js?v=20261119_v280" defer charset="UTF-8"></script>
+    <script src="teacher_permissions_module.js?v=20261126_v324" defer charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

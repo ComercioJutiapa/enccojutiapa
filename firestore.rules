@@ -12,9 +12,19 @@ service cloud.firestore {
     // Niveles de acceso:
     //   - Personal autorizado (isAuthorizedStaff): lectura general y
     //     escritura en colecciones operativas académicas.
+    //   - Personal de Permisos Docentes (isTeacherPermissionsStaff):
+    //     acceso exclusivo a /teacherPermissions/{permId} para Auxiliatura,
+    //     Secretaría, Dirección y Administración (denegado a docentes y estudiantes).
     //   - Administración / Dirección (isAdminOrDirector): gestión de
     //     lista blanca, configuración, RBAC y usuarios.
     //   - Por defecto (fail-closed): cualquier ruta no declarada se deniega.
+    //
+    // Colección: /teacherPermissions/{permId}
+    //   - id, cycle, teacherId, teacherName, startDate, endDate, duration,
+    //     type, supportDoc, createdBy, createdByRole, createdAt, updatedAt: string (requeridos)
+    //   - days: int (requerido, 1..366)
+    //   - renglon, customType, reason: string (opcionales, con límites de tamaño)
+    //   - Campos inmutables en actualización: id, createdAt, createdBy, createdByRole
     // ===============================================================
 
     // Verifica que el usuario autenticado pertenezca a la lista blanca institucional y esté activo
@@ -28,6 +38,49 @@ service cloud.firestore {
     function isAdminOrDirector() {
       return isAuthorizedStaff() &&
         get(/databases/$(database)/documents/authorized_uids/$(request.auth.uid)).data.role in ['admin', 'director'];
+    }
+
+    // Verifica que el personal autorizado tenga rol habilitado para gestionar Permisos Docentes
+    // (Excluye estrictamente a docentes y estudiantes a nivel de servidor)
+    function isTeacherPermissionsStaff() {
+      return isAuthorizedStaff() &&
+        get(/databases/$(database)/documents/authorized_uids/$(request.auth.uid)).data.role in [
+          'admin', 'super_usuario', 'director', 'direccion',
+          'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'
+        ];
+    }
+
+    // Valida esquema, tipos y límites de tamaño para registros de Permisos Docentes
+    function isValidTeacherPermission(data, permId) {
+      return data.keys().hasOnly([
+          'id', 'cycle', 'teacherId', 'teacherName', 'renglon',
+          'startDate', 'endDate', 'days', 'duration', 'type',
+          'customType', 'reason', 'supportDoc', 'createdBy',
+          'createdByRole', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'cycle', 'teacherId', 'teacherName',
+          'startDate', 'endDate', 'days', 'duration', 'type',
+          'supportDoc', 'createdBy', 'createdByRole', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == permId && data.id.size() > 0 && data.id.size() <= 100 &&
+        data.cycle is string && data.cycle.size() > 0 && data.cycle.size() <= 20 &&
+        data.teacherId is string && data.teacherId.size() > 0 && data.teacherId.size() <= 120 &&
+        data.teacherName is string && data.teacherName.size() > 0 && data.teacherName.size() <= 200 &&
+        (!('renglon' in data) || (data.renglon is string && data.renglon.size() <= 120)) &&
+        data.startDate is string && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.endDate is string && data.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.endDate >= data.startDate &&
+        data.days is int && data.days >= 1 && data.days <= 366 &&
+        data.duration is string && data.duration.size() > 0 && data.duration.size() <= 100 &&
+        data.type is string && data.type.size() > 0 && data.type.size() <= 100 &&
+        (!('customType' in data) || (data.customType is string && data.customType.size() <= 120)) &&
+        (!('reason' in data) || (data.reason is string && data.reason.size() <= 2000)) &&
+        data.supportDoc is string && data.supportDoc.size() > 0 && data.supportDoc.size() <= 120 &&
+        data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 150 &&
+        data.createdByRole is string && data.createdByRole.size() > 0 && data.createdByRole.size() <= 50 &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 40 &&
+        data.updatedAt is string && data.updatedAt.size() > 0 && data.updatedAt.size() <= 40;
     }
 
     // Lista blanca institucional de UIDs autorizados
@@ -135,6 +188,20 @@ service cloud.firestore {
     }
     match /studentPermissions/{permId} {
       allow read, write: if isAuthorizedStaff();
+    }
+    // Control de Permisos Docentes (exclusivo para Auxiliatura, Secretaría, Dirección y Admin;
+    // docentes y estudiantes quedan estrictamente denegados en el servidor)
+    match /teacherPermissions/{permId} {
+      allow read: if isTeacherPermissionsStaff();
+      allow create: if isTeacherPermissionsStaff() &&
+        isValidTeacherPermission(request.resource.data, permId);
+      allow update: if isTeacherPermissionsStaff() &&
+        isValidTeacherPermission(request.resource.data, permId) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.createdByRole == resource.data.createdByRole;
+      allow delete: if isTeacherPermissionsStaff();
     }
     match /disciplina/{docId} {
       allow read, write: if isAuthorizedStaff();

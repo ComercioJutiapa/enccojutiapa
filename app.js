@@ -1261,6 +1261,7 @@ function normalizePermKey(key) {
     if (k === 'auxiliatura_center' || k === 'auxiliatura-center' || k === 'centro_control' || k === 'centro-control') return 'auxiliatura-center';
     if (k === 'scholarships' || k === 'becas' || k === 'bolsas' || k === 'bolsas_estudio' || k === 'bolsas-estudio' || k === 'becas-bolsas' || k === 'becas_bolsas') return 'scholarships';
     if (k === 'exam-schedules' || k === 'exam_schedules' || k === 'horarios-examenes' || k === 'horarios_examenes' || k === 'auxiliaturas-examenes' || k === 'auxiliaturas_examenes') return 'exam-schedules';
+    if (k === 'teacher-permissions' || k === 'teacher_permissions' || k === 'permisos-docentes' || k === 'permisos_docentes') return 'teacher-permissions';
     if (k === 'careers' || k === 'carreras') return 'careers';
     if (k === 'cycles' || k === 'ciclos') return 'cycles';
     return k;
@@ -3591,7 +3592,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
     { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' },
     { key: 'auxiliatura-log', name: 'Bitácora Diaria de Ausencias y Alertas', icon: 'fa-clipboard-user', category: 'Estudiantil', desc: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura.' },
-    { key: 'exam-schedules', name: 'Auxiliaturas de Exámenes', icon: 'fa-calendar-days', category: 'Auxiliatura', desc: 'Planificador de fechas de evaluación, división en grupos A y B, asignación de cuidadores y horarios de exámenes en hoja oficio.' }
+    { key: 'exam-schedules', name: 'Auxiliaturas de Exámenes', icon: 'fa-calendar-days', category: 'Auxiliatura', desc: 'Planificador de fechas de evaluación, división en grupos A y B, asignación de cuidadores y horarios de exámenes en hoja oficio.' },
+    { key: 'teacher-permissions', name: 'Control de Permisos Docentes', icon: 'fa-user-clock', category: 'Auxiliatura', desc: 'Registro, seguimiento e impresión de permisos docentes (Auxiliatura, Secretaría y Dirección; oculto para Maestros).' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -3638,7 +3640,7 @@ function initDefaultRolesConfig() {
             color: '#d97706',
             isSystem: true,
             active: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'scholarships', 'users']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'teacher-permissions', 'scholarships', 'users']
         },
         {
             key: 'docente',
@@ -3768,6 +3770,10 @@ function normalizeRolesConfig() {
             if (typeof roleObj.permissionLevels['scholarships'] === 'undefined') {
                 roleObj.permissionLevels['scholarships'] = 'edit';
                 if (!roleObj.permissions.includes('scholarships')) roleObj.permissions.push('scholarships', 'scholarships_edit', 'scholarships_view');
+            }
+            if (typeof roleObj.permissionLevels['teacher-permissions'] === 'undefined') {
+                roleObj.permissionLevels['teacher-permissions'] = 'edit';
+                if (!roleObj.permissions.includes('teacher-permissions')) roleObj.permissions.push('teacher-permissions');
             }
             if (roleObj.key === 'profesor_auxiliar') {
                 if (typeof roleObj.permissionLevels['exam-schedules'] === 'undefined') {
@@ -13947,6 +13953,7 @@ function navigateTo(viewName, event = null) {
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos y Ausencias', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
         'auxiliatura-center': { title: 'Centro de Control Estudiantil y Disciplinario', sub: 'Ficha 360°, monitoreo activo de inasistencias, emisión de permisos y resolución de incidencias' },
         'exam-schedules': { title: 'Auxiliaturas de Exámenes', sub: 'Planificación de fechas, división en medias listas A y B, horarios en hoja oficio y balance de cuidadores' },
+        'teacher-permissions': { title: 'Control de Permisos Docentes', sub: 'Registro de permisos docentes a cargo de Auxiliatura, expediente por catedrático y reporte general oficial' },
     };
     const t = titles[viewName];
     if (t) {
@@ -14114,6 +14121,16 @@ function renderCurrentView() {
                 });
             } else if (typeof renderExamSchedulesView === 'function') {
                 renderExamSchedulesView();
+            }
+            break;
+        case 'teacher-permissions':
+            if (typeof renderTeacherPermissionsView === 'function') renderTeacherPermissionsView();
+            if (typeof ensureTeacherPermissionsLoadedOnDemand === 'function') {
+                ensureTeacherPermissionsLoadedOnDemand(false).then(loaded => {
+                    if (loaded && STATE.activeView === 'teacher-permissions' && typeof renderTeacherPermissionsView === 'function') {
+                        renderTeacherPermissionsView();
+                    }
+                }).catch(() => {});
             }
             break;
     }
