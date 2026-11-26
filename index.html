@@ -225,6 +225,29 @@
             box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
         }
 
+        .nav-portal-discreet {
+            margin-left: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(186, 230, 253, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(203, 213, 225, 0.78) !important;
+            font-family: var(--font-body);
+            font-size: 0.76rem !important;
+            font-weight: 600 !important;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+
+        .nav-portal-discreet:hover {
+            border-color: rgba(56, 189, 248, 0.55);
+            background: rgba(3, 105, 161, 0.22);
+            color: #ffffff !important;
+        }
+
         .mobile-menu-toggle {
             display: none;
             background: rgba(255, 255, 255, 0.08);
@@ -1056,6 +1079,7 @@
                         <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Facebook Oficial"><i class="fa-brands fa-facebook-f"></i></a>
                         <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="Instagram Oficial"><i class="fa-brands fa-instagram"></i></a>
                         <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" aria-label="TikTok Oficial"><i class="fa-brands fa-tiktok"></i></a>
+                        <a href="login.html" class="nav-portal-discreet" title="Acceso interno para personal y docentes"><i class="fa-solid fa-lock" style="font-size:0.68rem; opacity:0.8;"></i> Plataforma</a>
                     </li>
                 </ul>
 
@@ -1071,10 +1095,13 @@
             <a href="#mision-vision" onclick="toggleMobileMenu()">Misión y Visión</a>
             <a href="#vida-estudiantil" onclick="toggleMobileMenu()">Galería</a>
             <a href="#redes-sociales" onclick="toggleMobileMenu()">Redes Sociales</a>
-            <div style="display:flex; gap:10px; padding-top:8px;">
-                <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-facebook-f"></i></a>
-                <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-instagram"></i></a>
-                <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-tiktok"></i></a>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding-top:8px;">
+                <div style="display:flex; gap:10px;">
+                    <a href="https://www.facebook.com/ComercioJUT/?locale=es_LA" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/escuela_de_comercio_jutiapa/" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="https://www.tiktok.com/@comerciojutiapa" target="_blank" rel="noopener noreferrer" class="nav-social-ico" style="border-bottom:none;"><i class="fa-brands fa-tiktok"></i></a>
+                </div>
+                <a href="login.html" class="nav-portal-discreet" style="border-bottom:1px solid rgba(186,230,253,0.2); padding:6px 12px;"><i class="fa-solid fa-lock" style="font-size:0.68rem;"></i> Plataforma</a>
             </div>
         </div>
     </header>
@@ -1419,7 +1446,7 @@
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261125_v314').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261125_v315').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
