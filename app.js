@@ -7437,9 +7437,13 @@ function isCourseAssignedToTeacher(p, user) {
         return false;
     }
 
-    // 1. Coincidencia directa por ID de docente
+    // 1. Coincidencia directa por ID de docente (blindaje anti-colisión de nombres)
     if (p.teacherId && userId) {
         if (p.teacherId === userId) return true;
+        const assignedToAnotherKnownUser = (typeof window !== 'undefined' && window.STATE && Array.isArray(window.STATE.users))
+            ? window.STATE.users.some(u => u && u.id === p.teacherId)
+            : false;
+        if (assignedToAnotherKnownUser) return false;
     }
 
     // 2. Extracción de nombres a comparar (solo docentes)
@@ -34760,13 +34764,23 @@ function populateAttendanceTeacherFilter() {
     }
 
     const currentVal = teacherSelect.value;
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria' || u.role === 'profesor_auxiliar' || u.role === 'auxiliar');
+    const teachers = (STATE.users || [])
+        .filter(u => u && !u.isSystemOnly && u.active !== false && String(u.status || '').toLowerCase() !== 'inactivo')
+        .map(u => {
+            const cCount = (typeof isCourseAssignedToTeacher === 'function')
+                ? (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, u)).length
+                : 0;
+            return { user: u, courseCount: cCount };
+        })
+        .filter(item => item.courseCount > 0 || String(item.user.role || '').toLowerCase() === 'docente')
+        .sort((a, b) => String(a.user.name || '').localeCompare(String(b.user.name || ''), 'es'));
 
-    let html = `<option value="">⭐ General por Grado (Todos los Maestros)</option>`;
+    let html = `<option value="">📋 General por Grado (Todos los Maestros)</option>`;
     if (teachers.length > 0) {
-        html += `<optgroup label="👨‍🏫 Catedráticos del Plantel">`;
-        teachers.forEach(t => {
-            html += `<option value="${t.id}">👨‍🏫 ${t.name} — ${t.title || t.role}</option>`;
+        html += `<optgroup label="Catedráticos del Plantel (${teachers.length})">`;
+        teachers.forEach(({ user: t, courseCount }) => {
+            const suffix = courseCount > 0 ? `(${courseCount} ${courseCount === 1 ? 'cátedra' : 'cátedras'})` : '(Sin cátedras)';
+            html += `<option value="${t.id}">${t.name} — ${suffix}</option>`;
         });
         html += `</optgroup>`;
     }
@@ -34861,15 +34875,7 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
         }
     } else if (isAuthorityRole && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
-        const teacherClasses = (STATE.pensum || []).filter(p => 
-            p.teacherId === activeTeacherObj.id || 
-            (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, activeTeacherObj)) ||
-            (p.teacher && activeTeacherObj.name && (
-                p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase() ||
-                p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()) ||
-                activeTeacherObj.name.toLowerCase().includes(p.teacher.toLowerCase())
-            ))
-        );
+        const teacherClasses = (STATE.pensum || []).filter(p => typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, activeTeacherObj) : (p.teacherId === activeTeacherObj.id));
 
         const uniqueGrades = new Map();
         teacherClasses.forEach(c => {
@@ -35012,15 +35018,7 @@ function updateAttendanceCoursesList() {
     if (isDocente && currentUser && !isAuthorityRole) {
         matchingPensum = allGradePensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (isAuthorityRole && activeTeacherObj) {
-        matchingPensum = allGradePensum.filter(p => 
-            p.teacherId === activeTeacherObj.id ||
-            (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, activeTeacherObj)) ||
-            (p.teacher && activeTeacherObj.name && (
-                p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase() ||
-                p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()) ||
-                activeTeacherObj.name.toLowerCase().includes(p.teacher.toLowerCase())
-            ))
-        );
+        matchingPensum = allGradePensum.filter(p => typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, activeTeacherObj) : (p.teacherId === activeTeacherObj.id));
     }
 
     if (matchingPensum.length > 0) {
@@ -35034,7 +35032,7 @@ function updateAttendanceCoursesList() {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isAuthorityRole ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
-    } else if (isAuthorityRole && allGradePensum.length > 0) {
+    } else if (isAuthorityRole && !activeTeacherObj && allGradePensum.length > 0) {
         coursesHtml += `<optgroup label="📚 Clases Registradas para este Grado">`;
         allGradePensum.forEach(p => {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${p.teacher ? ` (${p.teacher})` : ''}</option>`;
@@ -35219,8 +35217,8 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         Object.keys(STATE.attendanceRecords).forEach(k => {
             if (!isMatchingCycle(k, cycleKey)) return;
             if (!isMatchingMonth(k, month)) return;
-            // Coincidencia estricta de la cátedra
-            if (!k.endsWith(`_${courseId}`) && !k.includes(`_${courseId}_`) && !k.includes(courseId)) return;
+            // Coincidencia estricta de la cátedra (evita que pen-1 mezcle registros de pen-10/pen-11)
+            if (!k.endsWith(`_${courseId}`) && !k.includes(`_${courseId}_`) && k !== courseId) return;
 
             const { kNum, kSec } = parseKeyGradeAndSection(k);
             if (targetNum > 0 && kNum > 0 && kNum !== targetNum) return;
@@ -35662,6 +35660,8 @@ function loadAttendanceList() {
             gradeCode = assignedGrades[0].code;
             if (gradeSelect) gradeSelect.value = gradeCode;
             STATE.attendanceSelectedGrade = gradeCode;
+            if (typeof updateAttendanceCoursesList === 'function') updateAttendanceCoursesList();
+            if (courseSelect) courseId = courseSelect.value;
         }
     }
 
@@ -35709,14 +35709,17 @@ function loadAttendanceList() {
     const btnCourseBitacora = document.getElementById('btnCourseBitacora');
     // El selector de mes permanece siempre visible para todos los roles para poder consultar el histórico mensual
     if (monthContainer) monthContainer.style.display = 'block';
+    const btnAttCoverage = document.getElementById('btnAttendanceCoverageAudit');
     if (!isAuditRole) {
-        // Docentes: ocultar botón Autorizar Permiso y Recuperar Asistencia (reservados para Auxiliatura / Dirección / Secretaría)
+        // Docentes: ocultar botón Autorizar Permiso, Cobertura y Recuperar Asistencia
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = 'none';
         if (btnRecoverAttendance) btnRecoverAttendance.style.display = 'none';
+        if (btnAttCoverage) btnAttCoverage.style.display = 'none';
     } else {
-        // Roles de auditoría: mostrar botón Autorizar Permiso y Recuperar Asistencia
+        // Roles de auditoría: mostrar herramientas de supervisión
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = '';
         if (btnRecoverAttendance) btnRecoverAttendance.style.display = '';
+        if (btnAttCoverage) btnAttCoverage.style.display = 'inline-flex';
     }
     if (btnCourseBitacora) {
         btnCourseBitacora.style.display = 'inline-flex';
@@ -35781,7 +35784,7 @@ function loadAttendanceList() {
             <th class="col-num" rowspan="2" style="width:28px; max-width:32px; padding:5px 2px;">No.</th>
             <th class="col-carne" rowspan="2" title="Código Personal MINEDUC" style="width:68px; max-width:74px; padding:4px 2px; font-size:0.68rem; line-height:1.15;">CÓDIGO<br>PERSONAL</th>
             <th class="col-name" rowspan="2" style="min-width:310px; max-width:440px; padding-left:8px; text-align:left;">Apellidos y Nombres</th>
-            <th colspan="${daysInMonth}" class="col-month-header" style="background:#15803d; color:#fff; text-align:center; font-weight:800; font-size:0.85rem; padding:4px;">
+            <th colspan="${daysInMonth}" class="col-month-header" style="background:#0f2b5c; color:#fff; text-align:center; font-weight:800; font-size:0.85rem; padding:4px;">
                 <i class="fa-regular fa-calendar-days"></i> DÍAS DEL MES DE ${((document.getElementById('attendanceMonthSelect')?.options[document.getElementById('attendanceMonthSelect')?.selectedIndex]?.text) || 'Agosto').toUpperCase()} (CICLO ${year})
             </th>
             <th colspan="4" style="background:#0f172a; color:#fff; text-align:center; font-size:0.8rem; padding:4px;">RESUMEN</th>
@@ -35908,7 +35911,7 @@ function loadAttendanceList() {
             const isDayRetired = isMonthRetired && (typeof isStudentRetiredAtDate === 'function' ? isStudentRetiredAtDate(s, year, month, day) : true);
 
             if (isWeekend && !hasDataEntered) {
-                cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true" data-student-id="${s.id}" data-day="${day}" onclick="toggleAttendanceCell('${s.id}', ${day})" title="${studentFullName} — Fin de semana (Haga clic para registrar asistencia)">-</td>`;
+                cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true" data-student-id="${s.id}" data-day="${day}" title="${studentFullName} — Fin de semana (Haga clic para registrar asistencia)">-</td>`;
             } else if (isDayRetired) {
                 // 🛑 Alumno Retirado: Relleno distintivo suave, casillas bloqueadas con guión a partir de la fecha de retiro
                 cellsHtml += `
@@ -36059,22 +36062,20 @@ function loadAttendanceList() {
                     cellInnerHtml += `<span style="font-size:0.55rem; color:#0284c7; margin-left:1px;" title="${escapeHtml(annotTextPreview)}">📌</span>`;
                 }
 
-                const cellClickAction = (isOfficialJustified || isOfficialUnjustified || isOfficialSuspension) && !isDirector
-                    ? `showJustificationDetailModal('${s.id}', ${day}, '${month}')`
-                    : `toggleAttendanceCell('${s.id}', ${day})`;
+                const isLockedDetailOnly = (isOfficialJustified || isOfficialUnjustified || isOfficialSuspension) && !isDirector;
 
                 cellsHtml += `
                     <td class="att-cell ${cellClass} ${todayColClass} ${weekendClass}" 
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         data-val="${val}"
+                        data-detail-only="${isLockedDetailOnly ? 'true' : 'false'}"
                         tabindex="${(isCellReadonly && !isDirector) ? '-1' : '0'}"
                         onkeydown="handleAttendanceCellKeyDown(event, '${s.id}', ${day})"
                         ${(isCellReadonly && !isDirector) ? 'data-readonly="true" aria-readonly="true"' : ''}
                         ${cellDisabledAttr}
                         ${cellLockAdminAttr}
                         ${cellOriginRoleAttr}
-                        onclick="${cellClickAction}"
                         title="${cellTitle}">
                         ${cellInnerHtml}
                     </td>
@@ -36215,6 +36216,11 @@ function loadAttendanceList() {
             if (!sId || !d) return;
 
             const isDir = (typeof isDirectorRole === 'function') ? isDirectorRole() : false;
+            if (td.getAttribute('data-detail-only') === 'true' && !isDir) {
+                const mSel = document.getElementById('attendanceMonthSelect');
+                if (typeof showJustificationDetailModal === 'function') showJustificationDetailModal(sId, d, mSel ? mSel.value : '');
+                return;
+            }
             if (e.target.closest('.fa-gavel, .fa-lock, .fa-shield-halved') && !isDir) {
                 return;
             }
@@ -36239,15 +36245,8 @@ function loadAttendanceList() {
     }
     const globalSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
     const globalSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
-    const activeStudentsForStats = students.filter(st => st.status !== 'Retirado' && st.status !== 'Inactivo');
-    const globalSumJ = activeStudentsForStats.reduce((acc, s) => {
-        const sRecords = monthData[s.id] || {};
-        return acc + Object.values(sRecords).filter(v => v === 'J').length;
-    }, 0);
-    const globalSumT = activeStudentsForStats.reduce((acc, s) => {
-        const sRecords = monthData[s.id] || {};
-        return acc + Object.values(sRecords).filter(v => v === 'T').length;
-    }, 0);
+    const globalSumJ = dayJustTotals.reduce((a, b) => a + b, 0);
+    const globalSumT = dayTardyTotals.reduce((a, b) => a + b, 0);
     const globalTotalLogged = globalSumP + globalSumA + globalSumJ + globalSumT;
 
     totalPresentRow += `
@@ -36288,6 +36287,26 @@ function loadAttendanceList() {
     if (foot) {
         foot.innerHTML = totalPresentRow + overallRow;
     }
+    try {
+        const nowD = new Date();
+        const todayDayNum = (nowD.getMonth() + 1 === Number(month)) ? nowD.getDate() : 0;
+        const kpiPctEl = document.getElementById('attKpiMonthPct');
+        const kpiPresEl = document.getElementById('attKpiPresentToday');
+        const kpiAbsEl = document.getElementById('attKpiAbsentToday');
+        const kpiAlertEl = document.getElementById('attKpiAlertCount');
+        if (kpiPctEl) kpiPctEl.textContent = totalClassLogs > 0 ? `${overallPct}%` : '—';
+        if (kpiPresEl) kpiPresEl.textContent = todayDayNum > 0 ? String((dayPresentTotals[todayDayNum] || 0) + (dayTardyTotals[todayDayNum] || 0)) : '—';
+        if (kpiAbsEl) kpiAbsEl.textContent = todayDayNum > 0 ? String(dayAbsentTotals[todayDayNum] || 0) : '—';
+        if (kpiAlertEl) {
+            let alertCnt = 0;
+            document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]:not(.row-student-retired)').forEach(tr => {
+                const sid = tr.getAttribute('data-student-id');
+                const aEl = document.getElementById(`statA_${sid}`);
+                if (aEl && parseInt(aEl.textContent, 10) >= 3) alertCnt++;
+            });
+            kpiAlertEl.textContent = String(alertCnt);
+        }
+    } catch (_) {}
 
     // 📊 [v308] Actualizar tira ejecutiva de 4 KPIs de asistencia en vivo
     try {
@@ -36600,8 +36619,14 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     }
 
     if (courseId === 'GENERAL') {
+        const _cycleStr = String(cycleYear);
+        const _mTag1 = `_M${month}_`;
+        const _mTag2 = `_M0${month}_`;
         Object.keys(STATE.attendanceRecords || {}).forEach(k => {
-            if (isMatchingMonth(k, month) && (k.includes('GENERAL') || k === recordKey)) {
+            const sameCycle = k.startsWith(`${_cycleStr}_`);
+            const sameMonth = k.includes(_mTag1) || k.includes(_mTag2);
+            const sameGradeGen = (k === recordKey) || (sameCycle && sameMonth && k.includes(`_${gradeCode}_`) && k.endsWith('_GENERAL'));
+            if (sameGradeGen) {
                 if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
                 if (!STATE.attendanceRecords[k][studentId]) STATE.attendanceRecords[k][studentId] = {};
                 if (next) {
@@ -36707,7 +36732,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         td.title = next
             ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : (next === 'S' ? 'SUSPENSIÓN DISCIPLINARIA' : 'TARDANZA')))} (Haga clic para alternar)`
             : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
-        td.setAttribute('onclick', `toggleAttendanceCell('${studentId}', ${day})`);
+        td.removeAttribute('onclick');
         td.style.cursor = 'pointer';
     }
 
@@ -37052,6 +37077,10 @@ function getSelectedAttendanceDate() {
 window.getSelectedAttendanceDate = getSelectedAttendanceDate;
 
 function markAllPresentToday() {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('🔒 Ciclo histórico en modo solo lectura.', 'warning');
+        return;
+    }
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
     const courseSelect = document.getElementById('attendanceCourseSelect');
@@ -37117,6 +37146,12 @@ function markAllPresentToday() {
             : null;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
 
+        if (currentVal === 'S' || (permObj && typeof isSuspensionPermission === 'function' && isSuspensionPermission(permObj))) {
+            STATE.attendanceRecords[recordKey][s.id][todayDay] = 'S';
+            preservedJustifiedCount++;
+            return;
+        }
+
         if (permObj && isUnjustifiedPermission(permObj)) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'A';
             preservedUnjustifiedCount++;
@@ -37143,6 +37178,140 @@ function markAllPresentToday() {
     }
 }
 window.markAllPresentToday = markAllPresentToday;
+
+// ==========================================================================
+// 📊 COBERTURA DE ASISTENCIA DE HOY Y AUDITORÍA DE ASIGNACIONES (v325)
+// ==========================================================================
+function openAttendanceCoverageAuditModal() {
+    const today = new Date();
+    const d = today.getDate();
+    const m = today.getMonth() + 1;
+    const cycle = String(STATE.activeCycle || today.getFullYear());
+    const pensum = Array.isArray(STATE.pensum) ? STATE.pensum : [];
+    const users = (STATE.users || []).filter(u => u && !u.isSystemOnly && u.active !== false);
+
+    const byTeacher = new Map();
+    const unassigned = [];
+
+    pensum.forEach(p => {
+        if (!p || !p.id) return;
+        const owner = users.find(u => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, u));
+        const gObj = (STATE.gradesList || []).find(g => g.code === p.gradeCode || g.id === p.gradeCode);
+        const gCode = gObj ? gObj.code : (p.gradeCode || p.grade || '');
+        const students = (typeof getAttendanceStudents === 'function') ? getAttendanceStudents(gCode, p) : [];
+        const activeCount = students.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo').length;
+        const recKey = (typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(gCode, m, p.id) : `${cycle}_M${m}_${gCode}_${p.id}`;
+        const rec = (STATE.attendanceRecords && STATE.attendanceRecords[recKey]) || {};
+        let markedToday = 0;
+        Object.values(rec).forEach(daysObj => {
+            if (daysObj && daysObj[d]) markedToday++;
+        });
+        const entry = {
+            courseId: p.id,
+            subject: p.subject || 'Sin nombre',
+            gradeCode: gCode,
+            gradeLabel: gObj ? `${gObj.name} (${gObj.section})` : `${p.grade || ''} ${p.section || ''}`.trim(),
+            activeCount,
+            markedToday,
+            taken: markedToday > 0
+        };
+        if (!owner) {
+            unassigned.push(entry);
+        } else {
+            if (!byTeacher.has(owner.id)) byTeacher.set(owner.id, { teacher: owner, courses: [] });
+            byTeacher.get(owner.id).courses.push(entry);
+        }
+    });
+
+    const teacherList = Array.from(byTeacher.values()).sort((a, b) => String(a.teacher.name || '').localeCompare(String(b.teacher.name || ''), 'es'));
+    const totalCourses = pensum.length;
+    const takenCourses = teacherList.reduce((s, t) => s + t.courses.filter(c => c.taken).length, 0);
+    const pendingCourses = totalCourses - takenCourses - unassigned.length;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : (v => String(v == null ? '' : v));
+
+    let host = document.getElementById('attCoverageAuditOverlay');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'attCoverageAuditOverlay';
+        host.className = 'tp-modal-bg';
+        host.addEventListener('click', ev => { if (ev.target === host) host.classList.remove('open'); });
+        document.body.appendChild(host);
+    }
+
+    const unassignedHtml = unassigned.length > 0 ? `
+        <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+            <div style="font-weight:800; color:#c2410c; font-size:0.82rem; margin-bottom:6px;"><i class="fa-solid fa-triangle-exclamation"></i> ${unassigned.length} Cátedra(s) sin docente asignado</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${unassigned.map(u => `<span class="badge" style="background:#fff; color:#9a3412; border:1px solid #fdba74; font-size:0.72rem; padding:3px 8px;">${esc(u.subject)} — ${esc(u.gradeLabel)}</span>`).join('')}
+            </div>
+        </div>` : '';
+
+    const cardsHtml = teacherList.map(t => {
+        const tTaken = t.courses.filter(c => c.taken).length;
+        return `
+            <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:10px; overflow:hidden; margin-bottom:8px;">
+                <div style="background:#f0f9ff; border-bottom:1px solid #bae6fd; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                    <strong style="color:#0f2b5c; font-size:0.84rem;"><i class="fa-solid fa-chalkboard-user" style="color:#0369a1;"></i> ${esc(t.teacher.name)}</strong>
+                    <span class="badge" style="background:${tTaken === t.courses.length ? '#dcfce7' : '#fef3c7'}; color:${tTaken === t.courses.length ? '#166534' : '#92400e'}; font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:999px;">${tTaken}/${t.courses.length} tomadas hoy</span>
+                </div>
+                <div style="padding:8px 12px; display:grid; gap:6px;">
+                    ${t.courses.map(c => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; font-size:0.79rem; padding:4px 0; border-bottom:1px dashed #e2e8f0;">
+                            <div><strong>${esc(c.subject)}</strong> <span style="color:#64748b;">• ${esc(c.gradeLabel)} (${c.activeCount} alumnos)</span></div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="badge" style="background:${c.taken ? '#dcfce7' : '#ffedd5'}; color:${c.taken ? '#166534' : '#c2410c'}; font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:999px;">${c.taken ? `✔ ${c.markedToday}/${c.activeCount}` : '⏳ Pendiente'}</span>
+                                <button type="button" class="tp-btn tp-btn-soft tp-btn-sm" onclick="jumpToTeacherCourseAttendance('${esc(t.teacher.id)}','${esc(c.gradeCode)}','${esc(c.courseId)}')">Abrir</button>
+                            </div>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+    }).join('');
+
+    host.innerHTML = `
+        <div class="tp-modal" style="max-width:760px;">
+            <div class="tp-modal-head">
+                <h3><i class="fa-solid fa-clipboard-check"></i> Cobertura de Asistencia — Hoy (${d}/${m}/${cycle})</h3>
+                <button type="button" class="tp-modal-close" onclick="document.getElementById('attCoverageAuditOverlay').classList.remove('open')">&times;</button>
+            </div>
+            <div class="tp-modal-body" style="max-height:72vh; overflow-y:auto;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                    <span class="badge" style="background:#f0f9ff; color:#0f2b5c; border:1px solid #bae6fd; padding:4px 10px; border-radius:999px; font-weight:800;">📚 ${totalCourses} Cátedras</span>
+                    <span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; padding:4px 10px; border-radius:999px; font-weight:800;">✔ ${takenCourses} Tomadas hoy</span>
+                    <span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fdba74; padding:4px 10px; border-radius:999px; font-weight:800;">⏳ ${Math.max(0, pendingCourses)} Pendientes</span>
+                </div>
+                ${unassignedHtml}
+                ${cardsHtml || '<p style="color:#64748b; text-align:center;">No hay cátedras registradas en el pensum activo.</p>'}
+            </div>
+            <div class="tp-modal-foot">
+                <button type="button" class="tp-btn tp-btn-ghost" onclick="document.getElementById('attCoverageAuditOverlay').classList.remove('open')">Cerrar</button>
+            </div>
+        </div>`;
+    host.classList.add('open');
+}
+window.openAttendanceCoverageAuditModal = openAttendanceCoverageAuditModal;
+
+function jumpToTeacherCourseAttendance(teacherId, gradeCode, courseId) {
+    const ov = document.getElementById('attCoverageAuditOverlay');
+    if (ov) ov.classList.remove('open');
+    const tSel = document.getElementById('attendanceTeacherSelect');
+    if (tSel && Array.from(tSel.options).some(o => o.value === teacherId)) {
+        tSel.value = teacherId;
+    }
+    populateAttendanceSelects(false, teacherId);
+    const gSel = document.getElementById('attendanceGradeSelect');
+    if (gSel && gradeCode && Array.from(gSel.options).some(o => o.value === gradeCode)) {
+        gSel.value = gradeCode;
+        STATE.attendanceSelectedGrade = gradeCode;
+    }
+    updateAttendanceCoursesList();
+    const cSel = document.getElementById('attendanceCourseSelect');
+    if (cSel && courseId && Array.from(cSel.options).some(o => o.value === courseId)) {
+        cSel.value = courseId;
+        STATE.attendanceSelectedCourse = courseId;
+    }
+    loadAttendanceList();
+}
+window.jumpToTeacherCourseAttendance = jumpToTeacherCourseAttendance;
 
 let _attendanceSaveTimeout = null;
 

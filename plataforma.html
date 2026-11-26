@@ -236,7 +236,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261126_v324">
+    <link rel="stylesheet" href="styles.css?v=20261126_v325">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -2716,6 +2716,9 @@
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="scrollToTodayAttendanceColumn()" title="Desplazar la vista al día de hoy" style="height:34px; font-size:0.78rem; font-weight:700; padding:0 10px; border-radius:8px; display:inline-flex; align-items:center; gap:5px;">
                                     <i class="fa-solid fa-crosshairs" style="color:#0369a1;"></i> Ir a Hoy
+                                </button>
+                                <button type="button" id="btnAttendanceCoverageAudit" class="btn btn-outline-secondary btn-sm" onclick="openAttendanceCoverageAuditModal()" title="Ver cobertura de asistencia por docente y cátedra hoy" style="display:none; height:34px; font-size:0.78rem; font-weight:800; padding:0 11px; border-radius:8px; align-items:center; gap:5px; background:#f0f9ff; border-color:#7dd3fc; color:#0f2b5c;">
+                                    <i class="fa-solid fa-clipboard-check" style="color:#0369a1;"></i> Cobertura de Hoy
                                 </button>
 
                                 <!-- MENÚ SEGUIMIENTO -->
@@ -6818,7 +6821,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v324" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v325" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
