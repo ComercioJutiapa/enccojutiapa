@@ -6606,6 +6606,14 @@ window.initFirebaseConnection = initFirebaseConnection;
 // 🌟 VISTA OFICIAL DE MAESTROS GUÍAS (LISTA INTEGRADA, NO FLOTANTE, DINÁMICA)
 // ======================================================================
 
+window._guideTeachersGradeFilter = 'ALL';
+
+function setGuideTeachersGradeFilter(gradeKey) {
+    window._guideTeachersGradeFilter = gradeKey || 'ALL';
+    renderGuideTeachersView();
+}
+window.setGuideTeachersGradeFilter = setGuideTeachersGradeFilter;
+
 function renderGuideTeachersView(searchQuery = '') {
     const tbody = document.getElementById('guideTeachersTableBody');
     if (!tbody) return;
@@ -6613,7 +6621,7 @@ function renderGuideTeachersView(searchQuery = '') {
     if (typeof hasRolePermission === 'function' && !hasRolePermission('guide-teachers', STATE.currentRole)) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
+                <td colspan="5" style="text-align:center; padding:35px; color:var(--text-muted);">
                     <i class="fa-solid fa-lock" style="font-size:2rem; color:#dc2626; display:block; margin-bottom:10px;"></i>
                     Acceso Bloqueado: Su rol (${(STATE.currentRole || '').toUpperCase()}) no tiene autorización para acceder al Directorio de Maestros Guías.
                 </td>
@@ -6624,26 +6632,33 @@ function renderGuideTeachersView(searchQuery = '') {
 
     const careerFilterEl = document.getElementById('guideTeachersCareerFilter');
     const careerFilter = (careerFilterEl && careerFilterEl.value) ? careerFilterEl.value : 'ALL';
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('guideTeachersSearchInput') ? document.getElementById('guideTeachersSearchInput').value : '')).toLowerCase().trim();
+    const q = (typeof searchQuery === 'string' && searchQuery !== '' ? searchQuery : (document.getElementById('guideTeachersSearchInput') ? document.getElementById('guideTeachersSearchInput').value : '')).toLowerCase().trim();
 
-    // Actualizar selector de carreras
-    if (careerFilterEl && careerFilterEl.options.length <= 1) {
+    // Actualizar selector de carreras (solo mostrar si hay más de 1 carrera)
+    if (careerFilterEl) {
         const careers = STATE.careers || [];
-        careerFilterEl.innerHTML = '<option value="ALL">Todas las Carreras</option>' + 
-            careers.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+        if (careerFilterEl.options.length <= 1) {
+            careerFilterEl.innerHTML = '<option value="ALL">Todas las Carreras</option>' +
+                careers.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+        }
+        careerFilterEl.style.display = careers.length > 1 ? '' : 'none';
     }
 
-    let list = sortGrades(STATE.gradesList || []);
-    
-    // Contadores para KPIs
-    const totalSections = list.length;
+    let fullList = sortGrades(STATE.gradesList || []);
+
+    // Contadores para KPIs y píldoras dinámicas por grado
+    const totalSections = fullList.length;
     let totalAssignedStudents = 0;
     let assignedGuideCount = 0;
+    const gradeCounts = {};
 
-    list.forEach(g => {
+    fullList.forEach(g => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
         totalAssignedStudents += count;
-        if (g.guideTeacher && g.guideTeacher !== 'Sin asignar') assignedGuideCount++;
+        const gInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher };
+        if (gInfo && gInfo.name && gInfo.name !== 'Sin asignar') assignedGuideCount++;
+        const gKey = (g.name || 'Otros').trim();
+        gradeCounts[gKey] = (gradeCounts[gKey] || 0) + 1;
     });
 
     const kpiSec = document.getElementById('guideKpiTotalSections');
@@ -6651,28 +6666,45 @@ function renderGuideTeachersView(searchQuery = '') {
     const kpiPct = document.getElementById('guideKpiAssignedPercent');
     const kpiStu = document.getElementById('guideKpiTotalStudents');
     if (kpiSec) kpiSec.textContent = totalSections;
-    if (kpiGui) kpiGui.textContent = `${assignedGuideCount} de ${totalSections}`;
-    if (kpiPct) kpiPct.textContent = totalSections > 0 ? `${Math.round((assignedGuideCount / totalSections) * 100)}% asignado` : '0%';
+    if (kpiGui) kpiGui.textContent = `${assignedGuideCount}/${totalSections}`;
+    if (kpiPct) kpiPct.textContent = totalSections > 0 ? `${Math.round((assignedGuideCount / totalSections) * 100)}%` : '0%';
     if (kpiStu) kpiStu.textContent = totalAssignedStudents;
 
-    // Filtros
+    // Renderizar píldoras dinámicas por grado
+    const pillsWrap = document.getElementById('guideTeachersGradePills');
+    if (pillsWrap) {
+        const activeG = window._guideTeachersGradeFilter || 'ALL';
+        const gradeKeys = Object.keys(gradeCounts);
+        pillsWrap.innerHTML = `
+            <button type="button" class="teacher-fpill ${activeG === 'ALL' ? 'active' : ''}" onclick="setGuideTeachersGradeFilter('ALL')">Todos (${totalSections})</button>
+            ${gradeKeys.map(gk => `
+                <button type="button" class="teacher-fpill ${activeG === gk ? 'active' : ''}" onclick="setGuideTeachersGradeFilter('${escapeHtml(gk).replace(/'/g, "\\'")}')">${escapeHtml(gk)} (${gradeCounts[gk]})</button>
+            `).join('')}
+        `;
+    }
+
+    // Aplicar filtros
+    let list = fullList;
+    if (window._guideTeachersGradeFilter && window._guideTeachersGradeFilter !== 'ALL') {
+        list = list.filter(g => (g.name || '').trim() === window._guideTeachersGradeFilter);
+    }
     if (careerFilter && careerFilter !== 'ALL') {
         list = list.filter(g => (g.career || '').toLowerCase() === careerFilter.toLowerCase());
     }
     if (q) {
         list = list.filter(g => {
-            const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-            const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || '');
-            const raw = `${g.name || ''} ${g.section || ''} ${g.code || ''} ${g.career || ''} ${guideName}`.toLowerCase();
-            return raw.includes(q);
+            const gInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || '' };
+            const guideName = gInfo ? (gInfo.name || '') : (g.guideTeacher || '');
+            const rawStr = `${g.name || ''} ${g.section || ''} ${g.code || ''} ${g.career || ''} ${guideName}`.toLowerCase();
+            return rawStr.includes(q);
         });
     }
 
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
-                    <i class="fa-solid fa-person-chalkboard" style="font-size:2rem; color:var(--text-muted); display:block; margin-bottom:10px;"></i>
+                <td colspan="5" style="text-align:center; padding:35px; color:var(--text-muted);">
+                    <i class="fa-solid fa-person-chalkboard" style="font-size:2rem; color:#0369a1; display:block; margin-bottom:10px;"></i>
                     No se encontraron grados o maestros guías que coincidan con la búsqueda.
                 </td>
             </tr>
@@ -6682,21 +6714,41 @@ function renderGuideTeachersView(searchQuery = '') {
 
     const canManageGuides = typeof canRoleModify === 'function' ? canRoleModify('guide-teachers', STATE.currentRole) : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.currentRole === 'superadmin' || STATE.currentRole === 'director');
 
-    tbody.innerHTML = list.map((g, idx) => {
+    let lastGradeGroup = '';
+    const rowsHtml = [];
+
+    list.forEach(g => {
+        const gradeGroupName = (g.name || 'Grado').trim();
+        if (gradeGroupName !== lastGradeGroup) {
+            lastGradeGroup = gradeGroupName;
+            const groupCount = list.filter(item => (item.name || 'Grado').trim() === gradeGroupName).length;
+            rowsHtml.push(`
+                <tr style="background:#f0f9ff;">
+                    <td colspan="5" style="padding:7px 12px; font-weight:900; font-size:0.78rem; color:#0f2b5c; border-top:1.5px solid #bae6fd; border-bottom:1px solid #bae6fd;">
+                        <i class="fa-solid fa-graduation-cap" style="color:#0369a1; margin-right:6px;"></i>${escapeHtml(gradeGroupName)} &nbsp;•&nbsp; ${groupCount} ${groupCount === 1 ? 'Sección' : 'Secciones'}
+                    </td>
+                </tr>
+            `);
+        }
+
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
         const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Sin asignar', user: null, id: g.guideTeacherId };
         const guideTeacherObj = guideInfo.user;
         const guideName = guideInfo.name || 'Sin asignar';
-        const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo registrado') : '---';
+        const guideEmail = guideTeacherObj && guideTeacherObj.email ? guideTeacherObj.email : '';
         const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || guideTeacherObj.telefono || '') : '';
-        const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'Catedrático Titular') : 'PEM / Lic.';
-        const guideRenglon = guideTeacherObj?.renglon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.7rem; margin-left:6px;">${guideTeacherObj.renglon}</span>` : '';
+        const cleanPhoneDigits = String(guidePhone).replace(/\D/g, '');
+        const waPhone = cleanPhoneDigits.length === 8 ? ('502' + cleanPhoneDigits) : cleanPhoneDigits;
+        const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'PEM / Catedrático Titular') : 'PEM / Catedrático Titular';
+        const guideRenglon = guideTeacherObj?.renglon ? `<span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.68rem; padding:1px 6px; border-radius:6px; margin-left:6px;">${escapeHtml(guideTeacherObj.renglon)}</span>` : '';
         const isAssigned = (guideName && guideName !== 'Sin asignar');
+        const initials = isAssigned ? guideName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') : '?';
+        const secLetter = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section) : String(g.section || 'A').replace(/^secci[oó]n\s*/i, '').trim();
 
         let guideDisplayHtml = '';
         if (canManageGuides) {
-            // Dropdown dinámico inline para asignación en tiempo real para usuarios con permiso de modificación
             const teachers = (STATE.users || []).filter(u => {
+                if (u.isSystemOnly) return false;
                 const isTeacherRole = u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-'));
                 if (!isTeacherRole) return false;
                 const isCurrentAssigned = (u.id === g.guideTeacherId || u.name === g.guideTeacher || (guideInfo && (u.id === guideInfo.id || u.name === guideInfo.name)));
@@ -6704,7 +6756,7 @@ function renderGuideTeachersView(searchQuery = '') {
             });
             guideDisplayHtml = `
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <select class="form-control form-control-sm" style="font-size:0.86rem; font-weight:700; color:var(--text-primary); border-color:#93c5fd; background:#f0f9ff; max-width:260px;"
+                    <select class="form-control form-control-sm" style="font-size:0.84rem; font-weight:700; color:#0f2b5c; border-color:#7dd3fc; background:#f0f9ff; max-width:280px;"
                         onchange="handleDirectGuideTeacherChange('${g.id}', this.value)">
                         <option value="">-- Sin Maestro Guía --</option>
                         ${teachers.map(t => {
@@ -6715,56 +6767,92 @@ function renderGuideTeachersView(searchQuery = '') {
                 </div>
             `;
         } else {
-            // Modo lectura institucional dinámica para usuarios con permiso Solo Ver
             guideDisplayHtml = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <div style="width:34px; height:34px; border-radius:50%; background:${isAssigned ? '#dcfce7' : '#fee2e2'}; color:${isAssigned ? '#15803d' : '#dc2626'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
-                        <i class="fa-solid fa-chalkboard-user"></i>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:34px; height:34px; border-radius:50%; background:${isAssigned ? 'linear-gradient(135deg, #0f2b5c, #0369a1)' : '#fee2e2'}; color:${isAssigned ? '#ffffff' : '#dc2626'}; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.76rem; flex-shrink:0;">
+                        ${escapeHtml(initials)}
                     </div>
                     <div>
-                        <strong style="color:var(--text-primary); font-size:0.92rem; display:block;">${escapeHtml(guideName)} ${guideRenglon}</strong>
+                        <strong style="color:#0f2b5c; font-size:0.88rem;">${escapeHtml(guideName)}</strong>${guideRenglon}
+                        <div style="font-size:0.73rem; color:#64748b;">${escapeHtml(guideTitle)}</div>
                     </div>
                 </div>
             `;
         }
 
-        return `
+        const contactChips = [];
+        if (cleanPhoneDigits) {
+            contactChips.push(`<a href="https://wa.me/${waPhone}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:800; text-decoration:none; background:#dcfce7; border:1px solid #86efac; color:#166534;" title="Enviar WhatsApp al maestro guía"><i class="fa-brands fa-whatsapp"></i> ${escapeHtml(guidePhone)}</a>`);
+        }
+        if (guideEmail) {
+            contactChips.push(`<a href="mailto:${escapeHtml(guideEmail)}" style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; font-size:0.74rem; font-weight:700; text-decoration:none; background:#f8fafc; border:1px solid #cbd5e1; color:#334155;" title="Enviar correo electrónico"><i class="fa-regular fa-envelope" style="color:#0369a1;"></i> ${escapeHtml(guideEmail)}</a>`);
+        }
+        const contactHtml = contactChips.length > 0
+            ? `<div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">${contactChips.join('')}</div>`
+            : `<span style="font-size:0.76rem; color:#94a3b8;">Sin contacto registrado</span>`;
+
+        rowsHtml.push(`
             <tr>
-                <td style="text-align:center; font-weight:700; color:var(--text-muted);">${idx + 1}</td>
                 <td>
-                    <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${escapeHtml(g.name)}</strong>
-                    <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(g.career || 'Perito Contador')}</div>
-                </td>
-                <td style="text-align:center;">
-                    <span class="badge badge-success" style="font-weight:800; font-size:0.85rem; padding:5px 10px;">${escapeHtml(g.section)}</span>
-                </td>
-                <td style="text-align:center;">
-                    <code style="font-weight:800; font-size:0.85rem; color:#0f766e; background:#ccfbf1; padding:2px 6px; border-radius:4px;">${escapeHtml(g.code)}</code>
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; color:#0f2b5c; border:1px solid #7dd3fc; padding:4px 10px; border-radius:8px; font-weight:800; font-size:0.8rem; white-space:nowrap;">
+                        ${escapeHtml(g.code || g.name)} • Sec. ${escapeHtml(secLetter)}
+                    </span>
                 </td>
                 <td>${guideDisplayHtml}</td>
-                <td>
-                    <div style="font-size:0.82rem; color:var(--text-primary); font-weight:600;"><i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i>${escapeHtml(guideTitle)}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted);"><i class="fa-regular fa-envelope" style="margin-right:4px;"></i>${escapeHtml(guideEmail)}</div>
-                    ${guidePhone ? `<div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:2px;"><i class="fa-solid fa-phone" style="margin-right:4px;"></i>${escapeHtml(guidePhone)}</div>` : ''}
-                </td>
+                <td>${contactHtml}</td>
                 <td style="text-align:center;">
-                    <button type="button" class="btn btn-xs btn-outline-success" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver los ${count} alumnos matriculados">
-                        <i class="fa-solid fa-users"></i> ${count} alumnos
-                    </button>
+                    <span onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" style="display:inline-flex; align-items:center; gap:5px; background:#f0f9ff; border:1px solid #7dd3fc; color:#0f2b5c; padding:4px 10px; border-radius:999px; font-weight:900; font-size:0.79rem; cursor:pointer;" title="Ver los ${count} alumnos matriculados en ${escapeHtml(g.code)}">
+                        <i class="fa-solid fa-users" style="color:#0369a1;"></i> ${count}
+                    </span>
                 </td>
                 <td style="text-align:center; white-space:nowrap;">
-                    <button type="button" class="btn btn-xs btn-primary" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" title="Ver nómina de alumnos" style="margin-right:4px; padding:5px 9px;">
-                        <i class="fa-solid fa-eye"></i> Alumnos
-                    </button>
-                    <button type="button" class="btn btn-xs btn-outline-info" onclick="printStudentsOfficialList('${escapeHtml(g.code)}')" title="Imprimir nómina oficial" style="padding:5px 8px;">
+                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="printStudentsOfficialList('${escapeHtml(g.code)}')" title="Imprimir nómina oficial de ${escapeHtml(g.code)}" style="padding:5px 9px; border-radius:7px; color:#0f2b5c; border-color:#cbd5e1;">
                         <i class="fa-solid fa-print"></i>
                     </button>
                 </td>
             </tr>
-        `;
-    }).join('');
+        `);
+    });
+
+    tbody.innerHTML = rowsHtml.join('');
 }
 window.renderGuideTeachersView = renderGuideTeachersView;
+
+function exportGuideTeachersExcel() {
+    const list = sortGrades(STATE.gradesList || []);
+    const rows = list.map((g, i) => {
+        const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
+        const gInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Sin asignar', user: null };
+        const u = gInfo.user;
+        return {
+            '#': i + 1,
+            'Grado': g.name || '',
+            'Seccion': g.section || '',
+            'Codigo': g.code || '',
+            'Maestro Guia': gInfo.name || 'Sin asignar',
+            'Renglon': u?.renglon || '',
+            'Correo': u?.email || '',
+            'Telefono': u?.phone || u?.telefono || '',
+            'Estudiantes': count
+        };
+    });
+    const cycle = STATE.activeCycle || new Date().getFullYear();
+    if (typeof XLSX !== 'undefined' && XLSX.utils) {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Maestros Guias');
+        XLSX.writeFile(wb, `ENCCO_Maestros_Guias_${cycle}.xlsx`);
+    } else {
+        const headers = Object.keys(rows[0] || {});
+        const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\r\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `ENCCO_Maestros_Guias_${cycle}.csv`;
+        a.click();
+    }
+}
+window.exportGuideTeachersExcel = exportGuideTeachersExcel;
 
 function filterGuideTeachersView(query = '') {
     renderGuideTeachersView(query);

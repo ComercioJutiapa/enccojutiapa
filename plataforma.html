@@ -1932,76 +1932,60 @@
                     </div>
                 </section>
 
-                <!-- 4A-2. DIRECTORIO Y ASIGNACIÓN OFICIAL DE MAESTROS GUÍAS (VISTA INTEGRADA EN LISTA, NO FLOTANTE, DINÁMICA PARA TODOS) -->
+                <!-- 4A-2. DIRECTORIO Y ASIGNACIÓN OFICIAL DE MAESTROS GUÍAS (VISTA COMPACTA AZUL INSTITUCIONAL) -->
                 <section class="app-view" id="view-guide-teachers">
-                    <!-- TARJETAS DE RESUMEN / KPIS -->
-                    <div class="kpi-grid" style="margin-bottom:18px;">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue"><i class="fa-solid fa-school"></i></div>
-                            <div class="kpi-info">
-                                <h4>Secciones Oficiales</h4>
-                                <h2 id="guideKpiTotalSections">12</h2>
-                                <p>Grados y aulas habilitadas</p>
+                    <!-- TARJETA COMPACTA DE KPIS + ACCIONES + FILTROS -->
+                    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px 15px; margin-bottom:12px; box-shadow:0 4px 14px rgba(15,43,92,0.06);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                <span style="display:inline-flex; align-items:center; gap:6px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:999px; padding:5px 12px; font-size:0.79rem; font-weight:800; color:#0f2b5c;">
+                                    <i class="fa-solid fa-school" style="color:#0369a1;"></i> <span id="guideKpiTotalSections">0</span> Secciones
+                                </span>
+                                <span style="display:inline-flex; align-items:center; gap:6px; background:#dcfce7; border:1px solid #86efac; border-radius:999px; padding:5px 12px; font-size:0.79rem; font-weight:800; color:#166534;">
+                                    <i class="fa-solid fa-chalkboard-user" style="color:#16a34a;"></i> <span id="guideKpiAssignedTeachers">0</span> Guías (<span id="guideKpiAssignedPercent">0%</span>)
+                                </span>
+                                <span style="display:inline-flex; align-items:center; gap:6px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:999px; padding:5px 12px; font-size:0.79rem; font-weight:800; color:#0f2b5c;">
+                                    <i class="fa-solid fa-users" style="color:#0369a1;"></i> <span id="guideKpiTotalStudents">0</span> Estudiantes
+                                </span>
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                <button type="button" class="btn btn-sm" onclick="exportGuideTeachersExcel()" title="Exportar directorio de maestros guías a Excel" style="height:34px; padding:0 12px; border-radius:8px; background:#f0f9ff; border:1.5px solid #7dd3fc; color:#0f2b5c; font-size:0.79rem; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i> Exportar Excel
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="printGuideTeachersOfficialDirectory()" style="height:34px; padding:0 13px; border-radius:8px; background:#0369a1; border-color:#0f2b5c; color:#ffffff; font-size:0.79rem; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-print"></i> Imprimir Nómina
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="renderGuideTeachersView()" title="Actualizar en tiempo real" style="height:34px; width:34px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center;">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon green"><i class="fa-solid fa-chalkboard-user"></i></div>
-                            <div class="kpi-info">
-                                <h4>Maestros Guías Asignados</h4>
-                                <h2 id="guideKpiAssignedTeachers">0</h2>
-                                <p id="guideKpiAssignedPercent">100% cubierto</p>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange"><i class="fa-solid fa-users"></i></div>
-                            <div class="kpi-info">
-                                <h4>Estudiantes Matriculados</h4>
-                                <h2 id="guideKpiTotalStudents">0</h2>
-                                <p>Alumnos asignados en secciones</p>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:10px;">
+                            <div id="guideTeachersGradePills" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;"></div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:0 1 380px;">
+                                <select id="guideTeachersCareerFilter" class="form-control" onchange="filterGuideTeachersView()" style="display:none; min-width:155px; height:32px; font-size:0.8rem;">
+                                    <option value="ALL">Todas las Carreras</option>
+                                </select>
+                                <div style="position:relative; flex:1; min-width:220px;">
+                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.78rem; pointer-events:none;"></i>
+                                    <input type="text" id="guideTeachersSearchInput" class="form-control" placeholder="Buscar grado, sección o docente guía..." oninput="filterGuideTeachersView(this.value)" onkeyup="filterGuideTeachersView(this.value)" style="padding-left:32px !important; height:32px; font-size:0.8rem; border-radius:8px; width:100%; box-sizing:border-box;">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- BARRA DE HERRAMIENTAS Y BÚSQUEDA DINÁMICA -->
-                    <div class="section-toolbar" style="margin-bottom:16px;">
-                        <div class="toolbar-search" style="flex:1; max-width:380px;">
-                            <input type="text" id="guideTeachersSearchInput" class="form-control" placeholder="Buscar grado, sección o docente guía..." oninput="filterGuideTeachersView(this.value)" onkeyup="filterGuideTeachersView(this.value)">
-                        </div>
-                        <div class="toolbar-filters" style="display:flex; gap:10px;">
-                            <select id="guideTeachersCareerFilter" class="form-control" onchange="filterGuideTeachersView()" style="min-width:180px;">
-                                <option value="ALL">Todas las Carreras</option>
-                            </select>
-                        </div>
-                        <div class="toolbar-actions" style="display:flex; gap:8px;">
-                            <button type="button" class="btn btn-primary" onclick="printGuideTeachersOfficialDirectory()" style="font-weight:700;">
-                                <i class="fa-solid fa-print"></i> Imprimir Lista de Docentes Guías
-                            </button>
-                            <button type="button" class="btn btn-outline-success" onclick="renderGuideTeachersView()" title="Actualizar en tiempo real" style="font-weight:700;">
-                                <i class="fa-solid fa-rotate"></i> Actualizar
-                            </button>
-                        </div>
-                    </div>
-                    <div class="info-alert" style="margin-bottom:16px; background:rgba(34,197,94,0.08); border-left:4px solid #16a34a; border-radius:6px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
-                        <i class="fa-solid fa-person-chalkboard" style="font-size:1.4rem; color:#16a34a;"></i>
-                        <div style="flex:1; font-size:0.88rem; color:#1f2937;">
-                            <strong>Directorio Institucional de Maestros Guías:</strong> Asignación oficial de catedráticos titulares encargados de la tutoría, orientación estudiantil y coordinación de cada sección escolar. Vista dinámica para todo el personal docente y administrativo.
-                        </div>
-                    </div>
-
-                    <!-- TABLA EN FORMATO LISTA OFICIAL DE MAESTROS GUÍAS -->
-                    <div class="table-card" style="box-shadow:0 2px 8px rgba(0,0,0,0.06); border-radius:10px; overflow:hidden;">
+                    <!-- TABLA COMPACTA DE 5 COLUMNAS EN AZUL INSTITUCIONAL -->
+                    <div class="table-card" style="box-shadow:0 4px 14px rgba(15,43,92,0.05); border:1.5px solid #cbd5e1; border-radius:12px; overflow:hidden;">
                         <div class="table-responsive">
                             <table class="custom-table" id="guideTeachersTable" style="margin-bottom:0;">
-                                <thead style="background:#f8fafc;">
-                                    <tr>
-                                        <th style="width:40px; text-align:center;">#</th>
-                                        <th style="min-width:170px;">Grado Escolar</th>
-                                        <th style="width:110px; text-align:center;">Sección</th>
-                                        <th style="width:95px; text-align:center;">Código</th>
-                                        <th style="min-width:260px;">Maestro(a) Guía Titular</th>
-                                        <th style="min-width:190px;">Cargo y Contacto</th>
-                                        <th style="width:125px; text-align:center;">Estudiantes</th>
-                                        <th style="width:170px; text-align:center;">Acciones</th>
+                                <thead>
+                                    <tr style="background:#0f2b5c; color:#ffffff;">
+                                        <th style="width:175px; background:#0f2b5c; color:#ffffff;">Grado y Sección</th>
+                                        <th style="min-width:250px; background:#0f2b5c; color:#ffffff;">Maestro(a) Guía Titular</th>
+                                        <th style="min-width:220px; background:#0f2b5c; color:#ffffff;">Contacto Directo</th>
+                                        <th style="width:125px; text-align:center; background:#0f2b5c; color:#ffffff;">Estudiantes</th>
+                                        <th style="width:110px; text-align:center; background:#0f2b5c; color:#ffffff;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="guideTeachersTableBody">
@@ -6837,7 +6821,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261125_v312" charset="UTF-8"></script>
+    <script src="app.js?v=20261125_v316" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
