@@ -23425,7 +23425,9 @@ function printGradebookOfficialList() {
         gradeCode: targetPensum.gradeCode || targetPensum.grade,
         subjectName: targetPensum.subject,
         teacherName: targetPensum.teacher,
-        bimestreNum: String(currentUnit)
+        bimestreNum: String(currentUnit),
+        modelType: 'CUADRO_CALIFICACIONES_EXCEL',
+        fillMode: 'lleno'
     });
 }
 
