@@ -12008,6 +12008,10 @@ function synchronizeGlobalDynamicUI() {
             renderScholarshipsView();
         } else if (STATE.activeView === 'guide-teachers' && typeof renderGuideTeachersTable === 'function') {
             renderGuideTeachersTable();
+        } else if (STATE.activeView === 'reports' && typeof populateReportStudentSelect === 'function') {
+            populateReportStudentSelect();
+        } else if (STATE.activeView === 'honor-roll' && typeof renderHonorRollView === 'function') {
+            renderHonorRollView();
         }
     }, 32);
 }
@@ -28775,7 +28779,7 @@ function renderDatabaseView() {
             </div>
             <div class="kpi-card">
                 <div class="kpi-icon" style="background:#f3e8ff; color:#7e22ce;"><i class="fa-solid fa-user-graduate"></i></div>
-                <div class="kpi-info"><h4>Estudiantes Matriculados</h4><h2>${totalStudents}</h2><p>En el Ciclo 2026</p></div>
+                <div class="kpi-info"><h4>Estudiantes Matriculados</h4><h2>${totalStudents}</h2><p>En el Ciclo ${STATE.activeCycle || new Date().getFullYear()}</p></div>
             </div>
         `;
     }
@@ -30583,7 +30587,7 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
         if (selectedGradeCodeFilter !== 'ALL' && !gradeMap.has(selectedGradeCodeFilter)) {
             selectedGradeCodeFilter = isDocente ? 'ALL' : (sortedGradeFilters[0] ? sortedGradeFilters[0].code : 'ALL');
         }
-        gradeFilterEl.innerHTML = (isDocente ? '<option value="ALL">Todos mis Grados</option>' : '<option value="ALL">Todos los Grados (13)</option>') +
+        gradeFilterEl.innerHTML = (isDocente ? '<option value="ALL">Todos mis Grados</option>' : `<option value="ALL">Todos los Grados (${sortedGradeFilters.length})</option>`) +
             sortedGradeFilters.map(g => `<option value="${g.code}">${g.code} — ${g.name}</option>`).join('');
         gradeFilterEl.value = selectedGradeCodeFilter;
         STATE.selectedGradebookGradeCodeFilter = selectedGradeCodeFilter;

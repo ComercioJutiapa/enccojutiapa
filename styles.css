@@ -6238,3 +6238,23 @@ textarea:focus-visible,
   #view-teacher-permissions .tp-teachers-grid { grid-template-columns: 1fr; }
   .tp-fgrid-2 { grid-template-columns: 1fr; }
 }
+
+/* === PULIDO RESPONSIVO GLOBAL (v329) === */
+#view-users .table-card, #view-grade-lock .table-card, #view-grade-lock .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 640px) {
+  #view-attendance .attendance-control-bar select.form-control,
+  #view-gradebook select.form-control {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  #view-attendance .attendance-control-bar > div > div,
+  #view-gradebook .course-selector-box {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+  }
+  #view-attendance .attendance-control-bar .btn,
+  #view-gradebook .btn {
+    flex: 1 1 auto;
+  }
+}
