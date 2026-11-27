@@ -9669,13 +9669,17 @@ function syncClassAssignmentsWithPensumAndGrades(options = { showNotification: t
             processedKeys.add(canonicalKey);
 
             if (existingMap.has(canonicalKey)) {
-                // Ya existía: CONSERVAR CATEDRÁTICO, actualizar código y períodos del pensum oficial
+                // Ya existía: CONSERVAR CATEDRÁTICO Y PERÍODOS PERSONALIZADOS sin sobreescribirlos
                 const ex = existingMap.get(canonicalKey);
                 ex.code = pCourse.code || ex.code;
                 ex.subject = pCourse.name || ex.subject;
                 ex.name = pCourse.name || ex.name;
-                ex.periodsPerWeek = pCourse.periods || pCourse.hours || ex.periodsPerWeek || 4;
-                ex.hours = ex.periodsPerWeek;
+                const resolvedPeriods = (ex.customPeriods && parseInt(ex.periodsPerWeek || ex.hours || ex.periods, 10) > 0)
+                    ? parseInt(ex.periodsPerWeek || ex.hours || ex.periods, 10)
+                    : (parseInt(ex.periodsPerWeek || ex.hours || ex.periods || pCourse.periods || pCourse.hours, 10) || 4);
+                ex.periodsPerWeek = resolvedPeriods;
+                ex.hours = resolvedPeriods;
+                ex.periods = resolvedPeriods;
                 ex.grade = gName;
                 ex.gradeCode = gCode;
                 ex.section = secLabel;
@@ -49271,6 +49275,8 @@ async function savePensumSubjectForm(e) {
                 asg.hours = hours;
                 asg.periodsPerWeek = hours;
                 asg.periods = hours;
+                asg.customPeriods = false;
+                asg.lastModified = Date.now();
             }
         });
 
@@ -52170,6 +52176,7 @@ async function saveClassAssignmentForm(e) {
                 target.periodsPerWeek = periods;
                 target.hours = periods;
                 target.periods = periods;
+                target.customPeriods = true;
                 target.subject = fullSubjectName;
                 target.name = fullSubjectName;
                 if (assignedCourseCode) target.code = assignedCourseCode;
@@ -52191,12 +52198,26 @@ async function saveClassAssignmentForm(e) {
                     periodsPerWeek: periods,
                     hours: periods,
                     periods: periods,
+                    customPeriods: true,
                     lastModified: nowTime
                 };
                 STATE.pensum.push(newAsg);
                 touchedAssignments.push(newAsg);
             }
         });
+
+        // 🔄 Cascada coherente hacia pensumCatalog si cambió la cantidad de períodos de la asignatura
+        let catalogPeriodsUpdated = false;
+        if (targetCatalogMatch) {
+            const prevCatPeriods = parseInt(targetCatalogMatch.periods || targetCatalogMatch.hours || targetCatalogMatch.weeklyHours || 4, 10);
+            if (prevCatPeriods !== periods) {
+                targetCatalogMatch.periods = periods;
+                targetCatalogMatch.hours = periods;
+                targetCatalogMatch.weeklyHours = periods;
+                targetCatalogMatch.lastModified = nowTime;
+                catalogPeriodsUpdated = true;
+            }
+        }
 
         STATE.lastModified = nowTime;
         if (typeof propagatePensumSubjectToActiveStudents === 'function' && gradeName && fullSubjectName) {
@@ -52207,13 +52228,15 @@ async function saveClassAssignmentForm(e) {
         saveStateToLocalStorage();
         closeClassAssignmentModal();
 
-        // Actualización reactiva inmediata en pantalla
+        // Actualización reactiva inmediata en pantalla (cascada completa)
         renderAssignmentsTable();
+        if (typeof renderPensumCatalogView === 'function') renderPensumCatalogView();
         if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
         if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
         if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
         if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
 
         const savedSecLabels = selectedSections.map(s => s.code || s.section).join(', ');
         const secCountLabel = selectedSections.length > 1 ? ` en ${selectedSections.length} secciones (${savedSecLabels})` : ` (${savedSecLabels})`;
@@ -52264,6 +52287,9 @@ async function saveClassAssignmentForm(e) {
                     } catch(rtdbErr) {
                         console.warn('Aviso al sincronizar asignaciones en RTDB (intento ' + attempt + '/2):', rtdbErr);
                     }
+                }
+                if (catalogPeriodsUpdated && Array.isArray(STATE.pensumCatalog)) {
+                    EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog).catch(() => {});
                 }
             }
             if (!rtdbOk && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
@@ -52331,12 +52357,34 @@ function openEditClassAssignmentModal(asgId) {
 
     const subjectSelect = document.getElementById('classAssignmentFormSubject');
     if (subjectSelect) {
-        subjectSelect.value = a.subject || a.name;
+        const targetSubj = String(a.subject || a.name || '').trim();
+        subjectSelect.value = targetSubj;
+        if (!subjectSelect.value && targetSubj) {
+            const normSub = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            const targetNorm = normSub(targetSubj);
+            const matchedOpt = Array.from(subjectSelect.options).find(opt => {
+                const oVal = normSub(opt.value);
+                return oVal === targetNorm || (a.code && opt.dataset.code && String(opt.dataset.code) === String(a.code)) || (oVal && targetNorm && (oVal.includes(targetNorm) || targetNorm.includes(oVal)));
+            });
+            if (matchedOpt) {
+                subjectSelect.value = matchedOpt.value;
+            } else {
+                const dynOpt = document.createElement('option');
+                dynOpt.value = targetSubj;
+                dynOpt.dataset.code = a.code || '';
+                dynOpt.dataset.hours = String(a.periodsPerWeek || a.hours || a.periods || 4);
+                dynOpt.textContent = `${a.code ? '[' + a.code + '] ' : ''}${targetSubj} • (${dynOpt.dataset.hours} períodos/sem)`;
+                subjectSelect.appendChild(dynOpt);
+                subjectSelect.value = targetSubj;
+            }
+        }
     }
 
     const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
     if (hoursInput) {
-        hoursInput.value = a.periodsPerWeek || a.hours || 4;
+        hoursInput.disabled = false;
+        hoursInput.readOnly = false;
+        hoursInput.value = a.periodsPerWeek || a.hours || a.periods || 4;
     }
     if (typeof checkClassAssignmentConflict === 'function') {
         checkClassAssignmentConflict();
