@@ -6274,3 +6274,12 @@ textarea:focus-visible,
   #view-exoneraciones-log select.form-control,
   #view-exoneraciones-log input.form-control { width: 100% !important; min-width: 0 !important; }
 }
+
+/* === BITÁCORA DE AUXILIATURA RESPONSIVO (v335) === */
+@media (max-width: 640px) {
+  #view-auxiliatura-log .section-toolbar > div { width: 100%; }
+  #view-auxiliatura-log .section-toolbar .btn { flex: 1 1 auto; }
+  #view-auxiliatura-log select.form-control,
+  #view-auxiliatura-log input.form-control { width: 100% !important; min-width: 0 !important; }
+  #view-auxiliatura-log .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

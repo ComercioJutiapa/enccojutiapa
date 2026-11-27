@@ -2881,8 +2881,8 @@
                 <section class="app-view" id="view-auxiliatura-log">
                     <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
                         <div>
-                            <h3 style="margin:0; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                <i class="fa-solid fa-clipboard-user" style="color:#dc2626;"></i>
+                            <h3 style="margin:0; color:#0f2b5c; font-weight:800; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-clipboard-user" style="color:#0369a1;"></i>
                                 Bitácora Diaria de Ausencias y Alertas Escolares
                             </h3>
                             <p style="margin:4px 0 0 0; color:#64748b; font-size:0.85rem;">
@@ -2896,7 +2896,10 @@
                             <button type="button" class="btn btn-outline-secondary" id="btnToggleAuxChime" onclick="toggleAuxiliaturaChime()" style="font-weight:700;" title="Silenciar o activar campana audible de alertas">
                                 <i class="fa-solid fa-volume-high" id="iconAuxChime"></i> <span id="labelAuxChime">Sonido: ON</span>
                             </button>
-                            <button type="button" class="btn btn-primary" onclick="printAuxiliaturaLog()" style="background:#15803d; border-color:#15803d; font-weight:700;">
+                            <button type="button" class="btn btn-outline-primary" onclick="exportAuxiliaturaLogExcel()" style="border-color:#0369a1; color:#0369a1; font-weight:700;" title="Exportar la bitácora filtrada a Excel (.xlsx)">
+                                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="printAuxiliaturaLog()" style="background:#0f2b5c; border-color:#0f2b5c; font-weight:700;">
                                 <i class="fa-solid fa-print"></i> Imprimir Bitácora Oficial del Día
                             </button>
                         </div>
@@ -6833,7 +6836,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v334" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v335" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>

@@ -12017,6 +12017,8 @@ function synchronizeGlobalDynamicUI() {
             renderExoneracionesLogView();
         } else if (STATE.activeView === 'exam-schedules' && typeof renderExamSchedulesView === 'function') {
             renderExamSchedulesView();
+        } else if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+            renderAuxiliaturaLogView();
         }
     }, 32);
 }
@@ -54222,48 +54224,135 @@ function renderAuxiliaturaLogViewDebounced() {
 }
 window.renderAuxiliaturaLogViewDebounced = renderAuxiliaturaLogViewDebounced;
 
-function renderAuxiliaturaLogView() {
-    updateAuxChimeButtonUI();
+function getAuxLocalDateISO(dateInput) {
+    const d = dateInput instanceof Date ? dateInput : (dateInput ? new Date(dateInput) : new Date());
+    if (Number.isNaN(d.getTime())) {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
+function getAuxiliaturaLogFilteredData(options = {}) {
     const dateInput = document.getElementById('auxiliaturaLogDateFilter');
     const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
     const statusSelect = document.getElementById('auxiliaturaLogStatusFilter');
     const searchInput = document.getElementById('auxiliaturaLogSearchInput');
-    const tbody = document.getElementById('auxiliaturaLogTableBody');
 
-    if (!tbody) return;
-
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getAuxLocalDateISO(new Date());
     if (dateInput && !dateInput.value) {
         dateInput.value = todayStr;
     }
     const selectedDate = dateInput ? (dateInput.value || todayStr) : todayStr;
-
-    // Llenar combo de grados si solo tiene 1 opción
-    if (gradeSelect && gradeSelect.options.length <= 1) {
-        let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
-        (STATE.gradesList || []).forEach(g => {
-            optionsHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
-        });
-        gradeSelect.innerHTML = optionsHtml;
-    }
-
-    const selectedGrade = gradeSelect ? gradeSelect.value : 'ALL';
-    const selectedStatus = statusSelect ? statusSelect.value : 'ALL';
+    const selectedGrade = gradeSelect ? (gradeSelect.value || 'ALL') : 'ALL';
+    const selectedStatus = statusSelect ? (statusSelect.value || 'ALL') : 'ALL';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const activeCycle = String(
+        STATE.historicalViewingCycle ||
+        STATE.viewingHistoricalCycle ||
+        STATE.activeCycle ||
+        new Date().getFullYear()
+    ).trim();
+
     const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
-        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
+        const aCycle = String(
+            a.cycle ||
+            (a.date ? String(a.date).substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : activeCycle))
+        ).trim();
         return aCycle === activeCycle;
     });
 
-    // Calcular KPIs para la fecha seleccionada dentro del ciclo activo
     const alertsForDate = allAlerts.filter(a => {
-        const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
+        const aDate = a.date || (a.timestamp ? getAuxLocalDateISO(new Date(a.timestamp)) : '');
         return aDate === selectedDate;
     });
+
+    let filtered = alertsForDate.slice();
+    if (options.excludeCorrected && selectedStatus !== 'corregida') {
+        filtered = filtered.filter(a => a.status !== 'corregida');
+    }
+
+    if (selectedGrade !== 'ALL') {
+        const targetGradeObj = (STATE.gradesList || []).find(g => g && String(g.code) === String(selectedGrade));
+        const targetSec = targetGradeObj
+            ? (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(targetGradeObj.section) : String(targetGradeObj.section || '').replace(/^secci[oó]n\s*/i, '').trim()).toUpperCase()
+            : '';
+        const targetNameNorm = targetGradeObj ? String(targetGradeObj.name || '').trim().toLowerCase() : '';
+
+        filtered = filtered.filter(a => {
+            if (a.gradeCode && String(a.gradeCode) === String(selectedGrade)) return true;
+            if (!targetGradeObj || !a.gradeLabel) return false;
+            const labelLower = String(a.gradeLabel).toLowerCase();
+            const hasName = targetNameNorm ? labelLower.includes(targetNameNorm) : false;
+            if (!hasName) return false;
+            if (!targetSec) return true;
+            const secMatch = labelLower.match(/secci[oó]n\s*([a-h])\b/i) || labelLower.match(/\b([a-h])\s*$/i);
+            return secMatch ? secMatch[1].toUpperCase() === targetSec : false;
+        });
+    }
+
+    if (selectedStatus !== 'ALL') {
+        filtered = filtered.filter(a => (a.status || 'pendiente') === selectedStatus);
+    }
+
+    if (searchQuery) {
+        filtered = filtered.filter(a =>
+            (a.studentName || '').toLowerCase().includes(searchQuery) ||
+            (a.carne || '').toLowerCase().includes(searchQuery) ||
+            (a.teacherName || '').toLowerCase().includes(searchQuery) ||
+            (a.courseName || '').toLowerCase().includes(searchQuery) ||
+            (a.guardianName || '').toLowerCase().includes(searchQuery) ||
+            (a.gradeLabel || '').toLowerCase().includes(searchQuery)
+        );
+    }
+
+    return {
+        activeCycle,
+        selectedDate,
+        selectedGrade,
+        selectedStatus,
+        searchQuery,
+        alertsForDate,
+        filtered
+    };
+}
+
+function renderAuxiliaturaLogView() {
+    updateAuxChimeButtonUI();
+
+    const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
+    const tbody = document.getElementById('auxiliaturaLogTableBody');
+
+    if (!tbody) return;
+
+    // Llenar/sincronizar combo de grados ordenado y sin duplicar "Sección"
+    if (gradeSelect) {
+        const prevVal = gradeSelect.value || 'ALL';
+        const sortedGrades = (typeof sortGrades === 'function')
+            ? sortGrades([...(STATE.gradesList || [])])
+            : [...(STATE.gradesList || [])];
+        let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
+        const seenCodes = new Set();
+        sortedGrades.forEach(g => {
+            if (!g || !g.code || seenCodes.has(g.code)) return;
+            seenCodes.add(g.code);
+            const cleanSec = (typeof getCleanSectionLetter === 'function')
+                ? getCleanSectionLetter(g.section)
+                : String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim();
+            const label = cleanSec ? `${g.name} - Sección ${cleanSec}` : (g.name || g.code);
+            optionsHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(label)}</option>`;
+        });
+        gradeSelect.innerHTML = optionsHtml;
+        if (prevVal !== 'ALL' && Array.from(gradeSelect.options).some(o => o.value === prevVal)) {
+            gradeSelect.value = prevVal;
+        } else {
+            gradeSelect.value = 'ALL';
+        }
+    }
+
+    const { selectedDate, alertsForDate, filtered } = getAuxiliaturaLogFilteredData();
 
     const totalToday = alertsForDate.filter(a => a.status !== 'corregida').length;
     const pendingToday = alertsForDate.filter(a => a.status === 'pendiente' || !a.status).length;
@@ -54280,24 +54369,6 @@ function renderAuxiliaturaLogView() {
     if (elJust) elJust.textContent = justifiedToday;
     if (elCit) elCit.textContent = citedToday;
 
-    // Filtrar para la tabla
-    let filtered = alertsForDate;
-    if (selectedGrade !== 'ALL') {
-        filtered = filtered.filter(a => a.gradeCode === selectedGrade || (a.gradeLabel && a.gradeLabel.includes(selectedGrade)));
-    }
-    if (selectedStatus !== 'ALL') {
-        filtered = filtered.filter(a => (a.status || 'pendiente') === selectedStatus);
-    }
-    if (searchQuery) {
-        filtered = filtered.filter(a => 
-            (a.studentName || '').toLowerCase().includes(searchQuery) ||
-            (a.carne || '').toLowerCase().includes(searchQuery) ||
-            (a.teacherName || '').toLowerCase().includes(searchQuery) ||
-            (a.courseName || '').toLowerCase().includes(searchQuery) ||
-            (a.guardianName || '').toLowerCase().includes(searchQuery)
-        );
-    }
-
     // Ordenar de más reciente a más antiguo
     filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
@@ -54305,9 +54376,9 @@ function renderAuxiliaturaLogView() {
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align:center; padding:35px 20px; color:#64748b;">
-                    <i class="fa-solid fa-clipboard-check" style="font-size:2.2rem; color:#86efac; display:block; margin-bottom:8px;"></i>
-                    <strong style="color:#0f172a; font-size:1rem;">Sin inasistencias reportadas</strong>
-                    <div style="font-size:0.84rem; margin-top:4px;">No hay reportes de ausencias para la fecha y filtros seleccionados (${selectedDate}).</div>
+                    <i class="fa-solid fa-clipboard-check" style="font-size:2.2rem; color:#0369a1; display:block; margin-bottom:8px;"></i>
+                    <strong style="color:#0f2b5c; font-size:1rem;">Sin inasistencias reportadas</strong>
+                    <div style="font-size:0.84rem; margin-top:4px;">No hay reportes de ausencias para la fecha y filtros seleccionados (${escapeHtml(selectedDate)}).</div>
                 </td>
             </tr>
         `;
@@ -54359,7 +54430,7 @@ function renderAuxiliaturaLogView() {
         const notesTooltip = a.notes ? `<div style="font-size:0.75rem; color:#475569; margin-top:4px; background:#f8fafc; border-left:3px solid #3b82f6; padding:3px 6px; border-radius:2px;"><strong>Nota:</strong> ${escapeHtml(a.notes)}</div>` : '';
 
         // Anotaciones universales de seguimiento vinculadas al estudiante o fecha
-        const targetAlertDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
+        const targetAlertDate = a.date || (a.timestamp ? getAuxLocalDateISO(new Date(a.timestamp)) : '');
         const alertAnnots = (typeof getStudentAnnotationsForDate === 'function') ? getStudentAnnotationsForDate(a.studentId, targetAlertDate) : [];
         const annotsHtml = alertAnnots.map(an => `
             <div style="font-size:0.75rem; color:#0369a1; margin-top:3px; background:#f0f9ff; border-left:3px solid #0284c7; padding:3px 6px; border-radius:2px;" title="Registrado por ${escapeHtml(an.authorName)} (${an.time})">
@@ -54583,32 +54654,37 @@ function markAuxiliaturaAlertStatus(alertId, newStatus) {
 }
 
 function printAuxiliaturaLog() {
-    const dateInput = document.getElementById('auxiliaturaLogDateFilter');
-    const todayStr = new Date().toISOString().split('T')[0];
-    const targetDate = dateInput ? (dateInput.value || todayStr) : todayStr;
-    const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
-    const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
-
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
-    const allAlerts = (STATE.attendanceAlerts || []).filter(a => {
-        if (!a) return false;
-        const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : '2026'))).trim();
-        return aCycle === activeCycle;
-    });
-    let filtered = allAlerts.filter(a => {
-        const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
-        return aDate === targetDate && a.status !== 'corregida';
-    });
-
-    if (targetGrade !== 'ALL') {
-        filtered = filtered.filter(a => a.gradeCode === targetGrade || (a.gradeLabel && a.gradeLabel.includes(targetGrade)));
-    }
+    const {
+        activeCycle,
+        selectedDate: targetDate,
+        selectedGrade,
+        selectedStatus,
+        searchQuery,
+        filtered
+    } = getAuxiliaturaLogFilteredData({ excludeCorrected: true });
 
     filtered.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
     const parts = targetDate.split('-');
     const formattedDate = (parts.length === 3) ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = activeCycle;
+
+    const filterTags = [];
+    if (selectedGrade !== 'ALL') {
+        const gradeSel = document.getElementById('auxiliaturaLogGradeFilter');
+        const gradeTxt = gradeSel && gradeSel.selectedOptions[0] ? gradeSel.selectedOptions[0].textContent : selectedGrade;
+        filterTags.push(`Grado: ${gradeTxt}`);
+    }
+    if (selectedStatus !== 'ALL') {
+        const statusMap = { pendiente: 'Pendientes', justificada: 'Justificadas', citacion: 'Con Citación', verificada: 'Confirmadas', corregida: 'Rectificadas' };
+        filterTags.push(`Estado: ${statusMap[selectedStatus] || selectedStatus}`);
+    }
+    if (searchQuery) {
+        filterTags.push(`Búsqueda: "${searchQuery}"`);
+    }
+    const filterBanner = filterTags.length > 0
+        ? `<p style="font-size:8pt; color:#0369a1; margin:3px 0 0 0; font-weight:600;">Filtros aplicados: ${escapeHtml(filterTags.join(' • '))}</p>`
+        : '';
 
     const totalCount = filtered.length;
     const justCount = filtered.filter(a => a.status === 'justificada').length;
@@ -54618,7 +54694,7 @@ function printAuxiliaturaLog() {
     const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     let rowsHtml = '';
     if (filtered.length === 0) {
-        rowsHtml = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#64748b;">No se registraron inasistencias en la fecha indicada.</td></tr>`;
+        rowsHtml = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#64748b;">No se registraron inasistencias para la fecha y filtros seleccionados.</td></tr>`;
     } else {
         rowsHtml = filtered.map((a, idx) => {
             const sObj = (STATE.students || []).find(s => s && (s.id === a.studentId || (s.carne && s.carne === a.carne)));
@@ -54673,28 +54749,29 @@ function printAuxiliaturaLog() {
     <style>
         @page { size: letter portrait; margin: 12mm 15mm; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; margin: 0; padding: 0; line-height: 1.35; }
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 12px; }
         .header-logo { width: 65px; height: auto; }
         .header-center { text-align: center; flex: 1; margin: 0 15px; }
-        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; }
-        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #dc2626; font-weight: 700; text-transform: uppercase; }
+        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f2b5c; letter-spacing: 0.5px; }
+        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #0369a1; font-weight: 700; text-transform: uppercase; }
         .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
         
         .kpi-row { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 9pt; }
         .kpi-item { text-align: center; }
-        .kpi-item strong { display: block; font-size: 12pt; color: #0f172a; }
+        .kpi-item strong { display: block; font-size: 12pt; color: #0f2b5c; }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 8.5pt; }
         th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #f1f5f9; font-weight: 700; color: #0f172a; text-transform: uppercase; font-size: 8pt; text-align: center; }
+        th { background: #0f2b5c; font-weight: 700; color: #ffffff; text-transform: uppercase; font-size: 8pt; text-align: center; }
         
         .signatures { display: flex; justify-content: space-between; margin-top: 35px; page-break-inside: avoid; }
         .sign-box { width: 30%; text-align: center; font-size: 8.5pt; }
-        .sign-line { border-top: 1.5px solid #334155; margin-bottom: 5px; }
+        .sign-line { border-top: 1.5px solid #0f2b5c; margin-bottom: 5px; }
         
         .footer-note { font-size: 7.5pt; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 15px; }
         @media print {
             .no-print { display: none !important; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -54705,6 +54782,7 @@ function printAuxiliaturaLog() {
             <h1>Escuela Nacional de Ciencias Comerciales</h1>
             <h2>Bitácora Oficial Diaria de Control de Ausencias</h2>
             <p>Jutiapa, Guatemala &bull; Ciclo Escolar ${escapeHtml(cycle)} &bull; Fecha: <strong>${escapeHtml(formattedDate)}</strong></p>
+            ${filterBanner}
         </div>
         <div style="width:65px; text-align:right; font-size:8pt; color:#64748b;">
             Original<br>Auxiliatura
@@ -54786,6 +54864,56 @@ function printAuxiliaturaLog() {
         renderAndShowPrintDocument(`Bitácora Oficial de Ausencias - ${formattedDate}`, html, 'portrait');
     }
 }
+
+function exportAuxiliaturaLogExcel() {
+    if (typeof XLSX === 'undefined') {
+        showToast('Librería de Excel (XLSX) no disponible.', 'error');
+        return;
+    }
+    const { activeCycle, selectedDate, filtered } = getAuxiliaturaLogFilteredData({ excludeCorrected: true });
+    if (!filtered.length) {
+        showToast('No hay registros en la bitácora con los filtros actuales para exportar.', 'warning');
+        return;
+    }
+    filtered.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+    const statusLabels = {
+        pendiente: 'PENDIENTE',
+        justificada: 'JUSTIFICADA',
+        citacion: 'CITACIÓN',
+        verificada: 'CONFIRMADA',
+        corregida: 'RECTIFICADA'
+    };
+
+    const rows = filtered.map((a, idx) => ({
+        'No.': idx + 1,
+        'Fecha': a.date || selectedDate,
+        'Hora': a.time || '--:--',
+        'Carné': a.carne || '',
+        'Estudiante': a.studentName || '',
+        'Grado y Sección': a.gradeLabel || a.gradeCode || '',
+        'Asignatura / Período': a.courseName || '',
+        'Catedrático': a.teacherName || '',
+        'Encargado': a.guardianName || '',
+        'Teléfono Encargado': a.guardianPhone || '',
+        'Estado': statusLabels[a.status || 'pendiente'] || String(a.status || 'PENDIENTE').toUpperCase(),
+        'Notas / Resolución': a.notes || '',
+        'Resuelto Por': a.resolvedBy || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+        { wch: 5 }, { wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 30 },
+        { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 16 },
+        { wch: 14 }, { wch: 30 }, { wch: 22 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bitacora_Auxiliatura');
+    const filename = `Bitacora_Auxiliatura_${selectedDate}_Ciclo_${activeCycle}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Bitácora exportada: ${filename} (${rows.length} registros)`, 'success');
+}
+window.exportAuxiliaturaLogExcel = exportAuxiliaturaLogExcel;
 
 // ==========================================================================
 // 📌 SISTEMA UNIVERSAL DE ANOTACIONES, OBSERVACIONES Y BITÁCORA ESCOLAR
