@@ -83,8 +83,8 @@
             // 2. Filtro de Sección
             if (targetSection && targetSection !== 'ALL') {
                 const rawSec = (student.section || student.seccion || '').toString().toLowerCase();
-                const cleanSec = rawSec.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
-                const targetSec = targetSection.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
+                const cleanSec = rawSec.replace(/secci[oó]n/gi, '').replace(/[^a-h]/gi, '').trim().toUpperCase();
+                const targetSec = targetSection.replace(/secci[oó]n/gi, '').replace(/[^a-h]/gi, '').trim().toUpperCase();
 
                 let matchSec = (cleanSec === targetSec);
                 if (!matchSec) {
@@ -99,6 +99,79 @@
             return true;
         };
         var matchStudentCohort = window.matchStudentCohort;
+
+        // Detectar dinámicamente las secciones reales (A-H) existentes en el ciclo activo para cada grado
+        window.getDynamicSectionsForGrade = function(gradeKey) {
+            const list = getStudentsSafe();
+            const set = new Set();
+            list.forEach(s => {
+                if (!matchStudentCohort(s, gradeKey || 'ALL', 'ALL', false)) return;
+                const rawSec = String(s.section || s.seccion || '').replace(/secci[oó]n/gi, '').replace(/[^a-h]/gi, '').trim().toUpperCase();
+                let letter = rawSec ? rawSec.charAt(0) : '';
+                if (!letter && s.gradeCode) {
+                    const m = String(s.gradeCode).trim().match(/([A-H])$/i);
+                    if (m) letter = m[1].toUpperCase();
+                }
+                if (letter) set.add(letter);
+            });
+            const arr = Array.from(set).sort();
+            return arr.length > 0 ? arr : ['A', 'B', 'C', 'D'];
+        };
+        var getDynamicSectionsForGrade = window.getDynamicSectionsForGrade;
+
+        window._sireOnlyAlertsFilter = false;
+        window.toggleSireOnlyAlertsFilter = function() {
+            window._sireOnlyAlertsFilter = !window._sireOnlyAlertsFilter;
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            if (typeof renderSireTable === 'function') renderSireTable(period);
+        };
+
+        window.syncDynamicSectionPills = function(gradeKey) {
+            const sections = getDynamicSectionsForGrade(gradeKey || 'ALL');
+            const pillsWrap = document.getElementById('sectionPillsGroup');
+            const hiddenSel = document.getElementById('filterSection');
+            const currentSec = (hiddenSel && hiddenSel.value) ? hiddenSel.value : 'ALL';
+            const validCurrent = (currentSec === 'ALL' || sections.includes(currentSec)) ? currentSec : 'ALL';
+            if (hiddenSel) {
+                hiddenSel.innerHTML = '<option value="ALL">Todas las Secciones</option>' + sections.map(sec => '<option value="' + sec + '">Sección ' + sec + '</option>').join('');
+                hiddenSel.value = validCurrent;
+            }
+            if (pillsWrap) {
+                pillsWrap.innerHTML = '<button type="button" class="sire-pill ' + (validCurrent === 'ALL' ? 'active' : '') + '" data-section="ALL" onclick="selectSectionPill(\'ALL\')">Todas</button>' +
+                    sections.map(sec => '<button type="button" class="sire-pill ' + (validCurrent === sec ? 'active' : '') + '" data-section="' + sec + '" onclick="selectSectionPill(\'' + sec + '\')">' + sec + '</button>').join('');
+            }
+        };
+
+        window.refreshSireMassModalSections = function() {
+            const grid = document.getElementById('sireMassXmlSectionsGrid');
+            if (!grid) return;
+            const students = getStudentsSafe();
+            const gradesMeta = [
+                { key: '4to', label: '4to Perito Contador', badge: 'Cursos 338-346' },
+                { key: '5to', label: '5to Perito Contador', badge: 'Cursos 347-368' },
+                { key: '6to', label: '6to Perito Contador', badge: 'Cursos 356-365' }
+            ];
+            let totalSections = 0;
+            grid.innerHTML = gradesMeta.map(gm => {
+                const secs = getDynamicSectionsForGrade(gm.key);
+                totalSections += secs.length;
+                const btns = secs.map(sec => {
+                    const cnt = students.filter(s => matchStudentCohort(s, gm.key, sec, false)).length;
+                    return '<button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection(\'' + gm.key + '\', \'' + sec + '\')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. ' + sec + ' (' + cnt + ' al.)</button>';
+                }).join('');
+                return '<div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">' +
+                    '<div style="font-size:0.82rem; font-weight:800; color:#0f2b5c; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">' +
+                        '<span>' + gm.label + '</span>' +
+                        '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">' + gm.badge + '</span>' +
+                    '</div>' +
+                    '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">' + btns + '</div>' +
+                '</div>';
+            }).join('');
+            const titleEl = document.getElementById('sireMassXmlTitle');
+            const btnAllEl = document.getElementById('sireMassXmlAllBtn');
+            if (titleEl) titleEl.textContent = 'Archivos XML SIRE por Sección (' + totalSections + ' Secciones Individuales)';
+            if (btnAllEl) btnAllEl.innerHTML = '<i class="fa-solid fa-download"></i> Descargar las ' + totalSections + ' Secciones en XML';
+        };
 
         window.getFullEstablishmentCode = window.getFullEstablishmentCode || function() {
             const b1 = (document.getElementById('sireEst1')?.value || '22').trim();
@@ -251,6 +324,7 @@
         // ======================================================================
 
         function openSireMassModal() {
+            if (typeof refreshSireMassModalSections === 'function') refreshSireMassModalSections();
             const m = document.getElementById('sireMassModal');
             if (m) m.style.display = 'flex';
         }
@@ -372,10 +446,11 @@
 
             const wb = XLSX.utils.book_new();
             const grades = ['4to', '5to', '6to'];
-            const sections = ['A', 'B', 'C', 'D'];
+            let exportedSectionsCount = 0;
 
             grades.forEach(gKey => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
+                const sections = getDynamicSectionsForGrade(gKey);
                 sections.forEach(sec => {
                     const secStudents = studentsToProcess.filter(s => matchStudentCohort(s, gKey, sec, false));
 
@@ -439,11 +514,12 @@
 
                     const ws = XLSX.utils.aoa_to_sheet(rows);
                     XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    exportedSectionsCount++;
                 });
             });
 
-            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_12_Secciones_' + getCurrentSireCycle() + '.xlsx');
-            if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por 12 Secciones descargado.', 'success');
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_Secciones_' + getCurrentSireCycle() + '.xlsx');
+            if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por ' + exportedSectionsCount + ' Secciones descargado.', 'success');
         }
 
         // 3. Exportación XML Oficial SIRE por Grado (<tablaCargaMasiva>)
@@ -522,11 +598,12 @@
 
             let recordsXml = '';
             let recordCount = 0;
+            let skippedNoCode = 0;
             const tipoCuadro = (period === 'FINAL') ? 'F' : (period.startsWith('B') ? period.replace('B', '') : 'F');
 
             secStudents.forEach(st => {
                 const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
-                if (!codPersonal) return;
+                if (!codPersonal) { skippedNoCode++; return; }
                 gradeSubjects.forEach(subj => {
                     const score = (typeof getStudentSubjectScore === 'function')
                         ? (getStudentSubjectScore(st, subj.name, period, subj.code) || 0)
@@ -557,17 +634,19 @@
             URL.revokeObjectURL(url);
 
             if (typeof showToast === 'function') {
-                showToast('✅ XML SIRE de ' + targetGrade + ' Sección ' + targetSection + ' generado (' + recordCount + ' notas, ' + secStudents.length + ' alumnos).', 'success');
+                showToast('✅ XML SIRE de ' + targetGrade + ' Sección ' + targetSection + ' generado (' + recordCount + ' notas, ' + (secStudents.length - skippedNoCode) + ' alumnos' + (skippedNoCode > 0 ? ' • ⚠️ ' + skippedNoCode + ' omitidos sin código personal' : '') + ').', skippedNoCode > 0 ? 'warning' : 'success');
             }
         }
 
         // Descarga masiva de los 12 archivos XML de sección
         function exportAllSectionsSireXml() {
             const grades = ['4to', '5to', '6to'];
-            const sections = ['A', 'B', 'C', 'D'];
             let delay = 0;
+            let totalFiles = 0;
             grades.forEach(g => {
+                const sections = getDynamicSectionsForGrade(g);
                 sections.forEach(s => {
+                    totalFiles++;
                     setTimeout(() => {
                         exportSireXmlBySection(g, s);
                     }, delay);
@@ -575,7 +654,7 @@
                 });
             });
             if (typeof showToast === 'function') {
-                showToast('🚀 Iniciando descarga de 12 archivos XML por sección para SIRE MINEDUC...', 'info');
+                showToast('🚀 Iniciando descarga de ' + totalFiles + ' archivos XML por sección para SIRE MINEDUC...', 'info');
             }
         }
 
@@ -668,7 +747,15 @@
             const grades = ['4to', '5to', '6to'];
 
             grades.forEach(gKey => {
-                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gKey));
+                const gradeStudents = studentsToProcess
+                    .filter(s => matchStudentCohort(s, gKey, 'ALL', false))
+                    .sort((a, b) => {
+                        const sa = String(a.section || a.gradeCode || '').localeCompare(String(b.section || b.gradeCode || ''), 'es');
+                        if (sa !== 0) return sa;
+                        const na = ((a.lastName || '') + ' ' + (a.firstName || a.name || '')).trim();
+                        const nb = ((b.lastName || '') + ' ' + (b.firstName || b.name || '')).trim();
+                        return na.localeCompare(nb, 'es');
+                    });
 
                 const headers = [
                     'No.',
@@ -763,7 +850,7 @@
                 } catch(e) {}
 
                 var roleLower = (authRole || '').trim().toLowerCase();
-                var allowedRoles = ['director', 'direccion', 'directora', 'secretaria', 'secretario', 'admin', 'super_usuario', 'superadmin', 'super_admin', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
+                var allowedRoles = ['director', 'direccion', 'directora', 'secretaria', 'secretario', 'admin', 'super_usuario', 'superadmin', 'super_admin', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
 
                 // Redirigir a usuarios no autorizados (ej. docentes, alumnos)
                 if (!allowedRoles.includes(roleLower)) {
@@ -801,7 +888,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Estilos Oficiales del Sistema -->
-    <link rel="stylesheet" href="styles.css?v=20260907_v158_boletines_media_carta">
+    <link rel="stylesheet" href="styles.css?v=20261126_v331">
 
     <!-- Firebase Modular SDK v10 (Memoria RAM exclusiva) -->
     <script type="module">
@@ -861,7 +948,7 @@
 
         /* Barra Superior Oficial */
         .sire-topbar {
-            background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 60%, #0284c7 100%);
+            background: linear-gradient(135deg, #0f2b5c 0%, #0369a1 65%, #0284c7 100%);
             color: #ffffff;
             padding: 12px 24px;
             box-shadow: 0 4px 12px rgba(12, 74, 110, 0.25);
@@ -934,8 +1021,8 @@
         }
 
         .role-badge {
-            background: #10b981;
-            color: #fff;
+            background: #38bdf8;
+            color: #0f2b5c;
             font-size: 0.7rem;
             font-weight: 800;
             padding: 2px 8px;
@@ -1591,6 +1678,24 @@
                 overflow: visible;
             }
         }
+
+        /* Validador Pre-Carga SIRE (Azul Institucional + Responsivo) */
+        .sire-validator-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; background:linear-gradient(135deg,#f0f9ff,#e0f2fe); border:1.5px solid #7dd3fc; border-radius:10px; padding:8px 12px; margin-top:8px; font-size:0.78rem; }
+        .sire-val-pills { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+        .sire-vp { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-weight:800; font-size:0.74rem; }
+        .sire-vp-ok { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+        .sire-vp-warn { background:#fff7ed; color:#c2410c; border:1px solid #fdba74; }
+        .sire-vp-err { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+        .sire-val-btn { background:#0f2b5c; color:#fff; border:none; border-radius:8px; padding:5px 11px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; }
+        .sire-val-btn.active { background:#c2410c; }
+        @media (max-width: 768px) {
+            .sire-topbar { padding: 10px 12px; }
+            .sire-topbar-inner { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .sire-topbar-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+            .sire-grade-nav-bar { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+            .sire-subfilter-bar { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+            .sire-subfilter-bar > div { max-width: none !important; width: 100%; flex-wrap: wrap; }
+        }
     </style>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
 </head>
@@ -1854,6 +1959,7 @@
                     </button>
                 </div>
             </div>
+            <div id="sireQualityValidatorBar" class="sire-validator-bar" style="display:none;"></div>
         </div>
 
         <!-- ELEMENTOS DE COMPATIBILIDAD OCULTOS PARA BACKWARD-COMPATIBILITY -->
@@ -2960,9 +3066,47 @@
             const thead = document.getElementById('sireTableHead');
             const tbody = document.getElementById('sireTableBody');
             const countSpan = document.getElementById('filteredCountSpan');
-            if (countSpan) countSpan.textContent = _filteredStudents.length;
-
             const gradeFilter = document.getElementById('filterGrade')?.value || '4to';
+            if (typeof syncDynamicSectionPills === 'function') syncDynamicSectionPills(gradeFilter);
+
+            // Validador Pre-Carga SIRE en vivo
+            const baseStudentsForView = Array.isArray(_filteredStudents) ? _filteredStudents : [];
+            const codeFreq = {};
+            baseStudentsForView.forEach(s => {
+                const c = String(s.personalCode || s.codigoPersonal || s.codigo || '').trim().toUpperCase();
+                if (c) codeFreq[c] = (codeFreq[c] || 0) + 1;
+            });
+            let missingCodeCnt = 0, dupCodeCnt = 0, badCuiCnt = 0, readyCnt = 0;
+            const flaggedSet = new Set();
+            baseStudentsForView.forEach(s => {
+                const c = String(s.personalCode || s.codigoPersonal || s.codigo || '').trim().toUpperCase();
+                const cuiDigits = String(s.cui || s.dpi || s.docNumber || '').replace(/\D/g, '');
+                let hasIssue = false;
+                if (!c) { missingCodeCnt++; hasIssue = true; }
+                else if (codeFreq[c] > 1) { dupCodeCnt++; hasIssue = true; }
+                if (cuiDigits.length !== 13) { badCuiCnt++; hasIssue = true; }
+                if (hasIssue) flaggedSet.add(s);
+                else readyCnt++;
+            });
+            const valBar = document.getElementById('sireQualityValidatorBar');
+            if (valBar) {
+                if (baseStudentsForView.length === 0) {
+                    valBar.style.display = 'none';
+                } else {
+                    valBar.style.display = 'flex';
+                    const totalIssues = flaggedSet.size;
+                    valBar.innerHTML = '<div class="sire-val-pills">' +
+                        '<strong style="color:#0f2b5c;"><i class="fa-solid fa-shield-check" style="color:#0369a1;"></i> Pre-Validación SIRE:</strong>' +
+                        '<span class="sire-vp sire-vp-ok"><i class="fa-solid fa-check"></i> ' + readyCnt + ' Listos</span>' +
+                        (missingCodeCnt ? '<span class="sire-vp sire-vp-err"><i class="fa-solid fa-circle-xmark"></i> ' + missingCodeCnt + ' Sin Código Personal</span>' : '') +
+                        (dupCodeCnt ? '<span class="sire-vp sire-vp-err"><i class="fa-solid fa-clone"></i> ' + dupCodeCnt + ' Código Duplicado</span>' : '') +
+                        (badCuiCnt ? '<span class="sire-vp sire-vp-warn"><i class="fa-solid fa-id-card"></i> ' + badCuiCnt + ' CUI ≠ 13 dígitos</span>' : '') +
+                    '</div>' +
+                    (totalIssues > 0 ? '<button type="button" class="sire-val-btn ' + (window._sireOnlyAlertsFilter ? 'active' : '') + '" onclick="toggleSireOnlyAlertsFilter()"><i class="fa-solid fa-filter"></i> ' + (window._sireOnlyAlertsFilter ? 'Ver todos (' + baseStudentsForView.length + ')' : 'Ver solo con alertas (' + totalIssues + ')') + '</button>' : '<span style="color:#166534; font-weight:800; font-size:0.74rem;">✔ Cohorte lista para carga XML</span>');
+                }
+            }
+            const _renderList = (window._sireOnlyAlertsFilter && flaggedSet.size > 0) ? baseStudentsForView.filter(s => flaggedSet.has(s)) : baseStudentsForView;
+            if (countSpan) countSpan.textContent = _renderList.length;
             const subjects = getActiveGradeSubjects(gradeFilter, _filteredStudents);
 
             // 1. Renderizado dinámico de encabezados con materias y códigos SIRE / CNB
@@ -3003,7 +3147,7 @@
 
             // 2. Renderizado dinámico de filas de estudiantes con matriz de notas
             let tbodyHtml = '';
-            _filteredStudents.forEach((st, idx) => {
+            _renderList.forEach((st, idx) => {
                 const stats = calculateStudentAverages(st, period);
                 
                 // Nombre completo dinámico de Firebase
@@ -3857,59 +4001,19 @@ recordsOnly +
                                         <i class="fa-solid fa-file-code"></i>
                                     </div>
                                     <div>
-                                        <h4 style="margin:0; font-size:1.05rem; font-weight:800; color:#0f172a;">Archivos XML SIRE por Sección (12 Secciones Individuales)</h4>
+                                        <h4 id="sireMassXmlTitle" style="margin:0; font-size:1.05rem; font-weight:800; color:#0f2b5c;">Archivos XML SIRE por Sección</h4>
                                         <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Recomendado Oficial MINEDUC • Evita errores de carga por alumno no matriculado</span>
                                     </div>
                                 </div>
-                                <button type="button" class="btn-sire-primary" onclick="exportAllSectionsSireXml()" style="font-size:0.82rem; padding:8px 16px;">
-                                    <i class="fa-solid fa-download"></i> Descargar las 12 Secciones en XML
+                                <button type="button" id="sireMassXmlAllBtn" class="btn-sire-primary" onclick="exportAllSectionsSireXml()" style="font-size:0.82rem; padding:8px 16px;">
+                                    <i class="fa-solid fa-download"></i> Descargar Todas las Secciones en XML
                                 </button>
                             </div>
                             <p style="font-size:0.82rem; color:#475569; margin:4px 0 12px; line-height:1.4;">
                                 El importador del SIRE procesa las notas <strong>sección por sección</strong>. Haga clic en la sección que tiene actualmente abierta en el portal SIRE:
                             </p>
-                            <!-- Grid de Botones por Grado y Sección -->
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
-                                <!-- 4to -->
-                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
-                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                                        <span>4to Perito Contador</span>
-                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 338-346</span>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (34 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (36 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (33 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (35 al.)</button>
-                                    </div>
-                                </div>
-                                <!-- 5to -->
-                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
-                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                                        <span>5to Perito Contador</span>
-                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 347-368</span>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (37 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (36 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (37 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (36 al.)</button>
-                                    </div>
-                                </div>
-                                <!-- 6to -->
-                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
-                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                                        <span>6to Perito Contador</span>
-                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 356-365</span>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (32 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (35 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (33 al.)</button>
-                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (28 al.)</button>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Grid Dinámico de Botones por Grado y Sección (A-H) -->
+                            <div id="sireMassXmlSectionsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;"></div>
                         </div>
                     </div>
                     
