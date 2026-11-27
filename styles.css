@@ -6304,4 +6304,6 @@ textarea:focus-visible,
   #cyclePromotionModal .promo-toolbar-controls select,
   #cyclePromotionModal .promo-toolbar-controls .btn { width: 100% !important; flex: 1 1 100%; }
   #cyclePromotionModal .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
+  #cycleModal .cycle-form-row { flex-direction: column; }
+  #cycleModal .cycle-modal-footer .btn { flex: 1 1 100%; justify-content: center; }
 }

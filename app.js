@@ -30301,22 +30301,24 @@ function renderCycleList() {
     }
 
     box.innerHTML = cycles.map(c => {
-        const isCurrentActive = (c.name === STATE.activeCycle);
+        const cycLabel = String(c.name || c.year || '').trim();
+        const isCurrentActive = (cycLabel === String(STATE.activeCycle || '').trim());
         return `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid ${isCurrentActive ? 'var(--brand-green)' : 'var(--border-color)'};">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:${isCurrentActive ? '#f0f9ff' : 'var(--bg-main)'}; padding:9px 12px; border-radius:var(--radius-sm); border:1.5px solid ${isCurrentActive ? '#0369a1' : 'var(--border-color)'};">
             <div>
-                <strong><i class="fa-solid fa-calendar-check" style="color:${isCurrentActive ? 'var(--brand-green)' : 'var(--text-muted)'};"></i> Ciclo ${c.name}</strong>
-                ${isCurrentActive ? '<span class="badge badge-success" style="font-size:0.7rem; margin-left:6px;">En Uso</span>' : ''}
-                ${c.status === 'Activo' && !isCurrentActive ? '<span class="badge badge-primary" style="font-size:0.7rem; margin-left:6px;">Activo</span>' : ''}
+                <strong style="color:#0f2b5c;"><i class="fa-solid fa-calendar-check" style="color:${isCurrentActive ? '#0369a1' : 'var(--text-muted)'};"></i> Ciclo ${escapeHtml(cycLabel)}</strong>
+                ${isCurrentActive ? '<span class="badge" style="background:#0f2b5c; color:#fff; font-size:0.7rem; margin-left:6px; font-weight:700;">En Uso</span>' : ''}
+                ${c.status === 'Activo' && !isCurrentActive ? '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.7rem; margin-left:6px; font-weight:700;">Activo</span>' : ''}
+                ${c.status && c.status !== 'Activo' ? `<span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-size:0.7rem; margin-left:6px; font-weight:700;">${escapeHtml(c.status)}</span>` : ''}
                 <br>
-                <small style="color:var(--text-muted);">${c.description || 'Ciclo Escolar Oficial'}</small>
+                <small style="color:var(--text-muted);">${escapeHtml(c.description || 'Ciclo Escolar Oficial')}</small>
             </div>
             <div style="display:flex; gap:6px; align-items:center;">
                 ${!isCurrentActive ? `
-                    <button class="btn btn-accent btn-sm" onclick="setCycleActive('${c.id}')" title="Seleccionar y activar este ciclo"><i class="fa-solid fa-check"></i> Activar</button>
+                    <button type="button" class="btn btn-primary btn-sm" style="background:#0369a1; border-color:#0369a1; font-weight:700;" onclick="setCycleActive('${c.id}')" title="Seleccionar y activar este ciclo"><i class="fa-solid fa-check"></i> Activar</button>
                 ` : ''}
-                <button class="btn btn-secondary btn-sm" onclick="openEditCycleModal('${c.id}')" title="Editar Ciclo"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteCycle('${c.id}')" title="Eliminar Ciclo"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openEditCycleModal('${c.id}')" title="Editar Ciclo"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" class="btn btn-secondary btn-sm" style="color:${isCurrentActive ? '#94a3b8' : 'var(--danger)'}; ${isCurrentActive ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isCurrentActive ? 'disabled' : ''} onclick="deleteCycle('${c.id}')" title="${isCurrentActive ? 'No puede eliminar el ciclo actualmente en uso' : 'Eliminar Ciclo'}"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>
     `}).join('');
@@ -30388,6 +30390,7 @@ async function saveCycleForm(e) {
             if (c) {
                 const oldName = c.name;
                 c.name = name;
+                c.year = /^\d{4}$/.test(name) ? name : (c.year || name);
                 c.status = status;
                 c.description = description;
                 if (STATE.activeCycle === oldName) {
@@ -30397,7 +30400,7 @@ async function saveCycleForm(e) {
                 throw new Error(`Ciclo lectivo "${cycleId}" no encontrado.`);
             }
         } else {
-            if (STATE.cycles.some(x => x.name.toLowerCase() === name.toLowerCase())) {
+            if (STATE.cycles.some(x => String(x.name || x.year || '').toLowerCase() === name.toLowerCase())) {
                 showToast(`El ciclo "${name}" ya se encuentra registrado.`, "warning");
                 return;
             }
@@ -30405,6 +30408,7 @@ async function saveCycleForm(e) {
             const newCycle = {
                 id: 'cyc-' + Date.now(),
                 name,
+                year: /^\d{4}$/.test(name) ? name : name,
                 status,
                 description
             };
@@ -30419,11 +30423,15 @@ async function saveCycleForm(e) {
         STATE.lastModified = nowTime;
         STATE._lastSavedLocally = nowTime;
 
-        // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
+        // 🚀 Persistencia local inmediata (0ms) + refresco reactivo EN CASCADA de toda la plataforma
         saveStateToLocalStorage();
         resetCycleForm();
         if (typeof renderCycleList === 'function') renderCycleList();
         updateCycleSelects();
+        if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects(true);
+        if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+        if (typeof renderCurrentView === 'function') renderCurrentView();
         closeCycleModal();
         hideModalById('cycleModal');
 
@@ -30486,6 +30494,7 @@ function setCycleActive(cycleId) {
         STATE.activeCycle = c.name || c.year;
         saveStateToLocalStorage();
         updateCycleSelects();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         renderCurrentView();
     }
     if (typeof renderCycleList === 'function') renderCycleList();
@@ -30497,33 +30506,47 @@ async function deleteCycle(cycleId) {
     const c = (STATE.cycles || []).find(x => x.id === cycleId);
     if (!c) return;
 
+    const cName = String(c.name || c.year || '').trim();
+    if (cName === String(STATE.activeCycle || '').trim()) {
+        showToast(`No puede eliminar el ciclo "${cName}" porque está actualmente en uso. Active otro ciclo primero.`, "warning");
+        return;
+    }
+
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
             title: 'Eliminar Ciclo Escolar',
-            message: `¿Está seguro de eliminar el ciclo escolar "${c.name}"?\n\nEsta acción modificará la configuración de los periodos lectivos.`,
+            message: `¿Está seguro de eliminar el ciclo escolar "${cName}"?\n\nEsta acción modificará la configuración de los periodos lectivos.`,
             type: 'danger',
             confirmText: 'Eliminar Ciclo',
             cancelText: 'Cancelar'
         })
-        : true;
+        : false;
 
     if (confirmed) {
+        const fallbackYear = String(new Date().getFullYear());
         STATE.cycles = (STATE.cycles || []).filter(x => x.id !== cycleId);
         if (STATE.cycles.length === 0) {
-            STATE.cycles = [{ id: 'cyc-2026', name: '2026', status: 'Activo' }];
+            STATE.cycles = [{ id: `cyc-${fallbackYear}`, name: fallbackYear, year: fallbackYear, status: 'Activo' }];
         }
-        if (STATE.activeCycle === c.name) {
-            STATE.activeCycle = STATE.cycles[0] ? STATE.cycles[0].name : '2026';
+        if (String(STATE.activeCycle || '').trim() === cName) {
+            STATE.activeCycle = STATE.cycles[0] ? (STATE.cycles[0].name || STATE.cycles[0].year || fallbackYear) : fallbackYear;
         }
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+        saveStateToLocalStorage();
+
         try {
             const modular = window.FirebaseModular;
             if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.deleteDoc === 'function') {
-                modular.deleteDoc(modular.doc(modular.db, 'ciclos', cycleId)).catch(e => {});
+                modular.deleteDoc(modular.doc(modular.db, 'ciclos', cycleId)).catch(() => {});
+                modular.deleteDoc(modular.doc(modular.db, 'cycles', cycleId)).catch(() => {});
             }
         } catch(fsErr) {}
 
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            EnccoCloudSync.patchNode('cycles', STATE.cycles);
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('cycles', STATE.cycles).catch(() => {});
+            EnccoCloudSync.syncNode('activeCycle', STATE.activeCycle).catch(() => {});
         }
 
         renderCycleList();
@@ -30531,7 +30554,8 @@ async function deleteCycle(cycleId) {
         populateAttendanceSelects(false);
         updateUserAlertsUI();
         renderCurrentDashboardAlerts();
-        showToast(`Ciclo escolar "${c.name}" eliminado del sistema.`, "info");
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+        showToast(`Ciclo escolar "${cName}" eliminado del sistema.`, "info");
         renderCurrentView();
     }
 }

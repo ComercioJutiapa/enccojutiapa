@@ -4946,9 +4946,9 @@
     <!-- MODAL INGRESO Y ADMINISTRACIÓN DE CICLOS LECTIVOS -->
     <div class="modal-overlay" id="cycleModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeCycleModal()">
         <div class="modal-container">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-calendar-days"></i> Gestión e Ingreso de Ciclos Lectivos</h3>
-                <button type="button" class="modal-close" onclick="closeCycleModal()">&times;</button>
+            <div class="modal-header" style="background:linear-gradient(135deg, #0f2b5c, #0369a1); color:#fff;">
+                <h3 style="margin:0; color:#fff; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-calendar-days" style="color:#bae6fd;"></i> Gestión e Ingreso de Ciclos Lectivos</h3>
+                <button type="button" class="modal-close" style="color:#fff;" onclick="closeCycleModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:14px;">
@@ -4960,13 +4960,13 @@
 
                 <form onsubmit="saveCycleForm(event)">
                     <input type="hidden" id="cycleFormId">
-                    <h4 id="cycleFormHeaderTitle" style="font-size:0.92rem; color:var(--brand-green-dark); margin-bottom:10px;">
-                        <i class="fa-solid fa-circle-plus"></i> Ingresar Nuevo Ciclo Lectivo
+                    <h4 id="cycleFormHeaderTitle" style="font-size:0.92rem; color:#0f2b5c; font-weight:800; margin-bottom:10px;">
+                        <i class="fa-solid fa-circle-plus" style="color:#0369a1;"></i> Ingresar Nuevo Ciclo Lectivo
                     </h4>
-                    <div class="form-row">
+                    <div class="form-row cycle-form-row">
                         <div class="form-group" style="flex:2;">
                             <label>Año / Nombre del Ciclo Lectivo *</label>
-                            <input type="text" id="newCycleName" class="form-control" required placeholder="Ej: 2026, 2026-2027">
+                            <input type="text" id="newCycleName" class="form-control" required placeholder="Ej: 2027, 2028">
                         </div>
                         <div class="form-group" style="flex:1;">
                             <label>Estado *</label>
@@ -4980,18 +4980,18 @@
                         <label>Descripción / Observación (Opcional)</label>
                         <input type="text" id="newCycleDescription" class="form-control" placeholder="Ej: Ciclo Oficial Regular ENCCO">
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-secondary" id="cancelCycleEditBtn" style="display:none;" onclick="resetCycleForm()">
                             Cancelar Edición
                         </button>
-                        <button type="submit" class="btn btn-primary" id="cycleSubmitBtn" style="flex:1;">
+                        <button type="submit" class="btn btn-primary" id="cycleSubmitBtn" style="flex:1; background:#0f2b5c; border-color:#0f2b5c; font-weight:700;">
                             <i class="fa-solid fa-floppy-disk"></i> Guardar Ciclo Lectivo
                         </button>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-                <button type="button" class="btn btn-warning btn-sm" onclick="closeCycleModal(); openCyclePromotionModal();" style="font-weight:700; color:#1e293b;">
+            <div class="modal-footer cycle-modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="closeCycleModal(); openCyclePromotionModal();" style="font-weight:700; border-color:#0369a1; color:#0369a1;">
                     <i class="fa-solid fa-box-archive"></i> Archivar Ciclo y Aperturar Nuevo Ciclo
                 </button>
                 <button type="button" class="btn btn-secondary" onclick="closeCycleModal()">Cerrar</button>
@@ -6882,7 +6882,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v342" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v343" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
