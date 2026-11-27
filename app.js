@@ -55138,7 +55138,7 @@ function renderAuxiliaturaLogView() {
                     ${annotsHtml}
                 </td>
                 <td>
-                    <span style="font-weight:600; color:#334155;">${escapeHtml(a.gradeLabel)}</span>
+                    <span style="font-weight:600; color:#334155;">${escapeHtml(String(a.gradeLabel || '').replace(/Secci[oó]n\s+Secci[oó]n\s*/gi, 'Sección '))}</span>
                 </td>
                 <td>
                     <span style="font-size:0.84rem; color:#475569;">${escapeHtml(a.courseName)}</span>
@@ -55166,6 +55166,11 @@ function renderAuxiliaturaLogView() {
                                 <i class="fa-solid fa-check"></i>
                             </button>
                         ` : ''}
+                        ${(isDirectorOrSuperAdmin() || (typeof canRoleModify === 'function' && canRoleModify('auxiliatura-log', STATE.currentRole))) ? `
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteAuxiliaturaAlert('${a.id}')" title="Eliminar este registro de ausencia" style="font-size:0.75rem; padding:3px 8px; font-weight:700;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -55174,7 +55179,7 @@ function renderAuxiliaturaLogView() {
 }
 
 function openAuxiliaturaJustifyModal(alertId) {
-    const alertObj = (STATE.attendanceAlerts || []).find(a => a.id === alertId);
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a && String(a.id) === String(alertId));
     if (!alertObj) {
         showToast("No se encontró el registro de la alerta.", "warning");
         return;
@@ -55183,9 +55188,10 @@ function openAuxiliaturaJustifyModal(alertId) {
     const modal = document.getElementById('auxiliaturaJustifyModal');
     if (!modal) return;
 
-    document.getElementById('auxJustifyAlertId').value = alertId;
-    document.getElementById('auxJustifyStudentName').textContent = alertObj.studentName;
-    document.getElementById('auxJustifyStudentMeta').textContent = `${alertObj.gradeLabel} | ${alertObj.courseName} | Reportado por: ${alertObj.teacherName} a las ${alertObj.time}`;
+    const cleanGradeLbl = String(alertObj.gradeLabel || '').replace(/Secci[oó]n\s+Secci[oó]n\s*/gi, 'Sección ');
+    document.getElementById('auxJustifyAlertId').value = alertObj.id;
+    document.getElementById('auxJustifyStudentName').textContent = alertObj.studentName || 'Estudiante';
+    document.getElementById('auxJustifyStudentMeta').textContent = `${cleanGradeLbl} | ${alertObj.courseName || 'Asistencia'} | Reportado por: ${alertObj.teacherName || 'Docente'} a las ${alertObj.time || '--:--'}`;
     
     const typeSelect = document.getElementById('auxJustifyType');
     if (typeSelect) typeSelect.value = (alertObj.status && alertObj.status !== 'pendiente') ? alertObj.status : 'justificada';
@@ -55193,13 +55199,99 @@ function openAuxiliaturaJustifyModal(alertId) {
     const notesArea = document.getElementById('auxJustifyNotes');
     if (notesArea) notesArea.value = alertObj.notes || '';
 
+    if (typeof showModalById === 'function') {
+        showModalById('auxiliaturaJustifyModal');
+    }
+    modal.classList.add('active');
     modal.style.setProperty('display', 'flex', 'important');
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
 }
 
 function closeAuxiliaturaJustifyModal() {
     const modal = document.getElementById('auxiliaturaJustifyModal');
-    if (modal) modal.style.setProperty('display', 'none', 'important');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
 }
+
+async function deleteAuxiliaturaAlert(alertId) {
+    if (!alertId) return;
+    const canDel = isDirectorOrSuperAdmin() || (typeof canRoleModify === 'function' && (canRoleModify('auxiliatura-center', STATE.currentRole) || canRoleModify('auxiliatura-log', STATE.currentRole)));
+    if (!canDel) {
+        showToast('Acceso denegado: No tiene permisos para eliminar alertas de ausencia.', 'danger');
+        return;
+    }
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a && String(a.id) === String(alertId));
+    if (!alertObj) {
+        showToast('No se encontró el registro de ausencia.', 'warning');
+        return;
+    }
+
+    const ok = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Registro de Ausencia',
+            message: `¿Desea eliminar la alerta de ausencia de "${alertObj.studentName || 'este estudiante'}" (${alertObj.date || ''})? Esta acción también limpiará la marca "A" si corresponde a la planilla del día.`,
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : confirm(`¿Desea eliminar la alerta de ausencia de "${alertObj.studentName || 'este estudiante'}"?`);
+    if (!ok) return;
+
+    // 1. Eliminar de STATE.attendanceAlerts
+    STATE.attendanceAlerts = (STATE.attendanceAlerts || []).filter(a => a && String(a.id) !== String(alertId));
+
+    // 2. Limpiar marca 'A' correspondiente en STATE.attendanceRecords para que no resucite en Centro de Control
+    try {
+        const gCode = alertObj.gradeCode;
+        const mNum = alertObj.month || (alertObj.date ? parseInt(String(alertObj.date).split('-')[1], 10) : (new Date().getMonth() + 1));
+        const dNum = alertObj.day || (alertObj.date ? parseInt(String(alertObj.date).split('-')[2], 10) : new Date().getDate());
+        const cId = alertObj.courseId || 'GENERAL';
+        const sId = alertObj.studentId;
+        if (gCode && sId && STATE.attendanceRecords) {
+            const recKey = (typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(gCode, mNum, cId) : `${gCode}_${mNum}_${cId}`;
+            if (STATE.attendanceRecords[recKey] && STATE.attendanceRecords[recKey][sId]) {
+                const curMark = STATE.attendanceRecords[recKey][sId][dNum] || STATE.attendanceRecords[recKey][sId][String(dNum)];
+                if (curMark === 'A') {
+                    delete STATE.attendanceRecords[recKey][sId][dNum];
+                    delete STATE.attendanceRecords[recKey][sId][String(dNum)];
+                    if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false);
+                }
+            }
+        }
+    } catch (e) {}
+
+    saveStateToLocalStorage();
+
+    // 3. Sincronizar eliminación en Firestore y RTDB
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.deleteDoc === 'function') {
+            await modular.deleteDoc(modular.doc(modular.db, 'attendanceAlerts', String(alertId))).catch(() => {});
+        }
+    } catch (e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.deleteNode) {
+            await EnccoCloudSync.deleteNode(`attendanceAlerts/${alertId}`).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode) {
+            await EnccoCloudSync.syncNode('attendanceAlerts', STATE.attendanceAlerts).catch(() => {});
+        }
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+
+    updateAuxiliaturaBadge();
+    if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView();
+    if (typeof renderAuxiliaturaCenterView === 'function' && STATE.activeView === 'auxiliatura-center') {
+        renderAuxiliaturaCenterView();
+    }
+    if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+    showToast(`Registro de ausencia de ${alertObj.studentName || 'estudiante'} eliminado correctamente.`, 'success');
+}
+window.deleteAuxiliaturaAlert = deleteAuxiliaturaAlert;
 
 async function submitAuxiliaturaJustification() {
     const alertId = document.getElementById('auxJustifyAlertId').value;
@@ -55234,10 +55326,10 @@ async function submitAuxiliaturaJustification() {
         if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
         const permKey = `${studentId}_${month}_${day}`;
         STATE.attendancePermissionsMeta[permKey] = {
-            reasonCategory: 'Permiso Oficial de Auxiliatura',
+            reasonCategory: 'Permiso Oficial de Auxiliatura / Dirección',
             reasonDetail: notes || 'Justificación registrada en Bitácora Diaria',
             authorizedBy: alertObj.resolvedBy,
-            origin_role: 'profesor_auxiliar',
+            origin_role: STATE.currentRole || 'director',
             is_locked_by_admin: true,
             timestamp: Date.now()
         };
@@ -55271,13 +55363,16 @@ async function submitAuxiliaturaJustification() {
     closeAuxiliaturaJustifyModal();
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
-    if (typeof renderAuxAbsencesTab === 'function') {
+    if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxiliaturaCenterView === 'function') {
+        renderAuxiliaturaCenterView();
+    } else if (typeof renderAuxAbsencesTab === 'function') {
         const absContent = document.getElementById('auxCenterTabContent');
         const absBtn = document.getElementById('auxTabBtn-absences');
         if (absContent && absBtn && absBtn.classList.contains('active')) {
             renderAuxAbsencesTab(absContent);
         }
     }
+    if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
     if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
     if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
     if (typeof renderDashboardView === 'function') renderDashboardView();

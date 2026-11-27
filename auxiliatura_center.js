@@ -671,7 +671,7 @@
             const studentId = item.studentId;
             const studentName = item.studentName || 'Estudiante';
             const carne = item.carne || '---';
-            const gradeLabel = item.gradeLabel || item.gradeCode || 'Sección';
+            const gradeLabel = String(item.gradeLabel || item.gradeCode || 'Sección').replace(/Secci[oó]n\s+Secci[oó]n\s*/gi, 'Sección ');
             const courseName = item.courseName || 'Cátedra';
             const teacherName = item.teacherName || 'Docente';
             const time = item.time || '--:--';
@@ -755,7 +755,7 @@
                 </td>
                 <td style="padding:10px 12px; text-align:center; vertical-align:middle; white-space:nowrap;">
                     <div style="display:inline-flex; gap:4px; align-items:center;">
-                        <button type="button" class="btn btn-sm btn-primary" onclick="if(typeof openAuxiliaturaJustifyModal==='function') openAuxiliaturaJustifyModal('${alertId}'); else openCreatePermissionModal('${studentId}');" style="font-size:0.78rem; font-weight:700; padding:4px 8px; background:#0284c7; border-color:#0284c7;" title="Justificar o Dictaminar Ausencia">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="if(typeof openAuxiliaturaJustifyModal==='function') openAuxiliaturaJustifyModal('${alertId}'); else openCreatePermissionModal('${studentId}');" style="font-size:0.78rem; font-weight:700; padding:4px 8px; background:#0369a1; border-color:#0369a1;" title="Justificar o Dictaminar Ausencia">
                             <i class="fa-solid fa-shield-check"></i> Atender
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="if(typeof openStudentAnnotationModalForAlert==='function') openStudentAnnotationModalForAlert('${alertId}'); else if(typeof openStudentAnnotationModal==='function') openStudentAnnotationModal('${studentId}');" style="font-size:0.78rem; padding:4px 8px;" title="Registrar Anotación en Bitácora">
@@ -764,6 +764,10 @@
                         <button type="button" class="btn btn-sm btn-outline-info" onclick="openStudent360Drawer('${studentId}')" style="font-size:0.78rem; padding:4px 8px;" title="Ver Ficha 360°">
                             <i class="fa-solid fa-folder-open"></i> Ficha
                         </button>
+                        ${((typeof isDirectorOrSuperAdmin === 'function' && isDirectorOrSuperAdmin()) || (typeof canRoleModify === 'function' && canRoleModify('auxiliatura-center', window.STATE?.currentRole))) ? `
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(typeof deleteAuxiliaturaAlert==='function') deleteAuxiliaturaAlert('${alertId}');" style="font-size:0.78rem; padding:4px 8px; font-weight:700;" title="Eliminar registro de ausencia">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>` : ''}
                     </div>
                 </td>
             </tr>
