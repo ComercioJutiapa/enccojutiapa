@@ -52328,26 +52328,33 @@ function populatePromotionCycleSelects() {
     const gradeFilter = document.getElementById('promoGradeFilter');
 
     const cycles = (window.STATE && Array.isArray(window.STATE.cycles)) ? window.STATE.cycles : [];
-    const activeCycle = (window.STATE && window.STATE.activeCycle) || '2026';
+    const activeCycle = String((window.STATE && window.STATE.activeCycle) || new Date().getFullYear()).trim();
 
     if (originSelect) {
         originSelect.innerHTML = cycles.map(c => {
-            const isSelected = (c.name === activeCycle || c.year === activeCycle) ? 'selected' : '';
+            const isSelected = (String(c.name) === activeCycle || String(c.year) === activeCycle) ? 'selected' : '';
             const isHistorical = c.status !== 'Activo' || c.isArchived;
             return `<option value="${c.name || c.year}" ${isSelected}>${isHistorical ? '📦' : '🟢'} Ciclo ${c.year || c.name} (${c.status || 'Activo'})</option>`;
         }).join('') || `<option value="${activeCycle}" selected>Ciclo ${activeCycle} (Activo)</option>`;
     }
 
     if (targetInput) {
-        const yrNum = parseInt(activeCycle);
+        const yrNum = parseInt(activeCycle, 10);
         targetInput.value = !isNaN(yrNum) ? String(yrNum + 1) : '';
     }
 
     if (gradeFilter) {
-        const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+        const originCycle = originSelect ? originSelect.value : activeCycle;
+        const students = (window.STATE && Array.isArray(window.STATE.students))
+            ? window.STATE.students.filter(s => {
+                if (!s) return false;
+                const sc = s.academicCycle || s.cycle;
+                return !sc || String(sc).trim() === String(originCycle).trim();
+            })
+            : [];
         const uniqueGrades = Array.from(new Set(students.map(s => (s.grade || s.gradeLabel || '').trim()).filter(Boolean))).sort();
         gradeFilter.innerHTML = '<option value="ALL">-- Todos los Grados --</option>' +
-            uniqueGrades.map(g => `<option value="${g}">${g}</option>`).join('');
+            uniqueGrades.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
     }
 }
 window.populatePromotionCycleSelects = populatePromotionCycleSelects;
@@ -52381,8 +52388,12 @@ window.getNextGradeLevel = getNextGradeLevel;
 
 function extractCleanPromotionSectionLetter(student) {
     if (!student) return 'A';
-    const rawSec = String(student.section || student.gradeLabel || student.gradeCode || student.grade || '').trim();
-    const m = rawSec.match(/(?:Secci[oó]n\s*|\b)([A-Z])\b/i);
+    if (typeof getCleanSectionLetter === 'function') {
+        const clean = getCleanSectionLetter(student.section || student.gradeCode || '');
+        if (clean && /^[A-H]$/i.test(clean)) return clean.toUpperCase();
+    }
+    const rawSec = String(student.section || student.gradeCode || student.gradeLabel || '').trim();
+    const m = rawSec.match(/Secci[oó]n\s*([A-H])\b/i) || rawSec.match(/\b([A-H])\s*$/i);
     return m ? m[1].toUpperCase() : 'A';
 }
 window.extractCleanPromotionSectionLetter = extractCleanPromotionSectionLetter;
@@ -52436,7 +52447,7 @@ function renderPromotionStudentsTable() {
     let cycleStudents = allStudents.filter(s => {
         if (!s) return false;
         const stStatus = String(s.status || '').toLowerCase();
-        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
         const sCycle = s.academicCycle || s.cycle;
         if (!sCycle) return true;
         return String(sCycle).trim() === String(originCycle).trim();
@@ -52544,27 +52555,41 @@ function renderPromotionStudentsTable() {
         return;
     }
 
+    // Secciones dinámicas disponibles (A–E mínimo, más cualquier sección real F–H)
+    const dynamicSecSet = new Set(['A', 'B', 'C', 'D', 'E']);
+    (STATE.gradesList || []).forEach(g => {
+        if (!g || !g.section) return;
+        const secL = (typeof getCleanSectionLetter === 'function')
+            ? getCleanSectionLetter(g.section)
+            : String(g.section).replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+        if (secL && /^[A-H]$/.test(secL)) dynamicSecSet.add(secL);
+    });
+    const sortedDynamicSecs = Array.from(dynamicSecSet).sort();
+
     tableBody.innerHTML = visibleList.map((item, idx) => {
         const s = item.student;
         const info = item.info;
         const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.replace(/^,\s*/, '').trim() || s.name || 'Sin Nombre';
         const carne = s.carne || s.personalCode || s.codigoPersonal || s.id || 'S/N';
         const currentSectionLetter = extractCleanPromotionSectionLetter(s);
-        const gradeDisplay = `${s.grade || 'No asignado'} (${s.section || 'Sección ' + currentSectionLetter})`;
+        const gradeDisplay = `${s.grade || 'No asignado'} (Sección ${currentSectionLetter})`;
         const avg = info.average > 0 ? info.average.toFixed(1) : (info.average === 0 ? '0.0' : '-');
         
         // Estatus dictamen
         let dictamenHtml = '';
         if (item.isGraduando && item.isApproved) {
-            dictamenHtml = '<span class="badge badge-primary" style="background:#2563eb; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-graduation-cap"></i> Graduado</span>';
+            dictamenHtml = '<span class="badge badge-primary" style="background:#0f2b5c; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-graduation-cap"></i> Graduado</span>';
         } else if (item.isApproved) {
-            dictamenHtml = '<span class="badge badge-success" style="background:#16a34a; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-check"></i> Aprobado</span>';
+            dictamenHtml = '<span class="badge badge-success" style="background:#0369a1; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-check"></i> Aprobado</span>';
         } else {
             dictamenHtml = '<span class="badge badge-danger" style="background:#dc2626; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> Reprobado</span>';
         }
 
         const isCheckedAttr = item.isChecked ? 'checked' : '';
         const selectedSec = item.targetSection || currentSectionLetter;
+        const secOptionsHtml = sortedDynamicSecs.map(sec =>
+            `<option value="${sec}" ${selectedSec === sec ? 'selected' : ''}>Sección ${sec}</option>`
+        ).join('');
 
         return `
             <tr style="border-bottom:1px solid #e2e8f0; background:${item.isApproved ? '#ffffff' : '#fff5f5'};">
@@ -52572,18 +52597,15 @@ function renderPromotionStudentsTable() {
                     <input type="checkbox" class="promo-student-check" data-student-id="${s.id}" data-is-approved="${item.isApproved}" onchange="onPromoRowOverrideChange(this)" ${isCheckedAttr}>
                 </td>
                 <td style="text-align:center; vertical-align:middle; color:#64748b; font-weight:600;">${idx + 1}</td>
-                <td style="vertical-align:middle; font-weight:700; color:#0f172a; font-family:monospace;">${carne}</td>
-                <td style="vertical-align:middle; font-weight:600; color:#1e293b;">${fullName}</td>
-                <td style="vertical-align:middle; font-size:0.8rem; color:#475569;">${gradeDisplay}</td>
-                <td style="text-align:center; vertical-align:middle; font-weight:800; color:${info.average >= 60 ? '#16a34a' : '#dc2626'};">${avg}</td>
+                <td style="vertical-align:middle; font-weight:700; color:#0f2b5c; font-family:monospace;">${escapeHtml(carne)}</td>
+                <td style="vertical-align:middle; font-weight:600; color:#1e293b;">${escapeHtml(fullName)}</td>
+                <td style="vertical-align:middle; font-size:0.8rem; color:#475569;">${escapeHtml(gradeDisplay)}</td>
+                <td style="text-align:center; vertical-align:middle; font-weight:800; color:${info.average >= 60 ? '#0369a1' : '#dc2626'};">${avg}</td>
                 <td style="text-align:center; vertical-align:middle;">${dictamenHtml}</td>
                 <td style="vertical-align:middle;">
-                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" onchange="onPromoRowOverrideChange(this)" style="font-size:0.8rem; padding:3px 8px; height:28px; margin-bottom:3px;" placeholder="Grado destino">
+                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${escapeHtml(item.nextGrade)}" onchange="onPromoRowOverrideChange(this)" style="font-size:0.8rem; padding:3px 8px; height:28px; margin-bottom:3px;" placeholder="Grado destino">
                     <select class="promo-target-section-select form-control form-control-sm" data-student-id="${s.id}" onchange="onPromoRowOverrideChange(this)" style="font-size:0.8rem; padding:2px 4px; height:26px; font-weight:700;">
-                        <option value="A" ${selectedSec === 'A' ? 'selected' : ''}>Sección A</option>
-                        <option value="B" ${selectedSec === 'B' ? 'selected' : ''}>Sección B</option>
-                        <option value="C" ${selectedSec === 'C' ? 'selected' : ''}>Sección C</option>
-                        <option value="D" ${selectedSec === 'D' ? 'selected' : ''}>Sección D</option>
+                        ${secOptionsHtml}
                     </select>
                 </td>
             </tr>
@@ -52591,6 +52613,7 @@ function renderPromotionStudentsTable() {
     }).join('');
 }
 window.renderPromotionStudentsTable = renderPromotionStudentsTable;
+window.renderPromotionTable = renderPromotionStudentsTable;
 
 function filterPromotionTable() {
     renderPromotionStudentsTable();
@@ -52655,7 +52678,7 @@ async function executeCyclePromotion(e) {
     const cycleStudents = allStudents.filter(s => {
         if (!s) return false;
         const stStatus = String(s.status || '').toLowerCase();
-        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
         const sCycle = s.academicCycle || s.cycle;
         if (!sCycle) return true;
         return String(sCycle).trim() === String(originCycle).trim();
@@ -52729,6 +52752,9 @@ async function executeCyclePromotion(e) {
             if (typeof renderDashboard === 'function') renderDashboard();
             if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
             if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+            if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects(true);
+            if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
             if (typeof renderCurrentView === 'function') renderCurrentView();
         } else {
             showToast(`Error al procesar la apertura del ciclo: ${result?.message || 'Error desconocido'}`, 'danger');
@@ -52760,7 +52786,7 @@ function printCyclePromotionAct() {
     const cycleStudents = allStudents.filter(s => {
         if (!s) return false;
         const stStatus = String(s.status || '').toLowerCase();
-        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
         const sCycle = s.academicCycle || s.cycle;
         return !sCycle || String(sCycle).trim() === String(cycleYear).trim();
     });
@@ -52824,7 +52850,7 @@ function printCyclePromotionAct() {
 
         gradeSectionsHtml += `
             <div style="margin-bottom:28px; break-inside:avoid;">
-                <div style="background:#0f172a; color:#fff; padding:6px 14px; font-weight:800; font-size:0.95rem; border-radius:4px 4px 0 0; display:flex; justify-content:space-between;">
+                <div style="background:#0f2b5c; color:#fff; padding:6px 14px; font-weight:800; font-size:0.95rem; border-radius:4px 4px 0 0; display:flex; justify-content:space-between;">
                     <span>📚 ${gradeName}</span>
                     <span>Promedio Sección: ${gradeAvg} | Total: ${data.count} estudiantes</span>
                 </div>
@@ -52862,18 +52888,18 @@ function printCyclePromotionAct() {
         <style>
             @media print { @page { size: letter portrait; margin: 1.5cm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .no-print { display:none !important; } }
             body { font-family: 'Arial', sans-serif; font-size: 13px; color: #1e293b; margin: 0; padding: 20px; }
-            .header { text-align: center; border-bottom: 3px double #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
-            .header h1 { font-size: 1.15rem; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
-            .header h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 4px 0; color: #334155; }
+            .header { text-align: center; border-bottom: 3px double #0f2b5c; padding-bottom: 12px; margin-bottom: 20px; }
+            .header h1 { font-size: 1.15rem; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f2b5c; }
+            .header h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 4px 0; color: #0369a1; }
             .header p { font-size: 0.82rem; color: #64748b; margin: 0; }
-            .intro-block { border: 1px solid #cbd5e1; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; background: #f8fafc; font-size: 0.88rem; line-height: 1.7; }
-            .summary-bar { display: flex; gap: 20px; justify-content: center; background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 6px; margin-bottom: 22px; font-weight: 700; font-size: 0.9rem; }
+            .intro-block { border: 1px solid #bae6fd; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; background: #f0f9ff; font-size: 0.88rem; line-height: 1.7; }
+            .summary-bar { display: flex; gap: 20px; justify-content: center; background: #0f2b5c; color: #fff; padding: 10px 16px; border-radius: 6px; margin-bottom: 22px; font-weight: 700; font-size: 0.9rem; }
             .signatures { margin-top: 60px; display: flex; justify-content: space-around; }
             .sig-line { text-align: center; }
-            .sig-line .line { border-top: 1.5px solid #334155; width: 200px; margin: 0 auto 6px auto; }
+            .sig-line .line { border-top: 1.5px solid #0f2b5c; width: 200px; margin: 0 auto 6px auto; }
             .sig-line p { font-size: 0.82rem; font-weight: 700; margin: 0; }
             .sig-line small { font-size: 0.75rem; color: #64748b; }
-            .btn-print { background:#0f172a; color:#fff; border:none; padding:10px 22px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.9rem; margin-bottom:18px; }
+            .btn-print { background:#0f2b5c; color:#fff; border:none; padding:10px 22px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.9rem; margin-bottom:18px; }
         </style>
     </head><body>
         <div class="no-print" style="text-align:center; margin-bottom:10px;">
@@ -52881,7 +52907,7 @@ function printCyclePromotionAct() {
         </div>
         <div class="header">
             <div style="font-size:0.78rem; font-weight:700; letter-spacing:1px; color:#0369a1; margin-bottom:4px;">MINISTERIO DE EDUCACIÓN — DIRECCIÓN DEPARTAMENTAL DE EDUCACIÓN JUTIAPA</div>
-            <h1>ESCUELA NORMAL DE COMERCIO Y CIENCIAS COMERCIALES "ENCCO"</h1>
+            <h1>ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h1>
             <h2>JUTIAPA, GUATEMALA — FUNDADA EN 1970</h2>
             <p>Código DRE: 22-01-0340-43 | Jornada: Matutina | Ciclo Lectivo: ${cycleYear}</p>
         </div>

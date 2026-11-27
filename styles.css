@@ -6295,3 +6295,13 @@ textarea:focus-visible,
   #view-attendance .att-dropdown-menu,
   #view-gradebook .att-dropdown-menu { left: 0 !important; right: auto !important; max-width: calc(100vw - 32px); }
 }
+
+/* === PROMOCIÓN Y NUEVO CICLO RESPONSIVO (v342) === */
+@media (max-width: 640px) {
+  #cyclePromotionModal .promo-step1-row { flex-direction: column; }
+  #cyclePromotionModal .promo-toolbar-controls { width: 100%; }
+  #cyclePromotionModal .promo-toolbar-controls input,
+  #cyclePromotionModal .promo-toolbar-controls select,
+  #cyclePromotionModal .promo-toolbar-controls .btn { width: 100% !important; flex: 1 1 100%; }
+  #cyclePromotionModal .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
+}

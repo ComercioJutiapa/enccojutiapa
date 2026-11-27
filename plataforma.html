@@ -5011,27 +5011,27 @@
             <div class="modal-body" style="padding: 18px 20px; max-height: 78vh; overflow-y: auto;">
                 
                 <!-- BANNER INFORMATIVO -->
-                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display:flex; gap:12px; align-items:center;">
-                    <i class="fa-solid fa-circle-check" style="color: #16a34a; font-size: 1.5rem;"></i>
-                    <div style="font-size: 0.86rem; color: #166534; line-height: 1.4;">
+                <div style="background: #f0f9ff; border: 1.5px solid #7dd3fc; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display:flex; gap:12px; align-items:center;">
+                    <i class="fa-solid fa-circle-check" style="color: #0369a1; font-size: 1.5rem;"></i>
+                    <div style="font-size: 0.86rem; color: #0f2b5c; line-height: 1.4;">
                         <strong>Módulo Oficial de Cierre y Promoción Anual (Exclusivo Dirección y Secretaría):</strong>
                         Permite trasladar automáticamente a los estudiantes con estatus de <strong>Aprobado</strong> hacia el grado inmediato superior del nuevo ciclo lectivo, conservando todo su expediente y datos personales.
                     </div>
                 </div>
 
                 <!-- PASO 1: SELECCIÓN DE CICLOS Y CRITERIOS -->
-                <div class="form-row" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div class="form-row promo-step1-row" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
                     <div class="form-group" style="flex:1;">
                         <label style="font-weight:700;"><i class="fa-solid fa-calendar-minus" style="color:#b45309;"></i> 1. Ciclo Origen a Cerrar *</label>
                         <select id="promoOriginCycleSelect" class="form-control" onchange="onPromotionCycleChange()" style="font-weight:600;"></select>
                     </div>
                     <div class="form-group" style="flex:1;">
-                        <label style="font-weight:700;"><i class="fa-solid fa-calendar-plus" style="color:#15803d;"></i> 2. Nuevo Ciclo Destino *</label>
-                        <input type="text" id="promoTargetCycleInput" class="form-control" placeholder="Ej: 2027" style="font-weight:700; color:#15803d;">
+                        <label style="font-weight:700;"><i class="fa-solid fa-calendar-plus" style="color:#0369a1;"></i> 2. Nuevo Ciclo Destino *</label>
+                        <input type="text" id="promoTargetCycleInput" class="form-control" placeholder="Ej: 2028" style="font-weight:700; color:#0f2b5c;">
                     </div>
                     <div class="form-group" style="flex:1.2;">
-                        <label style="font-weight:700;"><i class="fa-solid fa-sliders" style="color:#0284c7;"></i> 3. Criterio de Promoción</label>
-                        <select id="promoCriteriaSelect" class="form-control" onchange="renderPromotionTable()" style="font-weight:600;">
+                        <label style="font-weight:700;"><i class="fa-solid fa-sliders" style="color:#0369a1;"></i> 3. Criterio de Promoción</label>
+                        <select id="promoCriteriaSelect" class="form-control" onchange="renderPromotionStudentsTable()" style="font-weight:600;">
                             <option value="MINEDUC_STRICT" selected>Promoción Regular (0 materias reprobadas y prom >= 60)</option>
                             <option value="GENERAL_AVG">Por Promedio General Ponderado (>= 60 pts)</option>
                         </select>
@@ -5046,17 +5046,17 @@
                 <!-- PASO 3: TABLA DE ESTUDIANTES PARA PROMOCIÓN -->
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:#0f172a;">
-                            <i class="fa-solid fa-users"></i> Nómina de Estudiantes del Ciclo
+                        <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:#0f2b5c;">
+                            <i class="fa-solid fa-users" style="color:#0369a1;"></i> Nómina de Estudiantes del Ciclo
                         </h4>
                         <span class="badge badge-primary" id="promoCountBadge">0 Alumnos</span>
                     </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
+                    <div class="promo-toolbar-controls" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                         <input type="text" id="promoSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre o carné..." style="width:220px; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" oninput="filterPromotionTable()">
                         <select id="promoGradeFilter" class="form-control form-control-sm" style="width:200px; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" onchange="filterPromotionTable()">
                             <option value="ALL">-- Todos los Grados --</option>
                         </select>
-                        <button type="button" class="btn btn-xs btn-outline-success" onclick="selectAllPromotedStudents(true)" style="font-weight:700; min-height:38px; height:38px; padding:0 12px; display:inline-flex; align-items:center; gap:5px;">
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="selectAllPromotedStudents(true)" style="font-weight:700; min-height:38px; height:38px; padding:0 12px; display:inline-flex; align-items:center; gap:5px; border-color:#0369a1; color:#0369a1;">
                             <i class="fa-solid fa-check-double"></i> Seleccionar Aprobados
                         </button>
                     </div>
@@ -5065,7 +5065,7 @@
                 <div class="table-responsive" style="max-height: 340px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
                     <table class="custom-table clean-excel-table" style="font-size:0.82rem; margin:0;">
                         <thead>
-                            <tr style="background:#0f172a; color:#fff; position:sticky; top:0; z-index:2;">
+                            <tr style="background:#0f2b5c; color:#fff; position:sticky; top:0; z-index:2;">
                                 <th style="width:40px; text-align:center; color:#fff;">
                                     <input type="checkbox" id="promoSelectAllMaster" onchange="toggleAllPromotionCheckboxes(this.checked)">
                                 </th>
@@ -5075,7 +5075,7 @@
                                 <th style="color:#fff;">Grado Actual</th>
                                 <th style="width:75px; text-align:center; color:#fff;">Promedio</th>
                                 <th style="width:110px; text-align:center; color:#fff;">Dictamen</th>
-                                <th style="text-align:left; color:#fff; background:#1e293b;">Grado Destino (Nuevo Ciclo)</th>
+                                <th style="text-align:left; color:#fff; background:#0369a1;">Grado Destino (Nuevo Ciclo)</th>
                             </tr>
                         </thead>
                         <tbody id="promoTableBody">
@@ -5090,16 +5090,16 @@
                 </div>
             </div>
             <div class="modal-footer" style="background: #f8fafc; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="closeCyclePromotionModal()">Cancelar</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnDownloadCycleBackup" onclick="downloadCyclePreArchivingBackup()" style="display:none; font-weight:700; align-items:center; gap:6px;">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnDownloadCycleBackup" onclick="downloadCyclePreArchivingBackup()" style="display:none; font-weight:700; align-items:center; gap:6px; border-color:#0369a1; color:#0369a1;">
                         <i class="fa-solid fa-file-arrow-down"></i> Descargar Copia de Seguridad (.json)
                     </button>
                     <button type="button" class="btn btn-outline-warning btn-sm" id="btnPrintPromotionAct" onclick="printCyclePromotionAct()" style="display:none; font-weight:700; align-items:center; gap:6px;" title="Genera el Acta Oficial de Promoción formato MINEDUC para entregar a Supervisión">
                         <i class="fa-solid fa-print"></i> Imprimir Acta de Promoción
                     </button>
                 </div>
-                <button type="button" class="btn btn-success" id="btnExecutePromotion" onclick="executeCyclePromotion()" style="font-weight:800; padding:8px 18px; font-size:0.92rem; box-shadow:0 2px 6px rgba(21,128,61,0.3);">
+                <button type="button" class="btn btn-primary" id="btnExecutePromotion" onclick="executeCyclePromotion()" style="font-weight:800; padding:8px 18px; font-size:0.92rem; background:#0f2b5c; border-color:#0f2b5c; box-shadow:0 2px 6px rgba(15,43,92,0.3);">
                     <i class="fa-solid fa-rocket"></i> Abrir Nuevo Ciclo y Trasladar Estudiantes Aprobados
                 </button>
             </div>
@@ -6882,7 +6882,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v341" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v342" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
