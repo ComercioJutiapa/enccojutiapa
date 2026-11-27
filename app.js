@@ -23523,18 +23523,18 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         right: { style: 'thin', color: { rgb: 'CBD5E1' } }
     };
     const headerBorder = {
-        top: { style: 'thin', color: { rgb: '064E3B' } },
-        bottom: { style: 'medium', color: { rgb: '064E3B' } },
-        left: { style: 'thin', color: { rgb: '064E3B' } },
-        right: { style: 'thin', color: { rgb: '064E3B' } }
+        top: { style: 'thin', color: { rgb: '0F2B5C' } },
+        bottom: { style: 'medium', color: { rgb: '0F2B5C' } },
+        left: { style: 'thin', color: { rgb: '0F2B5C' } },
+        right: { style: 'thin', color: { rgb: '0F2B5C' } }
     };
 
     for (let c = 0; c < numCols; c++) {
-        // Fila 0: Banner Institucional Principal
+        // Fila 0: Banner Institucional Principal (Azul Institucional)
         const addr0 = xlsxLib.utils.encode_cell({ r: 0, c });
         if (!ws[addr0]) ws[addr0] = { v: '', t: 's' };
         ws[addr0].s = {
-            fill: { fgColor: { rgb: '064E3B' } },
+            fill: { fgColor: { rgb: '0F2B5C' } },
             font: { name: 'Arial', sz: 13, bold: true, color: { rgb: 'FFFFFF' } },
             alignment: { horizontal: 'center', vertical: 'center' }
         };
@@ -23543,7 +23543,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         const addr1 = xlsxLib.utils.encode_cell({ r: 1, c });
         if (!ws[addr1]) ws[addr1] = { v: '', t: 's' };
         ws[addr1].s = {
-            fill: { fgColor: { rgb: '15803D' } },
+            fill: { fgColor: { rgb: '0369A1' } },
             font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
             alignment: { horizontal: 'center', vertical: 'center' }
         };
@@ -23552,7 +23552,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         const addr2 = xlsxLib.utils.encode_cell({ r: 2, c });
         if (!ws[addr2]) ws[addr2] = { v: '', t: 's' };
         ws[addr2].s = {
-            fill: { fgColor: { rgb: '0369A1' } },
+            fill: { fgColor: { rgb: '1E3A8A' } },
             font: { name: 'Arial', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
             alignment: { horizontal: 'center', vertical: 'center' }
         };
@@ -23562,8 +23562,8 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
             const addrM = xlsxLib.utils.encode_cell({ r, c });
             if (ws[addrM] && ws[addrM].v) {
                 ws[addrM].s = {
-                    fill: { fgColor: { rgb: 'F1F5F9' } },
-                    font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '334155' } },
+                    fill: { fgColor: { rgb: 'F0F9FF' } },
+                    font: { name: 'Arial', sz: 9, bold: true, color: { rgb: '0F2B5C' } },
                     border: borderThin,
                     alignment: { vertical: 'center' }
                 };
@@ -23574,7 +23574,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
         const addrH = xlsxLib.utils.encode_cell({ r: headerRowIdx, c });
         if (ws[addrH]) {
             ws[addrH].s = {
-                fill: { fgColor: { rgb: '15803D' } },
+                fill: { fgColor: { rgb: '0F2B5C' } },
                 font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
                 border: headerBorder,
                 alignment: { horizontal: 'center', vertical: 'center', wrapText: true }
@@ -30923,7 +30923,7 @@ function renderTeacherGradeProgressTable() {
     const teachers = Array.from(teacherMap.values()).filter(t => t.courses.length > 0);
 
     if (teachers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; display:block; margin-bottom:8px; color:var(--brand-green);"></i>No hay docentes con cátedras asignadas en el sistema actualmente.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; display:block; margin-bottom:8px; color:#0369a1;"></i>No hay docentes con cátedras asignadas en el sistema actualmente.</td></tr>`;
         return;
     }
 
@@ -30947,13 +30947,13 @@ function renderTeacherGradeProgressTable() {
 
         let cellStatus;
         let btnAuditText = '<i class="fa-solid fa-magnifying-glass-chart"></i> Auditar Notas';
-        let btnAuditBg = '#0284c7';
+        let btnAuditBg = '#0369a1';
 
         if (activeClassChoice !== 'ALL') {
             const chosenCourse = teacherCourses.find(c => c.id === activeClassChoice);
             cellStatus = [1, 2, 3, 4].map(b => calculateClassBimesterMetrics(chosenCourse, b));
             btnAuditText = `<i class="fa-solid fa-file-pen"></i> Auditar ${chosenCourse.subject.slice(0, 12)}...`;
-            btnAuditBg = '#15803d';
+            btnAuditBg = '#0f2b5c';
         } else {
             cellStatus = summaryStatus;
         }
@@ -30966,8 +30966,8 @@ function renderTeacherGradeProgressTable() {
         rowsHtml += `
             <tr id="teacherRow_${teacher.id}" style="vertical-align:middle; border-bottom:1px solid #e2e8f0;">
                 <td style="padding:10px 12px;">
-                    <div style="font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px; font-size:0.92rem;">
-                        <i class="fa-solid fa-user-chalkboard" style="color:var(--brand-green);"></i> ${teacher.name}
+                    <div style="font-weight:800; color:#0f2b5c; display:flex; align-items:center; gap:6px; font-size:0.92rem;">
+                        <i class="fa-solid fa-user-chalkboard" style="color:#0369a1;"></i> ${teacher.name}
                     </div>
                     <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:2px;">
                         <span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700;">${teacher.renglon || '011'}</span>
@@ -30976,8 +30976,8 @@ function renderTeacherGradeProgressTable() {
                 </td>
                 <td style="padding:10px 12px; min-width:240px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-                        <span style="font-weight:800; color:var(--brand-green-dark); font-size:0.84rem;">
-                            <i class="fa-solid fa-book-bookmark"></i> ${courseCount} Cátedra(s)
+                        <span style="font-weight:800; color:#0f2b5c; font-size:0.84rem;">
+                            <i class="fa-solid fa-book-bookmark" style="color:#0369a1;"></i> ${courseCount} Cátedra(s)
                         </span>
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="toggleTeacherCoursesBreakdown('${teacher.id}')" title="Ver desglose detallado de todas las cátedras" style="font-size:0.7rem; padding:2px 7px; font-weight:700; border-radius:4px;">
                             <i class="fa-solid fa-list-ul"></i> Desglosar
@@ -31002,8 +31002,8 @@ function renderTeacherGradeProgressTable() {
             <tr id="teacherBreakdownRow_${teacher.id}" style="display:none; background:#f8fafc; border-bottom:2px solid #cbd5e1;">
                 <td colspan="7" style="padding:12px 16px;">
                     <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                        <div style="font-weight:800; font-size:0.84rem; color:#0f172a; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                            <span><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green);"></i> Cátedras Asignadas a <strong>${teacher.name}</strong>:</span>
+                        <div style="font-weight:800; font-size:0.84rem; color:#0f2b5c; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                            <span><i class="fa-solid fa-chalkboard-user" style="color:#0369a1;"></i> Cátedras Asignadas a <strong>${teacher.name}</strong>:</span>
                             <button type="button" class="btn btn-xs btn-outline-secondary" onclick="toggleTeacherCoursesBreakdown('${teacher.id}')" style="font-size:0.7rem; padding:2px 8px;">Cerrar desglose ✕</button>
                         </div>
                         <div style="overflow-x:auto;">
@@ -31098,7 +31098,7 @@ function onTeacherClassSelectChange(teacherId, selectedVal) {
             if (b4El) b4El.innerHTML = m4.label;
             if (btnAudit) {
                 btnAudit.innerHTML = `<i class="fa-solid fa-file-pen"></i> Auditar ${c.subject.slice(0, 12)}...`;
-                btnAudit.style.background = '#15803d';
+                btnAudit.style.background = '#0f2b5c';
             }
         }
     }
@@ -32405,7 +32405,7 @@ function openGradingConfigModal() {
     const teacherBadge = document.getElementById('cfgModalTeacherBadge');
 
     if (courseTitle) courseTitle.textContent = `Cátedra: ${targetPensum.subject} (${targetPensum.grade} "${targetPensum.section || 'A'}")`;
-    if (bimTitle) bimTitle.textContent = `Bimestre: ${currentUnit}º Bimestre | Ciclo: ${STATE.activeCycle || String(new Date().getFullYear())}`;
+    if (bimTitle) bimTitle.textContent = `Bimestre: ${currentUnit}º Bimestre | Ciclo: ${STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())}`;
     if (teacherBadge) teacherBadge.textContent = targetPensum.teacher || (currentUser ? currentUser.name : 'Docente');
 
     const zInput = document.getElementById('cfgFormZonaMax');
@@ -43119,7 +43119,8 @@ function exportGradebookOfficialExcel() {
     const gradeCode = targetPensum.gradeCode || targetPensum.grade;
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
     if (!students || students.length === 0) {
-        students = (STATE.students || []).filter(s => {
+        const cyclePool = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents() : (STATE.students || []);
+        students = cyclePool.filter(s => {
             if (s.active === false) return false;
             if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
             const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
@@ -43140,7 +43141,7 @@ function exportGradebookOfficialExcel() {
     });
 
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const cfg = (typeof getGradingConfig === 'function') 
         ? getGradingConfig(targetPensum, currentUnit) 
         : { zonaMax: 40, examMax: 60, activities: [] };
@@ -43247,13 +43248,17 @@ function exportGradebookOfficialExcel() {
 
                 const examVal = (uData && uData.exam !== undefined && uData.exam !== null && uData.exam !== '') ? Number(uData.exam) : 0;
                 const totalVal = sumZona + examVal;
-                const resultVal = totalVal >= 60 ? 'APROBADO' : 'NO APROBADO';
+                const resultVal = isBimRet ? 'RETIRADO' : (isBimAus ? 'AUSENTE' : (isBimExon ? 'EXONERADO' : (totalVal >= 60 ? 'APROBADO' : 'NO APROBADO')));
 
-                // Fórmulas de Excel en mayúsculas estándar: Total = Zona + Examen
-                row.push({ t: 'n', f: `SUM(E${rowNum}:N${rowNum})`, v: sumZona });
-                row.push(examVal);
-                row.push({ t: 'n', f: `O${rowNum}+P${rowNum}`, v: totalVal });
-                row.push({ t: 's', f: `IF(Q${rowNum}>=60,"APROBADO","NO APROBADO")`, v: resultVal });
+                if (isBimRet || isBimAus) {
+                    row.push('—', '—', '—', resultVal);
+                } else {
+                    // Fórmulas de Excel en mayúsculas estándar: Total = Zona + Examen
+                    row.push({ t: 'n', f: `SUM(E${rowNum}:N${rowNum})`, v: sumZona });
+                    row.push(examVal);
+                    row.push({ t: 'n', f: `O${rowNum}+P${rowNum}`, v: totalVal });
+                    row.push(isBimExon ? 'EXONERADO' : { t: 's', f: `IF(Q${rowNum}>=60,"APROBADO","NO APROBADO")`, v: resultVal });
+                }
 
                 aoa.push(row);
             });
@@ -43448,7 +43453,7 @@ window.exportGradebookOfficialExcel = exportGradebookOfficialExcel;
 window.exportGradebookOfficialCSV = exportGradebookOfficialExcel;
 
 function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConfig, cfg, fileName) {
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const h = STATE.schoolHeader || {};
     const classCode = targetPensum.code || targetPensum.classCode || targetPensum.id || '';
     const dynamicTeacher = targetPensum.teacher || 'Claustro Docente';

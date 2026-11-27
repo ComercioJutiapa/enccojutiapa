@@ -6292,5 +6292,6 @@ textarea:focus-visible,
   #view-discipline select.form-control,
   #view-discipline input.form-control { width: 100% !important; min-width: 0 !important; }
   #view-discipline .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  #view-attendance .att-dropdown-menu { left: 0 !important; right: auto !important; max-width: calc(100vw - 32px); }
+  #view-attendance .att-dropdown-menu,
+  #view-gradebook .att-dropdown-menu { left: 0 !important; right: auto !important; max-width: calc(100vw - 32px); }
 }
