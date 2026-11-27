@@ -12023,6 +12023,8 @@ function synchronizeGlobalDynamicUI() {
             renderAuxiliaturaCenterView();
         } else if (STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') {
             renderDisciplineTable();
+        } else if (STATE.activeView === 'grade-lock' && typeof loadLockStatus === 'function') {
+            loadLockStatus();
         }
     }, 32);
 }
@@ -26243,15 +26245,19 @@ async function loadLockStatus() {
     const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
     if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
         try {
-            const rtdbConfigRes = await fetch(`${firebaseUrl}/encc_school_state/config.json?t=${Date.now()}`);
-            if (rtdbConfigRes.ok) {
-                const rtdbCfg = await rtdbConfigRes.json();
-                if (rtdbCfg) {
-                    if (rtdbCfg.activeBimestre) cloudBimestre = parseInt(rtdbCfg.activeBimestre);
-                    if (rtdbCfg.globalLocked !== undefined) cloudGlobalLocked = !!rtdbCfg.globalLocked;
-                    if (Array.isArray(rtdbCfg.activeUnits) && rtdbCfg.activeUnits.length > 0) {
-                        cloudActiveUnits = rtdbCfg.activeUnits.map(Number);
-                    }
+            let rtdbCfg = null;
+            if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.fetchNode === 'function') {
+                rtdbCfg = await EnccoCloudSync.fetchNode('config').catch(() => null);
+            }
+            if (!rtdbCfg) {
+                const rtdbConfigRes = await fetch(`${firebaseUrl}/encc_school_state/config.json?t=${Date.now()}`).catch(() => null);
+                if (rtdbConfigRes && rtdbConfigRes.ok) rtdbCfg = await rtdbConfigRes.json();
+            }
+            if (rtdbCfg) {
+                if (rtdbCfg.activeBimestre) cloudBimestre = parseInt(rtdbCfg.activeBimestre);
+                if (rtdbCfg.globalLocked !== undefined) cloudGlobalLocked = !!rtdbCfg.globalLocked;
+                if (Array.isArray(rtdbCfg.activeUnits)) {
+                    cloudActiveUnits = rtdbCfg.activeUnits.map(Number);
                 }
             }
         } catch(rErr) {
@@ -26285,16 +26291,16 @@ async function loadLockStatus() {
         if (!STATE.config) STATE.config = {};
         STATE.config.globalLocked = cloudGlobalLocked;
     }
-    if (cloudActiveUnits && cloudActiveUnits.length > 0) {
+    if (Array.isArray(cloudActiveUnits)) {
         if (!STATE.config) STATE.config = {};
         STATE.config.activeUnits = cloudActiveUnits;
-    } else if (!STATE.config?.activeUnits || STATE.config.activeUnits.length === 0) {
+    } else if (!Array.isArray(STATE.config?.activeUnits)) {
         if (!STATE.config) STATE.config = {};
         STATE.config.activeUnits = [STATE.config.activeBimestre || 1];
     }
 
     const activeBim = parseInt(STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre) || 1;
-    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+    const activeUnits = Array.isArray(STATE.config?.activeUnits)
         ? STATE.config.activeUnits.map(Number)
         : [activeBim];
 
@@ -26334,7 +26340,9 @@ async function loadLockStatus() {
 
     if (!list) return;
 
-    const teachers = STATE.users.filter(u => u.role === 'docente');
+    const teachers = (STATE.users || [])
+        .filter(u => u && u.role === 'docente' && u.active !== false && !(typeof isAdminOrSystemUser === 'function' && isAdminOrSystemUser(u)))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
     if (teachers.length === 0) {
         list.innerHTML = `<div style="color:var(--text-muted); padding:10px; font-size:0.88rem;">No hay catedráticos registrados en la nómina.</div>`;
         return;
@@ -26680,11 +26688,11 @@ function isGradebookEditableForUser(pensumId, unit) {
 
     // Verificar si existe solicitud aprobada y vigente para este docente, curso y bimestre
     const now = Date.now();
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const approvedRequest = requests.find(req => {
-        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
-        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : activeCycle)).trim();
+        if (reqCycle !== activeCycle) return false;
         const matchTeacher = (req.teacherId === currentUser?.id || (currentUser?.email && req.teacherEmail === currentUser?.email));
         if (!matchTeacher) return false;
         if (req.pensumId && pensumId && req.pensumId !== pensumId) return false;
@@ -26728,10 +26736,10 @@ window.isGradebookEditableForUser = isGradebookEditableForUser;
 
 function getPendingGradeEditRequest(teacherId, pensumId, unit) {
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     return requests.find(req => {
-        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : '2026')).trim();
-        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        const reqCycle = String(req.cycle || (req.createdAt ? req.createdAt.substring(0, 4) : activeCycle)).trim();
+        if (reqCycle !== activeCycle) return false;
         const matchTeacher = (req.teacherId === teacherId || (STATE.currentUser?.email && req.teacherEmail === STATE.currentUser?.email));
         if (!matchTeacher) return false;
         if (req.pensumId && pensumId && req.pensumId !== pensumId) return false;
@@ -26935,7 +26943,7 @@ function filterGradeEditRequests(filter) {
         (filter === 'approved' ? 'btnFilterReqApproved' : 'btnFilterReqAll')
     );
     if (activeBtn) {
-        activeBtn.style.background = '#8b5cf6';
+        activeBtn.style.background = '#0f2b5c';
         activeBtn.style.color = 'white';
         activeBtn.style.fontWeight = '700';
     }
@@ -26947,12 +26955,12 @@ window.filterGradeEditRequests = filterGradeEditRequests;
 function updatePendingRequestsBadge() {
     const badge = document.getElementById('pendingGradeRequestsBadge');
     if (!badge) return;
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const requests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const pendingCount = requests.filter(r => {
         if (r.status !== 'pending') return false;
-        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : '2026')).trim();
-        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : activeCycle)).trim();
+        if (reqCycle !== activeCycle) return false;
         return true;
     }).length;
     if (pendingCount > 0) {
@@ -26968,11 +26976,11 @@ function renderGradeEditRequestsTable() {
     const tbody = document.getElementById('gradeEditRequestsTableBody');
     if (!tbody) return;
 
-    const activeCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const activeCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const rawRequests = Array.isArray(STATE.gradeEditRequests) ? STATE.gradeEditRequests : [];
     const requests = rawRequests.filter(r => {
-        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : '2026')).trim();
-        if (activeCycle === '2027' && reqCycle === '2026') return false;
+        const reqCycle = String(r.cycle || (r.createdAt ? r.createdAt.substring(0, 4) : activeCycle)).trim();
+        if (reqCycle !== activeCycle) return false;
         return true;
     });
     const now = Date.now();

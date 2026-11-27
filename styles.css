@@ -6306,4 +6306,8 @@ textarea:focus-visible,
   #cyclePromotionModal .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
   #cycleModal .cycle-form-row { flex-direction: column; }
   #cycleModal .cycle-modal-footer .btn { flex: 1 1 100%; justify-content: center; }
+  #view-grade-lock #btnOpenAutonomousLock { width: 100%; justify-content: center; }
+  #view-grade-lock .grade-lock-req-filters,
+  #view-grade-lock .grade-lock-req-filters .btn-group { width: 100%; display: flex; flex-wrap: wrap; }
+  #view-grade-lock .grade-lock-req-filters .btn-group .btn { flex: 1 1 auto; }
 }

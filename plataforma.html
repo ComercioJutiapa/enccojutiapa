@@ -2228,6 +2228,7 @@
                             }
 
                             try {
+                                var normRole = String(role || (user && user.role) || '').trim().toLowerCase();
                                 var userStr = JSON.stringify(user);
                                 sessionStorage.setItem('ENCCO_AUTH_USER', userStr);
                                 sessionStorage.setItem('ENCCO_AUTH_ROLE', normRole);
@@ -2249,8 +2250,8 @@
 
                     <div class="config-grid">
                         <!-- TARJETA: CONTROL DE BIMESTRES Y UNIDADES ACTIVAS -->
-                        <div class="config-card" style="border-top:4px solid var(--brand-green);">
-                            <h3><i class="fa-solid fa-calendar-check" style="color:var(--brand-green);"></i> Control de Bimestres y Unidades Activas</h3>
+                        <div class="config-card" style="border-top:4px solid #0f2b5c;">
+                            <h3 style="color:#0f2b5c;"><i class="fa-solid fa-calendar-check" style="color:#0369a1;"></i> Control de Bimestres y Unidades Activas</h3>
                             <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
                                 Configure el <strong>Bimestre Oficial Principal</strong> y habilite las <strong>Unidades específicas</strong> donde los catedráticos pueden ingresar o modificar calificaciones.
                             </p>
@@ -2267,19 +2268,19 @@
                                 <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:12px; margin-bottom:12px;">
                                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px;">
                                         <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
-                                            <input type="checkbox" id="checkActiveUnit1" value="1" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <input type="checkbox" id="checkActiveUnit1" value="1" style="width:18px; height:18px; accent-color:#0369a1;">
                                             <span>Unidad 1 (I)</span>
                                         </label>
                                         <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
-                                            <input type="checkbox" id="checkActiveUnit2" value="2" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <input type="checkbox" id="checkActiveUnit2" value="2" style="width:18px; height:18px; accent-color:#0369a1;">
                                             <span>Unidad 2 (II)</span>
                                         </label>
                                         <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
-                                            <input type="checkbox" id="checkActiveUnit3" value="3" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <input type="checkbox" id="checkActiveUnit3" value="3" style="width:18px; height:18px; accent-color:#0369a1;">
                                             <span>Unidad 3 (III)</span>
                                         </label>
                                         <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
-                                            <input type="checkbox" id="checkActiveUnit4" value="4" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <input type="checkbox" id="checkActiveUnit4" value="4" style="width:18px; height:18px; accent-color:#0369a1;">
                                             <span>Unidad 4 (IV)</span>
                                         </label>
                                     </div>
@@ -2312,7 +2313,7 @@
                                     </div>
                                 </div>
 
-                                <button type="button" id="btnFijarBimestre" class="btn btn-success btn-block" onclick="setOfficialActiveBimestre(event)" style="font-weight:700;">
+                                <button type="button" id="btnFijarBimestre" class="btn btn-primary btn-block" onclick="setOfficialActiveBimestre(event)" style="font-weight:700; background:#0f2b5c; border-color:#0f2b5c;">
                                     <i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros
                                 </button>
                             </div>
@@ -2326,7 +2327,7 @@
                             </p>
                             <div class="form-group">
                                 <label>Estado del Sistema:</label>
-                                <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
+                                <div style="display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:wrap;">
                                     <span class="badge badge-success" id="globalLockBadge" style="font-size:0.9rem; padding:8px 14px;">Habilitado General</span>
                                     <button type="button" class="btn btn-orange btn-sm" onclick="toggleGlobalLock()">Cambiar Estado</button>
                                 </div>
@@ -2334,27 +2335,27 @@
                         </div>
 
                         <!-- TARJETA: HABILITACIÓN INDIVIDUAL -->
-                        <div class="config-card" style="grid-column: 1 / -1; border-top:4px solid var(--brand-blue);">
-                            <h3><i class="fa-solid fa-user-check" style="color:var(--brand-blue);"></i> Habilitación Individual de Catedráticos</h3>
+                        <div class="config-card" style="grid-column: 1 / -1; border-top:4px solid #0369a1;">
+                            <h3 style="color:#0f2b5c;"><i class="fa-solid fa-user-check" style="color:#0369a1;"></i> Habilitación Individual de Catedráticos</h3>
                             <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">Habilite docentes específicos para ingresar o modificar notas aun cuando el sistema se encuentre bloqueado:</p>
                             <div id="teacherLockList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;"></div>
                         </div>
 
                         <!-- TARJETA: BANDEJA DE SOLICITUDES DE HABILITACIÓN DE EDICIÓN DE NOTAS -->
-                        <div class="config-card" style="grid-column: 1 / -1; border-top:4px solid #8b5cf6; margin-top:14px;">
+                        <div class="config-card" style="grid-column: 1 / -1; border-top:4px solid #0f2b5c; margin-top:14px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                                 <div>
-                                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
-                                        <i class="fa-solid fa-clipboard-check" style="color:#8b5cf6;"></i> Solicitudes de Habilitación de Edición de Calificaciones
+                                    <h3 style="margin:0; display:flex; align-items:center; gap:8px; color:#0f2b5c;">
+                                        <i class="fa-solid fa-clipboard-check" style="color:#0369a1;"></i> Solicitudes de Habilitación de Edición de Calificaciones
                                     </h3>
                                     <p style="font-size:0.85rem; color:var(--text-secondary); margin:4px 0 0 0;">
                                         Autorice o rechace las solicitudes enviadas por catedráticos para modificar notas en bimestres cerrados.
                                     </p>
                                 </div>
-                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <div class="grade-lock-req-filters" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                     <div class="btn-group" role="group" style="display:inline-flex; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border-color);">
-                                        <button type="button" class="btn btn-xs active" id="btnFilterReqPending" onclick="filterGradeEditRequests('pending')" style="background:#8b5cf6; color:white; font-weight:700; padding:6px 12px; border:none; cursor:pointer;">
-                                            Pendientes <span id="countReqPending" class="badge badge-light" style="margin-left:4px; font-size:0.75rem; color:#8b5cf6;">0</span>
+                                        <button type="button" class="btn btn-xs active" id="btnFilterReqPending" onclick="filterGradeEditRequests('pending')" style="background:#0f2b5c; color:white; font-weight:700; padding:6px 12px; border:none; cursor:pointer;">
+                                            Pendientes <span id="countReqPending" class="badge badge-light" style="margin-left:4px; font-size:0.75rem; color:#0f2b5c;">0</span>
                                         </button>
                                         <button type="button" class="btn btn-xs" id="btnFilterReqApproved" onclick="filterGradeEditRequests('approved')" style="background:white; color:var(--text-primary); font-weight:600; padding:6px 12px; border:none; border-left:1px solid var(--border-color); cursor:pointer;">
                                             Aprobadas / Activas <span id="countReqApproved" class="badge badge-light" style="margin-left:4px; font-size:0.75rem;">0</span>
@@ -2372,7 +2373,7 @@
                             <div style="overflow-x:auto;">
                                 <table class="table table-bordered table-hover" style="margin:0; font-size:0.86rem; background:white;">
                                     <thead>
-                                        <tr style="background:#1e1b4b; color:white; text-align:center;">
+                                        <tr style="background:#0f2b5c; color:white; text-align:center;">
                                             <th style="min-width:130px; padding:8px;">Fecha Solicitud</th>
                                             <th style="min-width:180px; text-align:left; padding:8px;">Catedrático</th>
                                             <th style="min-width:160px; text-align:left; padding:8px;">Curso & Grado</th>
@@ -6882,7 +6883,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v343" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v344" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
