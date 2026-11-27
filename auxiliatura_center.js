@@ -150,19 +150,66 @@
                 background: #f1f5f9;
                 transform: scale(1.05);
             }
+
+            @media (max-width: 640px) {
+                #view-auxiliatura-center .aux-kpi-card { padding: 12px; gap: 10px; }
+                #view-auxiliatura-center .btn { flex: 1 1 auto; justify-content: center; }
+                #view-auxiliatura-center input[type="text"],
+                #view-auxiliatura-center select { width: 100% !important; min-width: 0 !important; }
+                .aux-drawer-content { max-width: 100% !important; }
+            }
         `;
         document.head.appendChild(style);
     }
 
-    // 1.5 Helpers Multiciclo Coherentes (2026 / 2027 / 2028+ sin mezcla de años)
+    // 1.5 Helpers Multiciclo Coherentes (2026 / 2027 / 2028+ sin mezcla de años) y Fecha Local GT
+    function getAuxLocalDateISO(dateInput) {
+        const d = dateInput instanceof Date ? dateInput : (dateInput ? new Date(dateInput) : new Date());
+        if (Number.isNaN(d.getTime())) {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function cleanAuxSection(sec) {
+        if (typeof window.getCleanSectionLetter === 'function') {
+            return window.getCleanSectionLetter(sec);
+        }
+        return String(sec || '').replace(/^secci[oó]n\s*/i, '').trim();
+    }
+
+    function getSortedAuxGrades() {
+        const list = (window.STATE && Array.isArray(window.STATE.gradesList)) ? [...window.STATE.gradesList] : [];
+        const sorted = (typeof window.sortGrades === 'function') ? window.sortGrades(list) : list;
+        const seen = new Set();
+        return sorted.filter(g => {
+            if (!g || !g.code || seen.has(g.code)) return false;
+            seen.add(g.code);
+            return true;
+        });
+    }
+
+    function studentMatchesGradeObj(s, g) {
+        if (!s || !g) return false;
+        if (s.gradeCode && g.code && String(s.gradeCode) === String(g.code)) return true;
+        const sGrade = String(s.grade || '').trim().toLowerCase();
+        const gName = String(g.name || '').trim().toLowerCase();
+        if (!sGrade || !gName || sGrade !== gName) return false;
+        const sSec = cleanAuxSection(s.section).toUpperCase();
+        const gSec = cleanAuxSection(g.section).toUpperCase();
+        return !gSec || sSec === gSec;
+    }
+
     function getAuxActiveCycle() {
         return String(
-            (window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || '2026'
+            (window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || new Date().getFullYear()
         ).trim();
     }
 
-    function extractAuxRecordCycle(rec, fallbackCycle = '2026') {
-        if (!rec || typeof rec !== 'object') return String(fallbackCycle || '2026');
+    function extractAuxRecordCycle(rec, fallbackCycle) {
+        const fb = String(fallbackCycle || getAuxActiveCycle() || new Date().getFullYear()).trim();
+        if (!rec || typeof rec !== 'object') return fb;
         const direct = String(rec.cycle || rec.academicCycle || '').trim();
         if (/^\d{4}$/.test(direct)) return direct;
         const dateCandidate = String(rec.startDate || rec.date || (rec.createdAt ? String(rec.createdAt).slice(0, 10) : '') || '').trim();
@@ -172,7 +219,7 @@
             const d = new Date(rec.timestamp);
             if (!isNaN(d.getTime())) return String(d.getFullYear());
         }
-        return String(fallbackCycle || '2026');
+        return fb;
     }
 
     function getAuxCycleStudents() {
@@ -191,7 +238,7 @@
             const stStatus = String(s.status || '').trim();
             const stGradeCode = String(s.gradeCode || '').toUpperCase();
             if (stStatus === 'Egresado' || stGradeCode === 'EGRESADO') return false;
-            const sCycle = String(s.cycle || s.academicCycle || '2026').trim();
+            const sCycle = String(s.cycle || s.academicCycle || activeCycle).trim();
             return sCycle === activeCycle;
         });
     }
@@ -199,13 +246,13 @@
     function getAuxCycleDisciplineReports() {
         const activeCycle = getAuxActiveCycle();
         const raw = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
-        return raw.filter(d => d && extractAuxRecordCycle(d, '2026') === activeCycle);
+        return raw.filter(d => d && extractAuxRecordCycle(d, activeCycle) === activeCycle);
     }
 
     function getAuxCyclePermissions() {
         const activeCycle = getAuxActiveCycle();
         const raw = window.STATE ? (window.STATE.studentPermissions || []) : [];
-        return raw.filter(p => p && extractAuxRecordCycle(p, '2026') === activeCycle);
+        return raw.filter(p => p && extractAuxRecordCycle(p, activeCycle) === activeCycle);
     }
 
     function getAuxRoleLabel() {
@@ -219,7 +266,7 @@
     // Helper: Consolidar y listar ausencias al aula del día actual
     function getTodayAbsencesList() {
         const activeCycle = getAuxActiveCycle();
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getAuxLocalDateISO(new Date());
         const todayMonth = new Date().getMonth() + 1;
         const todayDay = new Date().getDate();
 
@@ -230,8 +277,8 @@
         const allAlerts = (window.STATE && window.STATE.attendanceAlerts) || [];
         allAlerts.forEach(alert => {
             if (!alert) return;
-            if (extractAuxRecordCycle(alert, '2026') !== activeCycle) return;
-            const aDate = alert.date || (alert.timestamp ? new Date(alert.timestamp).toISOString().split('T')[0] : '');
+            if (extractAuxRecordCycle(alert, activeCycle) !== activeCycle) return;
+            const aDate = alert.date || (alert.timestamp ? getAuxLocalDateISO(new Date(alert.timestamp)) : '');
             const aDay = alert.day || (alert.timestamp ? new Date(alert.timestamp).getDate() : null);
             const aMonth = alert.month || (alert.timestamp ? (new Date(alert.timestamp).getMonth() + 1) : null);
 
@@ -377,7 +424,7 @@
 
         // Conteo de métricas en tiempo real (estrictamente aisladas al ciclo activo)
         const pendingDiscipline = disciplineReports.filter(d => d.status !== 'Resuelto');
-        const nowIsoDate = new Date().toISOString().split('T')[0];
+        const nowIsoDate = getAuxLocalDateISO(new Date());
         const activePermissions = studentPermissions.filter(p => {
             const start = p.startDate || p.date || '';
             const end = p.endDate || start;
@@ -452,7 +499,7 @@
                         <div class="aux-kpi-icon aux-kpi-green"><i class="fa-solid fa-users"></i></div>
                         <div>
                             <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Población Estudiantil Activa</span>
-                            <h3 style="margin:2px 0 0 0; font-size:1.45rem; font-weight:800; color:#16a34a;">${students.filter(s => s.status !== 'Retirado').length}</h3>
+                            <h3 style="margin:2px 0 0 0; font-size:1.45rem; font-weight:800; color:#16a34a;">${students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo').length}</h3>
                         </div>
                     </div>
                 </div>
@@ -553,13 +600,13 @@
     // Pestaña: Ausencias al Aula del Día
     function renderAuxAbsencesTab(container) {
         const absences = getTodayAbsencesList();
-        const todayStr = new Date().toISOString().split('T')[0];
-        const grades = window.STATE ? (window.STATE.gradesList || []) : [];
+        const todayStr = getAuxLocalDateISO(new Date());
+        const grades = getSortedAuxGrades();
 
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                 <div>
-                    <strong style="color:#0f172a; font-size:1.02rem; display:flex; align-items:center; gap:8px;">
+                    <strong style="color:#0f2b5c; font-size:1.02rem; display:flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-user-xmark" style="color:#dc2626;"></i> 
                         Ausencias Reportadas al Aula Hoy (<span id="auxAbsencesCountBadge">${absences.length}</span>)
                     </strong>
@@ -574,7 +621,11 @@
                     <select id="auxAbsenceGradeFilter" onchange="filterAuxAbsencesTable()"
                         style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem;">
                         <option value="ALL">-- Todas las Secciones --</option>
-                        ${grades.map(g => `<option value="${(g.code || '')}">${(g.name || '')} - Sección ${(g.section || '')}</option>`).join('')}
+                        ${grades.map(g => {
+                            const sec = cleanAuxSection(g.section);
+                            const lbl = sec ? `${g.name || ''} - Sección ${sec}` : (g.name || g.code || '');
+                            return `<option value="${(g.code || '')}">${lbl}</option>`;
+                        }).join('')}
                     </select>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="if(typeof navigateToView === 'function') navigateToView('auxiliatura-log'); else if(typeof showView === 'function') showView('auxiliatura-log');" style="font-size:0.8rem; font-weight:700;">
                         <i class="fa-solid fa-book-bookmark"></i> Bitácora Oficial
@@ -801,7 +852,7 @@
 
     // Pestaña: Monitoreo en Vivo por Secciones
     function renderAuxSectionsTab(container) {
-        const grades = window.STATE ? (window.STATE.gradesList || []) : [];
+        const grades = getSortedAuxGrades();
         const students = getAuxCycleStudents();
         const disciplineReports = getAuxCycleDisciplineReports();
         const activeBim = parseInt(window._auxSelectedBimestre || (window.STATE?.currentBimestre || 4));
@@ -809,8 +860,8 @@
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
                 <div>
-                    <strong style="color:#0f172a; font-size:1.05rem;">
-                        <i class="fa-solid fa-layer-group" style="color:#0284c7; margin-right:6px;"></i> Monitoreo General por Grado y Sección
+                    <strong style="color:#0f2b5c; font-size:1.05rem;">
+                        <i class="fa-solid fa-layer-group" style="color:#0369a1; margin-right:6px;"></i> Monitoreo General por Grado y Sección
                     </strong>
                     <div style="font-size:0.8rem; color:#64748b;">
                         Listas completas de alumnos con estado activo, retirado, ausente y exonerado según el bimestre correspondiente.
@@ -830,21 +881,31 @@
 
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:12px;">
                 ${grades.map(g => {
-                    const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`));
+                    const secClean = cleanAuxSection(g.section);
+                    const secStudents = students.filter(s => studentMatchesGradeObj(s, g));
                     const totalCount = secStudents.length;
+                    const secStudentIds = new Set(secStudents.map(s => String(s.id)));
                     
                     const retCount = secStudents.filter(s => (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true)).length;
                     const ausCount = secStudents.filter(s => (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true)).length;
                     const exonCount = secStudents.filter(s => (s.status !== 'Retirado' && s.status !== 'Inactivo' && s.status !== 'Ausente') && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false)).length;
                     const actCount = totalCount - retCount - ausCount;
                     
-                    const secIssues = disciplineReports.filter(d => (d.grade && d.grade.includes(g.section) && d.grade.includes(g.name.substring(0,3))) && d.status !== 'Resuelto');
+                    const secIssues = disciplineReports.filter(d => {
+                        if (d.status === 'Resuelto') return false;
+                        if (d.studentId && secStudentIds.has(String(d.studentId))) return true;
+                        if (d.gradeCode && String(d.gradeCode) === String(g.code)) return true;
+                        const dg = String(d.grade || '').toLowerCase();
+                        const gPrefix = String(g.name || '').substring(0, 3).toLowerCase();
+                        if (!dg || !gPrefix || !dg.includes(gPrefix)) return false;
+                        return !secClean || new RegExp(`\\b${secClean.toLowerCase()}\\b|\\(${secClean.toLowerCase()}\\)`, 'i').test(dg);
+                    });
 
                     return `
                     <div style="border:1px solid #e2e8f0; border-radius:10px; padding:14px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <strong style="color:#0f172a; font-size:0.95rem;">${g.name} (${g.section})</strong>
-                            <span class="badge" style="background:#0284c7; color:#fff; font-weight:800; font-size:0.75rem;">${g.code}</span>
+                            <strong style="color:#0f2b5c; font-size:0.95rem;">${g.name}${secClean ? ` — Sección ${secClean}` : ''}</strong>
+                            <span class="badge" style="background:#0f2b5c; color:#fff; font-weight:800; font-size:0.75rem;">${g.code}</span>
                         </div>
                         <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; font-size:0.75rem;">
                             <span class="badge" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;"><i class="fa-solid fa-users"></i> ${totalCount} Total</span>
@@ -859,7 +920,7 @@
                             </span>
                         </div>
                         <div style="display:flex; gap:6px;">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterAuxByGradeCode('${g.code}', ${activeBim})" style="flex:1; font-size:0.78rem; font-weight:700;">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterAuxByGradeCode('${g.code}', ${activeBim})" style="flex:1; font-size:0.78rem; font-weight:700; border-color:#0369a1; color:#0369a1;">
                                 <i class="fa-solid fa-list-check"></i> Ver Lista (${totalCount})
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSectionAttendanceSheet('${g.code}', ${activeBim})" style="font-size:0.78rem;" title="Imprimir lista oficial">
@@ -876,11 +937,12 @@
 
     // Modal con Lista Oficial Completa por Grado y Sección (Incluye Retirados, Ausentes y Exonerados)
     function filterAuxByGradeCode(gradeCode, bNum = 4) {
-        const grades = window.STATE ? (window.STATE.gradesList || []) : [];
+        const grades = getSortedAuxGrades();
         const students = getAuxCycleStudents();
         const g = grades.find(x => x.code === gradeCode || x.id === gradeCode || x.name === gradeCode) || { name: gradeCode, section: '', code: gradeCode };
+        const secClean = cleanAuxSection(g.section);
 
-        const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`));
+        const secStudents = students.filter(s => studentMatchesGradeObj(s, g));
         secStudents.sort((a, b) => {
             const nameA = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(a, 'lastFirst') : (a.name || '');
             const nameB = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(b, 'lastFirst') : (b.name || '');
@@ -898,10 +960,10 @@
 
         modal.innerHTML = `
             <div style="background:#ffffff; border-radius:12px; width:100%; max-width:850px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 30px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #cbd5e1;">
-                <div style="background:#0f172a; color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:#0f2b5c; color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <strong style="font-size:1.05rem;"><i class="fa-solid fa-users"></i> Lista de Alumnos: ${g.name} (${g.section || 'A'})</strong>
-                        <div style="font-size:0.78rem; color:#94a3b8; margin-top:2px;">Bimestre Evaluado: <strong>${bNum}º Bimestre</strong> &bull; Total: <strong>${secStudents.length} estudiantes</strong></div>
+                        <strong style="font-size:1.05rem;"><i class="fa-solid fa-users"></i> Lista de Alumnos: ${g.name}${secClean ? ` — Sección ${secClean}` : ''}</strong>
+                        <div style="font-size:0.78rem; color:#bae6fd; margin-top:2px;">Bimestre Evaluado: <strong>${bNum}º Bimestre</strong> &bull; Total: <strong>${secStudents.length} estudiantes</strong></div>
                     </div>
                     <button type="button" onclick="document.getElementById('auxSectionStudentsModal').remove()" style="background:none; border:none; color:#fff; font-size:1.3rem; cursor:pointer;">&times;</button>
                 </div>
@@ -1187,8 +1249,8 @@
         const existing = document.getElementById('auxStudent360Drawer');
         if (existing) existing.remove();
 
-        const discipline = (window.STATE?.disciplineReports || window.STATE?.discipline || []).filter(d => d.studentId === student.id);
-        const permissions = (window.STATE?.studentPermissions || []).filter(p => p.studentId === student.id || p.personalCode === student.personalCode);
+        const discipline = getAuxCycleDisciplineReports().filter(d => d.studentId === student.id);
+        const permissions = getAuxCyclePermissions().filter(p => p.studentId === student.id || (student.personalCode && p.personalCode === student.personalCode));
         const academicExceptions = student.academicExceptions || [];
 
         // Teléfono del tutor / encargado para WhatsApp
@@ -1237,7 +1299,7 @@
         drawer.innerHTML = `
             <div class="aux-drawer-content" onclick="event.stopPropagation()">
                 <!-- HEADER DE LA FICHA -->
-                <div style="background:#0f172a; color:#ffffff; padding:18px 20px; display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0;">
+                <div style="background:#0f2b5c; color:#ffffff; padding:18px 20px; display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="width:48px; height:48px; border-radius:50%; background:#0284c7; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:800; border:2px solid #38bdf8;">
                             ${(student.firstName || student.name || 'E').substring(0,1)}
@@ -1347,8 +1409,8 @@
 
         if (tabKey === 'summary') {
             const activeCycle = getAuxActiveCycle();
-            const discipline = (window.STATE?.disciplineReports || window.STATE?.discipline || []).filter(d => d.studentId === student.id);
-            const permissions = (window.STATE?.studentPermissions || []).filter(p => p.studentId === student.id);
+            const discipline = getAuxCycleDisciplineReports().filter(d => d.studentId === student.id);
+            const permissions = getAuxCyclePermissions().filter(p => p.studentId === student.id || (student.personalCode && p.personalCode === student.personalCode));
             const pendingDisc = discipline.filter(d => d.status !== 'Resuelto');
             const attPctObj = (typeof window.getStudentAttendancePercentageToDate === 'function')
                 ? window.getStudentAttendancePercentageToDate(student.id, activeCycle)
@@ -1622,7 +1684,7 @@
         const student = (window.STATE?.students || []).find(s => s.id === studentId);
         if (!student) return;
 
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getAuxLocalDateISO(new Date());
         const currentActiveCycle = getAuxActiveCycle();
 
         if (type === 'anotacion') {
@@ -1697,9 +1759,9 @@
         const stuName = student ? student.name : 'Estudiante';
         const gradeSec = student ? `${student.grade || student.gradeCode} (${student.section || 'A'})` : '';
 
-        // Buscar en la metadata de permisos
-        const perms = window.STATE?.studentPermissions || [];
-        const found = perms.find(p => (p.studentId === studentId || p.personalCode === student?.personalCode));
+        // Buscar en la metadata de permisos del ciclo activo
+        const perms = getAuxCyclePermissions();
+        const found = perms.find(p => (p.studentId === studentId || (student?.personalCode && p.personalCode === student.personalCode)));
 
         const author = found ? (found.authorizedBy || 'Auxiliatura General') : 'Auxiliatura General / Secretaría';
         const reason = found ? (found.reasonDetail || found.reasonCategory || 'Justificación oficial autorizada') : 'Inasistencia justificada por autoridad del establecimiento';
@@ -1718,7 +1780,7 @@
 
         modal.innerHTML = `
             <div style="background:#ffffff; border-radius:12px; width:100%; max-width:440px; box-shadow:0 20px 30px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #cbd5e1;">
-                <div style="background:#0f172a; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:#0f2b5c; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
                     <strong style="display:flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-lock" style="color:#f59e0b;"></i> Registro Oficial de Inasistencia Justificada
                     </strong>
@@ -1815,7 +1877,7 @@
                     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.6; }
                     .header { text-align: center; border-bottom: 2px solid #0f2b5c; padding-bottom: 12px; margin-bottom: 25px; }
                     .header h1 { font-size: 14pt; margin: 0; color: #0f2b5c; text-transform: uppercase; }
-                    .header h2 { font-size: 11pt; margin: 4px 0; color: #059669; font-weight: 700; }
+                    .header h2 { font-size: 11pt; margin: 4px 0; color: #0369a1; font-weight: 700; }
                     .citation-box { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 25px 0; }
                     .signatures { margin-top: 60px; display: flex; justify-content: space-around; text-align: center; }
                     .sig-line { width: 40%; border-top: 1px solid #000; padding-top: 6px; font-size: 9.5pt; }
@@ -1903,18 +1965,19 @@
      * Genera e imprime el Reporte Oficial Diario Consolidado de Auxiliatura
      */
     function printAuxiliaturaDailyConsolidated() {
+        const activeCycle = getAuxActiveCycle();
         const todayStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const nowIsoDate = new Date().toISOString().split('T')[0];
+        const nowIsoDate = getAuxLocalDateISO(new Date());
 
         const absences = (typeof getTodayAbsencesList === 'function') ? getTodayAbsencesList() : [];
-        const statePermissions = (window.STATE && Array.isArray(window.STATE.studentPermissions)) ? window.STATE.studentPermissions : (studentPermissions || []);
+        const statePermissions = getAuxCyclePermissions();
         const activePermissions = statePermissions.filter(p => {
             const start = p.startDate || p.date || '';
             const end = p.endDate || start;
             return (!start || start <= nowIsoDate) && (!end || end >= nowIsoDate);
         });
 
-        const stateDiscipline = (window.STATE && Array.isArray(window.STATE.disciplineReports)) ? window.STATE.disciplineReports : (disciplineReports || []);
+        const stateDiscipline = getAuxCycleDisciplineReports();
         const activeDiscipline = stateDiscipline.filter(d => d.status !== 'Resuelto');
 
         const user = window.STATE ? window.STATE.currentUser : null;
@@ -1931,27 +1994,28 @@
                     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; line-height: 1.45; }
                     .header { text-align: center; border-bottom: 2px solid #0f2b5c; padding-bottom: 8px; margin-bottom: 14px; }
                     .header h1 { font-size: 13pt; margin: 0; color: #0f2b5c; text-transform: uppercase; font-weight: 800; }
-                    .header h2 { font-size: 10pt; margin: 3px 0; color: #059669; font-weight: 700; }
+                    .header h2 { font-size: 10pt; margin: 3px 0; color: #0369a1; font-weight: 700; }
                     .header-sub { font-size: 8.5pt; color: #475569; }
                     .meta-bar { display: flex; justify-content: space-between; font-size: 8.5pt; margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; }
                     .summary-grid { display: flex; gap: 8px; margin-bottom: 14px; }
                     .summary-box { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; background: #f8fafc; text-align: center; }
                     .summary-box strong { display: block; font-size: 13pt; color: #0f2b5c; }
                     .summary-box span { font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase; }
-                    h3 { font-size: 10pt; color: #0f2b5c; margin: 12px 0 6px 0; border-left: 3px solid #0284c7; padding-left: 6px; text-transform: uppercase; }
+                    h3 { font-size: 10pt; color: #0f2b5c; margin: 12px 0 6px 0; border-left: 3px solid #0369a1; padding-left: 6px; text-transform: uppercase; }
                     table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 8.5pt; }
                     th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; }
-                    th { background: #f1f5f9; color: #1e293b; font-weight: 700; font-size: 8pt; }
+                    th { background: #0f2b5c; color: #ffffff; font-weight: 700; font-size: 8pt; }
                     .badge { font-size: 7.5pt; font-weight: 700; padding: 1px 5px; border-radius: 3px; display: inline-block; }
                     .signatures { margin-top: 35px; display: flex; justify-content: space-around; text-align: center; page-break-inside: avoid; }
-                    .sig-line { width: 38%; border-top: 1.5px solid #334155; padding-top: 5px; font-size: 8.5pt; }
+                    .sig-line { width: 38%; border-top: 1.5px solid #0f2b5c; padding-top: 5px; font-size: 8.5pt; }
+                    @media print { th { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
                 </style>
             </head>
             <body>
                 <div class="header">
                     <h1>Escuela Nacional de Ciencias Comerciales</h1>
                     <h2>Jornada Diurna — Jutiapa, Guatemala (Fundada en 1970)</h2>
-                    <div class="header-sub">CENTRO DE CONTROL ESTUDIANTIL Y AUXILIATURA GENERAL</div>
+                    <div class="header-sub">CENTRO DE CONTROL ESTUDIANTIL Y AUXILIATURA GENERAL &bull; CICLO ESCOLAR ${escapeHtml(activeCycle)}</div>
                 </div>
 
                 <div class="meta-bar">
@@ -2020,8 +2084,8 @@
                                     <td style="text-align:center;">${i + 1}</td>
                                     <td><strong>${p.studentName || 'Estudiante'}</strong> (${p.grade || p.gradeCode || ''})</td>
                                     <td>${p.startDate || p.date || ''} al ${p.endDate || p.startDate || p.date || ''}</td>
-                                    <td>${p.reason || 'Sin especificar'}</td>
-                                    <td>${p.authorizer || 'Auxiliatura'}</td>
+                                    <td>${p.reasonDetail || p.reasonCategory || p.reason || 'Sin especificar'}</td>
+                                    <td>${p.authorizedBy || p.authorizer || 'Auxiliatura'}</td>
                                 </tr>
                             `).join('')}
                         </tbody>

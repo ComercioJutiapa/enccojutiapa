@@ -12019,6 +12019,8 @@ function synchronizeGlobalDynamicUI() {
             renderExamSchedulesView();
         } else if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
             renderAuxiliaturaLogView();
+        } else if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxiliaturaCenterView === 'function') {
+            renderAuxiliaturaCenterView();
         }
     }, 32);
 }
