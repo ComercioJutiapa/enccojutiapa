@@ -37249,8 +37249,9 @@ function markAllPresentToday() {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
         // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial ('J') ni con falta injustificada blindada ('A')
+        const activePermYear = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || today.getFullYear();
         const permObj = (typeof getStudentPermissionForDay === 'function')
-            ? getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
+            ? getStudentPermissionForDay(s.id, activePermYear, todayMonth, todayDay)
             : null;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
 
@@ -37922,8 +37923,9 @@ function registerAttendanceByCode(rawCode) {
 
     // 🛡️ Regla de oro: No sobrescribir si el alumno tiene permiso justificado ('J') o falta injustificada blindada ('A')
     const curVal = STATE.attendanceRecords[recordKey][student.id][targetDay];
+    const activeScanYear = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || today.getFullYear();
     const permObj = (typeof getStudentPermissionForDay === 'function')
-        ? getStudentPermissionForDay(student.id, today.getFullYear(), activeMonth, targetDay)
+        ? getStudentPermissionForDay(student.id, activeScanYear, activeMonth, targetDay)
         : null;
 
     const sFullName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
@@ -38238,6 +38240,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 else if (val === 'A') { bg = '#fee2e2'; fg = '#b91c1c'; aCount++; dayAbsentTotals[day]++; }
                 else if (val === 'J') { bg = '#ffedd5'; fg = '#c2410c'; jCount++; }
                 else if (val === 'T') { bg = '#e0f2fe'; fg = '#0369a1'; tCount++; }
+                else if (val === 'S') { bg = '#f3e8ff'; fg = '#7e22ce'; }
 
                 dayCells += `<td style="background:${bg}; color:${fg}; text-align:center; font-weight:bold; font-size:8pt; border:1px solid #64748b;">${val}</td>`;
             }
@@ -38289,19 +38292,19 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 @page { size: 13in 8.5in landscape; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.2; font-size: 8pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
-                .official-header { border: 1.5px solid #15803d; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
-                .top-banner { background: #15803d !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; }
+                .official-header { border: 1.5px solid #0f2b5c; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+                .top-banner { background: #0f2b5c !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; }
                 .top-banner img { height: 38px; width: auto; }
                 .top-banner h1 { margin: 0; font-size: 13pt; font-weight: 900; color: #fff; text-transform: uppercase; }
-                .sub-tag { font-size: 8pt; font-weight: 700; color: #bbf7d0; }
+                .sub-tag { font-size: 8pt; font-weight: 700; color: #bae6fd; }
                 
-                .meta-bar { background: #f0fdf4; border-top: 1px solid #166534; padding: 4px 14px; display: flex; justify-content: space-between; font-size: 8.5pt; font-weight: 700; color: #166534; }
+                .meta-bar { background: #f0f9ff; border-top: 1px solid #0369a1; padding: 4px 14px; display: flex; justify-content: space-between; font-size: 8.5pt; font-weight: 700; color: #0f2b5c; }
                 
-                .stat-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1.5px solid #0f172a; font-size: 8pt; }
-                .stat-table th { background: #15803d !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 4px 2px; text-align: center; font-weight: 900; }
+                .stat-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1.5px solid #0f2b5c; font-size: 8pt; }
+                .stat-table th { background: #0f2b5c !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 4px 2px; text-align: center; font-weight: 900; }
                 
                 .signatures { margin-top: 24px; display: flex; justify-content: space-around; text-align: center; }
-                .sig-box { width: 220px; border-top: 1.5px solid #000; padding-top: 3px; font-size: 8pt; font-weight: bold; }
+                .sig-box { width: 220px; border-top: 1.5px solid #0f2b5c; padding-top: 3px; font-size: 8pt; font-weight: bold; }
             </style>
         </head>
         <body>
@@ -38311,12 +38314,12 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                         <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
                         <div>
                             <h1>${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO ESCOLAR ${STATE.activeCycle || String(new Date().getFullYear())}</div>
+                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO ESCOLAR ${year}</div>
                         </div>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:11pt; font-weight:900; text-transform:uppercase;">${bannerDocTitle}</div>
-                        <div style="font-size:8pt; color:#bbf7d0;">MES: ${monthNames[month].toUpperCase()} ${year}</div>
+                        <div style="font-size:8pt; color:#bae6fd;">MES: ${monthNames[month].toUpperCase()} ${year}</div>
                     </div>
                 </div>
                 <div class="meta-bar">
@@ -38346,16 +38349,16 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 </thead>
                 <tbody>
                     ${tbodyRows}
-                    <tr style="background:#dcfce7; font-weight:900; font-size:8.5pt;">
-                        <td colspan="3" style="text-align:right; padding-right:8px; border:1px solid #0f172a;">TOTAL ASISTENCIAS DIARIAS (P):</td>
+                    <tr style="background:#e0f2fe; font-weight:900; font-size:8.5pt;">
+                        <td colspan="3" style="text-align:right; padding-right:8px; border:1px solid #0f2b5c; color:#0f2b5c;">TOTAL ASISTENCIAS DIARIAS (P):</td>
                         ${dayPresentTotals.slice(1).map((tot, idx) => {
                             const dObj = new Date(year, month - 1, idx + 1);
                             const isWk = (dObj.getDay() === 0 || dObj.getDay() === 6);
-                            return `<td style="text-align:center; border:1px solid #0f172a; ${isWk ? 'background:#cbd5e1;' : ''}">${isWk ? '-' : (forcedIsBlank === true ? '&nbsp;' : tot)}</td>`;
+                            return `<td style="text-align:center; border:1px solid #0f2b5c; ${isWk ? 'background:#cbd5e1;' : ''}">${isWk ? '-' : (forcedIsBlank === true ? '&nbsp;' : tot)}</td>`;
                         }).join('')}
-                        <td style="text-align:center; background:#15803d; color:#fff; border:1px solid #0f172a;">${forcedIsBlank === true ? '—' : grandSumP}</td>
-                        <td style="text-align:center; background:#b91c1c; color:#fff; border:1px solid #0f172a;">${forcedIsBlank === true ? '—' : grandSumA}</td>
-                        <td colspan="3" style="text-align:center; background:#0f172a; color:#fff; border:1px solid #0f172a;">${students.length} Alumnos</td>
+                        <td style="text-align:center; background:#0369a1; color:#fff; border:1px solid #0f2b5c;">${forcedIsBlank === true ? '—' : grandSumP}</td>
+                        <td style="text-align:center; background:#b91c1c; color:#fff; border:1px solid #0f2b5c;">${forcedIsBlank === true ? '—' : grandSumA}</td>
+                        <td colspan="3" style="text-align:center; background:#0f2b5c; color:#fff; border:1px solid #0f2b5c;">${students.length} Alumnos</td>
                     </tr>
                 </tbody>
             </table>
@@ -38417,7 +38420,7 @@ function exportAttendanceOfficialExcel() {
             return;
         }
     }
-    const year = STATE.activeCycle ? parseInt(STATE.activeCycle) : 2026;
+    const year = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || new Date().getFullYear();
     const cycle = String(year);
     const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -38477,6 +38480,8 @@ function exportAttendanceOfficialExcel() {
                     const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
                     if (isWeekend) {
                         row.push('-');
+                    } else if (isRet || isAus || isExon) {
+                        row.push('—');
                     } else {
                         let val = sRecords[d] || '';
                         if (val === 'P') p++;
@@ -38487,8 +38492,8 @@ function exportAttendanceOfficialExcel() {
                     }
                 }
                 const tot = p + a + j + t;
-                const pct = tot > 0 ? Math.round(((p + j + (t * 0.5)) / tot) * 100) : 100;
-                row.push(p, a, j, t, `${pct}%`);
+                const pctDisplay = isRet ? 'RET.' : (isAus ? 'AUS.' : (isExon ? 'EXON.' : `${tot > 0 ? Math.round(((p + j + (t * 0.5)) / tot) * 100) : 100}%`));
+                row.push(isRet || isAus ? '—' : p, isRet || isAus ? '—' : a, isRet || isAus ? '—' : j, isRet || isAus ? '—' : t, pctDisplay);
                 aoa.push(row);
             });
 
@@ -38666,8 +38671,9 @@ function openCreatePermissionModal(preselectedStudentId = null) {
     const form = modal.querySelector('form');
     if (form) form.reset();
 
-    // Fecha actual por defecto
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Fecha actual local GT por defecto
+    const _permNow = new Date();
+    const todayStr = `${_permNow.getFullYear()}-${String(_permNow.getMonth() + 1).padStart(2, '0')}-${String(_permNow.getDate()).padStart(2, '0')}`;
     const startDateInput = document.getElementById('permStartDate');
     if (startDateInput) startDateInput.value = todayStr;
 

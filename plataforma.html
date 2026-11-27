@@ -2699,7 +2699,7 @@
                             </div>
 
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                                <button type="button" id="btnMarkAllPresent" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta permisos de Auxiliatura)" style="height:36px; font-size:0.82rem; font-weight:800; padding:0 13px; background:#0f766e; border-color:#115e59; color:#ffffff; display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+                                <button type="button" id="btnMarkAllPresent" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta permisos de Auxiliatura)" style="height:36px; font-size:0.82rem; font-weight:800; padding:0 13px; background:#0f2b5c; border-color:#0f2b5c; color:#ffffff; display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
                                     <i class="fa-solid fa-check-double"></i> Todos Presentes
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="saveAttendanceRecords()" title="Guardar cambios de asistencia en Firebase" style="height:36px; font-size:0.82rem; font-weight:800; padding:0 14px; background:#0369a1; border-color:#0f2b5c; color:#ffffff; display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
@@ -2759,8 +2759,8 @@
                                         <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; printAttendanceOfficialSheet(true);" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#334155; cursor:pointer; display:flex; align-items:center; gap:8px;">
                                             <i class="fa-solid fa-file-lines" style="color:#64748b;"></i> Planilla en Blanco (31 días)
                                         </button>
-                                        <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; exportAttendanceOfficialExcel();" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#15803d; cursor:pointer; display:flex; align-items:center; gap:8px;">
-                                            <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i> Exportar a Excel (.xls)
+                                        <button type="button" onclick="this.closest('.att-dropdown-menu').style.display='none'; exportAttendanceOfficialExcel();" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#0369a1; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-file-excel" style="color:#0369a1;"></i> Exportar a Excel (.xlsx)
                                         </button>
                                         <button type="button" id="btnRecoverAttendance" onclick="this.closest('.att-dropdown-menu').style.display='none'; recoverAllAttendanceRecords(true);" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:0.8rem; font-weight:700; color:#0369a1; cursor:pointer; display:flex; align-items:center; gap:8px;">
                                             <i class="fa-solid fa-cloud-arrow-down" style="color:#0284c7;"></i> Recuperar desde Firebase
@@ -6882,7 +6882,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v337" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v338" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
