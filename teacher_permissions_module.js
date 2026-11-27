@@ -153,9 +153,11 @@
 
         users.forEach(u => {
             if (!u || typeof u !== 'object') return;
+            if (typeof window.isAdminOrSystemUser === 'function' && window.isAdminOrSystemUser(u)) return;
             if (u.isSystemOnly) return;
             const role = String(u.role || '').toLowerCase().trim();
-            if (role === 'estudiante' || role === 'alumno' || role === 'guest') return;
+            if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'administrador', 'estudiante', 'alumno', 'guest'].includes(role)) return;
+            if (u.id === 'usr-aux-01' || u.id === 'usr-admin-01' || u.id === 'usr-admin-ennco') return;
             if (u.active === false || String(u.status || '').toLowerCase() === 'inactivo') return;
             const name = String(u.name || u.fullName || '').trim();
             if (!name) return;

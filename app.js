@@ -6754,8 +6754,8 @@ function renderGuideTeachersView(searchQuery = '') {
         let guideDisplayHtml = '';
         if (canManageGuides) {
             const teachers = (STATE.users || []).filter(u => {
-                if (u.isSystemOnly) return false;
-                const isTeacherRole = u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-'));
+                if (isAdminOrSystemUser(u)) return false;
+                const isTeacherRole = u.role === 'docente' || (u.id && u.id.startsWith('usr-doc-'));
                 if (!isTeacherRole) return false;
                 const isCurrentAssigned = (u.id === g.guideTeacherId || u.name === g.guideTeacher || (guideInfo && (u.id === guideInfo.id || u.name === guideInfo.name)));
                 return u.active !== false || isCurrentAssigned;
@@ -7422,6 +7422,22 @@ function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
 window.getStudentCountByGradeAndSection = getStudentCountByGradeAndSection;
 
 // UNIVERSAL DOCENTE ASSIGNMENT MATCHER (DINÁMICO PARA TODOS LOS DOCENTES)
+// 🛡️ FILTRO GLOBAL ESTRICTO: Excluye administradores y cuentas de sistema de TODA lista operativa/docente
+function isAdminOrSystemUser(u) {
+    if (!u || typeof u !== 'object') return true;
+    if (u.isSystemOnly === true) return true;
+    const role = String(u.role || '').toLowerCase().trim();
+    const rolesArr = Array.isArray(u.roles) ? u.roles.map(r => String(r || '').toLowerCase().trim()) : [];
+    const adminRoles = ['admin', 'super_usuario', 'superadmin', 'super_admin', 'administrador'];
+    if (adminRoles.includes(role) || rolesArr.some(r => adminRoles.includes(r))) return true;
+    const id = String(u.id || '').trim();
+    const email = String(u.email || '').toLowerCase().trim();
+    if (id === 'usr-aux-01' || id === 'usr-admin-01' || id === 'usr-admin-ennco' || id === 'usr-admin-mineduc') return true;
+    if (email === 'nehemias.salguero1982@gmail.com' || email === '22-01-0014-46@mineduc.edu.gt') return true;
+    return false;
+}
+window.isAdminOrSystemUser = isAdminOrSystemUser;
+
 function isCourseAssignedToTeacher(p, user) {
     if (!p || !user) return false;
 
@@ -7609,7 +7625,24 @@ function getCycleFilteredStudents(studentsList = null, targetCycle = null) {
         }
         return c === tgt;
     });
-}
+};
+// Envoltura segura: si el ciclo por defecto aún no hidrata desde Firebase (ej. 2026 vs 2027) y no estamos en consulta histórica, usar el ciclo real más reciente de los estudiantes cargados
+const _rawGetCycleFilteredStudents = getCycleFilteredStudents;
+getCycleFilteredStudents = function(studentsList = null, targetCycle = null) {
+    const res = _rawGetCycleFilteredStudents(studentsList, targetCycle);
+    if (res.length > 0 || targetCycle) return res;
+    const stObj = (typeof window !== 'undefined' && window.STATE) ? window.STATE : null;
+    if (stObj && (stObj.historicalViewingCycle || stObj.viewingHistoricalCycle || stObj.isHistoricalReadOnlyMode)) return res;
+    const pool = studentsList || (stObj && stObj.students) || [];
+    if (!Array.isArray(pool) || pool.length === 0) return res;
+    const cyclesFound = Array.from(new Set(pool.map(s => String((s && (s.cycle || s.academicCycle)) || '').trim()).filter(c => /^20\d{2}$/.test(c)))).sort();
+    if (cyclesFound.length > 0) {
+        const latest = cyclesFound[cyclesFound.length - 1];
+        if (stObj && stObj.activeCycle !== latest) stObj.activeCycle = latest;
+        return _rawGetCycleFilteredStudents(pool, latest);
+    }
+    return res;
+};
 window.getCycleFilteredStudents = getCycleFilteredStudents;
 
 function getAuthorizedStudents(teacherUser, role) {
@@ -7691,12 +7724,12 @@ window.isStudentActive = isStudentActive;
 
 function getCleanSectionLetter(str) {
     if (!str) return '';
-    const m = str.match(/Secci[oó]n\s*([A-Z])/i) || 
-              str.match(/[-_\s]([A-Z])(?:\b|$)/i) ||
-              str.match(/(?:4to|5to|6to|grd-?[456]|PC-?[456]|PC|\d)\s*([A-Z])/i) ||
-              str.match(/\(([A-Z])\)/i) ||
-              str.match(/([A-Z])$/i) ||
-              str.match(/\b([A-Z])\b/i);
+    const s = String(str).trim();
+    const m = s.match(/Secci[oó]n\s*([A-H])\b/i) ||
+              s.match(/\(([A-H])\)/i) ||
+              s.match(/[-_\s]([A-H])(?:\b|$)/i) ||
+              s.match(/(?:grd-?[456]|PC-?[456]|4to|5to|6to)\s*([A-H])(?:\b|$)/i) ||
+              s.match(/^([A-H])$/i);
     return m ? m[1].toUpperCase() : '';
 }
 window.getCleanSectionLetter = getCleanSectionLetter;
@@ -8082,9 +8115,8 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
     let students = baseList.filter(s => {
         if (!s) return false;
 
-        // Coincidencia directa por código exacto de grado
-        if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
-        if (qGradeObj && (s.grade === qGradeObj.code || s.gradeCode === qGradeObj.code || s.grade === qGradeObj.id || s.gradeCode === qGradeObj.id)) return true;
+        // Coincidencia directa estricta por código exacto de grado+sección
+        if (s.gradeCode && (s.gradeCode === gradeCode || (qGradeObj && (s.gradeCode === qGradeObj.code || s.gradeCode === qGradeObj.id)))) return true;
 
         const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
         let sGradeNum = 0;
@@ -11890,12 +11922,13 @@ function populatePensumTeacherSelect() {
         }
 
         const teachers = (STATE.users || []).filter(u => 
-            u.role === 'docente' || 
-            u.role === 'profesor' || 
-            u.role === 'catedratico' ||
-            (u.id && u.id.startsWith('usr-doc-')) ||
-            (u.title && (u.title.toLowerCase().includes('docente') || u.title.toLowerCase().includes('catedr')))
-        );
+            !isAdminOrSystemUser(u) && u.active !== false && (
+                u.role === 'docente' || 
+                u.role === 'profesor' || 
+                u.role === 'catedratico' ||
+                (u.id && u.id.startsWith('usr-doc-'))
+            )
+        ).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
 
         // 1. Selector de Maestro Gua en modal de creacin/edicin de grado
         const guideSelect = document.getElementById('gradeFormGuideTeacher');
@@ -11913,21 +11946,7 @@ function populatePensumTeacherSelect() {
             if (cur && Array.from(quickGuide.options).some(o => o.value === cur)) quickGuide.value = cur;
         }
 
-        // 3. Filtro de Asistencia por Catedrtico
-        const attendanceSelect = document.getElementById('attendanceTeacherSelect');
-        if (attendanceSelect) {
-            const cur = attendanceSelect.value;
-            let html = `<option value="">?? General por Grado (Todos los Maestros)</option>`;
-            if (teachers.length > 0) {
-                html += `<optgroup label="??? Catedrticos del Plantel">`;
-                teachers.forEach(t => {
-                    html += `<option value="${t.id}">??? ${t.name} ? ${t.title || t.role}</option>`;
-                });
-                html += `</optgroup>`;
-            }
-            attendanceSelect.innerHTML = html;
-            if (cur && Array.from(attendanceSelect.options).some(o => o.value === cur)) attendanceSelect.value = cur;
-        }
+        // 3. Filtro de Asistencia delega en populateAttendanceTeacherFilter() para no sobrescribir ni duplicar
 
         // 4. Selector de Docente en Formulario Asignacin de Ctedra
         const classTeacherSelect = document.getElementById('classAssignmentFormTeacher');
@@ -30517,12 +30536,43 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
         }
     }
 
+    // Filtro limpio por Grado y Sección en Notas
+    const gradeFilterEl = document.getElementById('gradebookGradeFilterSelect');
+    const basePensumPool = (isDocente && currentUser)
+        ? (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser))
+        : (STATE.pensum || []);
+    let selectedGradeCodeFilter = gradeFilterEl ? (gradeFilterEl.value || STATE.selectedGradebookGradeCodeFilter || 'ALL') : 'ALL';
+    if (gradeFilterEl) {
+        const gradeMap = new Map();
+        basePensumPool.forEach(p => {
+            const gc = p.gradeCode || p.grade || '';
+            if (gc && !gradeMap.has(gc)) {
+                gradeMap.set(gc, { code: gc, name: p.grade || gc, section: p.section || '' });
+            }
+        });
+        const sortedGradeFilters = (typeof sortGrades === 'function') ? sortGrades(Array.from(gradeMap.values())) : Array.from(gradeMap.values());
+        if (!isDocente && selectedGradeCodeFilter === 'ALL' && sortedGradeFilters.length > 0 && !preferredCourseId) {
+            const prevObj = prevCourseId ? basePensumPool.find(x => x.id === prevCourseId) : null;
+            selectedGradeCodeFilter = (prevObj && prevObj.gradeCode) ? prevObj.gradeCode : sortedGradeFilters[0].code;
+        }
+        if (selectedGradeCodeFilter !== 'ALL' && !gradeMap.has(selectedGradeCodeFilter)) {
+            selectedGradeCodeFilter = isDocente ? 'ALL' : (sortedGradeFilters[0] ? sortedGradeFilters[0].code : 'ALL');
+        }
+        gradeFilterEl.innerHTML = (isDocente ? '<option value="ALL">Todos mis Grados</option>' : '<option value="ALL">Todos los Grados (13)</option>') +
+            sortedGradeFilters.map(g => `<option value="${g.code}">${g.code} — ${g.name}</option>`).join('');
+        gradeFilterEl.value = selectedGradeCodeFilter;
+        STATE.selectedGradebookGradeCodeFilter = selectedGradeCodeFilter;
+    }
+    const filteredPensumPool = (selectedGradeCodeFilter && selectedGradeCodeFilter !== 'ALL')
+        ? basePensumPool.filter(p => (p.gradeCode || p.grade) === selectedGradeCodeFilter)
+        : basePensumPool;
+
     let html = '';
     const gradeOrder = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
 
     if (isDocente && currentUser) {
-        // Los maestros SOLO pueden ver las clases a las que están asignados
-        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        // Los maestros SOLO pueden ver las clases a las que están asignados (filtradas por grado si aplica)
+        const myClasses = filteredPensumPool;
 
         if (myClasses.length > 0) {
             // Agrupar ordenadamente por grado para mayor claridad
@@ -30558,9 +30608,9 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
             html += `<optgroup label="⭐ Mis Clases Asignadas (${currentUser.name})"><option value="">-- Sin clases asignadas a su cuenta --</option></optgroup>`;
         }
     } else {
-        // ADMIN / DIRECTOR / SECRETARIA / AUDITORÍA: Ver y editar cualquier cátedra agrupada ordenadamente por Grado
+        // ADMIN / DIRECTOR / SECRETARIA / AUDITORÍA: Ver y editar cualquier cátedra filtrada por grado
         const grouped = {};
-        (STATE.pensum || []).forEach(p => {
+        filteredPensumPool.forEach(p => {
             const g = p.grade || 'Otras Clases';
             if (!grouped[g]) grouped[g] = [];
             grouped[g].push(p);
@@ -30626,6 +30676,13 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
         }
     }
 }
+function onGradebookGradeFilterChange() {
+    const el = document.getElementById('gradebookGradeFilterSelect');
+    STATE.selectedGradebookGradeCodeFilter = el ? el.value : 'ALL';
+    populateTeacherCourseSelect(null);
+    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+}
+window.onGradebookGradeFilterChange = onGradebookGradeFilterChange;
 
 function populateGradebookBimestreSelect(forceOfficial = false) {
     const select = document.getElementById('gradebookBimestreSelect');
@@ -30809,8 +30866,8 @@ function renderTeacherGradeProgressTable() {
     // 1. Filtrar EXCLUSIVAMENTE docentes y deduplicar por nombre
     const teacherMap = new Map();
     (STATE.users || []).forEach(u => {
-        // Excluir cuentas que no son docentes de aula
-        if (u.role === 'estudiante' || u.role === 'secretaria' || u.id === 'usr-admin-mineduc') return;
+        // Excluir cuentas administrativas, de sistema o que no son docentes de aula
+        if (isAdminOrSystemUser(u) || u.role === 'estudiante' || u.role === 'secretaria' || u.role === 'director' || u.role === 'profesor_auxiliar') return;
         
         const courses = getTeacherAssignedCourses(u);
         // Exclusivamente docentes que tengan cátedras o cuyo rol oficial sea docente
@@ -31156,8 +31213,8 @@ function getSortedGradebookStudents(gradeCode, targetPensum = null) {
         if (s.deleted === true) return false;
         if (Array.isArray(STATE.deletedStudentIds) && STATE.deletedStudentIds.includes(s.id)) return false;
 
-        // Coincidencia directa por código exacto de grado
-        if (s.grade === gradeCode || s.gradeCode === gradeCode || (targetGradeObj && (s.grade === targetGradeObj.code || s.gradeCode === targetGradeObj.code))) return true;
+        // Coincidencia directa estricta por código exacto de grado+sección
+        if (s.gradeCode && (s.gradeCode === gradeCode || (targetGradeObj && (s.gradeCode === targetGradeObj.code || s.gradeCode === targetGradeObj.id)))) return true;
 
         const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
         let sGradeNum = 0;
@@ -32855,7 +32912,7 @@ function loadTeacherGradebook() {
         return;
     }
 
-    const gradeCode = targetPensum.gradeCode || '4TO_PERITO_A';
+    const gradeCode = targetPensum.gradeCode || `${targetPensum.grade || ''} ${targetPensum.section || ''}`.trim();
     const subjectName = targetPensum.subject;
     
     // El bimestre activo para calificar/visualizar se lee dinámicamente del select o configuración
@@ -34292,10 +34349,18 @@ function renderTeacherCourseCards() {
     const isDocente = (currentRole === 'docente' || currentRole === 'catedratico');
 
     let myCourses = [];
+    const activeGradeFilter = document.getElementById('gradebookGradeFilterSelect')?.value || STATE.selectedGradebookGradeCodeFilter || 'ALL';
     if (isDocente && currentUser) {
         myCourses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : (p.teacherId === currentUser.id));
     } else {
-        myCourses = (STATE.pensum || []).slice(0, 20);
+        myCourses = (STATE.pensum || []).slice();
+    }
+    if (activeGradeFilter && activeGradeFilter !== 'ALL') {
+        myCourses = myCourses.filter(p => (p.gradeCode || p.grade) === activeGradeFilter);
+    } else if (!isDocente && myCourses.length > 24) {
+        const selCourse = (STATE.pensum || []).find(p => p.id === (document.getElementById('teacherCourseSelect')?.value || STATE.selectedGradebookCourseId));
+        const fallbackGrade = (selCourse && selCourse.gradeCode) || (myCourses[0] && myCourses[0].gradeCode);
+        if (fallbackGrade) myCourses = myCourses.filter(p => (p.gradeCode || p.grade) === fallbackGrade);
     }
 
     if (!myCourses || myCourses.length === 0) {
@@ -34765,7 +34830,7 @@ function populateAttendanceTeacherFilter() {
 
     const currentVal = teacherSelect.value;
     const teachers = (STATE.users || [])
-        .filter(u => u && !u.isSystemOnly && u.active !== false && String(u.status || '').toLowerCase() !== 'inactivo')
+        .filter(u => !isAdminOrSystemUser(u) && u.active !== false && String(u.status || '').toLowerCase() !== 'inactivo')
         .map(u => {
             const cCount = (typeof isCourseAssignedToTeacher === 'function')
                 ? (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, u)).length
@@ -37188,7 +37253,7 @@ function openAttendanceCoverageAuditModal() {
     const m = today.getMonth() + 1;
     const cycle = String(STATE.activeCycle || today.getFullYear());
     const pensum = Array.isArray(STATE.pensum) ? STATE.pensum : [];
-    const users = (STATE.users || []).filter(u => u && !u.isSystemOnly && u.active !== false);
+    const users = (STATE.users || []).filter(u => !isAdminOrSystemUser(u) && u.active !== false);
 
     const byTeacher = new Map();
     const unassigned = [];
@@ -45748,7 +45813,8 @@ function populateGuideTeacherSelect(selectedTeacherIdOrName) {
     if (!select) return;
 
     const teachers = (STATE.users || []).filter(u => {
-        const isTeacherRole = u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-'));
+        if (isAdminOrSystemUser(u)) return false;
+        const isTeacherRole = u.role === 'docente' || (u.id && u.id.startsWith('usr-doc-'));
         if (!isTeacherRole) return false;
         const isSelected = (u.id === selectedTeacherIdOrName || u.name === selectedTeacherIdOrName);
         return u.active !== false || isSelected;
@@ -50691,11 +50757,11 @@ function populatePrintAsgTargetFilterSelect(groupBy) {
     if (groupBy === 'BY_TEACHER') {
         if (label) label.innerHTML = '<i class="fa-solid fa-user-tie"></i> Filtrar Docente Específico:';
         const teachers = (STATE.users || []).filter(u => 
-            u.role === 'docente' || u.role === 'catedratico' || u.role === 'profesor' || 
-            (u.id && u.id.startsWith('usr-doc')) ||
-            (u.title && u.title.toLowerCase().includes('docente')) ||
-            (u.title && u.title.toLowerCase().includes('catedr'))
-        );
+            !isAdminOrSystemUser(u) && u.active !== false && (
+                u.role === 'docente' || u.role === 'catedratico' || u.role === 'profesor' || 
+                (u.id && u.id.startsWith('usr-doc'))
+            )
+        ).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
         select.innerHTML = '<option value="ALL">-- Imprimir Todos los Docentes --</option>' + teachers.map(t => `<option value="${t.id || t.name}">${t.name}</option>`).join('');
     } else if (groupBy === 'BY_GRADE') {
         if (label) label.innerHTML = '<i class="fa-solid fa-graduation-cap"></i> Filtrar Grado / Sección:';
@@ -51026,7 +51092,7 @@ function updateClassAssignmentSelects() {
     const modalTeacherSelect = document.getElementById('classAssignmentFormTeacher');
 
     const teachers = (STATE.users || []).filter(u => 
-        u && u.active !== false && !u.isSystemOnly && !(u.role === 'admin' && u.isSystemOnly !== false) && (
+        !isAdminOrSystemUser(u) && u.active !== false && (
             u.role === 'docente' || 
             u.role === 'catedratico' || 
             u.role === 'profesor' || 

@@ -236,7 +236,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261126_v325">
+    <link rel="stylesheet" href="styles.css?v=20261126_v326">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -2451,6 +2451,11 @@
                         <!-- BARRA DE SELECTORES Y ACCIONES EN 1 SOLA FILA -->
                         <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding-bottom:9px; border-bottom:1px solid #e2e8f0;">
                             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; flex:1; min-width:260px;">
+                                <div style="flex:0 1 185px; min-width:155px;">
+                                    <select class="form-control" id="gradebookGradeFilterSelect" onchange="onGradebookGradeFilterChange()" title="Filtrar por Grado y Sección" aria-label="Filtrar por Grado y Sección" style="height:35px; font-size:0.82rem; font-weight:800; color:#0f2b5c; background:#f0f9ff; border-color:#7dd3fc; padding:0 9px;">
+                                        <option value="ALL">Todos los Grados</option>
+                                    </select>
+                                </div>
                                 <div class="course-selector-box" style="flex:1 1 210px; max-width:300px; min-width:180px;">
                                     <select class="form-control" id="teacherCourseSelect" onchange="loadTeacherGradebook()" title="Asignatura / Clase Asignada" aria-label="Seleccionar asignatura o clase asignada" style="height:35px; font-size:0.82rem; font-weight:700; color:#0f2b5c; background:#f8fafc; border-color:#cbd5e1; padding:0 10px;">
                                         <!-- Cargado dinámicamente según la clase del docente -->
@@ -6821,7 +6826,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v325" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v326" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
@@ -6835,7 +6840,7 @@
     <script src="db_repository.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="exam_schedules_module.js?v=20261119_v280" defer charset="UTF-8"></script>
-    <script src="teacher_permissions_module.js?v=20261126_v324" defer charset="UTF-8"></script>
+    <script src="teacher_permissions_module.js?v=20261126_v326" defer charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
