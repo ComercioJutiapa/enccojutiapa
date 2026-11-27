@@ -237,20 +237,20 @@
         const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
         while (activitiesArr.length < 10) activitiesArr.push(0);
 
-        const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null && parseInt(currentData.zona) > 0)
-            ? parseInt(currentData.zona)
+        const hasExplicitZona = (currentData.zona !== undefined && currentData.zona !== null && currentData.zona !== '' && !isNaN(parseInt(currentData.zona)));
+        const calculatedZona = hasExplicitZona
+            ? Math.max(0, parseInt(currentData.zona))
             : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
         let examScore = parseInt(currentData.exam) || 0;
-        let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0)
+        const hasExplicitTotal = (currentData.total !== undefined && currentData.total !== null && currentData.total !== '' && !isNaN(parseInt(currentData.total)));
+        let totalScore = hasExplicitTotal
             ? Math.min(100, Math.max(0, parseInt(currentData.total)))
-            : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
-                ? Math.min(100, Math.max(0, parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0))
-                : (calculatedZona + examScore);
+            : (calculatedZona + examScore);
 
         if (examScore === 0 && totalScore > calculatedZona) {
             examScore = totalScore - calculatedZona;
         }
-        totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
+        totalScore = Math.min(100, Math.max(0, hasExplicitTotal ? totalScore : (calculatedZona + examScore)));
 
         const gradePayload = {
             id: compositeGradeKey,
@@ -387,21 +387,21 @@
             const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
             while (activitiesArr.length < 10) activitiesArr.push(0);
 
-            const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null && parseInt(currentData.zona) > 0)
-                ? parseInt(currentData.zona)
+            const hasExplicitZona = (currentData.zona !== undefined && currentData.zona !== null && currentData.zona !== '' && !isNaN(parseInt(currentData.zona)));
+            const calculatedZona = hasExplicitZona
+                ? Math.max(0, parseInt(currentData.zona))
                 : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
             let examScore = parseInt(currentData.exam) || 0;
-            let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0)
+            const hasExplicitTotal = (currentData.total !== undefined && currentData.total !== null && currentData.total !== '' && !isNaN(parseInt(currentData.total)));
+            let totalScore = hasExplicitTotal
                 ? Math.min(100, Math.max(0, parseInt(currentData.total)))
-                : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
-                    ? Math.min(100, Math.max(0, parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0))
-                    : (calculatedZona + examScore);
+                : (calculatedZona + examScore);
 
-            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
+            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA (permitiendo nota 0 explícita):
             if (examScore === 0 && totalScore > calculatedZona) {
                 examScore = totalScore - calculatedZona;
             }
-            totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
+            totalScore = Math.min(100, Math.max(0, hasExplicitTotal ? totalScore : (calculatedZona + examScore)));
 
             const gradePayload = {
                 id: compositeGradeKey,
@@ -837,7 +837,7 @@
 
                         for (const docSnap of snap.docs) {
                             const uData = (typeof docSnap.data === 'function') ? docSnap.data() : (docSnap.data || {});
-                            const isSuper = docSnap.id === 'usr-admin-01' || uData.role === 'admin' || (uData.roles && uData.roles.includes('admin'));
+                            const isSuper = ['usr-aux-01', 'usr-admin-ennco', 'usr-admin-01'].includes(docSnap.id) || uData.role === 'admin' || uData.role === 'super_usuario' || (uData.roles && (uData.roles.includes('admin') || uData.roles.includes('super_usuario')));
                             if (isSuper) {
                                 continue; // Preservar super admin
                             }

@@ -476,12 +476,13 @@
     // Comprobar si un usuario es un docente elegible para cuidar (Auxiliar, Director y Secretaría NO se incluyen)
     function isTeacherEligibleForProctoring(u) {
         if (!u) return false;
-        if (u.active === false || u.status === 'Inactivo') return false;
+        if (u.active === false || u.status === 'Inactivo' || u.isSystemOnly === true) return false;
+        if (typeof window.isAdminOrSystemUser === 'function' && window.isAdminOrSystemUser(u)) return false;
         if (typeof isRoleActive === 'function' && !isRoleActive(u.role)) return false;
         const role = (u.role || '').toLowerCase().trim();
         const userRoles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase().trim()) : [];
         const allRoles = [role, ...userRoles].filter(Boolean);
-        const forbiddenRoles = ['auxiliar', 'profesor_auxiliar', 'auxiliatura', 'director', 'direccion', 'secretaria', 'admin', 'administrador', 'super_usuario'];
+        const forbiddenRoles = ['auxiliar', 'profesor_auxiliar', 'auxiliatura', 'director', 'direccion', 'secretaria', 'admin', 'administrador', 'super_usuario', 'superadmin'];
         if (allRoles.some(r => forbiddenRoles.includes(r))) return false;
         return allRoles.some(r => r === 'docente' || r === 'profesor');
     }
@@ -939,9 +940,9 @@
             }
         }
 
-        // 2. Extraer letra de sección (A, B, C, D) del código si aún no se tiene
+        // 2. Extraer letra de sección (A-H) del código si aún no se tiene
         if (!targetSec) {
-            const letterMatch = codeUpper.match(/\b([A-D])\b/) || codeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
+            const letterMatch = codeUpper.match(/\b([A-H])\b/) || codeUpper.match(/SECCI[OÓ]N\s*([A-H])/);
             if (letterMatch) targetSec = letterMatch[1];
         }
 
@@ -1099,7 +1100,7 @@
         if (map.size === 0) {
             (STATE.pensum || []).forEach(p => {
                 let baseName = (p.grade || '').trim();
-                baseName = baseName.replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim();
+                baseName = baseName.replace(/\s+Secci[oó]n\s+[A-H]/i, '').replace(/\s+[A-H]$/i, '').trim();
                 if (baseName && !map.has(baseName)) {
                     map.set(baseName, {
                         baseName: baseName,
@@ -1211,7 +1212,7 @@
 
         // 1. Identificar grados/secciones coincidentes en gradesList
         let matchingGrades = (STATE.gradesList || []).filter(g => {
-            let base = (g.name || g.code || '').replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim().toUpperCase();
+            let base = (g.name || g.code || '').replace(/\s+Secci[oó]n\s+[A-H]/i, '').replace(/\s+[A-H]$/i, '').trim().toUpperCase();
             const gRaw = normSub((g.name || '') + ' ' + (g.code || ''));
             if (targetGradeNum > 0) {
                 if (targetGradeNum === 5 && (gRaw.includes('4TO') || gRaw.includes('CUARTO') || gRaw.includes('6TO') || gRaw.includes('SEXTO'))) return false;
@@ -2283,7 +2284,10 @@
 
     // Modal para agregar un nuevo día de examen
     window.addNewExamDayModal = function () {
-        const today = new Date().toISOString().split('T')[0];
+        const nowLocal = new Date();
+        const today = (typeof window.getLocalIsoDateString === 'function')
+            ? window.getLocalIsoDateString(nowLocal)
+            : `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
         const modalId = 'modalAddNewExamDay';
         let existingModal = document.getElementById(modalId);
         if (existingModal) existingModal.remove();
@@ -2291,7 +2295,7 @@
         const modalHtml = `
             <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
                 <div class="exam-modal-box">
-                    <div style="background:#15803d; color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
+                    <div style="background:linear-gradient(135deg,#0f2b5c,#0369a1); color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
                         <h4 style="margin:0; font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
                             <i class="fa-solid fa-calendar-plus"></i> Programar Nuevo Día de Examen
                         </h4>

@@ -1250,15 +1250,14 @@
     async function exportBimesterAnalyticsExcel() {
         const data = computeBimesterAnalytics(HUB_STATE.bimestre);
         const filenameBase = `Analitica_Escolar_ENCCO_${data.cycle}_B${data.bimFilter}`;
-        if (typeof window.ExcelJS !== 'undefined') {
+        if (window.XLSX && window.XLSX.utils) {
             try {
-                const wb = new window.ExcelJS.Workbook();
+                const wb = window.XLSX.utils.book_new();
                 const addSheet = (name, headers, rows) => {
-                    const ws = wb.addWorksheet(name);
-                    const hr = ws.addRow(headers);
-                    hr.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0369A1' } }; });
-                    rows.forEach(r => ws.addRow(r));
-                    ws.columns.forEach(col => { col.width = 20; });
+                    const aoa = [headers, ...rows];
+                    const ws = window.XLSX.utils.aoa_to_sheet(aoa);
+                    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+                    window.XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
                 };
                 addSheet('Bimestres_y_Genero', ['Bimestre', 'Promedio Gral.', '% Aprobación', 'Prom. Hombres', 'Prom. Mujeres'],
                     data.bimesters.map(b => [b.label, b.avg, `${b.passRate}%`, b.maleAvg, b.femaleAvg]));
@@ -1271,17 +1270,14 @@
                 addSheet('Mas_En_Riesgo', ['No.', 'Estudiante', 'Sexo', 'Grado y Sección', 'Nivel Riesgo', 'Cant. Reprobadas', 'Clases Reprobadas', 'Promedio', '% Asistencia', 'Becado'],
                     (data.atRiskStudents || []).map((r, i) => [i + 1, r.name, r.gender, r.sectionKey, r.riskLevel.toUpperCase(), r.failedCount, r.failedSubjects.map(f => `${f.subject} (${f.score})`).join(' | '), r.avg !== null ? r.avg : '—', r.attPct, r.isBecado ? 'Sí' : 'No']));
 
-                const buf = await wb.xlsx.writeBuffer();
-                const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = `${filenameBase}.xlsx`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(url), 1500);
+                window.XLSX.writeFile(wb, `${filenameBase}.xlsx`);
+                if (typeof window.showToast === 'function') window.showToast('✅ Excel Multi-Hoja de Analítica Escolar descargado.', 'success');
                 return;
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[Analítica Excel] Error generando libro XLSX:', e);
+            }
         }
-        if (typeof window.showToast === 'function') window.showToast('ExcelJS no disponible; utilice Imprimir Informe para Claustro.', 'info');
+        if (typeof window.showToast === 'function') window.showToast('Biblioteca XLSX no disponible; utilice Imprimir Informe para Claustro.', 'warning');
     }
 
     // Hook automático en renderPredictiveAnalyticsView para inyectar el Hub de Gráficas sin perder nada de analytics.js

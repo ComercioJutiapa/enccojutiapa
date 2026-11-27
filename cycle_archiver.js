@@ -969,7 +969,11 @@
         exitHistoricalView(targetCycleParam = null) {
             if (!window.STATE || !window.STATE.isHistoricalReadOnlyMode) return { success: false, message: 'No en modo histórico' };
 
-            const targetCycle = String(targetCycleParam || (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && this._originalStateBeforeHistory.activeCycle !== '2026' ? this._originalStateBeforeHistory.activeCycle : '2027')).trim();
+            const viewingHist = String(window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || '').trim();
+            const fallbackLiveCycle = String((this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && String(this._originalStateBeforeHistory.activeCycle).trim() !== viewingHist)
+                ? this._originalStateBeforeHistory.activeCycle
+                : new Date().getFullYear()).trim();
+            const targetCycle = String(targetCycleParam || fallbackLiveCycle).trim();
             console.log(`🔙 [Consulta Histórica] Regresando al ciclo lectivo activo (${targetCycle})...`);
 
             let restoredState = this._originalStateBeforeHistory;
@@ -994,7 +998,7 @@
                 const filtered = restoredState.students.filter(s => {
                     if (!s) return false;
                     const c = String(s.cycle || s.academicCycle || '').trim();
-                    return c !== '2026';
+                    return !viewingHist || c !== viewingHist || c === targetCycle;
                 });
                 if (filtered.length > 0) {
                     activeStudents = filtered;
@@ -1065,7 +1069,8 @@
                 window.EnccoCloudSync.syncNode('activeCycle', targetCycle);
             }
 
-            // 7. Redibujar todas las vistas
+            // 7. Redibujar todas las vistas (cascada global unificada)
+            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
             if (typeof updateCycleSelects === 'function') updateCycleSelects();
             if (typeof renderCycleList === 'function') renderCycleList();
             if (typeof renderStudentsTable === 'function') renderStudentsTable();
@@ -1104,9 +1109,10 @@
                 }
             }
 
-            const origCycleLabel = (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && this._originalStateBeforeHistory.activeCycle !== '2026')
-                ? this._originalStateBeforeHistory.activeCycle
-                : (window.STATE && window.STATE.activeCycle && window.STATE.activeCycle !== '2026' ? window.STATE.activeCycle : '2027');
+            const histCycleStr = String(cycleYear || '').trim();
+            const origCycleLabel = (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle && String(this._originalStateBeforeHistory.activeCycle).trim() !== histCycleStr)
+                ? String(this._originalStateBeforeHistory.activeCycle).trim()
+                : (window.STATE && window.STATE.activeCycle && String(window.STATE.activeCycle).trim() !== histCycleStr ? String(window.STATE.activeCycle).trim() : String(new Date().getFullYear()));
             banner.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div style="width:34px; height:34px; border-radius:50%; background:#f59e0b; color:#0f172a; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:900;">
@@ -1214,7 +1220,10 @@
             if (typeof document !== 'undefined') {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
                 const downloadAnchor = document.createElement('a');
-                const dateStr = new Date().toISOString().slice(0, 10);
+                const nowLoc = new Date();
+                const dateStr = (typeof window.getLocalIsoDateString === 'function')
+                    ? window.getLocalIsoDateString(nowLoc)
+                    : `${nowLoc.getFullYear()}-${String(nowLoc.getMonth() + 1).padStart(2, '0')}-${String(nowLoc.getDate()).padStart(2, '0')}`;
                 downloadAnchor.setAttribute("href", dataStr);
                 downloadAnchor.setAttribute("download", `ENCCO_RESPALDO_OFICIAL_CICLO_${targetCycle}_${dateStr}.json`);
                 if (document.body) {

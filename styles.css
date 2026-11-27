@@ -6329,4 +6329,14 @@ textarea:focus-visible,
   #view-grades .toolbar-actions .btn { flex: 1 1 100%; justify-content: center; }
   #view-guide-teachers .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   #view-guide-teachers select.form-control { max-width: 100% !important; width: 100%; }
+  #view-pensum .section-toolbar,
+  #view-pensum .toolbar-actions { flex-wrap: wrap !important; width: 100%; }
+  #view-pensum #pensumCatalogCareerFilter { width: 100%; min-width: 0 !important; }
+  #view-class-assignments #assignmentsByGradeContainer,
+  #view-class-assignments #assignmentsByTeacherContainer { grid-template-columns: 1fr !important; }
+  #view-class-assignments .section-toolbar { flex-wrap: wrap !important; }
+  #view-honor-roll [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  #view-honor-roll .toolbar-filters, #view-honor-roll .toolbar-actions { flex-wrap: wrap !important; width: 100%; }
+  #view-reports .report-controls-box > div { min-width: 0 !important; width: 100% !important; flex: 1 1 100%; }
+  #view-exoneraciones-log .filter-group, #view-permissions-history .filter-group { min-width: 0 !important; flex: 1 1 100%; }
 }

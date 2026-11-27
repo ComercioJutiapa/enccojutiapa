@@ -279,13 +279,14 @@
                 }
             }
 
-            // Respaldo complementario desde Firestore si está disponible
-            if (window.firebase && typeof window.firebase.firestore === 'function') {
+            // Respaldo complementario desde Firestore v10 Modular si está disponible
+            if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.getDocs === 'function') {
                 try {
-                    const snap = await window.firebase.firestore().collection('teacherPermissions').get();
+                    const { db, collection, getDocs } = window.FirebaseModular;
+                    const snap = await getDocs(collection(db, 'teacherPermissions'));
                     if (snap && !snap.empty) {
-                        snap.forEach(doc => {
-                            const norm = _normalizeRecord(doc.data(), doc.id);
+                        snap.forEach(d => {
+                            const norm = _normalizeRecord(d.data(), d.id);
                             if (norm && !mergedMap.has(norm.id)) {
                                 mergedMap.set(norm.id, norm);
                                 loadedAny = true;
@@ -325,12 +326,10 @@
             );
         }
 
-        if (window.firebase && typeof window.firebase.firestore === 'function') {
+        if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.setDoc === 'function') {
+            const { db, doc, setDoc } = window.FirebaseModular;
             tasks.push(
-                window.firebase.firestore()
-                    .collection('teacherPermissions')
-                    .doc(record.id)
-                    .set(record, { merge: true })
+                setDoc(doc(db, 'teacherPermissions', record.id), record, { merge: true })
                     .catch(e => console.warn('[Permisos Docentes] Error guardando en Firestore:', e))
             );
         }
@@ -350,12 +349,10 @@
             );
         }
 
-        if (window.firebase && typeof window.firebase.firestore === 'function') {
+        if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.deleteDoc === 'function') {
+            const { db, doc, deleteDoc } = window.FirebaseModular;
             tasks.push(
-                window.firebase.firestore()
-                    .collection('teacherPermissions')
-                    .doc(id)
-                    .delete()
+                deleteDoc(doc(db, 'teacherPermissions', id))
                     .catch(e => console.warn('[Permisos Docentes] Error eliminando en Firestore:', e))
             );
         }
@@ -624,7 +621,7 @@
                             </select>
                             <div class="tp-search-wrap">
                                 <i class="fa-solid fa-magnifying-glass"></i>
-                                <input type="text" class="tp-inp" placeholder="Buscar docente o motivo..." value="${_esc(VIEW_STATE.search)}" oninput="updateTeacherPermissionsFilter('search', this.value)">
+                                <input type="text" id="tpSearchInput" class="tp-inp" placeholder="Buscar docente o motivo..." value="${_esc(VIEW_STATE.search)}" oninput="updateTeacherPermissionsFilter('search', this.value)">
                             </div>
                         </div>
                     </div>
@@ -660,8 +657,18 @@
 
     function updateTeacherPermissionsFilter(key, value) {
         if (key in VIEW_STATE) {
+            const activeEl = document.activeElement;
+            const selStart = (key === 'search' && activeEl && activeEl.id === 'tpSearchInput') ? activeEl.selectionStart : null;
             VIEW_STATE[key] = value;
             renderTeacherPermissionsView();
+            if (key === 'search') {
+                const inp = document.getElementById('tpSearchInput');
+                if (inp) {
+                    inp.focus();
+                    const pos = selStart !== null ? selStart : inp.value.length;
+                    try { inp.setSelectionRange(pos, pos); } catch (e) {}
+                }
+            }
         }
     }
 
@@ -984,7 +991,7 @@
     <button style="background:#475569;" onclick="window.close()">Cerrar</button>
   </div>
   <div class="doc-header">
-    <img src="logo_encco.png" alt="ENCCO" onerror="this.style.display='none'">
+    <img src="logo.png" alt="ENCCO" onerror="this.style.display='none'">
     <div class="doc-header-text">
       <div class="inst">Escuela Nacional de Ciencias Comerciales — ENCCO Jutiapa</div>
       <div class="title">${_esc(docTitle)}</div>

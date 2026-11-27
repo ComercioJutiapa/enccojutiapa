@@ -4256,15 +4256,19 @@ function renderRolesTable(filterVal = '') {
 
     tbody.innerHTML = list.map((r, idx) => {
         const assignedUsers = (STATE.users || []).filter(u => u.role === r.key);
-        const permCount = Array.isArray(r.permissions) ? r.permissions.length : 0;
+        const validModuleKeys = new Set(SYSTEM_MODULES_LIST.map(m => m.key));
+        const basePerms = Array.from(new Set((Array.isArray(r.permissions) ? r.permissions : [])
+            .map(pk => String(pk || '').replace(/_(edit|view)$/, ''))
+            .filter(pk => validModuleKeys.has(pk))));
+        const permCount = basePerms.length;
         const totalModules = SYSTEM_MODULES_LIST.length;
         const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
             ? window.SYSTEM_ROLE_KEYS 
             : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
         const isSystemRole = (r.isSystem || SYSTEM_ROLE_KEYS.includes(r.key));
 
-        // Badges de permisos principales
-        const permBadges = (r.permissions || []).slice(0, 5).map(pk => {
+        // Badges de permisos principales (solo módulos base sin sufijos _edit/_view)
+        const permBadges = basePerms.slice(0, 5).map(pk => {
             const mod = SYSTEM_MODULES_LIST.find(m => m.key === pk);
             const label = mod ? mod.name.split(' ')[0] : pk;
             return `<span class="badge" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; font-size:0.70rem; padding:2px 5px; margin:1px;">${label}</span>`;
@@ -12015,8 +12019,10 @@ function synchronizeGlobalDynamicUI() {
             renderGuideTeachersTable();
         } else if (STATE.activeView === 'reports' && typeof populateReportStudentSelect === 'function') {
             populateReportStudentSelect();
-        } else if (STATE.activeView === 'honor-roll' && typeof renderHonorRollView === 'function') {
-            renderHonorRollView();
+        } else if (STATE.activeView === 'honor-roll' && typeof loadHonorRoll === 'function') {
+            loadHonorRoll();
+        } else if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
+            renderPermissionsHistoryView();
         } else if (STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
             renderExoneracionesLogView();
         } else if (STATE.activeView === 'exam-schedules' && typeof renderExamSchedulesView === 'function') {
@@ -12033,6 +12039,18 @@ function synchronizeGlobalDynamicUI() {
             updatePrintModelSelects();
         } else if (STATE.activeView === 'carnets' && typeof renderCarnetsView === 'function') {
             renderCarnetsView();
+        } else if (STATE.activeView === 'pensum' && typeof renderPensumCatalogView === 'function') {
+            renderPensumCatalogView();
+        } else if (STATE.activeView === 'class-assignments' && typeof renderAssignmentsTable === 'function') {
+            renderAssignmentsTable();
+        } else if (STATE.activeView === 'grade-stats' && typeof renderGradeStatsView === 'function') {
+            renderGradeStatsView();
+        } else if (STATE.activeView === 'predictive-analytics' && typeof renderPredictiveAnalyticsView === 'function') {
+            renderPredictiveAnalyticsView();
+        } else if (STATE.activeView === 'users' && typeof renderUsersTable === 'function') {
+            renderUsersTable();
+        } else if (STATE.activeView === 'roles' && typeof renderRolesTable === 'function') {
+            renderRolesTable();
         }
     }, 32);
 }
@@ -29122,14 +29140,24 @@ function populateReportStudentSelect() {
         });
         distinctSections = Array.from(new Set(myGradesList.map(g => getCanonicalReportSectionLetter(g.section || g.gradeCode || g.code || '')))).filter(Boolean).sort();
     } else {
-        const allStudents = STATE.students || [];
+        const repCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const allStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], repCycle) : (STATE.students || []);
         distinctGrades = Array.from(new Set(allStudents.map(s => getCanonicalReportGradeName(s.grade || s.gradeLabel || s.gradeCode || '')))).filter(Boolean).sort((a, b) => {
             return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
         });
         if (distinctGrades.length === 0) {
             distinctGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
         }
-        distinctSections = ['Sección A', 'Sección B', 'Sección C', 'Sección D'];
+        const secSet = new Set();
+        (STATE.gradesList || []).forEach(g => {
+            const sLabel = getCanonicalReportSectionLetter(g.section || g.code || '');
+            if (sLabel) secSet.add(sLabel);
+        });
+        allStudents.forEach(s => {
+            const sLabel = getCanonicalReportSectionLetter(s.section || s.gradeCode || '');
+            if (sLabel) secSet.add(sLabel);
+        });
+        distinctSections = secSet.size > 0 ? Array.from(secSet).sort((a, b) => a.localeCompare(b, 'es')) : ['Sección A', 'Sección B', 'Sección C', 'Sección D'];
     }
 
     if (gradeFilter) {
@@ -29891,7 +29919,7 @@ function buildStudentReportCardInnerHtml(s) {
                         <div style="font-size:10px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase; line-height:1.15;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
                         <div style="font-size:16px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15; letter-spacing:0.3px;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                         <div style="font-size:9.5px; font-weight:700; color:#475569; letter-spacing:0.2px; line-height:1.15;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:11px; font-weight:900; padding:2px 14px; border-radius:5px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">BOLETÍN OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || String(new Date().getFullYear())}</div>
+                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:11px; font-weight:900; padding:2px 14px; border-radius:5px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">BOLETÍN OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${viewingCyc || STATE.activeCycle || String(new Date().getFullYear())}</div>
                     </div>
                     <div style="width:56px; text-align:center; flex-shrink:0;">
                         <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:2px 2px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
@@ -29904,11 +29932,11 @@ function buildStudentReportCardInnerHtml(s) {
                 <!-- DATOS DEL ESTUDIANTE -->
                 <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:2px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0369a1; padding:3px 10px; font-size:11px; line-height:1.28; margin-bottom:3px; border-radius:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
                     <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; font-size:12.5px; text-transform:uppercase;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</span></div>
-                    <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span style="font-weight:700; color:#000;">${s.carne || "ENCCO-2026"}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span style="font-weight:700; color:#000;">${s.carne || ("ENCCO-" + (viewingCyc || STATE.activeCycle || new Date().getFullYear()))}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span style="font-weight:700; color:#000;">${s.personalCode || "—"}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span style="font-weight:700; color:#000;">${gradeName}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span style="font-weight:700; color:#000;">${s.career || "Perito Contador"}</span></div>
-                    <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span style="font-weight:700; color:#000;">${STATE.activeCycle || String(new Date().getFullYear())} — Jornada Matutina</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span style="font-weight:700; color:#000;">${viewingCyc || STATE.activeCycle || String(new Date().getFullYear())} — Jornada Matutina</span></div>
                 </div>
 
                 <!-- TABLA DE CALIFICACIONES (4 BIMESTRES, PROMEDIO Y RESULTADO) -->
@@ -29953,7 +29981,7 @@ function buildStudentReportCardInnerHtml(s) {
 
                 <!-- PIE DE PÁGINA INSTITUCIONAL Y COPYRIGHT -->
                 <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:2px; font-size:8px; color:#64748b; font-weight:600; margin-top:1px;">
-                    <span>ENCCO JUTIAPA • Sistema de Control Académico • © 2026 Nehemias Salguero, Jutiapa, Guatemala</span>
+                    <span>ENCCO JUTIAPA • Sistema de Control Académico • © ${new Date().getFullYear()} Nehemias Salguero, Jutiapa, Guatemala</span>
                     <span>Fecha de emisión: ${new Date().toLocaleDateString("es-GT")}</span>
                 </div>
             </div>
@@ -41211,6 +41239,7 @@ function printHonorRoll() {
     }
 
     // Precalcular información académica UNA SOLA VEZ por estudiante para impresión instantánea
+    const onlyEligible = Boolean(document.getElementById('honorRollOnlyEligibleCheck')?.checked);
     const evaluatedPrintItems = [];
     for (let i = 0; i < list.length; i++) {
         const s = list[i];
@@ -49071,7 +49100,13 @@ function openEditPensumSubjectModal(subjectId) {
     if (codeInput) codeInput.value = (s.code || '').trim().toUpperCase() || suggestNextPensumCourseCode(s.career, s.grade);
     if (nameInput) nameInput.value = subjectName;
     if (careerSelect && s.career) careerSelect.value = s.career;
-    if (gradeSelect && s.grade) gradeSelect.value = s.grade;
+    if (gradeSelect && s.grade) {
+        const rawG = String(s.grade).toUpperCase();
+        if (rawG.includes('4') || rawG.includes('CUARTO')) gradeSelect.value = '4TO';
+        else if (rawG.includes('5') || rawG.includes('QUINTO')) gradeSelect.value = '5TO';
+        else if (rawG.includes('6') || rawG.includes('SEXTO')) gradeSelect.value = '6TO';
+        else gradeSelect.value = s.grade;
+    }
     if (orderInput) orderInput.value = s.order || s.sortOrder || 1;
     if (hoursInput) hoursInput.value = s.hours || s.periods || 4;
 
@@ -51388,7 +51423,7 @@ function openPrintClassAssignmentsModal() {
         const groupBy = document.getElementById('printAsgGroupBySelect')?.value || 'BY_GRADE';
         populatePrintAsgTargetFilterSelect(groupBy);
     }
-    modal.style.display = 'flex';
+    modal.style.setProperty('display', 'flex', 'important');
     modal.classList.add('active');
 }
 window.openPrintClassAssignmentsModal = openPrintClassAssignmentsModal;
@@ -59645,6 +59680,22 @@ function exportPermissionsLogExcel() {
     }
     if (selCat !== 'ALL') list = list.filter(p => (p.reasonCategory || '').toLowerCase() === selCat.toLowerCase());
     if (searchQ) list = list.filter(p => `${p.studentName || ''} ${p.personalCode || ''} ${p.reasonCategory || ''} ${p.reasonDetail || ''}`.toLowerCase().includes(searchQ));
+    const dateFromRawExp = (document.getElementById('permissionsLogDateFrom')?.value || '').trim();
+    const dateToRawExp = (document.getElementById('permissionsLogDateTo')?.value || '').trim();
+    const expFrom = typeof normalizePermissionDateStr === 'function' ? normalizePermissionDateStr(dateFromRawExp) : dateFromRawExp;
+    const expTo = typeof normalizePermissionDateStr === 'function' ? normalizePermissionDateStr(dateToRawExp) : dateToRawExp;
+    if (expFrom || expTo) {
+        const effFrom = (expFrom && expTo && expFrom > expTo) ? expTo : expFrom;
+        const effTo = (expFrom && expTo && expFrom > expTo) ? expFrom : expTo;
+        list = list.filter(p => {
+            const pStart = typeof normalizePermissionDateStr === 'function' ? normalizePermissionDateStr(p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '')) : (p.startDate || '');
+            const pEnd = typeof normalizePermissionDateStr === 'function' ? normalizePermissionDateStr(p.endDate || pStart) : (p.endDate || pStart);
+            if (!pStart && !pEnd) return true;
+            if (effFrom && effTo) return (pStart <= effTo && pEnd >= effFrom);
+            if (effFrom) return pEnd >= effFrom;
+            return pStart <= effTo;
+        });
+    }
     if (list.length === 0) {
         if (typeof showToast === 'function') showToast('No hay permisos para exportar con los filtros actuales.', 'info');
         return;
@@ -59681,7 +59732,8 @@ function printPermissionsLog() {
     const targetCat = catSelect ? catSelect.value : 'ALL';
     const dateFromRaw = fromInput ? (fromInput.value || '').trim() : '';
     const dateToRaw = toInput ? (toInput.value || '').trim() : '';
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const searchQuery = (document.getElementById('permissionsLogSearchInput')?.value || '').toLowerCase().trim();
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
 
     const dateFrom = normalizePermissionDateStr(dateFromRaw);
     const dateTo = normalizePermissionDateStr(dateToRaw);

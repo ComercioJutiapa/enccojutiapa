@@ -142,15 +142,18 @@
                 ? Math.round(totalScoreSum / totalEvaluatedSubjects) 
                 : 0;
 
-            // Inasistencias acumuladas
-            const attendanceList = (window.STATE && Array.isArray(window.STATE.attendance)) ? window.STATE.attendance : [];
+            // Inasistencias acumuladas (lee STATE.attendanceRecords del ciclo actual)
+            const attRecords = (window.STATE && window.STATE.attendanceRecords && typeof window.STATE.attendanceRecords === 'object') ? window.STATE.attendanceRecords : {};
+            const activeCycPrefix = String((window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) || new Date().getFullYear()).trim();
             let unexcusedAbsences = 0;
-            attendanceList.forEach(att => {
-                if (att && att.records && Array.isArray(att.records)) {
-                    const r = att.records.find(rec => rec && (rec.studentId === student.id || rec.studentCarne === student.carne));
-                    if (r && (r.status === 'ausente' || r.status === 'injustificada' || r.status === 'falta')) {
-                        unexcusedAbsences++;
-                    }
+            Object.keys(attRecords).forEach(dateKey => {
+                if (activeCycPrefix && !String(dateKey).startsWith(activeCycPrefix)) return;
+                const dayMap = attRecords[dateKey];
+                if (!dayMap || typeof dayMap !== 'object') return;
+                const val = dayMap[student.id] || (student.carne ? dayMap[student.carne] : null);
+                const vStr = String(val || '').trim().toUpperCase();
+                if (vStr === 'A' || vStr === 'AUSENTE' || vStr === 'INJUSTIFICADA' || vStr === 'FALTA') {
+                    unexcusedAbsences++;
                 }
             });
 
@@ -203,12 +206,18 @@
          * Obtiene estadísticas agregadas y ranking de riesgo para la institución
          */
         getAggregatedAnalytics(filterCareer = 'ALL', filterGrade = 'ALL', filterSection = 'ALL') {
-            const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-            const activeCycle = (window.STATE && window.STATE.activeCycle) || '2026';
+            const st = window.STATE || {};
+            const activeCycle = String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || new Date().getFullYear()).trim();
+            const rawStudents = Array.isArray(st.students) ? st.students : [];
+            const allStudents = (typeof window.getCycleFilteredStudents === 'function')
+                ? window.getCycleFilteredStudents(rawStudents, activeCycle)
+                : rawStudents;
 
-            // Filtrar estudiantes activos (excluyendo retirados) con coincidencia flexible de Grado/Sección/Carrera
+            // Filtrar estudiantes activos (excluyendo retirados, inactivos y egresados) con coincidencia flexible de Grado/Sección/Carrera
             const filtered = allStudents.filter(st => {
-                if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return false;
+                if (!st || st.active === false) return false;
+                const stStatus = String(st.status || '').toLowerCase().trim();
+                if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
                 const stCar = (st.career || '').trim().toLowerCase();
                 const stGrd = (st.grade || st.gradeLevel || '').trim().toLowerCase();
                 const stSec = (st.section || '').replace(/^secci[oó]n\s*/i, '').trim().toLowerCase();
@@ -459,7 +468,7 @@
                 </div>
 
                 <!-- TABLA NOMINAL DETALLADA DE ESTUDIANTES -->
-                <div class="table-responsive" style="background:#ffffff; border-radius:12px; border:1.5px solid #e2e8f0; overflow:hidden; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
+                <div class="table-responsive" style="background:#ffffff; border-radius:12px; border:1.5px solid #e2e8f0; overflow-x:auto; -webkit-overflow-scrolling:touch; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
                     <table class="custom-table" style="margin:0; font-size:0.82rem;">
                         <thead>
                             <tr style="background:#0f172a; color:#ffffff;">
@@ -486,11 +495,13 @@
                                     ? 'background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;' 
                                     : (st.riskLevel === 'MODERADO' 
                                         ? 'background:#ffedd5; color:#d97706; border:1px solid #fdba74;' 
-                                        : 'background:#dcfce7; color:#16a34a; border:1px solid #86efac;');
+                                        : (st.riskLevel === 'SIN_DATOS'
+                                            ? 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;'
+                                            : 'background:#dcfce7; color:#16a34a; border:1px solid #86efac;'));
                                 
                                 const badgeLabel = st.riskLevel === 'CRITICO' 
                                     ? '🔴 CRÍTICO' 
-                                    : (st.riskLevel === 'MODERADO' ? '🟡 MODERADO' : '🟢 SATISFACTORIO');
+                                    : (st.riskLevel === 'MODERADO' ? '🟡 MODERADO' : (st.riskLevel === 'SIN_DATOS' ? '⚪ SIN DATOS' : '🟢 SATISFACTORIO'));
 
                                 return `
                                     <tr style="border-bottom:1px solid #f1f5f9;">

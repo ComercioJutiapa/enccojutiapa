@@ -625,17 +625,23 @@
                     if (c) CONFIG_DATA = { ...CONFIG_DATA, ...c };
                 }
 
-                // 2. Cargar Docentes
+                // 2. Cargar Docentes (excluyendo admin/sistema y ordenando alfabéticamente)
+                const isEligibleTeacher = (usr) => {
+                    if (!usr || usr.active === false || usr.isSystemOnly === true) return false;
+                    const r = String(usr.role || '').toLowerCase().trim();
+                    if (r === 'admin' || r === 'super_usuario' || r === 'superadmin') return false;
+                    return r === 'docente' || (usr.id && String(usr.id).startsWith('usr-doc-'));
+                };
                 const usersRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/users.json?t=${Date.now()}`);
                 if (usersRes.ok) {
                     const u = await usersRes.json();
-                    if (Array.isArray(u)) TEACHERS_LIST = u.filter(usr => usr.role === 'docente' || (usr.id && usr.id.startsWith('usr-doc-')));
+                    if (Array.isArray(u)) TEACHERS_LIST = u.filter(isEligibleTeacher).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
                 }
                 if (TEACHERS_LIST.length === 0) {
-                    const locRes = await fetch('usuarios_y_maestros.json');
-                    if (locRes.ok) {
+                    const locRes = await fetch('usuarios_y_maestros.json').catch(() => null);
+                    if (locRes && locRes.ok) {
                         const locU = await locRes.json();
-                        TEACHERS_LIST = locU.filter(usr => usr.role === 'docente' || (usr.id && usr.id.startsWith('usr-doc-')));
+                        TEACHERS_LIST = (Array.isArray(locU) ? locU : []).filter(isEligibleTeacher).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
                     }
                 }
 

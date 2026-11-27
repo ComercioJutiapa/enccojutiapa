@@ -230,9 +230,7 @@ function _renderGradeStatsActasInternal() {
         gradeVal = '4';
         gradeSelect.value = '4';
     }
-    if (!selectedSection && secSelect && gradeVal) {
-        selectedSection = populateGradeStatsSectionsForGrade(gradeVal, 'ALL');
-    } else if (secSelect && secSelect.options.length <= 1 && gradeVal) {
+    if (secSelect && gradeVal) {
         selectedSection = populateGradeStatsSectionsForGrade(gradeVal, selectedSection || 'ALL');
     }
 
@@ -248,7 +246,8 @@ function _renderGradeStatsActasInternal() {
     };
     const periodTitle = periodTitles[period] || 'Promedios Finales';
 
-    const students = STATE.students || [];
+    const statsCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+    const students = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], statsCycle) : (STATE.students || []);
     const pensum = STATE.pensum || [];
 
     function cleanStr(s) {
@@ -1515,8 +1514,10 @@ function renderCuadroEstadisticoOficial() {
         };
         if (meta.schoolName) statData.establecimiento = meta.schoolName;
     } else {
-        // CÁLCULO DINÁMICO EN TIEMPO REAL DESDE FIREBASE RTDB PARA 2027+
-        const students = Array.isArray(STATE.students) ? STATE.students : [];
+        // CÁLCULO DINÁMICO EN TIEMPO REAL DESDE FIREBASE RTDB PARA CICLO ACTIVO/HISTÓRICO
+        const cuadroCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const rawStudents = Array.isArray(STATE.students) ? STATE.students : [];
+        const students = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(rawStudents, cuadroCycle) : rawStudents;
         const byGrade = {
             'CUARTO': { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 },
             'QUINTO': { hi: 0, hp: 0, hcd: 0, hsd: 0, mi: 0, mp: 0, mcd: 0, msd: 0, tot: 0 },
@@ -1524,10 +1525,15 @@ function renderCuadroEstadisticoOficial() {
         };
 
         students.forEach(s => {
+            if (!s) return;
+            const stLow = String(s.status || '').toLowerCase().trim();
+            if (stLow === 'egresado' || stLow === 'inactivo' || String(s.gradeCode || '').toUpperCase() === 'EGRESADO') return;
             const gStr = String(s.grade || s.gradeCode || s.gradeLevel || '').toUpperCase();
-            let gKey = 'CUARTO';
-            if (gStr.includes('6TO') || gStr.includes('SEXTO')) gKey = 'SEXTO';
-            else if (gStr.includes('5TO') || gStr.includes('QUINTO')) gKey = 'QUINTO';
+            let gKey = '';
+            if (gStr.includes('6TO') || gStr.includes('SEXTO') || gStr.includes('6')) gKey = 'SEXTO';
+            else if (gStr.includes('5TO') || gStr.includes('QUINTO') || gStr.includes('5')) gKey = 'QUINTO';
+            else if (gStr.includes('4TO') || gStr.includes('CUARTO') || gStr.includes('4')) gKey = 'CUARTO';
+            if (!gKey) return;
 
             const rawGen = String(s.gender || s.genero || s.sex || '').toUpperCase();
             const isH = rawGen.startsWith('MASC') || rawGen.startsWith('H') || rawGen === 'M';

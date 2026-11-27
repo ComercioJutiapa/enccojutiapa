@@ -584,6 +584,7 @@
                     // Generación retrocompatible si la sesión existía previamente sin token
                     const genToken = generateInstitutionalAuthToken(user, role);
                     if (genToken) {
+                        token = genToken;
                         try {
                             sessionStorage.setItem('ENCCO_AUTH_TOKEN', genToken);
                             localStorage.setItem('ENCCO_AUTH_TOKEN', genToken);
@@ -654,7 +655,14 @@
     }
 
     function impersonateUser(userId) {
-        if (!userId) return;
+        if (!userId) return false;
+        const currentSession = getUserSession();
+        const curRole = currentSession && currentSession.user ? String(currentSession.user.role || '').toLowerCase().trim() : '';
+        const isMaster = curRole === 'admin' || curRole === 'super_usuario' || curRole === 'superadmin' || curRole === 'director';
+        if (!isMaster) {
+            console.warn('🛡️ Impersonación restringida exclusivamente a Dirección / Super Usuario.');
+            return false;
+        }
         const usersList = (window.STATE && window.STATE.users) ? window.STATE.users : [];
         const target = usersList.find(u => u.id === userId || u.username === userId);
         if (!target) return false;

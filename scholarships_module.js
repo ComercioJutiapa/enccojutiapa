@@ -36,7 +36,7 @@
 
     function getScholarshipActiveCycle() {
         const st = window.STATE || {};
-        return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || '2026').trim();
+        return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || new Date().getFullYear()).trim();
     }
 
     function canViewScholarships(roleOverride) {
@@ -86,35 +86,41 @@
 
     function _getActiveCycleStudents() {
         const cycle = getScholarshipActiveCycle();
-        let list = [];
-        if (typeof window.getStudentsForCycle === 'function') {
-            try {
-                const res = window.getStudentsForCycle(cycle);
-                if (Array.isArray(res)) list = res.slice();
-            } catch (e) {}
-        }
-        if (list.length === 0) {
-            const all = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-            list = all.filter(s => s && String(s.cycle || s.academicCycle || '2026').trim() === cycle);
-        }
-        return list.filter(s => s && String(s.status || '') !== 'Egresado' && String(s.gradeCode || '').toUpperCase() !== 'EGRESADO');
+        const all = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+        let list = (typeof window.getCycleFilteredStudents === 'function')
+            ? window.getCycleFilteredStudents(all, cycle).slice()
+            : all.filter(s => s && (!s.cycle || String(s.cycle || s.academicCycle).trim() === cycle));
+        return list.filter(s => {
+            if (!s || s.active === false) return false;
+            const st = String(s.status || '').toLowerCase().trim();
+            return st !== 'egresado' && st !== 'retirado' && st !== 'inactivo' && String(s.gradeCode || '').toUpperCase() !== 'EGRESADO';
+        });
     }
 
     function getStudentAverageForScholarship(student) {
         if (!student || !student.grades || typeof student.grades !== 'object') return null;
         let sum = 0;
         let count = 0;
-        Object.values(student.grades).forEach(subjObj => {
-            if (!subjObj || typeof subjObj !== 'object') return;
+        Object.values(student.grades).forEach(subjVal => {
+            if (!subjVal) return;
             let sSum = 0;
             let sCnt = 0;
-            ['b1', 'b2', 'b3', 'b4'].forEach(bk => {
-                const v = subjObj[bk];
-                if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v)) && Number(v) > 0) {
-                    sSum += Number(v);
-                    sCnt++;
-                }
-            });
+            if (Array.isArray(subjVal)) {
+                subjVal.slice(0, 4).forEach(v => {
+                    if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v)) && Number(v) > 0) {
+                        sSum += Number(v);
+                        sCnt++;
+                    }
+                });
+            } else if (typeof subjVal === 'object') {
+                ['b1', 'b2', 'b3', 'b4', '1', '2', '3', '4'].forEach(bk => {
+                    const v = subjVal[bk];
+                    if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v)) && Number(v) > 0) {
+                        sSum += Number(v);
+                        sCnt++;
+                    }
+                });
+            }
             if (sCnt > 0) {
                 sum += (sSum / sCnt);
                 count++;
