@@ -6310,4 +6310,9 @@ textarea:focus-visible,
   #view-grade-lock .grade-lock-req-filters,
   #view-grade-lock .grade-lock-req-filters .btn-group { width: 100%; display: flex; flex-wrap: wrap; }
   #view-grade-lock .grade-lock-req-filters .btn-group .btn { flex: 1 1 auto; }
+  #view-excel-import .excel-import-row { flex-direction: column; }
+  #view-excel-import .excel-import-row .form-group { width: 100%; min-width: 0 !important; }
+  #view-excel-import .excel-exec-actions { width: 100%; }
+  #view-excel-import .excel-exec-actions .btn,
+  #view-excel-import .action-card .btn { flex: 1 1 100%; justify-content: center; }
 }

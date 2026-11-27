@@ -1544,12 +1544,12 @@
                 <!-- 3. IMPORTACIÓN, ENCABEZADOS Y MODELOS DE LISTAS OFICIALES -->
                 <section class="app-view" id="view-excel-import">
                         <!-- MODELOS DE LISTAS OFICIALES PARA IMPRIMIR -->
-                        <div class="table-card" style="padding:22px; border-top:4px solid #15803d; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.05);">
+                        <div class="table-card" style="padding:22px; border-top:4px solid #0f2b5c; border-radius:10px; box-shadow:0 4px 16px rgba(15,43,92,0.06);">
                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
                                 <div>
-                                    <h3 style="margin:0; font-size:1.15rem; color:#15803d; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                        <i class="fa-solid fa-print" style="color:#16a34a;"></i> Generador de Modelos de Listas Oficiales para Imprimir
-                                        <span style="background:#dcfce7; color:#166534; font-size:0.72rem; font-weight:800; padding:2px 10px; border-radius:12px; border:1px solid #86efac; text-transform:uppercase; letter-spacing:0.5px;">OFICIO 8.5" × 13"</span>
+                                    <h3 style="margin:0; font-size:1.15rem; color:#0f2b5c; font-weight:800; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <i class="fa-solid fa-print" style="color:#0369a1;"></i> Generador de Modelos de Listas Oficiales para Imprimir
+                                        <span style="background:#e0f2fe; color:#0f2b5c; font-size:0.72rem; font-weight:800; padding:2px 10px; border-radius:12px; border:1px solid #7dd3fc; text-transform:uppercase; letter-spacing:0.5px;">OFICIO 8.5" × 13"</span>
                                     </h3>
                                     <p style="margin:4px 0 0 0; font-size:0.84rem; color:var(--text-secondary);">
                                         Genere e imprima formatos institucionales membretados idénticos a la plantilla de Excel oficial con diseño de 10 casillas.
@@ -1558,32 +1558,32 @@
                             </div>
 
                             <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
-                                <div id="printModelTeacherNotice" style="display:none; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:8px 14px; margin-bottom:14px; font-size:0.84rem; color:#065f46;">
-                                    <i class="fa-solid fa-user-shield"></i> <strong>Modo Docente Activo:</strong> Se muestran únicamente las carreras, grados y secciones asignadas formalmente a su cátedra.
+                                <div id="printModelTeacherNotice" style="display:none; background:#f0f9ff; border:1px solid #7dd3fc; border-radius:6px; padding:8px 14px; margin-bottom:14px; font-size:0.84rem; color:#0f2b5c;">
+                                    <i class="fa-solid fa-user-shield" style="color:#0369a1;"></i> <strong>Modo Docente Activo:</strong> Se muestran únicamente las carreras, grados y secciones asignadas formalmente a su cátedra.
                                 </div>
 
                                 <div style="display:flex; flex-direction:column; gap:14px;">
                                     <!-- Fila 1: Estructura Académica (3 columnas armónicas) -->
-                                    <div class="form-row" style="align-items:flex-end; gap:12px; margin-bottom:0;">
+                                    <div class="form-row excel-import-row" style="align-items:flex-end; gap:12px; margin-bottom:0;">
                                         <div class="form-group" style="flex:1.2; min-width:180px; margin-bottom:0;">
-                                            <label style="font-weight:700; color:#15803d; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-graduation-cap" style="color:#16a34a;"></i> 1. Carrera:
+                                            <label style="font-weight:700; color:#0f2b5c; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                                <i class="fa-solid fa-graduation-cap" style="color:#0369a1;"></i> 1. Carrera:
                                             </label>
                                             <select id="printModelCareerSelect" class="form-control" onchange="onPrintModelCareerChange(this.value)" style="height:38px; border-radius:6px; font-weight:600;">
                                                 <option value="">-- Seleccione Carrera --</option>
                                             </select>
                                         </div>
                                         <div class="form-group" style="flex:1.4; min-width:200px; margin-bottom:0;">
-                                            <label style="font-weight:700; color:#15803d; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-chalkboard-user" style="color:#16a34a;"></i> 2. Grado y Sección:
+                                            <label style="font-weight:700; color:#0f2b5c; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                                <i class="fa-solid fa-chalkboard-user" style="color:#0369a1;"></i> 2. Grado y Sección:
                                             </label>
                                             <select id="printModelGradeSelect" class="form-control" onchange="onPrintModelGradeChange(this.value)" style="height:38px; border-radius:6px; font-weight:600;">
                                                 <option value="">-- Primero elija carrera --</option>
                                             </select>
                                         </div>
                                         <div class="form-group" style="flex:0.9; min-width:140px; margin-bottom:0;">
-                                            <label style="font-weight:700; color:#15803d; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-calendar-check" style="color:#16a34a;"></i> 3. Bimestre:
+                                            <label style="font-weight:700; color:#0f2b5c; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                                <i class="fa-solid fa-calendar-check" style="color:#0369a1;"></i> 3. Bimestre:
                                             </label>
                                             <select id="printModelBimestreSelect" class="form-control" style="height:38px; border-radius:6px; font-weight:700; color:#0f172a;">
                                                 <option value="1">1º Bimestre</option>
@@ -1595,10 +1595,10 @@
                                     </div>
 
                                     <!-- Fila 2: Docencia y Cátedra (2 columnas balanceadas) -->
-                                    <div class="form-row" style="align-items:flex-end; gap:12px; margin-bottom:0;">
+                                    <div class="form-row excel-import-row" style="align-items:flex-end; gap:12px; margin-bottom:0;">
                                         <div class="form-group" style="flex:1.5; min-width:220px; margin-bottom:0;">
-                                            <label style="font-weight:700; color:#15803d; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                                                <i class="fa-solid fa-book-bookmark" style="color:#16a34a;"></i> Cátedra / Materia Asignada:
+                                            <label style="font-weight:700; color:#0f2b5c; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                                <i class="fa-solid fa-book-bookmark" style="color:#0369a1;"></i> Cátedra / Materia Asignada:
                                             </label>
                                             <select id="printModelSubjectSelect" class="form-control" onchange="onPrintModelSubjectChange(this.value)" style="height:38px; border-radius:6px; font-weight:600;">
                                                 <option value="">-- Seleccione Materia --</option>
@@ -1606,45 +1606,45 @@
                                             <input type="hidden" id="printModelSubjectName" value="">
                                         </div>
                                         <div class="form-group" style="flex:1.3; min-width:200px; margin-bottom:0;">
-                                            <label style="font-weight:700; color:#15803d; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
-                                                <span><i class="fa-solid fa-user-tie" style="color:#16a34a;"></i> Catedrático(a) Titular:</span>
-                                                <span style="font-size:0.68rem; font-weight:700; color:#166534; background:#dcfce7; padding:1px 6px; border-radius:4px;"><i class="fa-solid fa-check"></i> Asignado</span>
+                                            <label style="font-weight:700; color:#0f2b5c; font-size:0.84rem; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
+                                                <span><i class="fa-solid fa-user-tie" style="color:#0369a1;"></i> Catedrático(a) Titular:</span>
+                                                <span style="font-size:0.68rem; font-weight:700; color:#0369a1; background:#e0f2fe; padding:1px 6px; border-radius:4px;"><i class="fa-solid fa-check"></i> Asignado</span>
                                             </label>
-                                            <input type="text" id="printModelTeacherName" class="form-control" placeholder="Nombre del docente" value="Lic. Carlos Mendoza" style="height:38px; border-radius:6px; font-weight:600; background:#f8fafc;">
+                                            <input type="text" id="printModelTeacherName" class="form-control" placeholder="Nombre del docente titular" value="" style="height:38px; border-radius:6px; font-weight:600; background:#f8fafc;">
                                         </div>
                                     </div>
 
                                     <!-- Widget dinámico en vivo: Resumen Rápido de Sección -->
-                                    <div id="printModelSectionStats" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; font-size:0.82rem; color:#14532d; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                                    <div id="printModelSectionStats" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; font-size:0.82rem; color:#0f2b5c; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                                            <span style="background:#15803d; color:#ffffff; font-weight:800; font-size:0.75rem; padding:2px 8px; border-radius:4px;" id="printModelStatsGrade">--</span>
+                                            <span style="background:#0f2b5c; color:#ffffff; font-weight:800; font-size:0.75rem; padding:2px 8px; border-radius:4px;" id="printModelStatsGrade">--</span>
                                             <span>👥 <strong><span id="printModelStatsTotal">0</span> Estudiantes</strong> (<span id="printModelStatsMale">0</span> Varones, <span id="printModelStatsFemale">0</span> Mujeres)</span>
                                         </div>
-                                        <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:#166534;">
+                                        <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:#0369a1; flex-wrap:wrap;">
                                             <span>👨‍🏫 Maestro(a) Guía: <strong><span id="printModelStatsGuide">Por Asignar</span></strong></span>
                                             <span>📄 Formato: <strong>Hoja Oficio (8.5" × 13")</strong></span>
                                         </div>
                                     </div>
 
                                     <!-- Sub-tarjeta: Selector de Formato Oficial con Tarjetas Interactivas y Acciones Ejecutivas -->
-                                    <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:14px 16px;">
+                                    <div style="background:#f0f9ff; border:1.5px solid #7dd3fc; border-radius:8px; padding:14px 16px;">
                                         <!-- Selector de Formato con Tarjetas / Chips Interactivas -->
                                         <div style="margin-bottom:12px;">
-                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                                <label style="font-weight:800; color:#15803d; font-size:0.85rem; margin:0; display:flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-table-list" style="color:#16a34a;"></i> Seleccione el Formato Oficial:
+                                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                                                <label style="font-weight:800; color:#0f2b5c; font-size:0.85rem; margin:0; display:flex; align-items:center; gap:6px;">
+                                                    <i class="fa-solid fa-table-list" style="color:#0369a1;"></i> Seleccione el Formato Oficial:
                                                 </label>
-                                                <span style="font-size:0.72rem; color:#166534; font-weight:600;">Haga clic en cualquiera de los 4 formatos institucionales</span>
+                                                <span style="font-size:0.72rem; color:#0369a1; font-weight:600;">Haga clic en cualquiera de los 4 formatos institucionales</span>
                                             </div>
 
                                             <!-- Grid de Tarjetas Interactivas -->
                                             <div id="printModelCardsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px; margin-bottom:10px;">
                                                 <!-- Card 1: Cuadro de Calificaciones -->
-                                                <div class="print-model-chip-card active" data-model="CUADRO_CALIFICACIONES_EXCEL" onclick="selectPrintModelCard('CUADRO_CALIFICACIONES_EXCEL')" style="cursor:pointer; border:2px solid #15803d; background:#ffffff; border-radius:8px; padding:10px 12px; box-shadow:0 2px 8px rgba(21,128,61,0.18); transition:all 0.2s ease;">
+                                                <div class="print-model-chip-card active" data-model="CUADRO_CALIFICACIONES_EXCEL" onclick="selectPrintModelCard('CUADRO_CALIFICACIONES_EXCEL')" style="cursor:pointer; border:2px solid #0369a1; background:#ffffff; border-radius:8px; padding:10px 12px; box-shadow:0 2px 8px rgba(3,105,161,0.18); transition:all 0.2s ease;">
                                                     <div style="display:flex; align-items:center; gap:8px;">
                                                         <div style="font-size:1.25rem;">📊</div>
                                                         <div>
-                                                            <div style="font-weight:800; font-size:0.82rem; color:#15803d;">Cuadro Oficial de Notas</div>
+                                                            <div style="font-weight:800; font-size:0.82rem; color:#0f2b5c;">Cuadro Oficial de Notas</div>
                                                             <div style="font-size:0.72rem; color:#64748b;">40 pts Zona / 60 pts Evaluación</div>
                                                         </div>
                                                     </div>
@@ -1696,10 +1696,10 @@
                                         </div>
 
                                         <!-- Fila de Estado de Casillas y Botones de Acción -->
-                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:10px; border-top:1px solid #bbf7d0;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:10px; border-top:1px solid #bae6fd;">
                                             <div class="form-group" style="flex:1.2; min-width:240px; margin-bottom:0;">
-                                                <label style="font-weight:700; color:#15803d; font-size:0.82rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-                                                    <i class="fa-solid fa-pen-to-square" style="color:#16a34a;"></i> Estado de las Casillas:
+                                                <label style="font-weight:700; color:#0f2b5c; font-size:0.82rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                                    <i class="fa-solid fa-pen-to-square" style="color:#0369a1;"></i> Estado de las Casillas:
                                                 </label>
                                                 <select id="printModelFillModeSelect" class="form-control" style="height:38px; border-radius:6px; font-weight:700; color:#0f172a; background:#ffffff;">
                                                     <option value="lleno" selected>📊 Cuadro Oficial con Datos Asentados (Lleno)</option>
@@ -1717,14 +1717,14 @@
                                             </div>
 
                                             <!-- Botones Ejecutivos con Jerarquía Visual Institucional -->
-                                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                                <button type="button" class="btn" onclick="generateOfficialPrintList({ previewModal: true })" style="height:38px; padding:0 16px; font-weight:700; font-size:0.84rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:#ffffff; color:#15803d; border:1.5px solid #15803d; border-radius:6px; transition:all 0.2s ease; cursor:pointer;" title="Ver documento oficial en pantalla antes de imprimir">
+                                            <div class="excel-exec-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                                <button type="button" class="btn" onclick="generateOfficialPrintList({ previewModal: true })" style="height:38px; padding:0 16px; font-weight:700; font-size:0.84rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:#ffffff; color:#0369a1; border:1.5px solid #0369a1; border-radius:6px; transition:all 0.2s ease; cursor:pointer;" title="Ver documento oficial en pantalla antes de imprimir">
                                                     <i class="fa-solid fa-eye"></i> Vista Previa
                                                 </button>
-                                                <button type="button" class="btn" onclick="generateOfficialPrintList()" style="height:38px; padding:0 20px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg, #15803d 0%, #16a34a 100%); color:#ffffff; border:none; border-radius:6px; box-shadow:0 3px 10px rgba(21,128,61,0.25); transition:all 0.2s ease; cursor:pointer;" title="Imprimir en Hoja Oficio o guardar en PDF">
+                                                <button type="button" class="btn" onclick="generateOfficialPrintList()" style="height:38px; padding:0 20px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%); color:#ffffff; border:none; border-radius:6px; box-shadow:0 3px 10px rgba(15,43,92,0.25); transition:all 0.2s ease; cursor:pointer;" title="Imprimir en Hoja Oficio o guardar en PDF">
                                                     <i class="fa-solid fa-print"></i> Imprimir (Oficio)
                                                 </button>
-                                                <button type="button" class="btn" onclick="generateOfficialExcelList()" style="height:38px; padding:0 18px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#14532d; color:#ffffff; border:none; border-radius:6px; box-shadow:0 3px 10px rgba(20,83,45,0.2); transition:all 0.2s ease; cursor:pointer;" title="Descargar como archivo oficial de Microsoft Excel (.xlsx)">
+                                                <button type="button" class="btn" onclick="generateOfficialExcelList()" style="height:38px; padding:0 18px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#0369a1; color:#ffffff; border:none; border-radius:6px; box-shadow:0 3px 10px rgba(3,105,161,0.2); transition:all 0.2s ease; cursor:pointer;" title="Descargar como archivo oficial de Microsoft Excel (.xlsx)">
                                                     <i class="fa-solid fa-file-excel"></i> Descargar Excel
                                                 </button>
                                             </div>
@@ -1735,11 +1735,11 @@
                         </div>
 
                         <!-- SECCIÓN 3: IMPORTADOR INTELIGENTE DE ESTUDIANTES Y DOCENTES -->
-                        <div class="table-card role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" style="padding:20px; border-top:4px solid var(--brand-accent);">
+                        <div class="table-card role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" style="padding:20px; border-top:4px solid #0369a1;">
                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                                 <div>
-                                    <h3 style="margin:0; font-size:1.1rem; color:var(--brand-green-dark); font-weight:800;">
-                                        <i class="fa-solid fa-file-excel"></i> Importación Masiva de Datos (Estudiantes y Docentes)
+                                    <h3 style="margin:0; font-size:1.1rem; color:#0f2b5c; font-weight:800;">
+                                        <i class="fa-solid fa-file-excel" style="color:#0369a1;"></i> Importación Masiva de Datos (Estudiantes y Docentes)
                                     </h3>
                                     <p style="margin:2px 0 0 0; font-size:0.84rem; color:var(--text-secondary);">
                                         Descargue las plantillas oficiales con encabezados exactos y suba el archivo para registrar alumnos o catedráticos en masa.
@@ -1750,8 +1750,8 @@
                             <div class="cards-grid" style="margin-bottom:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
                                 <!-- TARJETA ESTUDIANTES -->
                                 <div class="action-card" style="padding:18px;">
-                                    <div class="action-card-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fa-solid fa-user-graduate"></i></div>
-                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800;">1. Estudiantes y Cuadros</h4>
+                                    <div class="action-card-icon" style="background:#e0f2fe; color:#0369a1;"><i class="fa-solid fa-user-graduate"></i></div>
+                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800; color:#0f2b5c;">1. Estudiantes y Cuadros</h4>
                                     <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Carga masiva de nóminas con códigos, encargados y notas según el modelo institucional.</p>
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadStudentTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Excel (.xlsx)</button>
@@ -1763,7 +1763,7 @@
                                 <!-- TARJETA DOCENTES -->
                                 <div class="action-card" style="padding:18px;">
                                     <div class="action-card-icon" style="background:#fef3c7; color:#d97706;"><i class="fa-solid fa-chalkboard-user"></i></div>
-                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800;">2. Catedráticos / Docentes</h4>
+                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800; color:#0f2b5c;">2. Catedráticos / Docentes</h4>
                                     <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Carga masiva de nómina de maestros con asignación de credenciales y cátedras.</p>
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadTeacherTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Docentes (.xlsx)</button>
@@ -1774,8 +1774,8 @@
 
                                 <!-- TARJETA ADMINISTRATIVOS -->
                                 <div class="action-card" style="padding:18px;">
-                                    <div class="action-card-icon" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-user-shield"></i></div>
-                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800;">3. Personal Administrativo</h4>
+                                    <div class="action-card-icon" style="background:#e0f2fe; color:#0f2b5c;"><i class="fa-solid fa-user-shield"></i></div>
+                                    <h4 style="margin:6px 0; font-size:1rem; font-weight:800; color:#0f2b5c;">3. Personal Administrativo</h4>
                                     <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Carga masiva de Directora, Secretaría y Super Administradores con claves y cargos.</p>
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadAdminStaffTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Admin (.xlsx)</button>
@@ -1786,30 +1786,30 @@
                             </div>
 
                             <!-- CONTENEDOR DE VISTA PREVIA INTERACTIVA DE IMPORTACIÓN DE ALUMNOS Y NOTAS -->
-                            <div id="studentImportPreviewContainer" style="display:none; background:#f8fafc; border:2px solid #bbf7d0; border-radius:var(--radius-sm); padding:16px; margin-top:14px;">
+                            <div id="studentImportPreviewContainer" style="display:none; background:#f8fafc; border:2px solid #7dd3fc; border-radius:var(--radius-sm); padding:16px; margin-top:14px;">
                                 
                                 <!-- ENCABEZADO INSTITUCIONAL DETECTADO DEL ARCHIVO EXCEL (MOSTRADO EN TARJETA DE METADATOS, SIN AGREGARLO COMO FILA DE ALUMNO) -->
                                 <div id="studentImportDetectedHeaderCard" style="background:#ffffff; border:1.5px solid #94a3b8; border-radius:4px; margin-bottom:14px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-                                    <div style="background-color:#99b958; border-bottom:1.5px solid #334155; padding:6px 14px; display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:800; color:#142d14; font-size:0.95rem;">
-                                            <i class="fa-solid fa-school"></i> <span id="importDetectedSchoolName">Escuela Nacional de Ciencias Comerciales</span>
+                                    <div style="background-color:#0f2b5c; border-bottom:1.5px solid #0369a1; padding:6px 14px; display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-weight:800; color:#ffffff; font-size:0.95rem;">
+                                            <i class="fa-solid fa-school" style="color:#bae6fd;"></i> <span id="importDetectedSchoolName">Escuela Nacional de Ciencias Comerciales</span>
                                         </span>
-                                        <span id="importDetectedBimestreBadge" class="badge" style="background:#ffffff; color:#142d14; font-weight:800; border:1px solid #142d14;">
-                                            2º Bimestre Activo
+                                        <span id="importDetectedBimestreBadge" class="badge" style="background:#ffffff; color:#0f2b5c; font-weight:800; border:1px solid #7dd3fc;">
+                                            Bimestre Activo
                                         </span>
                                     </div>
                                     <div style="padding:10px 14px; font-size:0.84rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:10px; background:#f8fafc;">
-                                        <div><strong><i class="fa-solid fa-book"></i> Cátedra:</strong> <span id="importDetectedSubject" style="color:var(--brand-green-dark); font-weight:700;">Computacion III</span></div>
-                                        <div><strong><i class="fa-solid fa-user-tie"></i> Catedrático:</strong> <span id="importDetectedTeacher" style="font-weight:700;">PEM. Nehemias Yalil Salguero</span></div>
-                                        <div><strong><i class="fa-solid fa-graduation-cap"></i> Grado y Sección:</strong> <span id="importDetectedGrade" style="font-weight:700;">6to Perito Contador "D"</span></div>
-                                        <div><strong><i class="fa-solid fa-calendar-days"></i> Ciclo Escolar:</strong> <span id="importDetectedCycle" style="font-weight:700;">2026</span></div>
+                                        <div><strong><i class="fa-solid fa-book"></i> Cátedra:</strong> <span id="importDetectedSubject" style="color:#0369a1; font-weight:700;">—</span></div>
+                                        <div><strong><i class="fa-solid fa-user-tie"></i> Catedrático:</strong> <span id="importDetectedTeacher" style="font-weight:700;">—</span></div>
+                                        <div><strong><i class="fa-solid fa-graduation-cap"></i> Grado y Sección:</strong> <span id="importDetectedGrade" style="font-weight:700;">—</span></div>
+                                        <div><strong><i class="fa-solid fa-calendar-days"></i> Ciclo Escolar:</strong> <span id="importDetectedCycle" style="font-weight:700;">—</span></div>
                                     </div>
                                 </div>
 
                                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
                                     <div>
-                                        <h4 style="margin:0; color:var(--brand-green-dark); font-weight:800; font-size:0.95rem;">
-                                            <i class="fa-solid fa-list-check"></i> Vista Previa de Estudiantes y 10 Notas de Zona a Importar
+                                        <h4 style="margin:0; color:#0f2b5c; font-weight:800; font-size:0.95rem;">
+                                            <i class="fa-solid fa-list-check" style="color:#0369a1;"></i> Vista Previa de Estudiantes y 10 Notas de Zona a Importar
                                         </h4>
                                         <p id="studentImportStats" style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-secondary);"></p>
                                     </div>
@@ -6883,7 +6883,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v344" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v345" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>

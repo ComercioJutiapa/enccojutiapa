@@ -12025,6 +12025,8 @@ function synchronizeGlobalDynamicUI() {
             renderDisciplineTable();
         } else if (STATE.activeView === 'grade-lock' && typeof loadLockStatus === 'function') {
             loadLockStatus();
+        } else if (STATE.activeView === 'excel-import' && typeof updatePrintModelSelects === 'function') {
+            updatePrintModelSelects();
         }
     }, 32);
 }
@@ -22463,12 +22465,12 @@ function syncPrintModelCards(modelKey) {
     cards.forEach(c => {
         const isMatch = (c.getAttribute('data-model') === modelKey);
         c.classList.toggle('active', isMatch);
-        c.style.border = isMatch ? '2px solid #15803d' : '1px solid #cbd5e1';
+        c.style.border = isMatch ? '2px solid #0369a1' : '1px solid #cbd5e1';
         c.style.background = isMatch ? '#ffffff' : '#f8fafc';
-        c.style.boxShadow = isMatch ? '0 2px 8px rgba(21,128,61,0.18)' : 'none';
+        c.style.boxShadow = isMatch ? '0 2px 8px rgba(3,105,161,0.18)' : 'none';
         const titleEl = c.querySelector('div > div > div:first-child');
         if (titleEl) {
-            titleEl.style.color = isMatch ? '#15803d' : '#334155';
+            titleEl.style.color = isMatch ? '#0f2b5c' : '#334155';
             titleEl.style.fontWeight = isMatch ? '800' : '700';
         }
     });
@@ -22487,7 +22489,7 @@ function updatePrintModelStats(gradeCode) {
         ? getCycleFilteredStudents(STATE.students || [], activeCycle)
         : (STATE.students || []);
     const students = cycleStudents.filter(s => {
-        if (!s || s.active === false || s.status === 'Retirado') return false;
+        if (!s || s.active === false || s.status === 'Retirado' || s.status === 'Inactivo') return false;
         const stLower = String(s.status || '').toLowerCase().trim();
         if (stLower === 'egresado') return false;
         if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
@@ -23727,7 +23729,7 @@ function applyInstitutionalStylesToWorksheet(ws, numCols, headerRowIdx = 6, data
 window.applyInstitutionalStylesToWorksheet = applyInstitutionalStylesToWorksheet;
 
 function generateOfficialExcelList(opts = null) {
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
     let gradeCode = opts?.gradeCode || opts?.gradeVal || document.getElementById('printModelGradeSelect')?.value;
@@ -24284,10 +24286,10 @@ function downloadStudentTemplate(targetBim = null) {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : (STATE.schoolHeader || {}));
     
     const sampleStudents = [
-        { clave: 1, name: 'CHACÓN LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'María Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
-        { clave: 2, name: 'CHACÓN LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: 'ENCCO-2026-102', phone: '5555-2222', tutor: 'Carlos Chacón', acts: [10, 8, 10, 9, 0, 0, 0, 0, 0, 0], zona: 37, exam: 42, total: 79 },
-        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: 'ENCCO-2026-103', phone: '5555-3333', tutor: 'Elena Monzón', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 50, total: 90 },
-        { clave: 4, name: 'CRUZ MARTÍNEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: 'ENCCO-2026-104', phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 9, 7, 8, 0, 0, 0, 0, 0, 0], zona: 32, exam: 40, total: 72 }
+        { clave: 1, name: 'CHACÓN LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: `ENCCO-${cycle}-101`, phone: '5555-1111', tutor: 'María Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
+        { clave: 2, name: 'CHACÓN LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: `ENCCO-${cycle}-102`, phone: '5555-2222', tutor: 'Carlos Chacón', acts: [10, 8, 10, 9, 0, 0, 0, 0, 0, 0], zona: 37, exam: 42, total: 79 },
+        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: `ENCCO-${cycle}-103`, phone: '5555-3333', tutor: 'Elena Monzón', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 50, total: 90 },
+        { clave: 4, name: 'CRUZ MARTÍNEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: `ENCCO-${cycle}-104`, phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 9, 7, 8, 0, 0, 0, 0, 0, 0], zona: 32, exam: 40, total: 72 }
     ];
 
     const rowsHtml = sampleStudents.map(s => {
