@@ -6767,7 +6767,7 @@ function renderGuideTeachersView(searchQuery = '') {
                 if (!isTeacherRole) return false;
                 const isCurrentAssigned = (u.id === g.guideTeacherId || u.name === g.guideTeacher || (guideInfo && (u.id === guideInfo.id || u.name === guideInfo.name)));
                 return u.active !== false || isCurrentAssigned;
-            });
+            }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
             guideDisplayHtml = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <select class="form-control form-control-sm" style="font-size:0.84rem; font-weight:700; color:#0f2b5c; border-color:#7dd3fc; background:#f0f9ff; max-width:280px;"
@@ -6850,7 +6850,7 @@ function exportGuideTeachersExcel() {
             'Estudiantes': count
         };
     });
-    const cycle = STATE.activeCycle || new Date().getFullYear();
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     if (typeof XLSX !== 'undefined' && XLSX.utils) {
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
@@ -6874,6 +6874,10 @@ function filterGuideTeachersView(query = '') {
 window.filterGuideTeachersView = filterGuideTeachersView;
 
 async function handleDirectGuideTeacherChange(gradeId, newTeacherId, optionalMaestroId) {
+    if (STATE.isHistoricalReadOnlyMode || (STATE.historicalViewingCycle && String(STATE.historicalViewingCycle) !== String(STATE.activeCycle))) {
+        showToast('Modo Consulta Histórica: regrese al ciclo activo para cambiar Maestros Guías.', 'warning');
+        return;
+    }
     if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
         showToast('Acceso Restringido: Su rol no tiene autorización para modificar o asignar Maestros Guías.', 'warning');
         return;
@@ -14674,10 +14678,19 @@ function renderDashboard() {
         welcomeSubtitle.textContent = `Supervisión Académica Integral, Auditoría de Calificaciones y Respaldo Institucional.`;
 
         const activeBimestreDisplay = STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre || 1;
-        const allStudents = STATE.students || [];
-        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+        const dashCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const allStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], dashCycle) : (STATE.students || []);
+        const activeStudents = allStudents.filter(s => {
+            if (!s || s.active === false) return false;
+            const st = String(s.status || '').toLowerCase().trim();
+            return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado' && st !== 'ausente';
+        });
         const allPensum = STATE.pensum || [];
-        const allTeachers = (STATE.users || []).filter(u => u.role === 'docente');
+        const allTeachers = (STATE.users || []).filter(u => {
+            if (!u || u.active === false) return false;
+            if (typeof isAdminOrSystemUser === 'function' && isAdminOrSystemUser(u)) return false;
+            return u.role === 'docente';
+        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
 
         // Calcular Semáforo de Cumplimiento Docente
         let fullDoneTeachers = 0;
@@ -14832,23 +14845,23 @@ function renderDashboard() {
 
             <!-- MATRÍCULA Y RESUMEN POR SECCIÓN -->
             <div style="border-top:1px solid var(--border-color); padding-top:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h4 style="color:var(--brand-green-dark); margin:0; font-size:0.95rem; font-weight:800;">
-                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || String(new Date().getFullYear())}):
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <h4 style="color:#0f2b5c; margin:0; font-size:0.95rem; font-weight:800;">
+                        <i class="fa-solid fa-chart-simple" style="color:#0369a1;"></i> Matrícula por Grado y Sección (Ciclo ${dashCycle}):
                     </h4>
                     <button class="btn btn-outline-primary btn-xs" onclick="navigateTo('grades')" style="font-size:0.78rem;">
                         <i class="fa-solid fa-graduation-cap"></i> Gestionar Grados
                     </button>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    ${(STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList.map(g => {
+                    ${(STATE.gradesList && STATE.gradesList.length > 0) ? (typeof sortGrades === 'function' ? sortGrades(STATE.gradesList) : STATE.gradesList).map(g => {
                         const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
                         return `
-                            <div style="background:var(--bg-main); border:1px solid var(--border-color); border-left:4px solid var(--brand-green); padding:8px 12px; border-radius:var(--radius-sm); min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="background:var(--bg-main); border:1px solid var(--border-color); border-left:4px solid #0369a1; padding:8px 12px; border-radius:var(--radius-sm); min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                                 <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">${g.name} <span class="badge badge-primary" style="font-size:0.72rem; padding:2px 6px;">${g.section}</span></div>
                                 <small style="color:var(--text-secondary);">${g.career}</small>
-                                <div style="margin-top:4px; font-size:0.88rem; font-weight:800; color:var(--brand-green-dark);">
-                                    <i class="fa-solid fa-users"></i> ${count} ${count === 1 ? 'estudiante' : 'estudiantes'}
+                                <div style="margin-top:4px; font-size:0.88rem; font-weight:800; color:#0f2b5c;">
+                                    <i class="fa-solid fa-users" style="color:#0369a1;"></i> ${count} ${count === 1 ? 'estudiante' : 'estudiantes'}
                                 </div>
                             </div>
                         `;
@@ -14861,11 +14874,19 @@ function renderDashboard() {
         welcomeTitle.textContent = `¡Bienvenida Secretaría Académica, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Gestión Oficial de Matrícula, Fichas Estudiantiles, Expedientes y Módulo SIRE MINEDUC.`;
 
-        const allStudents = STATE.students || [];
-        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+        const secDashCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const allStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], secDashCycle) : (STATE.students || []);
+        const activeStudents = allStudents.filter(s => {
+            if (!s || s.active === false) return false;
+            const st = String(s.status || '').toLowerCase().trim();
+            return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado' && st !== 'ausente';
+        });
         const codeValidCount = allStudents.filter(s => s.personalCode && s.personalCode.trim().length >= 5).length;
         const codeMissingCount = allStudents.length - codeValidCount;
-        const retiredCount = allStudents.filter(s => s.status === 'Retirado' || s.status === 'Ausente').length;
+        const retiredCount = allStudents.filter(s => {
+            const st = String(s.status || '').toLowerCase().trim();
+            return st === 'retirado' || st === 'ausente' || st === 'inactivo';
+        }).length;
 
         kpiGrid.innerHTML = `
             <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-user-graduate"></i></div><div class="kpi-info"><h4>Matrícula Total</h4><h2>${allStudents.length}</h2><p>${activeStudents.length} activos en el ciclo</p></div></div>
@@ -14906,6 +14927,7 @@ function renderDashboard() {
                     <h5 style="margin-bottom:10px; font-weight:800; color:#334155; font-size:0.9rem;">
                         <i class="fa-solid fa-clock-rotate-left"></i> Estudiantes Recientemente Registrados / Actualizados:
                     </h5>
+                    <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
                     <table class="custom-table" style="font-size:0.83rem;">
                         <thead><tr><th>Carné</th><th>Estudiante</th><th>Código MINEDUC</th><th>Grado y Sección</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody>
@@ -14913,7 +14935,7 @@ function renderDashboard() {
                                 <tr>
                                     <td><code>${s.carne || ''}</code></td>
                                     <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
-                                    <td><small style="font-weight:700; color:#15803d;">${s.personalCode || '— Pendiente —'}</small></td>
+                                    <td><small style="font-weight:700; color:#0369a1;">${s.personalCode || '— Pendiente —'}</small></td>
                                     <td>${formatStudentGradeAndSection(s)}</td>
                                     <td><span class="badge ${s.status === 'Activo' || s.status === 'Inscrito' ? 'badge-success' : 'badge-danger'}">${s.status}</span></td>
                                     <td>
@@ -14925,6 +14947,7 @@ function renderDashboard() {
                             `).join('')}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -14933,8 +14956,13 @@ function renderDashboard() {
         welcomeTitle.textContent = `¡Bienvenido Auxiliar y Convivencia, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Control Central de Asistencia, Radar de Inasistencias Críticas y Pases de Salida.`;
 
-        const allStudents = STATE.students || [];
-        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+        const auxDashCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const allStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], auxDashCycle) : (STATE.students || []);
+        const activeStudents = allStudents.filter(s => {
+            if (!s || s.active === false) return false;
+            const st = String(s.status || '').toLowerCase().trim();
+            return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado' && st !== 'ausente';
+        });
 
         // Radar de ausencias críticas (estudiantes con >= 2 faltas en el mes actual)
         const now = new Date();
@@ -15055,31 +15083,39 @@ function renderDashboard() {
         welcomeTitle.textContent = `¡Bienvenido(a) ${roleTitle}, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Panel de Control y Gestión Institucional de la ENCCO Jutiapa 1970.`;
 
+        const fallbackDashCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+        const fallbackCycleStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], fallbackDashCycle) : (STATE.students || []);
+        const fallbackActiveCount = fallbackCycleStudents.filter(s => {
+            if (!s || s.active === false) return false;
+            const st = String(s.status || '').toLowerCase().trim();
+            return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado' && st !== 'ausente';
+        }).length;
+
         kpiGrid.innerHTML = `
-            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Estudiantes Activos</h4><h2>${(STATE.students || []).filter(s => s.status === 'Inscrito' || s.status === 'Activo' || s.active !== false).length}</h2><p>Inscritos 2026</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Estudiantes Activos</h4><h2>${fallbackActiveCount}</h2><p>Inscritos ${fallbackDashCycle}</p></div></div>
             <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-user-shield"></i></div><div class="kpi-info"><h4>Usuarios del Sistema</h4><h2>${(STATE.users || []).length}</h2><p>Docentes y Directivos</p></div></div>
             <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-book-open"></i></div><div class="kpi-info"><h4>Cursos Registrados</h4><h2>${(STATE.pensumCatalog && Array.isArray(STATE.pensumCatalog)) ? STATE.pensumCatalog.length : 0}</h2><p>En pensum escolar</p></div></div>
         `;
 
         mainBody.innerHTML = `
             <div style="margin-bottom:18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h4 style="color:var(--brand-green-dark); margin:0; font-size:0.95rem; font-weight:800;">
-                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || String(new Date().getFullYear())}):
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <h4 style="color:#0f2b5c; margin:0; font-size:0.95rem; font-weight:800;">
+                        <i class="fa-solid fa-chart-simple" style="color:#0369a1;"></i> Matrícula por Grado y Sección (Ciclo ${fallbackDashCycle}):
                     </h4>
                     <button class="btn btn-outline-primary btn-xs" onclick="navigateTo('grades')" style="font-size:0.78rem;">
                         <i class="fa-solid fa-graduation-cap"></i> Gestionar Grados
                     </button>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    ${(STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList.map(g => {
+                    ${(STATE.gradesList && STATE.gradesList.length > 0) ? (typeof sortGrades === 'function' ? sortGrades(STATE.gradesList) : STATE.gradesList).map(g => {
                         const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
                         return `
-                            <div style="background:var(--bg-main); border:1px solid var(--border-color); border-left:4px solid var(--brand-green); padding:8px 12px; border-radius:var(--radius-sm); min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="background:var(--bg-main); border:1px solid var(--border-color); border-left:4px solid #0369a1; padding:8px 12px; border-radius:var(--radius-sm); min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                                 <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">${g.name} <span class="badge badge-primary" style="font-size:0.72rem; padding:2px 6px;">${g.section}</span></div>
                                 <small style="color:var(--text-secondary);">${g.career}</small>
-                                <div style="margin-top:4px; font-size:0.88rem; font-weight:800; color:var(--brand-green-dark);">
-                                    <i class="fa-solid fa-users"></i> ${count} ${count === 1 ? 'estudiante' : 'estudiantes'}
+                                <div style="margin-top:4px; font-size:0.88rem; font-weight:800; color:#0f2b5c;">
+                                    <i class="fa-solid fa-users" style="color:#0369a1;"></i> ${count} ${count === 1 ? 'estudiante' : 'estudiantes'}
                                 </div>
                             </div>
                         `;
@@ -17592,6 +17628,10 @@ function validateStudentFormLiveDuplicate() {
 async function saveStudentForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
+    if (STATE.isHistoricalReadOnlyMode || (STATE.historicalViewingCycle && String(STATE.historicalViewingCycle) !== String(STATE.activeCycle))) {
+        showToast('Modo Consulta Histórica: regrese al ciclo activo para inscribir o modificar estudiantes.', 'warning');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
 
     const studentId = document.getElementById('studentFormId')?.value?.trim();
@@ -17740,7 +17780,9 @@ async function saveStudentForm(e) {
         const authRoleName = STATE.currentRole || 'Secretaría';
         const authUserName = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || authRoleName;
         const nowTime = Date.now();
-        const todayIsoDate = (typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString(new Date(nowTime)) : new Date(nowTime).toISOString().slice(0, 10);
+        const todayIsoDate = (typeof getLocalIsoDateString === 'function')
+            ? getLocalIsoDateString(new Date(nowTime))
+            : (() => { const d = new Date(nowTime); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
         const hiddenEnrollDateVal = (document.getElementById('studentEnrollmentDate')?.value || '').trim();
 
         if (idx !== -1) {
@@ -17759,19 +17801,19 @@ async function saveStudentForm(e) {
                 gradeLabel: finalGradeLabel,
                 career: matchedGrade?.career || existing.career || 'Perito Contador',
                 cycle, shift,
-                motherName: motherName || existing.motherName || '',
-                motherDpi: motherDpi || existing.motherDpi || '',
-                motherPhone1: motherPhone1 || existing.motherPhone1 || '',
-                motherPhone2: motherPhone2 || existing.motherPhone2 || '',
-                fatherName: fatherName || existing.fatherName || '',
-                fatherDpi: fatherDpi || existing.fatherDpi || '',
-                fatherPhone1: fatherPhone1 || existing.fatherPhone1 || '',
-                fatherPhone2: fatherPhone2 || existing.fatherPhone2 || '',
-                guardianName: guardianName || existing.guardianName || '',
-                guardianDpi: guardianDpi || existing.guardianDpi || '',
-                guardianPhone1: guardianPhone1 || existing.guardianPhone1 || '',
-                guardianPhone2: guardianPhone2 || existing.guardianPhone2 || '',
-                tutor: guardianName || existing.tutor || '',
+                motherName: motherName,
+                motherDpi: motherDpi,
+                motherPhone1: motherPhone1,
+                motherPhone2: motherPhone2,
+                fatherName: fatherName,
+                fatherDpi: fatherDpi,
+                fatherPhone1: fatherPhone1,
+                fatherPhone2: fatherPhone2,
+                guardianName: guardianName,
+                guardianDpi: guardianDpi,
+                guardianPhone1: guardianPhone1,
+                guardianPhone2: guardianPhone2,
+                tutor: guardianName,
                 photo: photoUrl || existing.photo || '',
                 editedByAuthority: true,
                 lastModifiedByRole: authRoleName,
@@ -19817,7 +19859,7 @@ function onExpedienteDocFieldChange(docKey, field, value) {
 
     // Si se marca como entregado y no hay fecha, autoasignar fecha de hoy
     if (field === 'status' && value === 'entregado' && !exp.docs[docKey].date) {
-        exp.docs[docKey].date = new Date().toISOString().slice(0, 10);
+        exp.docs[docKey].date = (typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString() : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`;
     }
 
     const nowTime = Date.now();
@@ -20023,7 +20065,7 @@ function quickMarkAllExpedienteDocs(newStatus) {
     if (!student) return;
 
     const exp = getStudentExpedienteSafe(student);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString() : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`;
 
     OFFICIAL_EXPEDIENTE_DOCS.forEach(d => {
         if (!exp.docs[d.key]) exp.docs[d.key] = { status: 'pendiente', type: 'copia', date: '', notes: '' };
@@ -21315,7 +21357,7 @@ function getStudentFullAttendanceAndDisciplineData(student) {
             const eD = new Date((p.endDate || p.startDate) + 'T00:00:00');
             if (!isNaN(sD) && !isNaN(eD)) {
                 for (let d = new Date(sD); d <= eD; d.setDate(d.getDate() + 1)) {
-                    coveredDatesByPerms.add(d.toISOString().slice(0, 10));
+                    coveredDatesByPerms.add((typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString(d) : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
                 }
             }
         }
@@ -22079,7 +22121,7 @@ async function saveStudentProfileForm(e) {
     if (newStatus !== 'Activo') {
         student.retireReason = reason;
         student.retireRecipient = (document.getElementById('profRetireRecipient')?.value || '').trim();
-        student.retireDate = document.getElementById('profRetireDate')?.value || new Date().toISOString().slice(0, 10);
+        student.retireDate = document.getElementById('profRetireDate')?.value || ((typeof getLocalIsoDateString === 'function') ? getLocalIsoDateString() : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`);
         student.hasExpediente = (document.getElementById('profHasExpediente')?.value !== 'false');
     } else {
         student.retireReason = '';
@@ -25490,7 +25532,7 @@ function printStudentsOfficialList(targetGrade = null) {
         return;
     }
 
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
     let list = (typeof getCycleFilteredStudents === 'function')
@@ -25566,7 +25608,11 @@ function printStudentsOfficialList(targetGrade = null) {
         } else if (sValLower === 'ausente') {
             list = list.filter(s => s.status === 'Ausente');
         } else if (sValLower === 'activo' || sValLower === 'inscrito') {
-            list = list.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+            list = list.filter(s => {
+                if (!s || s.active === false) return false;
+                const st = String(s.status || '').toLowerCase().trim();
+                return st !== 'retirado' && st !== 'inactivo' && st !== 'ausente' && st !== 'egresado';
+            });
         } else {
             list = list.filter(s => s.status && s.status.toLowerCase() === sValLower);
         }
@@ -25680,7 +25726,7 @@ function printStudentsOfficialList(targetGrade = null) {
                             NÓMINA OFICIAL DE ESTUDIANTES — ${gradeName} (${sectionName})
                         </div>
                         <div style="color:#334155; font-size:8.5pt; margin-top:2px;">
-                            <strong>Carrera:</strong> ${careerName} &nbsp;|&nbsp; 👨‍🏫 <strong>Catedrático(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${guideTeacher}</span>
+                            <strong>Carrera:</strong> ${careerName} &nbsp;|&nbsp; 👨‍🏫 <strong>Catedrático(a) Guía:</strong> <span style="color:#0f2b5c; font-weight:bold;">${guideTeacher}</span>
                         </div>
                     </div>
                     <div style="text-align:right; font-size:8.5pt; color:#475569;">
@@ -25759,7 +25805,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
         return;
     }
 
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
 
     let list = (typeof getCycleFilteredStudents === 'function')
@@ -42974,19 +43020,22 @@ if (typeof document !== 'undefined') {
 
 function printStudentDemographicsReport() {
     const isTeacher = STATE.currentRole === 'docente';
-    if (STATE.currentRole !== 'admin' && STATE.currentRole !== 'director' && STATE.currentRole !== 'secretaria' && !isTeacher && STATE.currentUser?.role !== 'admin') {
-        showToast("Acceso Restringido: Informe estadístico disponible para Dirección, Secretaría y Catedráticos.", "danger");
+    const isAux = STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura';
+    if (STATE.currentRole !== 'admin' && STATE.currentRole !== 'super_usuario' && STATE.currentRole !== 'director' && STATE.currentRole !== 'secretaria' && !isTeacher && !isAux && STATE.currentUser?.role !== 'admin') {
+        showToast("Acceso Restringido: Informe estadístico disponible para Dirección, Secretaría, Auxiliatura y Catedráticos.", "danger");
         return;
     }
 
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
+    const demoCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     let gradesList = sortGrades(STATE.gradesList || getInitialData().gradesList);
-    const students = STATE.students || [];
+    const students = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || [], demoCycle) : (STATE.students || []);
     let teacherSubtitle = "";
 
     if (isTeacher && STATE.currentUser) {
-        const teacherName = (STATE.currentUser.name || '').toLowerCase();
-        const teacherPensum = (STATE.pensum || []).filter(p => (p.teacher || '').toLowerCase().includes(teacherName) || (p.teacherName || '').toLowerCase().includes(teacherName));
+        const teacherPensum = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function')
+            ? isCourseAssignedToTeacher(p, STATE.currentUser)
+            : ((p.teacher || '').toLowerCase().includes((STATE.currentUser.name || '').toLowerCase())));
         const assignedGradeCodes = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
         
         if (assignedGradeCodes.length > 0) {
@@ -43086,20 +43135,20 @@ function printStudentDemographicsReport() {
                 @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.3; font-size: 9.5pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
-                .official-header { border: 2px solid #15803d; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
-                .top-banner { background: linear-gradient(135deg, #0f172a 0%, #15803d 60%, #166534 100%) !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; }
+                .official-header { border: 2px solid #0f2b5c; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+                .top-banner { background: linear-gradient(135deg, #0f172a 0%, #0f2b5c 60%, #0369a1 100%) !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; }
                 .top-banner img { height: 48px; width: auto; }
                 .top-banner h1 { margin: 0; font-size: 16px; font-weight: 900; color: #fff; text-transform: uppercase; }
-                .sub-tag { font-size: 9.5px; font-weight: 700; color: #bbf7d0; }
+                .sub-tag { font-size: 9.5px; font-weight: 700; color: #bae6fd; }
                 
-                .report-title-box { background: #f0fdf4 !important; border-top: 2px solid #166534; padding: 8px 16px; text-align: center; }
-                .report-title { font-size: 12pt; font-weight: 900; color: #15803d; text-transform: uppercase; margin: 0; }
+                .report-title-box { background: #f0f9ff !important; border-top: 2px solid #0369a1; padding: 8px 16px; text-align: center; }
+                .report-title { font-size: 12pt; font-weight: 900; color: #0f2b5c; text-transform: uppercase; margin: 0; }
                 
                 .stat-table { width: 100%; border-collapse: collapse; margin: 12px 0 16px 0; border: 1.5px solid #0f172a; font-size: 9pt; }
-                .stat-table th { background: #15803d !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 6px 8px; text-align: center; font-weight: 900; text-transform: uppercase; }
+                .stat-table th { background: #0f2b5c !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 6px 8px; text-align: center; font-weight: 900; text-transform: uppercase; }
                 .stat-table td { border: 1px solid #64748b; padding: 5px 8px; }
                 .stat-table tr:nth-child(even) { background-color: #f8fafc; }
-                .stat-table tr.total-row { background: #dcfce7 !important; font-weight: 900; font-size: 10pt; }
+                .stat-table tr.total-row { background: #e0f2fe !important; font-weight: 900; font-size: 10pt; }
 
                 .signatures { margin-top: 40px; display: flex; justify-content: space-around; text-align: center; }
                 .sig-box { width: 220px; border-top: 1.5px solid #000; padding-top: 4px; font-size: 9pt; font-weight: bold; }
@@ -43112,10 +43161,10 @@ function printStudentDemographicsReport() {
                         <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
                         <div>
                             <h1>${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || String(new Date().getFullYear())}</div>
+                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${demoCycle}</div>
                         </div>
                     </div>
-                    <div style="background:#166534; color:#fff; font-size:10px; font-weight:900; padding:4px 12px; border-radius:12px; border:1px solid #86efac; text-transform:uppercase;">
+                    <div style="background:#0369a1; color:#fff; font-size:10px; font-weight:900; padding:4px 12px; border-radius:12px; border:1px solid #7dd3fc; text-transform:uppercase;">
                         DIRECCIÓN / SECRETARÍA
                     </div>
                 </div>
@@ -43125,7 +43174,7 @@ function printStudentDemographicsReport() {
                 </div>
             </div>
 
-            <h3 style="margin:10px 0 4px 0; font-size:10.5pt; color:#15803d; text-transform:uppercase;">Resumen Institucional de Estudiantes por Grado, Sección y Género</h3>
+            <h3 style="margin:10px 0 4px 0; font-size:10.5pt; color:#0f2b5c; text-transform:uppercase;">Resumen Institucional de Estudiantes por Grado, Sección y Género</h3>
             <table class="stat-table">
                 <thead>
                     <tr>
@@ -43146,7 +43195,7 @@ function printStudentDemographicsReport() {
                         <td colspan="5" style="text-align:right;">GRAN TOTAL MATRÍCULA INSTITUCIONAL ENCCO:</td>
                         <td style="text-align:center; color:#0369a1;">${grandTotalMale}</td>
                         <td style="text-align:center; color:#be185d;">${grandTotalFemale}</td>
-                        <td style="text-align:center; color:#15803d; font-size:11pt;">${grandTotal}</td>
+                        <td style="text-align:center; color:#0f2b5c; font-size:11pt;">${grandTotal}</td>
                         <td style="text-align:center;">100.0%</td>
                     </tr>
                 </tbody>
@@ -43154,7 +43203,7 @@ function printStudentDemographicsReport() {
 
             <div style="margin-top:16px; padding-top:8px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; font-size:8.5pt; color:#475569; font-weight:600;">
                 <span>Documento Estadístico Institucional (Sin Firmas)</span>
-                <span>${(h && h.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} &bull; Ciclo ${STATE.activeCycle || new Date().getFullYear()}</span>
+                <span>${(h && h.schoolName) || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} &bull; Ciclo ${demoCycle}</span>
             </div>
         </body>
         </html>
@@ -45595,7 +45644,11 @@ function exportStudentsOfficialExcel() {
             } else if (sValLower === 'ausente') {
                 students = students.filter(s => s.status === 'Ausente');
             } else if (sValLower === 'activo' || sValLower === 'inscrito') {
-                students = students.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+                students = students.filter(s => {
+                    if (!s || s.active === false) return false;
+                    const st = String(s.status || '').toLowerCase().trim();
+                    return st !== 'retirado' && st !== 'inactivo' && st !== 'ausente' && st !== 'egresado';
+                });
             } else {
                 students = students.filter(s => s.status && s.status.toLowerCase() === sValLower);
             }
@@ -49609,7 +49662,11 @@ function openGradeModal() {
     // Poblar select de Maestro Guía
     const guideSelect = document.getElementById('gradeFormGuideTeacher');
     if (guideSelect) {
-        const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
+        const teachers = (STATE.users || []).filter(u => {
+            if (!u || u.active === false) return false;
+            if (typeof isAdminOrSystemUser === 'function' && isAdminOrSystemUser(u)) return false;
+            return u.role === 'docente' || String(u.id || '').startsWith('usr-doc-');
+        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
         guideSelect.innerHTML = '<option value="">-- Sin Maestro Guía Asignado --</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
     }
 
@@ -49656,7 +49713,11 @@ function openEditGradeModal(gradeId) {
     if (codeInput) codeInput.value = g.code || '';
 
     if (guideSelect) {
-        const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
+        const teachers = (STATE.users || []).filter(u => {
+            if (!u || u.active === false) return false;
+            if (typeof isAdminOrSystemUser === 'function' && isAdminOrSystemUser(u)) return false;
+            return u.role === 'docente' || String(u.id || '').startsWith('usr-doc-');
+        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
         guideSelect.innerHTML = '<option value="">-- Sin Maestro Guía Asignado --</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
         if (g.guideTeacher) guideSelect.value = g.guideTeacher;
     }
@@ -49687,6 +49748,10 @@ function syncCustomSectionsInput(val) {
 async function saveGradeForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
+    if (STATE.isHistoricalReadOnlyMode || (STATE.historicalViewingCycle && String(STATE.historicalViewingCycle) !== String(STATE.activeCycle))) {
+        showToast('Modo Consulta Histórica: regrese al ciclo activo para crear o modificar grados.', 'warning');
+        return;
+    }
     if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
         showToast('Acceso denegado: No tiene permisos para guardar grados ni secciones.', 'danger');
         return;
@@ -49836,13 +49901,11 @@ async function saveGradeForm(e) {
         // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
         saveStateToLocalStorage();
         closeGradeModal();
-        updateGradeSelects();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
-        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
-        if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
 
         // 🌟 A. Persistencia Atómica en Firestore
@@ -49896,6 +49959,10 @@ async function saveGradeForm(e) {
 }
 
 async function deleteGrade(gradeId) {
+    if (STATE.isHistoricalReadOnlyMode || (STATE.historicalViewingCycle && String(STATE.historicalViewingCycle) !== String(STATE.activeCycle))) {
+        showToast('Modo Consulta Histórica: no se pueden eliminar grados en ciclos archivados.', 'warning');
+        return;
+    }
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
     if (!isSuperOrDir && (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante')) {
         showToast('Acceso denegado: No tiene permisos para eliminar grados.', 'danger');
@@ -49906,7 +49973,7 @@ async function deleteGrade(gradeId) {
     if (!g) return;
 
     // 🛡️ Protección anti-pérdida de datos: verificar si existen alumnos inscritos en esta sección
-    const targetCycle = String(STATE.activeCycle || String(new Date().getFullYear())).trim();
+    const targetCycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || String(new Date().getFullYear())).trim();
     const cycleStudents = (typeof getCycleFilteredStudents === 'function')
         ? getCycleFilteredStudents(STATE.students || [], targetCycle)
         : (STATE.students || []);
@@ -49953,9 +50020,11 @@ async function deleteGrade(gradeId) {
             try {
                 const { db, doc, deleteDoc } = window.FirebaseModular;
                 if (typeof deleteDoc === 'function') {
-                    deleteDoc(doc(db, 'gradesList', gradeId));
-                    deleteDoc(doc(db, 'grados_secciones', gradeId));
-                    deleteDoc(doc(db, 'maestros_guias', gradeId));
+                    await Promise.allSettled([
+                        deleteDoc(doc(db, 'gradesList', gradeId)),
+                        deleteDoc(doc(db, 'grados_secciones', gradeId)),
+                        deleteDoc(doc(db, 'maestros_guias', gradeId))
+                    ]);
                 }
             } catch(e) {
                 console.warn("Aviso al eliminar grado en Firestore:", e);
@@ -49964,16 +50033,14 @@ async function deleteGrade(gradeId) {
 
         // 🌟 B. Sincronización Atómica en RTDB
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+            await EnccoCloudSync.syncNode('gradesList', STATE.gradesList).catch(() => {});
         }
 
-        updateGradeSelects();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         renderGradesTable();
         if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
-        if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
-        if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
         showToast(`Grado "${g.name} (${g.section})" eliminado.`, 'info');
     }

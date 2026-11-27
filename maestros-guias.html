@@ -765,13 +765,28 @@
             });
         }
 
+        function escapeHtmlSafe(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function cleanSecLetter(val) {
+            return String(val || '').replace(/^secci[oó]n\s*/i, '').replace(/^sec\.?\s*/i, '').trim().toUpperCase().slice(0, 2);
+        }
+
         function getStudentsForSection(gradoId, seccionId) {
+            const targetSec = cleanSecLetter(seccionId);
             return (STUDENTS_DATA || []).filter(st => {
-                if (!st) return false;
+                if (!st || st.active === false) return false;
+                const stStatus = String(st.status || '').toLowerCase().trim();
+                if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado') return false;
                 const gMatch = (st.grade && st.grade.includes(gradoId)) || (st.grado && st.grado.includes(gradoId));
-                const sMatch = (st.section && (st.section === seccionId || st.section === `Sección ${seccionId}`)) ||
-                              (st.seccion && (st.seccion === seccionId || st.seccion === `Sección ${seccionId}`));
-                return gMatch && sMatch;
+                const sSec = cleanSecLetter(st.section || st.seccion || '');
+                return gMatch && sSec === targetSec;
             });
         }
 
@@ -787,13 +802,17 @@
                 }
             });
 
-            document.getElementById('kpiTotalSections').textContent = totalSec || 12;
+            document.getElementById('kpiTotalSections').textContent = totalSec;
             document.getElementById('kpiAssignedGuides').textContent = assignedCount;
-            const pct = totalSec ? Math.round((assignedCount / totalSec) * 100) : 100;
+            const pct = totalSec ? Math.round((assignedCount / totalSec) * 100) : 0;
             document.getElementById('kpiAssignedPercent').textContent = `${pct}% asignado`;
 
-            const totalSt = (STUDENTS_DATA && STUDENTS_DATA.length > 0) ? STUDENTS_DATA.length : 412;
-            document.getElementById('kpiTotalStudents').textContent = totalSt;
+            const activeSt = (STUDENTS_DATA || []).filter(st => {
+                if (!st || st.active === false) return false;
+                const stStatus = String(st.status || '').toLowerCase().trim();
+                return stStatus !== 'retirado' && stStatus !== 'inactivo' && stStatus !== 'egresado';
+            });
+            document.getElementById('kpiTotalStudents').textContent = activeSt.length;
         }
 
         function renderTable() {
@@ -803,7 +822,12 @@
             const q = (document.getElementById('guideSearchInput')?.value || '').trim().toLowerCase();
             const careerFilter = document.getElementById('guideCareerFilter')?.value || 'ALL';
 
-            const teachersList = (USERS_DATA || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+            const teachersList = (USERS_DATA || []).filter(u => {
+                if (!u || u.active === false || u.isSystemOnly === true) return false;
+                const r = String(u.role || '').toLowerCase().trim();
+                if (r === 'admin' || r === 'super_usuario' || r === 'superadmin') return false;
+                return r === 'docente' || (u.id && String(u.id).startsWith('usr-doc-'));
+            }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
 
             let list = Object.values(SECCIONES_DATA);
 
@@ -851,27 +875,27 @@
                 const guideRenglon = teacherObj?.renglon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.7rem; margin-left:6px;">${teacherObj.renglon}</span>` : '';
 
                 const studentsSec = getStudentsForSection(gId, sId);
-                const count = studentsSec.length || 34;
+                const count = studentsSec.length;
 
                 let selectHtml = '';
                 if (CAN_MANAGE) {
                     selectHtml = `
-                        <select class="guide-select" onchange="asignarMaestroGuia('${gId}', '${sId}', this.value)">
+                        <select class="guide-select" onchange="asignarMaestroGuia('${escapeHtmlSafe(gId)}', '${escapeHtmlSafe(sId)}', this.value)">
                             <option value="">-- Sin Maestro Guía --</option>
                             ${teachersList.map(t => {
                                 const isSel = (t.id === sec.maestroGuiaId || t.name === sec.maestroGuiaNombre) ? 'selected' : '';
-                                return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'})</option>`;
+                                return `<option value="${escapeHtmlSafe(t.id)}" ${isSel}>${escapeHtmlSafe(t.name)} (${escapeHtmlSafe(t.renglon || '011')})</option>`;
                             }).join('')}
                         </select>
                     `;
                 } else {
                     selectHtml = `
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="width:34px; height:34px; border-radius:50%; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
+                            <div style="width:34px; height:34px; border-radius:50%; background:#e0f2fe; color:#0f2b5c; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
                                 <i class="fa-solid fa-chalkboard-user"></i>
                             </div>
                             <div>
-                                <strong style="color:#0f172a; font-size:0.92rem; display:block;">${guideName} ${guideRenglon}</strong>
+                                <strong style="color:#0f172a; font-size:0.92rem; display:block;">${escapeHtmlSafe(guideName)} ${guideRenglon}</strong>
                             </div>
                         </div>
                     `;
@@ -881,27 +905,27 @@
                     <tr>
                         <td style="text-align:center; font-weight:700; color:#94a3b8;">${idx + 1}</td>
                         <td>
-                            <strong style="color:#0c4a6e; font-size:0.95rem;">${sec.grado || (gId + ' Perito Contador')}</strong>
-                            <div style="font-size:0.75rem; color:#64748b;">${sec.carrera || 'Perito Contador'}</div>
+                            <strong style="color:#0f2b5c; font-size:0.95rem;">${escapeHtmlSafe(sec.grado || (gId + ' Perito Contador'))}</strong>
+                            <div style="font-size:0.75rem; color:#64748b;">${escapeHtmlSafe(sec.carrera || 'Perito Contador')}</div>
                         </td>
                         <td style="text-align:center;">
-                            <span class="guide-badge section">${sec.seccion || ('Sección ' + sId)}</span>
+                            <span class="guide-badge section">${escapeHtmlSafe(sec.seccion || ('Sección ' + sId))}</span>
                         </td>
                         <td style="text-align:center;">
-                            <span class="guide-badge code">${sec.codigo || (gId + ' ' + sId)}</span>
+                            <span class="guide-badge code">${escapeHtmlSafe(sec.codigo || (gId + ' ' + sId))}</span>
                         </td>
                         <td>${selectHtml}</td>
                         <td>
                             <div style="font-size:0.82rem; font-weight:600; color:#1e293b;">
-                                <i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i> ${guideTitle}
+                                <i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i> ${escapeHtmlSafe(guideTitle)}
                             </div>
                             <div style="font-size:0.75rem; color:#64748b;">
-                                <i class="fa-regular fa-envelope" style="margin-right:4px;"></i> ${guideEmail}
+                                <i class="fa-regular fa-envelope" style="margin-right:4px;"></i> ${escapeHtmlSafe(guideEmail)}
                             </div>
-                            ${guidePhone ? `<div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:2px;"><i class="fa-solid fa-phone" style="margin-right:4px;"></i> ${guidePhone}</div>` : ''}
+                            ${guidePhone ? `<div style="font-size:0.75rem; color:#0369a1; font-weight:700; margin-top:2px;"><i class="fa-solid fa-phone" style="margin-right:4px;"></i> ${escapeHtmlSafe(guidePhone)}</div>` : ''}
                         </td>
                         <td style="text-align:center;">
-                            <button type="button" class="btn btn-xs btn-outline-success" onclick="openStudentsModal('${gId}', '${sId}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver alumnos de esta sección">
+                            <button type="button" class="btn btn-xs btn-outline-primary" onclick="openStudentsModal('${escapeHtmlSafe(gId)}', '${escapeHtmlSafe(sId)}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver alumnos de esta sección">
                                 <i class="fa-solid fa-users"></i> ${count} alumnos
                             </button>
                         </td>

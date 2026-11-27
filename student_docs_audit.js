@@ -297,7 +297,7 @@
 
     function getDocsAuditActiveCycle() {
         const st = window.STATE || {};
-        return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || '2026').trim();
+        return String(st.historicalViewingCycle || st.viewingHistoricalCycle || st.activeCycle || new Date().getFullYear()).trim();
     }
 
     function getDocsCatalog() {
@@ -341,19 +341,20 @@
 
     function _getBaseStudentsForAudit() {
         const activeCycle = getDocsAuditActiveCycle();
+        const all = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
         let list = [];
-        if (typeof window.getStudentsForCycle === 'function') {
+        if (typeof window.getCycleFilteredStudents === 'function') {
+            list = window.getCycleFilteredStudents(all, activeCycle).slice();
+        } else if (typeof window.getStudentsForCycle === 'function') {
             try {
                 const res = window.getStudentsForCycle(activeCycle);
                 if (Array.isArray(res)) list = res.slice();
             } catch (e) {}
-        }
-        if (list.length === 0) {
-            const all = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-            list = all.filter(s => s && String(s.cycle || s.academicCycle || '2026').trim() === activeCycle);
+        } else {
+            list = all.filter(s => s && (!s.cycle || String(s.cycle || s.academicCycle).trim() === activeCycle));
         }
         // Excluir egresados de listados activos
-        list = list.filter(s => s && String(s.status || '') !== 'Egresado' && String(s.gradeCode || '').toUpperCase() !== 'EGRESADO');
+        list = list.filter(s => s && String(s.status || '').toLowerCase().trim() !== 'egresado' && String(s.gradeCode || '').toUpperCase() !== 'EGRESADO');
 
         // Detectar CUIs duplicados en todo el ciclo activo ANTES de filtrar por sección
         const cuiCounter = new Map();
@@ -648,7 +649,7 @@
                         <button type="button" class="btn btn-sm" onclick="printStudentDocsAuditReport()" style="background:#ffffff; color:#0f2b5c; border:1px solid #bae6fd; font-weight:800; padding:6px 12px; border-radius:7px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fa-solid fa-print"></i> Imprimir Reporte
                         </button>
-                        <button type="button" class="btn btn-sm" onclick="exportStudentDocsAuditExcel()" style="background:#15803d; color:#ffffff; border:1px solid #86efac; font-weight:800; padding:6px 12px; border-radius:7px; display:inline-flex; align-items:center; gap:6px;">
+                        <button type="button" class="btn btn-sm" onclick="exportStudentDocsAuditExcel()" style="background:#0369a1; color:#ffffff; border:1px solid #7dd3fc; font-weight:800; padding:6px 12px; border-radius:7px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fa-solid fa-file-excel"></i> Exportar Excel
                         </button>
                         <button type="button" class="btn btn-sm" onclick="toggleStudentDocsAuditPanel(false)" style="background:rgba(15,23,42,0.4); color:#ffffff; border:1px solid rgba(255,255,255,0.35); font-weight:700; padding:6px 12px; border-radius:7px; display:inline-flex; align-items:center; gap:6px;">
@@ -868,8 +869,8 @@
                     window.switchStudentProfileTab('expediente');
                 }
             }, 80);
-        } else if (typeof window.openStudentModal === 'function') {
-            window.openStudentModal(studentId);
+        } else if (typeof window.openEditStudentModal === 'function') {
+            window.openEditStudentModal(studentId);
         }
     }
 

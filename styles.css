@@ -6321,4 +6321,12 @@ textarea:focus-visible,
   #view-carnets .carnets-filters-bar > div { width: 100%; min-width: 0 !important; flex: 1 1 100%; }
   #view-carnets .carnets-grid-responsive { grid-template-columns: 1fr !important; }
   #view-carnets .carnet-preview-wrapper { max-width: 100%; overflow-x: auto; padding-bottom: 4px; }
+  #view-enrollment [style*="grid-template-columns: 1fr 1fr"],
+  #view-enrollment [style*="grid-template-columns: 1.6fr 1.1fr"],
+  #view-enrollment [style*="grid-template-columns: 2fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  #view-grades .section-toolbar,
+  #view-grades .toolbar-actions { flex-wrap: wrap !important; width: 100%; }
+  #view-grades .toolbar-actions .btn { flex: 1 1 100%; justify-content: center; }
+  #view-guide-teachers .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #view-guide-teachers select.form-control { max-width: 100% !important; width: 100%; }
 }
