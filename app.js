@@ -54374,7 +54374,12 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     const student = (STATE.students || []).find(s => s.id === studentId);
     const studentName = student ? formatStudentDisplayName(student, 'lastFirst') : 'Estudiante';
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const gradeLabel = qGradeObj ? `${qGradeObj.name || gradeCode} - Sección ${qGradeObj.section || ''}`.trim() : (gradeCode || 'General');
+    const cleanSec = qGradeObj
+        ? ((typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(qGradeObj.section) : String(qGradeObj.section || '').replace(/^secci[oó]n\s*/i, '').trim()))
+        : '';
+    const gradeLabel = qGradeObj
+        ? (cleanSec ? `${qGradeObj.name || gradeCode} - Sección ${cleanSec}` : (qGradeObj.name || gradeCode))
+        : (gradeCode || 'General');
 
     const courseSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceCourseSelect') : null;
     let courseName = 'Control General de Asistencia';
@@ -54387,26 +54392,31 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
 
     const teacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'docente' ? 'Catedrático de Aula' : 'Personal Docente');
     const now = new Date();
-    const todayDateStr = now.toISOString().split('T')[0];
+    const todayDateStr = (typeof getAuxLocalDateISO === 'function')
+        ? getAuxLocalDateISO(now)
+        : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timeStr = now.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit', hour12: true });
     const timestamp = Date.now();
 
     if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
 
-    // Optimización: De-duplicación inteligente de alertas en el mismo día/mes/período
-    const existingAlert = STATE.attendanceAlerts.find(a => 
-        a.studentId === studentId && 
-        a.day === day && 
-        a.month === month && 
-        (a.date === todayDateStr || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === todayDateStr)) &&
+    // Optimización: De-duplicación inteligente de alertas en el mismo día/mes/período (usando fecha local GT)
+    const existingAlert = STATE.attendanceAlerts.find(a =>
+        a &&
+        a.studentId === studentId &&
+        Number(a.day) === Number(day) &&
+        Number(a.month) === Number(month) &&
+        (a.date === todayDateStr || (!a.date && (typeof getAuxLocalDateISO === 'function' ? getAuxLocalDateISO(new Date(a.timestamp || 0)) : '') === todayDateStr)) &&
         a.status === 'pendiente'
     );
 
     if (existingAlert) {
         existingAlert.timestamp = timestamp;
+        existingAlert.date = todayDateStr;
         existingAlert.time = timeStr;
         existingAlert.courseName = courseName;
         existingAlert.teacherName = teacherName;
+        existingAlert.gradeLabel = gradeLabel;
         _debounceAlertStateSave();
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
             EnccoCloudSync.patchNode(`attendanceAlerts/${existingAlert.id}`, existingAlert).catch(() => {});
@@ -54419,7 +54429,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     const alertId = 'alert_' + timestamp + '_' + Math.random().toString(36).substring(2, 7);
     const alertObj = {
         id: alertId,
-        cycle: String(STATE.activeCycle || String(new Date().getFullYear())).trim(),
+        cycle: String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || now.getFullYear()).trim(),
         studentId: studentId,
         studentName: studentName,
         carne: (student && (student.carne || student.personalCode)) ? (student.carne || student.personalCode) : '---',
@@ -54479,6 +54489,9 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
 
     updateAuxiliaturaBadge();
     notifyAuxiliaturaAlert(alertObj, { forceImmediate: true });
+    if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxiliaturaCenterView === 'function') {
+        renderAuxiliaturaCenterView();
+    }
 }
 
 let _alertSaveTimeout = null;
@@ -54491,24 +54504,32 @@ function _debounceAlertStateSave() {
 
 function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) {
     if (!STATE.attendanceAlerts || STATE.attendanceAlerts.length === 0) return;
-    const todayDateStr = new Date().toISOString().split('T')[0];
-    const alertObj = STATE.attendanceAlerts.find(a => 
-        a.studentId === studentId && 
-        a.day === day && 
-        a.month === month && 
-        (a.date === todayDateStr || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === todayDateStr)) &&
+    const now = new Date();
+    const todayDateStr = (typeof getAuxLocalDateISO === 'function')
+        ? getAuxLocalDateISO(now)
+        : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const matchingAlerts = STATE.attendanceAlerts.filter(a =>
+        a &&
+        a.studentId === studentId &&
+        Number(a.day) === Number(day) &&
+        Number(a.month) === Number(month) &&
         a.status === 'pendiente'
     );
-    if (alertObj) {
-        alertObj.status = 'corregida';
-        alertObj.notes = 'Rectificación en aula: el catedrático cambió la marca de inasistencia.';
+    if (matchingAlerts.length > 0) {
+        matchingAlerts.forEach(alertObj => {
+            alertObj.status = 'corregida';
+            alertObj.notes = 'Rectificación en aula: el catedrático o dirección cambió la marca de inasistencia.';
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+                EnccoCloudSync.patchNode(`attendanceAlerts/${alertObj.id}`, alertObj).catch(() => {});
+            }
+        });
         _debounceAlertStateSave();
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            EnccoCloudSync.patchNode(`attendanceAlerts/${alertObj.id}`, alertObj).catch(() => {});
-        }
         updateAuxiliaturaBadge();
         if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
             renderAuxiliaturaLogView();
+        }
+        if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxiliaturaCenterView === 'function') {
+            renderAuxiliaturaCenterView();
         }
     }
 }
@@ -54601,12 +54622,16 @@ function updateAuxiliaturaBadge() {
         badge.textContent = '0';
         return;
     }
-    const today = new Date().toISOString().split('T')[0];
+    const nowBadge = new Date();
+    const today = (typeof getAuxLocalDateISO === 'function')
+        ? getAuxLocalDateISO(nowBadge)
+        : `${nowBadge.getFullYear()}-${String(nowBadge.getMonth() + 1).padStart(2, '0')}-${String(nowBadge.getDate()).padStart(2, '0')}`;
     const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         const aCycle = String(a.cycle || (a.date ? a.date.substring(0, 4) : (a.timestamp ? new Date(a.timestamp).getFullYear() : activeCycle))).trim();
         if (aCycle !== activeCycle) return false;
-        const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
+        const aDate = a.date || (a.timestamp ? (typeof getAuxLocalDateISO === 'function' ? getAuxLocalDateISO(new Date(a.timestamp)) : '') : '');
+        const isToday = (aDate === today) || (Number(a.day) === nowBadge.getDate() && Number(a.month) === (nowBadge.getMonth() + 1));
         return isToday && a.status === 'pendiente';
     });
 
@@ -54762,7 +54787,10 @@ function getAuxiliaturaLogFilteredData(options = {}) {
 
     const alertsForDate = allAlerts.filter(a => {
         const aDate = a.date || (a.timestamp ? getAuxLocalDateISO(new Date(a.timestamp)) : '');
-        return aDate === selectedDate;
+        if (aDate === selectedDate) return true;
+        // Tolerancia de zona horaria GT: si una alerta se creó con timestamp de hoy en hora local GT (aunque su campo 'date' legacy haya quedado en UTC +1 día), mostrarla en hoy
+        if (a.timestamp && getAuxLocalDateISO(new Date(a.timestamp)) === selectedDate) return true;
+        return false;
     });
 
     let filtered = alertsForDate.slice();
