@@ -6266,3 +6266,11 @@ textarea:focus-visible,
   #view-permissions-history select.form-control,
   #view-permissions-history input.form-control { width: 100% !important; min-width: 0 !important; }
 }
+
+/* === EXONERACIONES RESPONSIVO (v333) === */
+@media (max-width: 640px) {
+  #view-exoneraciones-log .section-toolbar > div { width: 100%; }
+  #view-exoneraciones-log .section-toolbar .btn { flex: 1 1 auto; }
+  #view-exoneraciones-log select.form-control,
+  #view-exoneraciones-log input.form-control { width: 100% !important; min-width: 0 !important; }
+}

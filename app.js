@@ -12013,6 +12013,8 @@ function synchronizeGlobalDynamicUI() {
             populateReportStudentSelect();
         } else if (STATE.activeView === 'honor-roll' && typeof renderHonorRollView === 'function') {
             renderHonorRollView();
+        } else if (STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
+            renderExoneracionesLogView();
         }
     }, 32);
 }
@@ -58055,37 +58057,40 @@ function renderExoneracionesLogView() {
 
     // Llenar select de grados según rol docente vs autoridad
     if (gradeSelect) {
+        const prevGradeVal = gradeSelect.value || 'ALL';
         if (isDocente) {
-            const myGrades = (typeof getTeacherAssignedGradesList === 'function')
-                ? getTeacherAssignedGradesList(currentUser)
-                : [];
+            const rawMyGrades = (typeof getTeacherAssignedGradesList === 'function') ? getTeacherAssignedGradesList(currentUser) : [];
+            const myGrades = (typeof sortGrades === 'function') ? sortGrades(rawMyGrades) : rawMyGrades;
             let optHtml = `<option value="ALL">-- Mis Grados Asignados (${myGrades.length}) --</option>`;
             myGrades.forEach(g => {
-                const sSec = g.section ? ` - Sección ${g.section}` : '';
+                const cleanSec = String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim();
+                const sSec = cleanSec ? ` — Sección ${cleanSec}` : '';
                 optHtml += `<option value="${escapeHtml(g.code || g.id)}">${escapeHtml(g.name || g.label || g.code)}${escapeHtml(sSec)}</option>`;
             });
-            if (gradeSelect.options.length <= 1 || !gradeSelect.querySelector('option[value="ALL"]')) {
-                gradeSelect.innerHTML = optHtml;
-            }
-        } else if (gradeSelect.options.length <= 1) {
+            gradeSelect.innerHTML = optHtml;
+        } else {
+            const sortedGL = (typeof sortGrades === 'function') ? sortGrades(STATE.gradesList || []) : (STATE.gradesList || []);
             let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
-            (STATE.gradesList || []).forEach(g => {
-                optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+            sortedGL.forEach(g => {
+                const cleanSec = String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim();
+                optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} — Sección ${escapeHtml(cleanSec || 'A')}</option>`;
             });
             gradeSelect.innerHTML = optHtml;
         }
+        if (Array.from(gradeSelect.options).some(o => o.value === prevGradeVal)) gradeSelect.value = prevGradeVal;
     }
 
     const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const selBim = bimSelect ? bimSelect.value : 'ALL';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-    // Recolectar estudiantes base según rol (Docente estrictamente limitado a asignados)
+    // Recolectar estudiantes base estrictamente del ciclo activo/visualizado según rol
+    const cycleStudentsPool = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || []) : (STATE.students || []);
     const baseStudents = isDocente
         ? ((typeof getAuthorizedStudents === 'function') 
             ? getAuthorizedStudents(currentUser, curRole) 
-            : (STATE.students || []).filter(s => (typeof isStudentAssignedToTeacher === 'function') ? isStudentAssignedToTeacher(s, currentUser) : true))
-        : (STATE.students || []);
+            : cycleStudentsPool.filter(s => (typeof isStudentAssignedToTeacher === 'function') ? isStudentAssignedToTeacher(s, currentUser) : true))
+        : cycleStudentsPool;
 
     const allExonsList = [];
     baseStudents.forEach(s => {
@@ -58113,7 +58118,19 @@ function renderExoneracionesLogView() {
 
     let filtered = allExonsList;
     if (selGrade !== 'ALL') {
-        filtered = filtered.filter(item => item.gradeCode === selGrade || (item.gradeLabel && item.gradeLabel.includes(selGrade)));
+        const qGObj = (STATE.gradesList || []).find(g => g && (g.code === selGrade || g.id === selGrade));
+        const qStr = `${selGrade} ${qGObj ? (qGObj.name + ' ' + qGObj.section) : ''}`.toUpperCase();
+        const qNum = qStr.includes('6') ? 6 : (qStr.includes('5') ? 5 : (qStr.includes('4') ? 4 : 0));
+        const qSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(qGObj ? qGObj.section : selGrade) : '';
+        filtered = filtered.filter(item => {
+            if (item.gradeCode === selGrade) return true;
+            const pStr = `${item.gradeCode || ''} ${item.gradeLabel || ''}`.toUpperCase();
+            const pNum = pStr.includes('6') ? 6 : (pStr.includes('5') ? 5 : (pStr.includes('4') ? 4 : 0));
+            const pSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(item.student?.section || item.gradeCode || item.gradeLabel || '') : '';
+            if (qNum > 0 && pNum > 0 && qNum !== pNum) return false;
+            if (qSec && pSec && qSec !== pSec) return false;
+            return (qNum > 0 && pNum === qNum) && (!qSec || !pSec || qSec === pSec);
+        });
     }
     if (selBim !== 'ALL') {
         filtered = filtered.filter(item => String(item.bimestre).toUpperCase() === 'ALL' || String(item.bimestre) === String(selBim));
@@ -58137,7 +58154,7 @@ function renderExoneracionesLogView() {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" style="text-align:center; padding:35px 20px; color:#64748b;">
-                    <i class="fa-solid fa-file-circle-check" style="font-size:2.2rem; color:#99f6e4; display:block; margin-bottom:8px;"></i>
+                    <i class="fa-solid fa-file-circle-check" style="font-size:2.2rem; color:#7dd3fc; display:block; margin-bottom:8px;"></i>
                     <strong style="color:#0f172a; font-size:1rem;">Sin registros de exoneraciones</strong>
                     <div style="font-size:0.84rem; margin-top:4px;">No se encontraron registros de estudiantes con consideraciones especiales bajo los filtros seleccionados.</div>
                 </td>
@@ -58163,7 +58180,7 @@ function renderExoneracionesLogView() {
                     <span style="font-weight:600; color:#334155;">${escapeHtml(item.gradeLabel)}</span>
                 </td>
                 <td>
-                    <span class="badge" style="background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4; font-size:0.8rem; font-weight:700;">
+                    <span class="badge" style="background:#f0f9ff; color:#0f2b5c; border:1px solid #bae6fd; font-size:0.8rem; font-weight:700;">
                         <i class="fa-solid fa-book"></i> ${escapeHtml(item.subject)}
                     </span>
                 </td>
@@ -58197,41 +58214,40 @@ function renderExoneracionesLogView() {
     }).join('');
 }
 
+function exportExoneracionesLogExcel() {
+    if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+    const list = Array.isArray(window._lastRenderedExonsList) ? window._lastRenderedExonsList : [];
+    if (list.length === 0) {
+        if (typeof showToast === 'function') showToast('No hay exoneraciones para exportar con los filtros actuales.', 'info');
+        return;
+    }
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+    const rows = list.map((item, idx) => ({
+        'No.': idx + 1,
+        'Estudiante': item.studentName || '',
+        'Código / Carné': item.carne || '',
+        'Grado y Sección': item.gradeLabel || '',
+        'Asignatura(s)': item.subject || 'Todas las materias',
+        'Bimestre': (item.bimestre && item.bimestre !== 'ALL') ? `${item.bimestre}º Bimestre` : 'Todo el Ciclo',
+        'Motivo / Resolución': item.reason || '',
+        'Autorizado por': item.authorizedBy || '',
+        'Fecha': item.date || ''
+    }));
+    if (window.XLSX && window.XLSX.utils) {
+        const ws = window.XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{wch:5},{wch:32},{wch:16},{wch:24},{wch:28},{wch:14},{wch:40},{wch:24},{wch:13}];
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'Exoneraciones');
+        window.XLSX.writeFile(wb, `Exoneraciones_ENCCO_${cycle}.xlsx`);
+        if (typeof showToast === 'function') showToast('Excel de Exoneraciones exportado correctamente.', 'success');
+    }
+}
+window.exportExoneracionesLogExcel = exportExoneracionesLogExcel;
+
 function printExoneracionesLog() {
-    const gradeSelect = document.getElementById('exoneracionesLogGradeFilter');
-    const bimSelect = document.getElementById('exoneracionesLogBimestreFilter');
-    const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
-    const targetBim = bimSelect ? bimSelect.value : 'ALL';
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
-
-    const allExonsList = [];
-    (STATE.students || []).forEach(s => {
-        const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(s) : (s.academicExceptions || []);
-        if (Array.isArray(exons) && exons.length > 0) {
-            exons.forEach(ex => {
-                allExonsList.push({
-                    student: s,
-                    studentName: formatStudentDisplayName(s, 'lastFirst'),
-                    carne: s.carne || s.personalCode || '---',
-                    gradeCode: s.gradeCode || s.grade || '',
-                    gradeLabel: formatStudentGradeAndSection(s) || `${s.grade || ''} ${s.section || ''}`.trim(),
-                    subject: ex.subject || 'Todas las materias',
-                    bimestre: ex.bimestre || 'ALL',
-                    reason: ex.reason || ex.details || ex.observation || 'Exoneración y dispensa autorizada oficialmente.',
-                    authorizedBy: ex.authorizedBy || ex.authorizer || 'Dirección del Plantel',
-                    date: ex.date || ex.createdAt || cycle
-                });
-            });
-        }
-    });
-
-    let filtered = allExonsList;
-    if (targetGrade !== 'ALL') {
-        filtered = filtered.filter(item => item.gradeCode === targetGrade || (item.gradeLabel && item.gradeLabel.includes(targetGrade)));
-    }
-    if (targetBim !== 'ALL') {
-        filtered = filtered.filter(item => String(item.bimestre).toUpperCase() === 'ALL' || String(item.bimestre) === String(targetBim));
-    }
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+    if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+    const filtered = Array.isArray(window._lastRenderedExonsList) ? [...window._lastRenderedExonsList] : [];
 
     filtered.sort((a, b) => a.studentName.localeCompare(b.studentName, 'es', { sensitivity: 'base' }));
 
@@ -58273,16 +58289,16 @@ function printExoneracionesLog() {
     <style>
         @page { size: letter landscape; margin: 12mm 15mm; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; line-height: 1.35; }
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f766e; padding-bottom: 10px; margin-bottom: 14px; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 14px; }
         .header-logo { width: 65px; height: auto; }
         .header-center { text-align: center; flex: 1; margin: 0 15px; }
         .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #0f766e; font-weight: 700; text-transform: uppercase; }
+        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #0369a1; font-weight: 700; text-transform: uppercase; }
         .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 8.5pt; }
         th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #f0fdfa; font-weight: 700; color: #0f766e; text-transform: uppercase; font-size: 8pt; text-align: center; }
+        th { background: #0f2b5c; font-weight: 700; color: #ffffff; text-transform: uppercase; font-size: 8pt; text-align: center; }
         
         .signatures { display: flex; justify-content: space-around; margin-top: 40px; page-break-inside: avoid; }
         .sign-box { width: 35%; text-align: center; font-size: 8.5pt; }
