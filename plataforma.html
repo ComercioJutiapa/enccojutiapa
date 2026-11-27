@@ -236,7 +236,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261126_v330">
+    <link rel="stylesheet" href="styles.css?v=20261126_v332">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -3077,7 +3077,7 @@
                     <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
                         <div>
                             <h3 style="margin:0; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                <i class="fa-solid fa-clipboard-list" style="color:#d97706;"></i>
+                                <i class="fa-solid fa-clipboard-list" style="color:#0369a1;"></i>
                                 Libro de Registro Oficial de Permisos y Ausencias
                             </h3>
                             <p style="margin:4px 0 0 0; color:#64748b; font-size:0.85rem;">
@@ -3085,11 +3085,14 @@
                             </p>
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button type="button" id="btnNewPermViewToolbar" class="btn btn-warning" onclick="openCreatePermissionModal()" style="background:#f59e0b; border-color:#d97706; color:#ffffff; font-weight:700;">
-                                <i class="fa-solid fa-plus-circle"></i> + Nuevo Permiso
+                            <button type="button" class="btn btn-outline-secondary" onclick="exportPermissionsLogExcel()" style="background:#fff; border-color:#cbd5e1; color:#0f2b5c; font-weight:800;">
+                                <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i> Excel
                             </button>
-                            <button type="button" class="btn btn-primary" onclick="printPermissionsLog()" style="background:#0284c7; border-color:#0284c7; font-weight:700;">
-                                <i class="fa-solid fa-print"></i> Imprimir Libro de Permisos
+                            <button type="button" class="btn btn-primary" onclick="printPermissionsLog()" style="background:#f0f9ff; border-color:#7dd3fc; color:#0f2b5c; font-weight:800;">
+                                <i class="fa-solid fa-print" style="color:#0369a1;"></i> Imprimir Libro
+                            </button>
+                            <button type="button" id="btnNewPermViewToolbar" class="btn btn-primary" onclick="openCreatePermissionModal()" style="background:#0369a1; border-color:#0f2b5c; color:#ffffff; font-weight:800;">
+                                <i class="fa-solid fa-plus-circle"></i> Nuevo Permiso
                             </button>
                         </div>
                     </div>
@@ -3100,7 +3103,7 @@
                         <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
                             <div style="min-width:180px; flex:1;">
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-graduation-cap" style="color:#d97706;"></i> Grado / Sección:
+                                    <i class="fa-solid fa-graduation-cap" style="color:#0369a1;"></i> Grado / Sección:
                                 </label>
                                 <select id="permissionsLogGradeFilter" class="form-control" onchange="renderPermissionsHistoryView()" style="font-size:0.84rem; font-weight:600;">
                                     <option value="ALL">-- Todos los Grados --</option>
@@ -3108,7 +3111,7 @@
                             </div>
                             <div style="min-width:160px; flex:1;">
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-tag" style="color:#d97706;"></i> Motivo / Tipo:
+                                    <i class="fa-solid fa-tag" style="color:#0369a1;"></i> Motivo / Tipo:
                                 </label>
                                 <select id="permissionsLogCategoryFilter" class="form-control" onchange="renderPermissionsHistoryView()" style="font-size:0.84rem; font-weight:600;">
                                     <option value="ALL">-- Todos los Motivos --</option>
@@ -6160,6 +6163,7 @@
                                     <option value="B">Sección B</option>
                                     <option value="C">Sección C</option>
                                     <option value="D">Sección D</option>
+                                    <option value="E">Sección E</option>
                                 </select>
                             </div>
                         </div>
@@ -6826,7 +6830,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v330" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v332" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>

@@ -6258,3 +6258,11 @@ textarea:focus-visible,
     flex: 1 1 auto;
   }
 }
+
+/* === PERMISOS Y AUSENCIAS RESPONSIVO (v332) === */
+@media (max-width: 640px) {
+  #view-permissions-history .section-toolbar > div { width: 100%; }
+  #view-permissions-history .section-toolbar .btn { flex: 1 1 auto; }
+  #view-permissions-history select.form-control,
+  #view-permissions-history input.form-control { width: 100% !important; min-width: 0 !important; }
+}

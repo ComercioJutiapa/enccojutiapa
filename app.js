@@ -7054,7 +7054,8 @@ window.asignarMaestroGuia = asignarMaestroGuia;
 
 function printGuideTeachersOfficialDirectory() {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
-    const cycle = STATE.activeCycle || String(new Date().getFullYear());
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+    const searchQuery = (document.getElementById('permissionsLogSearchInput')?.value || '').toLowerCase().trim();
     const list = sortGrades(STATE.gradesList || []);
 
     // Filtros activos en la vista
@@ -38746,12 +38747,26 @@ function populatePermissionGradeFilter() {
         ];
     const gradesList = typeof sortGrades === 'function' ? sortGrades(rawList) : rawList;
 
+    const uniqueGradeNames = Array.from(new Set(gradesList.map(g => (g.name || g.code || '').trim()).filter(Boolean)));
     let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
-    gradesList.forEach(g => {
-        const val = g.name || g.code;
-        optionsHtml += `<option value="${val}">${g.name} (${g.code})</option>`;
+    uniqueGradeNames.forEach(gName => {
+        optionsHtml += `<option value="${escapeHtml(gName)}">${escapeHtml(gName)}</option>`;
     });
     gradeSelect.innerHTML = optionsHtml;
+
+    // Poblar dinámicamente las secciones reales (A, B, C, D, E...)
+    const secSelect = document.getElementById('permSectionFilter');
+    if (secSelect) {
+        const secSet = new Set();
+        gradesList.forEach(g => {
+            const ltr = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section || g.code) : String(g.section || '').replace(/secci[oó]n\s*/i, '').trim().toUpperCase();
+            if (ltr) secSet.add(ltr);
+        });
+        const secs = secSet.size > 0 ? Array.from(secSet).sort() : ['A', 'B', 'C', 'D', 'E'];
+        const prevSec = secSelect.value || 'ALL';
+        secSelect.innerHTML = '<option value="ALL">Todas</option>' + secs.map(s => `<option value="${s}">Sección ${s}</option>`).join('');
+        if (prevSec === 'ALL' || secs.includes(prevSec)) secSelect.value = prevSec;
+    }
 }
 window.populatePermissionGradeFilter = populatePermissionGradeFilter;
 
@@ -38765,7 +38780,8 @@ function filterPermissionStudentList() {
     const badge = document.getElementById('permStudentCountBadge');
     if (!select) return;
 
-    let students = (STATE.students || []).filter(s => isStudentActive(s));
+    const cyclePool = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || []) : (STATE.students || []);
+    let students = cyclePool.filter(s => isStudentActive(s));
 
     if (gradeFilter && gradeFilter !== 'ALL') {
         const gfLower = gradeFilter.toLowerCase();
@@ -39764,15 +39780,15 @@ function renderPermissionsHistoryTable() {
         btnNew.style.display = canManagePerms ? 'inline-flex' : 'none';
     }
 
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
     const q = (document.getElementById('permHistorySearchInput')?.value || '').trim().toLowerCase();
     let perms = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions.filter(p => {
         if (!p) return false;
         let pCycle = String(p.cycle || p.academicCycle || '').trim();
         if (!pCycle) {
             const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
-            if (startD.startsWith('2027')) pCycle = '2027';
-            else if (startD.startsWith('2026')) pCycle = '2026';
-            else pCycle = '2026';
+            const ym = String(startD).match(/^(20\d{2})/);
+            pCycle = ym ? ym[1] : cycle;
         }
         return pCycle === cycle;
     }) : [];
@@ -58566,15 +58582,15 @@ function renderPermissionsHistoryView() {
         [btnAll, btnToday, btnWeek, btnMonth].forEach(b => {
             if (!b) return;
             if (b === btnAll) {
-                b.className = 'btn btn-xs btn-warning';
+                b.className = 'btn btn-xs btn-primary';
                 b.style.color = '#ffffff';
-                b.style.borderColor = '#d97706';
-                b.style.background = '#f59e0b';
+                b.style.borderColor = '#0f2b5c';
+                b.style.background = '#0369a1';
             } else {
-                b.className = 'btn btn-xs btn-outline-warning';
-                b.style.color = '#b45309';
-                b.style.borderColor = '#f59e0b';
-                b.style.background = 'transparent';
+                b.className = 'btn btn-xs btn-outline-primary';
+                b.style.color = '#0f2b5c';
+                b.style.borderColor = '#7dd3fc';
+                b.style.background = '#f0f9ff';
             }
         });
     }
@@ -58604,8 +58620,10 @@ function renderPermissionsHistoryView() {
     // Poblar select de grados si solo tiene la opción por defecto
     if (gradeSelect && gradeSelect.options.length <= 1) {
         let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
-        (STATE.gradesList || []).forEach(g => {
-            optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+        const sortedGL = (typeof sortGrades === 'function') ? sortGrades(STATE.gradesList || []) : (STATE.gradesList || []);
+        sortedGL.forEach(g => {
+            const cleanSec = String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim();
+            optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} — Sección ${escapeHtml(cleanSec || 'A')}</option>`;
         });
         gradeSelect.innerHTML = optHtml;
     }
@@ -58634,9 +58652,8 @@ function renderPermissionsHistoryView() {
         let pCycle = String(p.cycle || p.academicCycle || '').trim();
         if (!pCycle) {
             const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
-            if (startD.startsWith('2027')) pCycle = '2027';
-            else if (startD.startsWith('2026')) pCycle = '2026';
-            else pCycle = '2026';
+            const ym = String(startD).match(/^(20\d{2})/);
+            pCycle = ym ? ym[1] : activeCycle;
         }
         return pCycle === activeCycle;
     }) : [];
@@ -58659,12 +58676,20 @@ function renderPermissionsHistoryView() {
         });
     }
 
-    // Filtro por grado
+    // Filtro exacto por grado y sección (soporta 4to A..E, 5to A..D, 6to A..D)
     if (selGrade !== 'ALL') {
+        const qGObj = (STATE.gradesList || []).find(g => g && (g.code === selGrade || g.id === selGrade));
+        const qStr = `${selGrade} ${qGObj ? (qGObj.name + ' ' + qGObj.section) : ''}`.toUpperCase();
+        const qNum = qStr.includes('6') ? 6 : (qStr.includes('5') ? 5 : (qStr.includes('4') ? 4 : 0));
+        const qSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(qGObj ? qGObj.section : selGrade) : '';
         perms = perms.filter(p => {
-            const pGrade = (p.grade || '').toLowerCase();
-            const pSec = (p.section || '').toLowerCase();
-            return pGrade.includes(selGrade.toLowerCase()) || `${pGrade} ${pSec}`.includes(selGrade.toLowerCase());
+            if (p.gradeCode && p.gradeCode === selGrade) return true;
+            const pStr = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+            const pNum = pStr.includes('6') ? 6 : (pStr.includes('5') ? 5 : (pStr.includes('4') ? 4 : 0));
+            const pSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(p.section || p.gradeCode || '') : '';
+            if (qNum > 0 && pNum > 0 && qNum !== pNum) return false;
+            if (qSec && pSec && qSec !== pSec) return false;
+            return (qNum > 0 && pNum === qNum) && (!qSec || !pSec || qSec === pSec);
         });
     }
 
@@ -58702,9 +58727,9 @@ function renderPermissionsHistoryView() {
             counterBadge.style.borderColor = '#fde68a';
         } else {
             counterBadge.innerHTML = `<i class="fa-solid fa-list-check"></i> Mostrando listado completo: <strong>${perms.length}</strong> permisos`;
-            counterBadge.style.background = '#ecfdf5';
-            counterBadge.style.color = '#065f46';
-            counterBadge.style.borderColor = '#a7f3d0';
+            counterBadge.style.background = '#f0f9ff';
+            counterBadge.style.color = '#0f2b5c';
+            counterBadge.style.borderColor = '#7dd3fc';
         }
     }
 
@@ -58791,6 +58816,63 @@ function renderPermissionsHistoryView() {
 }
 window.renderPermissionsHistoryView = renderPermissionsHistoryView;
 
+function exportPermissionsLogExcel() {
+    const cycle = String(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle || new Date().getFullYear()).trim();
+    const selGrade = document.getElementById('permissionsLogGradeFilter')?.value || 'ALL';
+    const selCat = document.getElementById('permissionsLogCategoryFilter')?.value || 'ALL';
+    const searchQ = (document.getElementById('permissionsLogSearchInput')?.value || '').toLowerCase().trim();
+    let list = Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions.filter(p => {
+        if (!p) return false;
+        let pc = String(p.cycle || p.academicCycle || '').trim();
+        if (!pc) {
+            const sd = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
+            const ym = String(sd).match(/^(20\d{2})/);
+            pc = ym ? ym[1] : cycle;
+        }
+        return pc === cycle;
+    }) : [];
+    if (selGrade !== 'ALL') {
+        const qGObj = (STATE.gradesList || []).find(g => g && (g.code === selGrade || g.id === selGrade));
+        const qStr = `${selGrade} ${qGObj ? (qGObj.name + ' ' + qGObj.section) : ''}`.toUpperCase();
+        const qNum = qStr.includes('6') ? 6 : (qStr.includes('5') ? 5 : (qStr.includes('4') ? 4 : 0));
+        const qSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(qGObj ? qGObj.section : selGrade) : '';
+        list = list.filter(p => {
+            if (p.gradeCode && p.gradeCode === selGrade) return true;
+            const pStr = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+            const pNum = pStr.includes('6') ? 6 : (pStr.includes('5') ? 5 : (pStr.includes('4') ? 4 : 0));
+            const pSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(p.section || p.gradeCode || '') : '';
+            return (qNum > 0 && pNum === qNum) && (!qSec || !pSec || qSec === pSec);
+        });
+    }
+    if (selCat !== 'ALL') list = list.filter(p => (p.reasonCategory || '').toLowerCase() === selCat.toLowerCase());
+    if (searchQ) list = list.filter(p => `${p.studentName || ''} ${p.personalCode || ''} ${p.reasonCategory || ''} ${p.reasonDetail || ''}`.toLowerCase().includes(searchQ));
+    if (list.length === 0) {
+        if (typeof showToast === 'function') showToast('No hay permisos para exportar con los filtros actuales.', 'info');
+        return;
+    }
+    const rows = list.map((p, i) => ({
+        'No.': i + 1,
+        'Fecha Inicio': p.startDate || '',
+        'Fecha Fin': p.endDate || p.startDate || '',
+        'Estudiante': p.studentName || '',
+        'Código Personal': p.personalCode || '',
+        'Grado': p.grade || '',
+        'Sección': String(p.section || '').replace(/^secci[oó]n\s*/i, '').trim(),
+        'Motivo / Tipo': p.reasonCategory || '',
+        'Justificación': p.reasonDetail || '',
+        'Autorizado por': p.authorizedBy || 'Auxiliatura'
+    }));
+    if (window.XLSX && window.XLSX.utils) {
+        const ws = window.XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{wch:5},{wch:13},{wch:13},{wch:32},{wch:16},{wch:22},{wch:9},{wch:22},{wch:40},{wch:22}];
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'Permisos y Ausencias');
+        window.XLSX.writeFile(wb, `Permisos_Estudiantes_ENCCO_${cycle}.xlsx`);
+        if (typeof showToast === 'function') showToast('Excel de Permisos y Ausencias exportado.', 'success');
+    }
+}
+window.exportPermissionsLogExcel = exportPermissionsLogExcel;
+
 function printPermissionsLog() {
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
@@ -58816,9 +58898,8 @@ function printPermissionsLog() {
         let pCycle = String(p.cycle || p.academicCycle || '').trim();
         if (!pCycle) {
             const startD = p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : '');
-            if (startD.startsWith('2027')) pCycle = '2027';
-            else if (startD.startsWith('2026')) pCycle = '2026';
-            else pCycle = '2026';
+            const ym = String(startD).match(/^(20\d{2})/);
+            pCycle = ym ? ym[1] : cycle;
         }
         return pCycle === cycle;
     }) : [];
@@ -58841,15 +58922,30 @@ function printPermissionsLog() {
     }
 
     if (targetGrade !== 'ALL') {
+        const qGObj = (STATE.gradesList || []).find(g => g && (g.code === targetGrade || g.id === targetGrade));
+        const qStr = `${targetGrade} ${qGObj ? (qGObj.name + ' ' + qGObj.section) : ''}`.toUpperCase();
+        const qNum = qStr.includes('6') ? 6 : (qStr.includes('5') ? 5 : (qStr.includes('4') ? 4 : 0));
+        const qSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(qGObj ? qGObj.section : targetGrade) : '';
         perms = perms.filter(p => {
-            const pGrade = (p.grade || '').toLowerCase();
-            const pSec = (p.section || '').toLowerCase();
-            return pGrade.includes(targetGrade.toLowerCase()) || `${pGrade} ${pSec}`.includes(targetGrade.toLowerCase());
+            if (p.gradeCode && p.gradeCode === targetGrade) return true;
+            const pStr = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+            const pNum = pStr.includes('6') ? 6 : (pStr.includes('5') ? 5 : (pStr.includes('4') ? 4 : 0));
+            const pSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(p.section || p.gradeCode || '') : '';
+            if (qNum > 0 && pNum > 0 && qNum !== pNum) return false;
+            if (qSec && pSec && qSec !== pSec) return false;
+            return (qNum > 0 && pNum === qNum) && (!qSec || !pSec || qSec === pSec);
         });
     }
 
     if (targetCat !== 'ALL') {
         perms = perms.filter(p => (p.reasonCategory || '').toLowerCase() === targetCat.toLowerCase());
+    }
+
+    if (searchQuery) {
+        perms = perms.filter(p => {
+            const text = `${p.studentName || ''} ${p.personalCode || ''} ${p.reasonCategory || ''} ${p.reasonDetail || ''} ${p.authorizedBy || ''} ${p.startDate || ''} ${p.endDate || ''}`.toLowerCase();
+            return text.includes(searchQuery);
+        });
     }
 
     perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
