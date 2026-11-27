@@ -15078,9 +15078,13 @@ function openGradebookForCourse(courseId) {
             localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', p.grade);
             STATE.selectedGradebookGrade = p.grade;
         }
+        if (p && (p.gradeCode || p.grade)) {
+            STATE.selectedGradebookGradeCodeFilter = p.gradeCode || p.grade;
+        }
     } catch(e) {}
     STATE.selectedGradebookCourseId = courseId;
     navigateTo('gradebook');
+    if (typeof populateTeacherCourseSelect === 'function') populateTeacherCourseSelect(courseId);
     const select = document.getElementById('teacherCourseSelect');
     if (select) {
         select.value = courseId;
@@ -15113,7 +15117,6 @@ function openAttendanceForGrade(grade, section) {
             }
         }
         onAttendanceGradeChange();
-        loadAttendanceList();
     }
 }
 
@@ -30541,7 +30544,10 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
     const basePensumPool = (isDocente && currentUser)
         ? (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser))
         : (STATE.pensum || []);
-    let selectedGradeCodeFilter = gradeFilterEl ? (gradeFilterEl.value || STATE.selectedGradebookGradeCodeFilter || 'ALL') : 'ALL';
+    const preferredObj = preferredCourseId ? basePensumPool.find(x => x.id === preferredCourseId) : null;
+    let selectedGradeCodeFilter = (preferredObj && (preferredObj.gradeCode || preferredObj.grade))
+        ? (preferredObj.gradeCode || preferredObj.grade)
+        : (gradeFilterEl ? (gradeFilterEl.value || STATE.selectedGradebookGradeCodeFilter || 'ALL') : 'ALL');
     if (gradeFilterEl) {
         const gradeMap = new Map();
         basePensumPool.forEach(p => {
@@ -31021,11 +31027,8 @@ function onTeacherClassSelectChange(teacherId, selectedVal) {
         sessionStorage.setItem('ENCCO_TEACHER_AUDIT_CLASS_' + teacherId, selectedVal);
     } catch(e) {}
 
-    const teacherCourses = (STATE.pensum || []).filter(p => 
-        p.teacherId === teacherId || 
-        (p.teacher && p.teacher.toLowerCase() === teacherId.toLowerCase()) ||
-        (STATE.users || []).some(u => u.id === teacherId && p.teacher && p.teacher.toLowerCase() === u.name.toLowerCase())
-    );
+    const _tObj = (STATE.users || []).find(u => u && u.id === teacherId);
+    const teacherCourses = (STATE.pensum || []).filter(p => _tObj && typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, _tObj) : (p.teacherId === teacherId));
 
     const b1El = document.getElementById(`b1_cell_${teacherId}`);
     const b2El = document.getElementById(`b2_cell_${teacherId}`);
@@ -31087,10 +31090,8 @@ function auditSelectedTeacherClass(teacherId) {
         inspectTeacherClassDirectly(teacherId, selectedVal);
     } else {
         // Si tiene 'ALL', auditar la primera clase y desglosar las demás
-        const teacherCourses = (STATE.pensum || []).filter(p => 
-            p.teacherId === teacherId || 
-            (STATE.users || []).some(u => u.id === teacherId && p.teacher && p.teacher.toLowerCase() === u.name.toLowerCase())
-        );
+        const _tObjAudit = (STATE.users || []).find(u => u && u.id === teacherId);
+        const teacherCourses = (STATE.pensum || []).filter(p => _tObjAudit && typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, _tObjAudit) : (p.teacherId === teacherId));
         if (teacherCourses.length > 0) {
             inspectTeacherClassDirectly(teacherId, teacherCourses[0].id);
         }
@@ -31118,7 +31119,9 @@ function inspectTeacherClassDirectly(teacherId, courseId) {
         }
     } catch(e) {}
 
-    // 1. Asegurar que el selector de cursos del libro de notas tenga la opción seleccionada
+    // 1. Sincronizar filtro de grado y selector de cursos del libro de notas
+    STATE.selectedGradebookGradeCodeFilter = course.gradeCode || course.grade || 'ALL';
+    if (typeof populateTeacherCourseSelect === 'function') populateTeacherCourseSelect(course.id);
     const select = document.getElementById('teacherCourseSelect');
     if (select) {
         let optExists = Array.from(select.options).some(o => o.value === course.id);
@@ -33065,6 +33068,9 @@ function loadTeacherGradebook() {
     const tbodyActivities = document.getElementById('gradebookActivitiesTableBody');
     if (tbodyActivities) {
         tbodyActivities.innerHTML = students.map((s, idx) => {
+            if (!s.gradebookDetails) s.gradebookDetails = {};
+            if (!s.gradebookDetails[subjectName]) s.gradebookDetails[subjectName] = {};
+            if (!s.gradebookDetails[subjectName][currentUnit]) s.gradebookDetails[subjectName][currentUnit] = { activities: [0,0,0,0,0,0,0,0,0,0], zona: 0, exam: 0, total: 0 };
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
             const isBimRetiredOrAusente = (typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true;
@@ -33177,6 +33183,9 @@ function loadTeacherGradebook() {
     const tbodySummary = document.getElementById('gradebookSummaryTableBody');
     if (tbodySummary) {
         tbodySummary.innerHTML = students.map((s, idx) => {
+            if (!s.gradebookDetails) s.gradebookDetails = {};
+            if (!s.gradebookDetails[subjectName]) s.gradebookDetails[subjectName] = {};
+            if (!s.gradebookDetails[subjectName][currentUnit]) s.gradebookDetails[subjectName][currentUnit] = { activities: [0,0,0,0,0,0,0,0,0,0], zona: 0, exam: 0, total: 0 };
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
             const isBimRetiredOrAusente = (typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true;
@@ -37744,6 +37753,10 @@ function updateLastScannedBanner(student, status, detailsMsg) {
 }
 
 function registerAttendanceByCode(rawCode) {
+    if (STATE.isHistoricalReadOnlyMode) {
+        if (typeof showToast === 'function') showToast('🔒 Ciclo histórico en modo solo lectura. No se puede registrar asistencia con escáner.', 'warning');
+        return false;
+    }
     if (!rawCode) return false;
     let cleanCode = String(rawCode).trim();
     if (!cleanCode) return false;
@@ -37760,7 +37773,7 @@ function registerAttendanceByCode(rawCode) {
     const normTarget = cleanCode.toUpperCase().replace(/[\s\-_]/g, '');
     const rawTarget = cleanCode.toUpperCase();
 
-    const students = STATE.students || [];
+    const students = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students || []) : (STATE.students || []);
     const matchedStudent = students.find(s => {
         const pCode = (s.personalCode || '').toUpperCase();
         const carne = (s.carne || '').toUpperCase();
