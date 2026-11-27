@@ -147,14 +147,23 @@
             if (!grid) return;
             const students = getStudentsSafe();
             const gradesMeta = [
-                { key: '4to', label: '4to Perito Contador', badge: 'Cursos 338-346' },
-                { key: '5to', label: '5to Perito Contador', badge: 'Cursos 347-368' },
-                { key: '6to', label: '6to Perito Contador', badge: 'Cursos 356-365' }
+                { key: '4to', label: '4to Perito Contador', badge: 'Cursos 338-346', coursesCount: 9 },
+                { key: '5to', label: '5to Perito Contador', badge: 'Cursos 347-368', coursesCount: 9 },
+                { key: '6to', label: '6to Perito Contador', badge: 'Cursos 356-365', coursesCount: 10 }
             ];
             let totalSections = 0;
+            let totalCoursesInstances = 0;
+            let totalXmlRecords = 0;
+            const gradeCounts = {};
+            const gradeSectionsText = [];
             grid.innerHTML = gradesMeta.map(gm => {
                 const secs = getDynamicSectionsForGrade(gm.key);
                 totalSections += secs.length;
+                totalCoursesInstances += secs.length * gm.coursesCount;
+                const gCnt = students.filter(s => matchStudentCohort(s, gm.key, 'ALL', false)).length;
+                gradeCounts[gm.key] = gCnt;
+                totalXmlRecords += gCnt * gm.coursesCount;
+                gradeSectionsText.push('<strong>' + gm.key + ' ' + secs.join(', ') + '</strong>');
                 const btns = secs.map(sec => {
                     const cnt = students.filter(s => matchStudentCohort(s, gm.key, sec, false)).length;
                     return '<button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection(\'' + gm.key + '\', \'' + sec + '\')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. ' + sec + ' (' + cnt + ' al.)</button>';
@@ -167,10 +176,35 @@
                     '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">' + btns + '</div>' +
                 '</div>';
             }).join('');
+
+            const totalActive = students.length;
+            const pensumCnt = (Array.isArray(_sirePensumCatalog) && _sirePensumCatalog.length > 0) ? _sirePensumCatalog.length : totalCoursesInstances;
             const titleEl = document.getElementById('sireMassXmlTitle');
             const btnAllEl = document.getElementById('sireMassXmlAllBtn');
             if (titleEl) titleEl.textContent = 'Archivos XML SIRE por Sección (' + totalSections + ' Secciones Individuales)';
             if (btnAllEl) btnAllEl.innerHTML = '<i class="fa-solid fa-download"></i> Descargar las ' + totalSections + ' Secciones en XML';
+
+            const summaryEl = document.getElementById('sireMassDynamicSummary');
+            if (summaryEl) {
+                summaryEl.innerHTML = 'La ENCCO cuenta en el Ciclo ' + getCurrentSireCycle() + ' con <strong>' + totalActive + ' estudiantes</strong> y <strong>' + pensumCnt + ' cátedras oficiales</strong> distribuidas en <strong>' + totalSections + ' secciones</strong>.';
+            }
+            const btnGradeExcel = document.getElementById('sireMassBtnExcelGrades');
+            if (btnGradeExcel) btnGradeExcel.innerHTML = '<i class="fa-solid fa-download"></i> Descargar Excel por Grados (' + totalActive + ' alumnos)';
+            const secTitleEl = document.getElementById('sireMassExcelSectionsTitle');
+            if (secTitleEl) secTitleEl.textContent = 'Excel por ' + totalSections + ' Secciones Activas';
+            const secDescEl = document.getElementById('sireMassExcelSectionsDesc');
+            if (secDescEl) secDescEl.innerHTML = 'Genera un libro Excel con ' + totalSections + ' pestañas independientes (' + gradeSectionsText.join(' • ') + '). Ideal para cotejar y subir sección por sección al sistema SIRE.';
+            const btnSecExcel = document.getElementById('sireMassBtnExcelSections');
+            if (btnSecExcel) btnSecExcel.innerHTML = '<i class="fa-solid fa-download"></i> Descargar Excel ' + totalSections + ' Secciones';
+
+            const b4 = document.getElementById('sireMassXmlBtn4to');
+            const b5 = document.getElementById('sireMassXmlBtn5to');
+            const b6 = document.getElementById('sireMassXmlBtn6to');
+            const bAll = document.getElementById('sireMassXmlBtnAll');
+            if (b4) b4.innerHTML = '<i class="fa-solid fa-download"></i> XML 4to (' + (gradeCounts['4to'] || 0) + ' al.)';
+            if (b5) b5.innerHTML = '<i class="fa-solid fa-download"></i> XML 5to (' + (gradeCounts['5to'] || 0) + ' al.)';
+            if (b6) b6.innerHTML = '<i class="fa-solid fa-download"></i> XML 6to (' + (gradeCounts['6to'] || 0) + ' al.)';
+            if (bAll) bAll.innerHTML = '<i class="fa-solid fa-file-zipper"></i> Descargar XML Completo (' + totalXmlRecords.toLocaleString('es-GT') + ' registros)';
         };
 
         window.getFullEstablishmentCode = window.getFullEstablishmentCode || function() {
@@ -1764,7 +1798,7 @@
                 <button type="button" class="btn-sire-outline" onclick="toggleSireCredsModal()" style="font-size:0.78rem; padding:5px 12px; border-radius:8px;" title="Configurar credenciales de acceso oficial a SIRE MINEDUC">
                     <i class="fa-solid fa-key" style="color:#0284c7;"></i> <span id="toggleCredsBtnText">Credenciales SIRE</span>
                 </button>
-                <button type="button" class="btn-sire-success" onclick="openSireMassModal()" style="font-size:0.78rem; padding:5px 14px; border-radius:8px; background:#059669; color:#fff; font-weight:700;" title="Asistente de Carga Masiva para SIRE MINEDUC">
+                <button type="button" class="btn-sire-primary" onclick="openSireMassModal()" style="font-size:0.78rem; padding:5px 14px; border-radius:8px; background:linear-gradient(135deg,#0f2b5c,#0369a1); color:#fff; font-weight:700; border:none;" title="Asistente de Carga Masiva para SIRE MINEDUC">
                     <i class="fa-solid fa-layer-group"></i> Asistente Carga Masiva
                 </button>
                 <a href="https://sire.mineduc.gob.gt" target="_blank" rel="noopener noreferrer" class="btn-sire-outline" style="font-size:0.78rem; padding:5px 12px; border-radius:8px; text-decoration:none; color:#0369a1; border-color:#7dd3fc;" title="Abrir portal oficial de SIRE MINEDUC">
@@ -2300,7 +2334,11 @@
                         bc.onmessage = (ev) => {
                             if (ev.data && ev.data.type === 'SYNC_STATE_UPDATE' && ev.data.state && Array.isArray(ev.data.state.students)) {
                                 if (getCurrentSireCycle() === window.sireActiveCycle) {
-                                    _sireStudents = window._sireStudents = ev.data.state.students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+                                    _sireStudents = window._sireStudents = ev.data.state.students.filter(s => {
+                                        if (!s) return false;
+                                        const st = String(s.status || '').toLowerCase().trim();
+                                        return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado';
+                                    });
                                     applySireFilters();
                                     updateFirebaseLiveBadge(true, _sireStudents.length);
                                 }
@@ -2343,16 +2381,27 @@
             }
         }
 
+        async function getSireRtdbAuthQuery() {
+            try {
+                if (window.FirebaseModular && window.FirebaseModular.auth && window.FirebaseModular.auth.currentUser && typeof window.FirebaseModular.auth.currentUser.getIdToken === 'function') {
+                    const tok = await window.FirebaseModular.auth.currentUser.getIdToken();
+                    if (tok) return '?auth=' + encodeURIComponent(tok);
+                }
+            } catch (e) {}
+            return '';
+        }
+
         async function fetchFromRtdbRest(cycleOverride) {
             try {
-                // 1. Descubrir / sincronizar ciclos y ciclo activo desde RTDB (GET puro)
+                const authQ = await getSireRtdbAuthQuery();
+                // 1. Descubrir / sincronizar ciclos y ciclo activo desde RTDB (GET puro autenticado)
                 try {
                     const [actRes, cycRes] = await Promise.all([
-                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/activeCycle.json', { 
+                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/activeCycle.json' + authQ, { 
                             method: 'GET', 
                             headers: { 'Accept': 'application/json' } 
                         }).then(r => r.ok ? r.json() : null).catch(() => null),
-                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/cycles.json', { 
+                        fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/cycles.json' + authQ, { 
                             method: 'GET', 
                             headers: { 'Accept': 'application/json' } 
                         }).then(r => r.ok ? r.json() : null).catch(() => null)
@@ -2373,21 +2422,21 @@
                     console.warn("Aviso al sincronizar metadatos de ciclo:", cErr);
                 }
 
-                const effCycle = (cycleOverride || window.currentSireCycle || window.sireActiveCycle || '2027').toString().trim();
+                const effCycle = (cycleOverride || window.currentSireCycle || window.sireActiveCycle || String(new Date().getFullYear())).toString().trim();
                 const isHistorical = (effCycle !== window.sireActiveCycle);
 
                 // Determinar ruta de estudiantes en RTDB (GET puro)
-                let studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json';
+                let studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json' + authQ;
                 if (isHistorical) {
-                    studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/' + encodeURIComponent(effCycle) + '/studentsSnapshot.json';
+                    studentsUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/' + encodeURIComponent(effCycle) + '/studentsSnapshot.json' + authQ;
                 }
 
                 // Lectura ultrarrápida paralela y de SOLO LECTURA estricta (GET pura)
-                const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { 
+                const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json' + authQ, { 
                     method: 'GET', 
                     headers: { 'Accept': 'application/json' } 
                 }).then(async r => {
-                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json' + authQ, { method: 'GET', headers: { 'Accept': 'application/json' } });
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
 
@@ -2396,7 +2445,7 @@
                     headers: { 'Accept': 'application/json' } 
                 }).then(async r => {
                     if (!r.ok && !isHistorical) {
-                        r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                        r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json' + authQ, { method: 'GET', headers: { 'Accept': 'application/json' } });
                     }
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
@@ -3390,7 +3439,7 @@
 
         function updateFirebaseLiveBadge(isConnected, count) {
             const badge = document.getElementById('firebaseLiveStatusBadge');
-            const c = count || (_sireStudents ? _sireStudents.length : 412);
+            const c = (typeof count === 'number' && !isNaN(count)) ? count : (Array.isArray(_sireStudents) ? _sireStudents.length : 0);
             const countSpan = document.getElementById('sireLiveCount');
             if (countSpan) countSpan.textContent = c;
             if (badge) {
@@ -3878,9 +3927,12 @@ recordsOnly +
             document.getElementById('subjectDetailModal').style.display = 'none';
         }
 
-        function reloadSireDataFromFirebase() {
-            initFirebaseDataReader();
-            alert('🔄 Datos actualizados directamente desde Firebase (Lectura Estricta).');
+        async function reloadSireDataFromFirebase() {
+            updateFirebaseLiveBadge(false);
+            await initFirebaseDataReader();
+            if (typeof showToast === 'function') {
+                showToast('🔄 Datos actualizados directamente desde Firebase (' + (_sireStudents ? _sireStudents.length : 0) + ' alumnos).', 'success');
+            }
         }
 
         async function handleLogout() {
@@ -3969,7 +4021,7 @@ recordsOnly +
                 <div style="background:#e0f2fe; border:1px solid #7dd3fc; border-radius:10px; padding:14px 18px; margin-bottom:14px; display:flex; gap:14px; align-items:flex-start;">
                     <i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:1.4rem; margin-top:2px; flex-shrink:0;"></i>
                     <div style="font-size:0.85rem; color:#0369a1; line-height:1.5;">
-                        <strong>Requerimiento Oficial MINEDUC / SIRE:</strong> El portal ministerial exige que los cuadros de calificaciones se procesen estructurados <strong>por Grado y Sección</strong>, asociando cada nota con el Código de Curso oficial del Currículo Nacional Base (CNB). La ENCCO cuenta con <strong>412 estudiantes</strong> y <strong>112 cátedras oficiales</strong> distribuidas en 12 secciones.
+                        <strong>Requerimiento Oficial MINEDUC / SIRE:</strong> El portal ministerial exige que los cuadros de calificaciones se procesen estructurados <strong>por Grado y Sección</strong>, asociando cada nota con el Código de Curso oficial del Currículo Nacional Base (CNB). <span id="sireMassDynamicSummary">Cargando estadísticas oficiales del ciclo...</span>
                     </div>
                 </div>
 
@@ -4021,24 +4073,24 @@ recordsOnly +
                     <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
                         <div>
                             <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                                <div style="background:#dcfce7; color:#15803d; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                <div style="background:#e0f2fe; color:#0f2b5c; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
                                     <i class="fa-solid fa-file-excel"></i>
                                 </div>
                                 <div>
-                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Excel Multi-Pestaña por Grados</h4>
-                                    <span style="font-size:0.75rem; color:#16a34a; font-weight:700;">Recomendado Oficial MINEDUC</span>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f2b5c;">Excel Multi-Pestaña por Grados</h4>
+                                    <span style="font-size:0.75rem; color:#0369a1; font-weight:700;">Recomendado Oficial MINEDUC</span>
                                 </div>
                             </div>
                             <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
                                 Genera un libro Excel con 3 pestañas (<strong>4to_Perito_Contador</strong>, <strong>5to_Perito_Contador</strong> y <strong>6to_Perito_Contador</strong>). Cada hoja incluye las columnas exactas de las materias oficiales del CNB de ese grado, notas, promedios y resultado legal.
                             </p>
                         </div>
-                        <button type="button" class="btn-sire-success" onclick="exportSireMassWorkbookByGrade()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
-                            <i class="fa-solid fa-download"></i> Descargar Excel por Grados (412 alumnos)
+                        <button type="button" id="sireMassBtnExcelGrades" class="btn-sire-primary" onclick="exportSireMassWorkbookByGrade()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem; background:linear-gradient(135deg,#0f2b5c,#0369a1); border:none;">
+                            <i class="fa-solid fa-download"></i> Descargar Excel por Grados
                         </button>
                     </div>
 
-                    <!-- Opción 2: Excel por 12 Secciones -->
+                    <!-- Opción 2: Excel por Secciones Dinámicas -->
                     <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
                         <div>
                             <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
@@ -4046,16 +4098,16 @@ recordsOnly +
                                     <i class="fa-solid fa-folder-tree"></i>
                                 </div>
                                 <div>
-                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Excel por 12 Secciones (A-D)</h4>
+                                    <h4 id="sireMassExcelSectionsTitle" style="margin:0; font-size:0.98rem; font-weight:800; color:#0f2b5c;">Excel por Secciones Activas</h4>
                                     <span style="font-size:0.75rem; color:#d97706; font-weight:700;">Para Carga Individual de Secretaría</span>
                                 </div>
                             </div>
-                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
-                                Genera un libro Excel con 12 pestañas independientes (<strong>4to A, B, C, D</strong> • <strong>5to A, B, C, D</strong> • <strong>6to A, B, C, D</strong>). Ideal para cotejar y subir sección por sección al sistema SIRE.
+                            <p id="sireMassExcelSectionsDesc" style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Genera un libro Excel con pestañas independientes por cada grado y sección activa del ciclo escolar. Ideal para cotejar y subir sección por sección al sistema SIRE.
                             </p>
                         </div>
-                        <button type="button" class="btn-sire-outline" onclick="exportSireMassWorkbookBySection()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem; border-color:#d97706; color:#b45309;">
-                            <i class="fa-solid fa-download"></i> Descargar Excel 12 Secciones
+                        <button type="button" id="sireMassBtnExcelSections" class="btn-sire-outline" onclick="exportSireMassWorkbookBySection()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem; border-color:#d97706; color:#b45309;">
+                            <i class="fa-solid fa-download"></i> Descargar Excel por Secciones
                         </button>
                     </div>
 
@@ -4067,7 +4119,7 @@ recordsOnly +
                                     <i class="fa-solid fa-file-code"></i>
                                 </div>
                                 <div>
-                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Archivos XML SIRE por Grado</h4>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f2b5c;">Archivos XML SIRE por Grado</h4>
                                     <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Estructura &lt;tablaCargaMasiva&gt; MINEDUC</span>
                                 </div>
                             </div>
@@ -4075,19 +4127,19 @@ recordsOnly +
                                 Archivos XML oficiales listos para el importador masivo del SIRE. Descargue por grado con los códigos de curso asignados:
                             </p>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('4to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
-                                    <i class="fa-solid fa-download"></i> XML 4to (138 al.)
+                                <button type="button" id="sireMassXmlBtn4to" class="btn-sire-outline" onclick="exportSireXmlByGrade('4to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 4to
                                 </button>
-                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('5to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
-                                    <i class="fa-solid fa-download"></i> XML 5to (146 al.)
+                                <button type="button" id="sireMassXmlBtn5to" class="btn-sire-outline" onclick="exportSireXmlByGrade('5to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 5to
                                 </button>
-                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('6to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
-                                    <i class="fa-solid fa-download"></i> XML 6to (128 al.)
+                                <button type="button" id="sireMassXmlBtn6to" class="btn-sire-outline" onclick="exportSireXmlByGrade('6to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 6to
                                 </button>
                             </div>
                         </div>
-                        <button type="button" class="btn-sire-primary" onclick="exportSireXmlByGrade('ALL')" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
-                            <i class="fa-solid fa-file-zipper"></i> Descargar XML Completo (3,836 registros)
+                        <button type="button" id="sireMassXmlBtnAll" class="btn-sire-primary" onclick="exportSireXmlByGrade('ALL')" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
+                            <i class="fa-solid fa-file-zipper"></i> Descargar XML Completo
                         </button>
                     </div>
 

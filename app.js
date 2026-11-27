@@ -12027,6 +12027,8 @@ function synchronizeGlobalDynamicUI() {
             loadLockStatus();
         } else if (STATE.activeView === 'excel-import' && typeof updatePrintModelSelects === 'function') {
             updatePrintModelSelects();
+        } else if (STATE.activeView === 'carnets' && typeof renderCarnetsView === 'function') {
+            renderCarnetsView();
         }
     }, 32);
 }

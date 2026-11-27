@@ -6315,4 +6315,10 @@ textarea:focus-visible,
   #view-excel-import .excel-exec-actions { width: 100%; }
   #view-excel-import .excel-exec-actions .btn,
   #view-excel-import .action-card .btn { flex: 1 1 100%; justify-content: center; }
+  #view-carnets .carnets-header-actions { width: 100%; }
+  #view-carnets .carnets-header-actions .btn { width: 100%; justify-content: center; }
+  #view-carnets .carnets-tabs-bar .btn { flex: 1 1 100%; justify-content: center; border-radius: 8px !important; }
+  #view-carnets .carnets-filters-bar > div { width: 100%; min-width: 0 !important; flex: 1 1 100%; }
+  #view-carnets .carnets-grid-responsive { grid-template-columns: 1fr !important; }
+  #view-carnets .carnet-preview-wrapper { max-width: 100%; overflow-x: auto; padding-bottom: 4px; }
 }

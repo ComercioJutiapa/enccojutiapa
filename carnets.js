@@ -54,13 +54,13 @@
             try {
                 if (typeof window !== 'undefined' && window.location && window.location.origin && /^https?:/i.test(window.location.origin)) {
                     const host = (window.location.hostname || '').toLowerCase();
-                    if (host.endsWith('.edu.gt') || host.endsWith('.edu') || host === 'comerciojutiapa.github.io') {
+                    if (host.endsWith('.edu.gt') || host.endsWith('.edu') || host.endsWith('.web.app') || host.endsWith('.firebaseapp.com') || host === 'comerciojutiapa.github.io') {
                         const basePath = window.location.pathname.replace(/\/[^\/]*$/, '/');
                         return `${window.location.origin}${basePath}`;
                     }
                 }
             } catch (e) {}
-            return 'https://comerciojutiapa.github.io/enccojutiapa/';
+            return 'https://encco-jutiapa-live-2026.web.app/';
         },
 
         /**
@@ -161,7 +161,7 @@
                 const qrFn = this.getQrProvider();
                 if (qrFn) {
                     const qr = qrFn(0, 'M');
-                    qr.addData(String(text || 'ENCCO-2026'));
+                    qr.addData(String(text || `ENCCO-${this.getActiveCycle()}`));
                     qr.make();
                     const svgRaw = qr.createSvgTag({
                         cellSize: 2,
@@ -831,11 +831,12 @@
             const users = (window.STATE && Array.isArray(window.STATE.users)) ? window.STATE.users : [];
             return users.filter(u => {
                 if (!u || u.active === false) return false;
+                if (typeof window.isAdminOrSystemUser === 'function' && window.isAdminOrSystemUser(u)) return false;
                 if (u.role === 'docente' || u.role === 'profesor_auxiliar') return true;
                 if (u.roles && (u.roles.includes('docente') || u.roles.includes('profesor_auxiliar'))) return true;
                 if (u.id && String(u.id).startsWith('usr-doc-')) return true;
                 return false;
-            });
+            }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' }));
         },
 
         /**
@@ -1017,7 +1018,7 @@
                     <div class="modal-container" style="max-width:500px; width:100%; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); display:flex; flex-direction:column; font-family:'Plus Jakarta Sans', sans-serif;">
                         
                         <!-- ENCABEZADO DEL MODAL -->
-                        <div style="background:linear-gradient(135deg, #0f5127, #15803d); color:#ffffff; padding:12px 18px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="background:linear-gradient(135deg, #0f2b5c, #0369a1); color:#ffffff; padding:12px 18px; display:flex; justify-content:space-between; align-items:center;">
                             <h3 style="margin:0; font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
                                 <i class="fa-solid fa-camera-rotate"></i> Fotografía Oficial del Carné
                             </h3>
@@ -1036,7 +1037,7 @@
                                     <div id="carnetPhotoEntityName" style="font-weight:900; color:#0f172a; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                         Titular
                                     </div>
-                                    <div id="carnetPhotoEntityRole" style="font-size:0.72rem; color:#15803d; font-weight:700;">
+                                    <div id="carnetPhotoEntityRole" style="font-size:0.72rem; color:#0369a1; font-weight:700;">
                                         DOCENTE
                                     </div>
                                 </div>
@@ -1101,10 +1102,10 @@
 
                             <!-- CONTENEDOR DE SUBIDA DE ARCHIVO (CON DRAG & DROP Y AJUSTE DE CUALQUIER TAMAÑO) -->
                             <div id="carnetFileBox" style="display:none; border:2px dashed #cbd5e1; border-radius:10px; padding:25px 15px; text-align:center; background:#f8fafc; transition:all 0.2s ease;"
-                                ondragover="event.preventDefault(); this.style.borderColor='#16a34a'; this.style.background='#f0fdf4';"
+                                ondragover="event.preventDefault(); this.style.borderColor='#0369a1'; this.style.background='#f0f9ff';"
                                 ondragleave="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';"
                                 ondrop="event.preventDefault(); this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'; if(event.dataTransfer.files && event.dataTransfer.files[0]) EnccoCarnets.processAndShowFile(event.dataTransfer.files[0]);">
-                                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.4rem; color:#0284c7; margin-bottom:8px; display:block;"></i>
+                                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.4rem; color:#0369a1; margin-bottom:8px; display:block;"></i>
                                 <label class="btn btn-outline-primary btn-sm" style="font-weight:700; cursor:pointer; margin:0 auto 6px auto; display:inline-block;">
                                     <i class="fa-solid fa-folder-open"></i> Seleccionar Imagen (Cualquier tamaño)
                                     <input type="file" id="carnetLocalFileInput" accept="image/*" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
@@ -1115,9 +1116,9 @@
                             </div>
 
                             <!-- PREVIEW DE LA FOTO FORMAL AJUSTADA -->
-                            <div id="carnetCapturedPreviewBox" style="display:none; text-align:center; margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px;">
-                                <div style="font-size:0.78rem; font-weight:800; color:#166534; margin-bottom:6px;">
-                                    <i class="fa-solid fa-circle-check"></i> Fotografía formal encuadrada (360×450 px):
+                            <div id="carnetCapturedPreviewBox" style="display:none; text-align:center; margin-top:12px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px;">
+                                <div style="font-size:0.78rem; font-weight:800; color:#0f2b5c; margin-bottom:6px;">
+                                    <i class="fa-solid fa-circle-check" style="color:#0369a1;"></i> Fotografía formal encuadrada (360×450 px):
                                 </div>
                                 <div style="display:inline-block; padding:3px; background:linear-gradient(135deg, #fce881, #d4af37, #8a6508); border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); margin-bottom:8px;">
                                     <img id="carnetCapturedImg" src="" alt="Preview" style="width:100px; height:125px; object-fit:cover; border-radius:6px; display:block;">
@@ -1126,7 +1127,7 @@
                                     Ajustada automáticamente al formato y formalidad oficial del carné.
                                 </div>
                                 <div style="display:flex; justify-content:center; gap:8px;">
-                                    <button type="button" class="btn btn-success btn-sm" onclick="EnccoCarnets.saveCapturedPhoto()" style="font-weight:800; background:#15803d; border-color:#15803d;">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="EnccoCarnets.saveCapturedPhoto()" style="font-weight:800; background:linear-gradient(135deg,#0f2b5c,#0369a1); border:none; color:#ffffff;">
                                         <i class="fa-solid fa-floppy-disk"></i> Confirmar y Asignar al Carné
                                     </button>
                                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="EnccoCarnets.retryPhoto()" style="font-weight:700;">
@@ -1588,8 +1589,8 @@
                 }
             }
 
-            if (typeof renderCarnetsView === 'function' && typeof document !== 'undefined' && document.getElementById('carnetsGridView')) {
-                renderCarnetsView();
+            if (typeof updateCarnetsGridOnly === 'function' && typeof document !== 'undefined' && document.getElementById('carnetsGridContainer')) {
+                updateCarnetsGridOnly();
             }
 
             if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
@@ -1691,12 +1692,13 @@
             } else {
                 const student = (window.STATE && window.STATE.students) ? window.STATE.students.find(s => s.id === id) : null;
                 if (!student) return;
-                if (student.status === 'Retirado' || student.status === 'Inactivo') {
+                const stLower = String(student.status || '').toLowerCase().trim();
+                if (stLower === 'retirado' || stLower === 'inactivo' || stLower === 'egresado') {
                     const stName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''));
                     if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                        window.EnccoDialog.alert({ title: 'Impresión Bloqueada', message: `El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés institucionales para alumnos retirados.`, type: 'warning' });
+                        window.EnccoDialog.alert({ title: 'Impresión Bloqueada', message: `El estudiante "${stName}" se encuentra ${stLower.toUpperCase()}. No se emiten carnés institucionales para alumnos no activos.`, type: 'warning' });
                     } else if (typeof showToast === 'function') {
-                        showToast(`🔒 Impresión de Carné Bloqueada: El estudiante "${stName}" se encuentra RETIRADO.`, 'warning');
+                        showToast(`🔒 Impresión de Carné Bloqueada: El estudiante "${stName}" se encuentra ${stLower.toUpperCase()}.`, 'warning');
                     }
                     return;
                 }
@@ -1932,12 +1934,12 @@
                         </style>
                     </head>
                     <body>
-                        <div style="text-align:center; margin-bottom:8px; border-bottom:1.5px solid #0f5127; padding-bottom:4px;">
-                            <strong style="font-size:12px; color:#15803d; font-family:'Outfit', sans-serif; text-transform:uppercase;">
+                        <div style="text-align:center; margin-bottom:8px; border-bottom:2px solid #0f2b5c; padding-bottom:4px;">
+                            <strong style="font-size:12px; color:#0f2b5c; font-family:'Outfit', sans-serif; text-transform:uppercase;">
                                 HOJA DE IMPRESIÓN OFICIAL DE CARNÉS (${isTeachers ? 'DOCENTES VERTICALES' : 'ESTUDIANTILES HORIZONTALES'}) — ENCCO JUTIAPA 1970
                             </strong>
-                            <div style="font-size:10px; color:#64748b;">
-                                Total credenciales: ${itemsToPrint.length} | Ciclo Escolar: ${(window.STATE && window.STATE.activeCycle) || '2026'} | Tamaño CR80
+                            <div style="font-size:10px; color:#475569;">
+                                Total credenciales: ${itemsToPrint.length} | Ciclo Escolar: ${this.getActiveCycle()} | Tamaño CR80
                             </div>
                         </div>
                         <div class="carnets-sheet-grid">
@@ -2030,7 +2032,11 @@
         const visibleList = list.slice(0, limit);
         const remaining = Math.max(0, totalFiltered - visibleList.length);
 
-        const missingPhotosCount = list.filter(e => e && !(e.photoUrl || e.photo) && e.status !== 'Retirado' && e.status !== 'Inactivo').length;
+        const missingPhotosCount = list.filter(e => {
+            if (!e || (e.photoUrl || e.photo)) return false;
+            const st = String(e.status || '').toLowerCase().trim();
+            return st !== 'retirado' && st !== 'inactivo' && st !== 'egresado';
+        }).length;
 
         const countLabel = document.getElementById('carnetsActiveCountLabel');
         if (countLabel) {
@@ -2048,7 +2054,11 @@
         if (batchBtn) {
             const printableCount = isTeachers
                 ? totalFiltered
-                : list.filter(st => st && st.status !== 'Retirado' && st.status !== 'Inactivo' && st.status !== 'Egresado').length;
+                : list.filter(st => {
+                    if (!st) return false;
+                    const s = String(st.status || '').toLowerCase().trim();
+                    return s !== 'retirado' && s !== 'inactivo' && s !== 'egresado';
+                }).length;
             batchBtn.innerHTML = `<i class="fa-solid fa-print"></i> Imprimir Lote (${printableCount} Carnés)`;
         }
 
@@ -2066,7 +2076,8 @@
         gridEl.innerHTML = visibleList.map(entity => {
             const isDoc = isTeachers;
             const cardId = entity.id;
-            const isRetired = !isDoc && (entity.status === 'Retirado' || entity.status === 'Inactivo');
+            const stLow = String(entity.status || '').toLowerCase().trim();
+            const isRetired = !isDoc && (stLow === 'retirado' || stLow === 'inactivo' || stLow === 'egresado');
             const cardHtml = isDoc
                 ? EnccoCarnets.renderTeacherCardFrontHtml(entity)
                 : EnccoCarnets.renderStudentCardFrontHtml(entity);
@@ -2142,44 +2153,46 @@
             return wa - wb || a.localeCompare(b);
         });
         const sections = [...new Set(allStudents.map(s => EnccoCarnets.formatCleanSection(s.section || s.gradeCode)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const renglonesSet = new Set(['011', '021', ...teachers.map(t => String(t.renglon || '').trim()).filter(Boolean)]);
+        const renglonesList = [...renglonesSet].sort((a, b) => a.localeCompare(b));
 
         container.innerHTML = `
             <div class="carnets-container" style="padding:10px 0;">
                 
                 <!-- ENCABEZADO DE SECCIÓN -->
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div class="carnets-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
                     <div>
-                        <h2 style="margin:0; font-size:1.45rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:10px;">
-                            <i class="fa-solid fa-id-card" style="color:var(--brand-green);"></i>
+                        <h2 style="margin:0; font-size:1.45rem; font-weight:800; color:#0f2b5c; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <i class="fa-solid fa-id-card" style="color:#0369a1;"></i>
                             Emisión Oficial de Credenciales y Carnés Institucionales
-                            <span class="badge" style="background:linear-gradient(135deg,#0b2c66,#006837); color:#f3d87d; font-size:0.74rem; padding:4px 10px; border-radius:999px; font-weight:800;">Ciclo ${cycle}</span>
+                            <span class="badge" style="background:linear-gradient(135deg,#0f2b5c,#0369a1); color:#ffffff; font-size:0.74rem; padding:4px 10px; border-radius:999px; font-weight:800;">Ciclo ${cycle}</span>
                         </h2>
                         <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">
                             Modelos oficiales ENCCO 1970 (CR80 Premium): Carnet Estudiantil (Horizontal) y Carnet Docente (Vertical) con Código de Barras y QR.
                         </p>
                     </div>
-                    <div style="display:flex; gap:8px;">
-                        <button type="button" id="carnetsBatchPrintBtn" class="btn btn-primary" onclick="EnccoCarnets.printFilteredBatch()" style="background:linear-gradient(135deg,#0b2c66,#006837); border:none; font-weight:800; box-shadow:0 3px 10px rgba(11,44,102,0.28);">
+                    <div class="carnets-header-actions" style="display:flex; gap:8px;">
+                        <button type="button" id="carnetsBatchPrintBtn" class="btn btn-primary" onclick="EnccoCarnets.printFilteredBatch()" style="background:linear-gradient(135deg,#0f2b5c,#0369a1); border:none; font-weight:800; box-shadow:0 3px 10px rgba(15,43,92,0.28);">
                             <i class="fa-solid fa-print"></i> Imprimir Lote
                         </button>
                     </div>
                 </div>
 
                 <!-- SELECTOR DE PESTAÑAS: ESTUDIANTES (HORIZONTAL) VS DOCENTES (VERTICAL) -->
-                <div style="display:flex; gap:8px; border-bottom:2.5px solid #e2e8f0; margin-bottom:16px;">
-                    <button type="button" class="btn btn-sm ${!isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('students')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${!isTeachers ? 'background:#006837; border-color:#006837; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
+                <div class="carnets-tabs-bar" style="display:flex; gap:8px; border-bottom:2.5px solid #e2e8f0; margin-bottom:16px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm ${!isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('students')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${!isTeachers ? 'background:linear-gradient(135deg,#0f2b5c,#0369a1); border-color:#0f2b5c; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
                         <i class="fa-solid fa-user-graduate"></i> Carnés Estudiantiles (Horizontal)
-                        <span class="badge" style="background:${!isTeachers ? '#ffffff' : '#cbd5e1'}; color:${!isTeachers ? '#006837' : '#334155'}; margin-left:4px;">${allStudents.length}</span>
+                        <span class="badge" style="background:${!isTeachers ? '#ffffff' : '#cbd5e1'}; color:${!isTeachers ? '#0f2b5c' : '#334155'}; margin-left:4px;">${allStudents.length}</span>
                     </button>
-                    <button type="button" class="btn btn-sm ${isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('teachers')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${isTeachers ? 'background:#0b2c66; border-color:#0b2c66; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
+                    <button type="button" class="btn btn-sm ${isTeachers ? 'btn-primary' : 'btn-secondary'}" onclick="EnccoCarnets.visibleLimit=24; EnccoCarnets.switchTab('teachers')" style="font-weight:800; border-radius:8px 8px 0 0; padding:8px 18px; font-size:0.86rem; display:flex; align-items:center; gap:8px; ${isTeachers ? 'background:linear-gradient(135deg,#0f2b5c,#0369a1); border-color:#0f2b5c; color:#fff;' : 'background:#f1f5f9; color:#475569; border:none;'}">
                         <i class="fa-solid fa-chalkboard-user"></i> Carnés Docentes (Vertical)
-                        <span class="badge" style="background:${isTeachers ? '#ffffff' : '#cbd5e1'}; color:${isTeachers ? '#0b2c66' : '#334155'}; margin-left:4px;">${teachers.length}</span>
+                        <span class="badge" style="background:${isTeachers ? '#ffffff' : '#cbd5e1'}; color:${isTeachers ? '#0f2b5c' : '#334155'}; margin-left:4px;">${teachers.length}</span>
                     </button>
                 </div>
 
                 <!-- BARRA DE FILTROS PERSISTENTE (SIN PÉRDIDA DE FOCO AL ESCRIBIR) -->
                 ${!isTeachers ? `
-                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                    <div class="carnets-filters-bar" style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
                         <div style="flex:1; min-width:210px;">
                             <input type="text" id="carnetsSearchInput" class="form-control" placeholder="Buscar por alumno, carné o código personal..." value="${stSearchVal}" oninput="EnccoCarnets.onSearchInput()" style="font-size:0.84rem;">
                         </div>
@@ -2210,15 +2223,14 @@
                         </div>
                     </div>
                 ` : `
-                    <div style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                    <div class="carnets-filters-bar" style="background:#ffffff; border-radius:12px; padding:12px 16px; border:1.5px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
                         <div style="flex:1; min-width:240px;">
                             <input type="text" id="carnetsTeacherSearchInput" class="form-control" placeholder="Buscar por nombre de catedrático, título o ID..." value="${docSearchVal}" oninput="EnccoCarnets.onSearchInput()" style="font-size:0.84rem;">
                         </div>
                         <div style="min-width:160px;">
                             <select id="carnetsTeacherRenglonFilter" class="form-control" onchange="EnccoCarnets.onFilterChange(true)" style="font-size:0.84rem; font-weight:600;">
                                 <option value="ALL">-- Todos los Renglones --</option>
-                                <option value="011" ${docRenglonFilter === '011' ? 'selected' : ''}>Renglón 011 (Presupuestado)</option>
-                                <option value="021" ${docRenglonFilter === '021' ? 'selected' : ''}>Renglón 021 (Contrato)</option>
+                                ${renglonesList.map(r => `<option value="${r}" ${docRenglonFilter === r ? 'selected' : ''}>Renglón ${r}${r === '011' ? ' (Presupuestado)' : (r === '021' ? ' (Contrato)' : '')}</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -2236,7 +2248,7 @@
                 </div>
 
                 <!-- GRILLA DE PREVISUALIZACIÓN DE CARNÉS -->
-                <div id="carnetsGridContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(${isTeachers ? '230px' : '340px'}, 1fr)); gap:18px; justify-items:center;"></div>
+                <div id="carnetsGridContainer" class="carnets-grid-responsive" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(${isTeachers ? '230px' : '340px'}, 1fr)); gap:18px; justify-items:center;"></div>
 
             </div>
         `;
