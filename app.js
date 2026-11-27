@@ -12015,6 +12015,8 @@ function synchronizeGlobalDynamicUI() {
             renderHonorRollView();
         } else if (STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
             renderExoneracionesLogView();
+        } else if (STATE.activeView === 'exam-schedules' && typeof renderExamSchedulesView === 'function') {
+            renderExamSchedulesView();
         }
     }, 32);
 }

@@ -62,7 +62,7 @@
                 background: #ffffff;
                 color: #0f172a;
                 border: 1px solid #e2e8f0;
-                border-left: 5px solid #16a34a;
+                border-left: 5px solid #0369a1;
                 padding: 10px 16px;
                 border-radius: 10px;
                 display: flex;
@@ -79,7 +79,7 @@
             .exam-day-banner:hover {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
                 border-color: #cbd5e1;
-                border-left-color: #15803d;
+                border-left-color: #0f2b5c;
             }
             .exam-day-banner.is-collapsed {
                 margin-bottom: 10px;
@@ -221,6 +221,13 @@
             }
             .exam-grades-grid.cols-1 {
                 grid-template-columns: 1fr;
+            }
+            @media (max-width: 640px) {
+                #view-exam-schedules .exam-sched-card { padding: 12px 10px; }
+                #view-exam-schedules .exam-day-banner { padding: 10px 11px; flex-direction: column; align-items: stretch; }
+                #view-exam-schedules .exam-day-banner button,
+                #view-exam-schedules .section-toolbar button { flex: 1 1 auto; }
+                #view-exam-schedules select, #view-exam-schedules input { width: 100%; max-width: 100%; }
             }
             @media (max-width: 992px) {
                 .exam-grades-grid.cols-2,
@@ -500,7 +507,7 @@
             const c = getPlatformActiveCycle();
             if (c) return String(c).trim();
         }
-        return (window.STATE && window.STATE.activeCycle) ? String(window.STATE.activeCycle).trim() : '2026';
+        return (window.STATE && (window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle)) ? String(window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle || window.STATE.activeCycle).trim() : String(new Date().getFullYear());
     }
 
     // Obtener la lista de todos los ciclos escolares disponibles en el sistema (100% dinámico multiciclos)
@@ -944,8 +951,11 @@
         else if (targetGrade.includes('5') || codeUpper.includes('5')) targetNum = '5';
         else if (targetGrade.includes('6') || codeUpper.includes('6')) targetNum = '6';
 
-        const students = (STATE.students || []).filter(s => {
+        const cyclePool = (typeof window.getCycleFilteredStudents === 'function') ? window.getCycleFilteredStudents(STATE.students || []) : (STATE.students || []);
+        const students = cyclePool.filter(s => {
             if (!s) return false;
+            const stStatus = String(s.status || '').toLowerCase().trim();
+            if (stStatus === 'retirado' || stStatus === 'inactivo' || stStatus === 'egresado' || s.deleted === true) return false;
 
             // 1. Filtrar registros fantasma o sin identidad verificable
             const hasName = !!((s.lastName && s.lastName.trim()) || (s.firstName && s.firstName.trim()) || (s.name && s.name.trim()));
@@ -960,7 +970,7 @@
             // Identificar letra de sección del estudiante
             let stuSecLetter = stuSec;
             if (!stuSecLetter) {
-                const sMatch = stuCodeUpper.match(/\b([A-D])\b/) || stuCodeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
+                const sMatch = stuCodeUpper.match(/\b([A-H])\b/) || stuCodeUpper.match(/SECCI[OÓ]N\s*([A-H])/);
                 if (sMatch) stuSecLetter = sMatch[1];
             }
 
@@ -1076,7 +1086,7 @@
         const map = new Map();
         (STATE.gradesList || []).forEach(g => {
             let baseName = (g.name || g.code || '').trim();
-            baseName = baseName.replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim();
+            baseName = baseName.replace(/\s+Secci[oó]n\s+[A-H]/i, '').replace(/\s+[A-H]$/i, '').trim();
             if (baseName && !map.has(baseName)) {
                 map.set(baseName, {
                     baseName: baseName,
@@ -1425,7 +1435,7 @@
                                     </option>
                                 `).join('')}
                             </select>
-                            <span class="badge" style="background:${isCurrentCycleActive ? '#15803d' : '#475569'}; color:#ffffff; font-size:0.72rem; font-weight:800; padding:4px 8px; border-radius:6px;" title="Estado del ciclo escolar">
+                            <span class="badge" style="background:${isCurrentCycleActive ? '#0369a1' : '#475569'}; color:#ffffff; font-size:0.72rem; font-weight:800; padding:4px 8px; border-radius:6px;" title="Estado del ciclo escolar">
                                 ${isCurrentCycleActive ? 'Oficial' : 'Histórico'}
                             </span>
                         </div>
@@ -1503,7 +1513,7 @@
                     <p style="color:#64748b; font-size:0.9rem; max-width:500px; margin:0 auto 16px auto;">
                         Haga clic en <strong>"Agregar Día de Examen"</strong> para fijar las fechas de evaluación, seleccionar materias y asignar salones y cuidadores.
                     </p>
-                    <button type="button" class="btn btn-primary" onclick="window.addNewExamDayModal()" style="background:#15803d; font-weight:700;">
+                    <button type="button" class="btn btn-primary" onclick="window.addNewExamDayModal()" style="background:#0369a1; border-color:#0f2b5c; font-weight:800;">
                         <i class="fa-solid fa-plus"></i> Configurar Primer Día
                     </button>
                 </div>
