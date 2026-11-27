@@ -12021,6 +12021,8 @@ function synchronizeGlobalDynamicUI() {
             renderAuxiliaturaLogView();
         } else if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxiliaturaCenterView === 'function') {
             renderAuxiliaturaCenterView();
+        } else if (STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') {
+            renderDisciplineTable();
         }
     }, 32);
 }
@@ -41435,8 +41437,43 @@ window.checkDisciplineDirectorPermission = checkDisciplineDirectorPermission;
 // ⚠️ GESTOR DINÁMICO DE REPORTES DISCIPLINARIOS Y LLAMADAS DE ATENCIÓN (V75)
 // ==========================================================================
 
+function getDisciplineLocalDateISO(dateInput) {
+    const d = dateInput instanceof Date ? dateInput : (dateInput ? new Date(dateInput) : new Date());
+    if (Number.isNaN(d.getTime())) {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getDisciplineActiveCycle() {
+    return String(
+        STATE.historicalViewingCycle ||
+        STATE.viewingHistoricalCycle ||
+        STATE.activeCycle ||
+        STATE.academicCycle ||
+        new Date().getFullYear()
+    ).trim();
+}
+
+function extractDisciplineRecordCycle(rec, fallbackCycle) {
+    const fb = String(fallbackCycle || getDisciplineActiveCycle()).trim();
+    if (!rec || typeof rec !== 'object') return fb;
+    const direct = String(rec.cycle || rec.academicCycle || '').trim();
+    if (/^\d{4}$/.test(direct)) return direct;
+    const dateCandidate = String(rec.date || rec.resolvedDate || rec.resolutionDate || '').trim();
+    const m = dateCandidate.match(/^(20\d{2})/);
+    if (m) return m[1];
+    if (rec.lastModified) {
+        const d = new Date(rec.lastModified);
+        if (!Number.isNaN(d.getTime())) return String(d.getFullYear());
+    }
+    return fb;
+}
+
 function populateDisciplineGradeFilter() {
     const gradeSelect = document.getElementById('discGradeFilter');
+    const secSelect = document.getElementById('discSectionFilter');
     if (!gradeSelect) return;
 
     const isDocente = (STATE.currentRole === 'docente');
@@ -41444,26 +41481,56 @@ function populateDisciplineGradeFilter() {
     if (isDocente && typeof getTeacherAssignedGradesList === 'function') {
         gradesList = getTeacherAssignedGradesList(STATE.currentUser);
     } else {
-        gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
-            ? STATE.gradesList 
+        const rawGrades = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0
+            ? (typeof sortGrades === 'function' ? sortGrades([...STATE.gradesList]) : [...STATE.gradesList])
             : [
-                { code: '4to Perito Contador', name: '4to Perito Contador' },
-                { code: '5to Perito Contador', name: '5to Perito Contador' },
-                { code: '6to Perito Contador', name: '6to Perito Contador' }
+                { code: '4to Perito Contador', name: '4to Perito Contador', section: 'A' },
+                { code: '5to Perito Contador', name: '5to Perito Contador', section: 'A' },
+                { code: '6to Perito Contador', name: '6to Perito Contador', section: 'A' }
             ];
+        gradesList = rawGrades;
     }
+
+    // Deduplicar nombres de grado para el selector de grado (el selector de sección es independiente)
+    const uniqueGradeNames = [];
+    const seenNames = new Set();
+    const sectionSet = new Set();
+    gradesList.forEach(g => {
+        if (!g) return;
+        const gName = String(g.name || g.code || '').trim();
+        if (gName && !seenNames.has(gName.toLowerCase())) {
+            seenNames.add(gName.toLowerCase());
+            uniqueGradeNames.push(gName);
+        }
+        const cleanSec = (typeof getCleanSectionLetter === 'function')
+            ? getCleanSectionLetter(g.section)
+            : String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+        if (cleanSec && /^[A-H]$/.test(cleanSec)) {
+            sectionSet.add(cleanSec);
+        }
+    });
 
     const currentVal = gradeSelect.value || 'ALL';
     let optionsHtml = isDocente ? '<option value="ALL">-- Mis Grados Asignados --</option>' : '<option value="ALL">-- Todos los Grados --</option>';
-    gradesList.forEach(g => {
-        const val = g.name || g.code;
-        const secLabel = g.section ? ` - ${g.section}` : '';
-        optionsHtml += `<option value="${val}">${g.name} (${g.code})${secLabel}</option>`;
+    uniqueGradeNames.forEach(gName => {
+        optionsHtml += `<option value="${escapeHtml(gName)}">${escapeHtml(gName)}</option>`;
     });
 
     gradeSelect.innerHTML = optionsHtml;
-    if (gradesList.some(g => (g.name || g.code) === currentVal)) {
+    if (uniqueGradeNames.includes(currentVal)) {
         gradeSelect.value = currentVal;
+    }
+
+    // Poblar dinámicamente secciones reales del ciclo (A–H, incluyendo 4to E)
+    if (secSelect) {
+        const prevSec = secSelect.value || 'ALL';
+        const sortedSecs = Array.from(sectionSet.size > 0 ? sectionSet : ['A', 'B', 'C', 'D', 'E']).sort();
+        secSelect.innerHTML = '<option value="ALL">Todas</option>' + sortedSecs.map(sec =>
+            `<option value="${sec}">Sección ${sec}</option>`
+        ).join('');
+        if (prevSec !== 'ALL' && sortedSecs.includes(prevSec)) {
+            secSelect.value = prevSec;
+        }
     }
 }
 
@@ -41491,9 +41558,12 @@ function filterDisciplineStudentList() {
     if (!select) return;
 
     const isDocente = (STATE.currentRole === 'docente');
+    const cycleStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents()
+        : (STATE.students || []);
     const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
         ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
-        : (STATE.students || []);
+        : cycleStudents;
 
     let students = baseStudents.filter(s => isStudentActive(s));
 
@@ -41509,8 +41579,10 @@ function filterDisciplineStudentList() {
     // Filtro de sección
     if (sectionFilter && sectionFilter !== 'ALL') {
         students = students.filter(s => {
-            const sec = (s.section || '').toUpperCase().trim();
-            return sec === sectionFilter || sec === `SECCIÓN ${sectionFilter}` || sec === `SECCION ${sectionFilter}` || sec.endsWith(sectionFilter);
+            const sec = (typeof getCleanSectionLetter === 'function')
+                ? getCleanSectionLetter(s.section).toUpperCase()
+                : String(s.section || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+            return sec === sectionFilter;
         });
     }
 
@@ -41545,8 +41617,10 @@ function filterDisciplineStudentList() {
         select.innerHTML = `<option value="">-- Seleccione Estudiante (${students.length} disponibles) --</option>` + students.map(s => {
             const fullName = formatStudentDisplayName(s, 'lastFirst');
             const gradeDisplay = s.grade || s.gradeCode || 'Grado Oficial';
-            const secDisplay = (s.section || 'A').replace(/secci[oó]n\s*/i, '');
-            return `<option value="${s.id}">${escapeHtml(fullName)} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${s.carne || 'S/C'})</option>`;
+            const secDisplay = (typeof getCleanSectionLetter === 'function')
+                ? getCleanSectionLetter(s.section) || 'A'
+                : (s.section || 'A').replace(/secci[oó]n\s*/i, '');
+            return `<option value="${s.id}">${escapeHtml(fullName)} • [${escapeHtml(gradeDisplay)} - Sec ${escapeHtml(secDisplay)}] (Carné: ${escapeHtml(s.carne || 'S/C')})</option>`;
         }).join('');
 
         // Si solo hay un estudiante tras la búsqueda, seleccionarlo automáticamente
@@ -41578,10 +41652,10 @@ function openDisciplineModal() {
     // 2. Filtrar lista de estudiantes
     filterDisciplineStudentList();
 
-    // 3. Fecha actual por defecto si existe campo
+    // 3. Fecha actual local GT por defecto si existe campo
     const dateInput = document.getElementById('discDate');
     if (dateInput) {
-        dateInput.value = new Date().toISOString().split('T')[0];
+        dateInput.value = getDisciplineLocalDateISO(new Date());
     }
 
     showModalById('disciplineModal');
@@ -41658,7 +41732,7 @@ async function saveDisciplineForm(e) {
     const reason = reasonInput ? reasonInput.value.trim() : '';
 
     const dateInput = document.getElementById('discDate');
-    const date = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split('T')[0];
+    const date = (dateInput && dateInput.value) ? dateInput.value : getDisciplineLocalDateISO(new Date());
 
     if (!stuId || !reason) {
         showToast('Seleccione un estudiante e ingrese el motivo del reporte disciplinario.', 'warning');
@@ -41673,18 +41747,23 @@ async function saveDisciplineForm(e) {
 
     const stuName = student ? formatStudentDisplayName(student, 'lastFirst') : 'Estudiante';
     const grade = student ? (student.grade || student.gradeCode || 'Perito Contador') : '4to Perito Contador';
-    const section = student ? (student.section || 'Sección A') : 'Sección A';
+    const cleanSec = student
+        ? ((typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(student.section) : String(student.section || '').replace(/^secci[oó]n\s*/i, '').trim()) || 'A')
+        : 'A';
+    const section = `Sección ${cleanSec}`;
     const teacherName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : 'Docente Catedrático';
 
     if (!Array.isArray(STATE.disciplineReports)) STATE.disciplineReports = [];
 
-    const activeCycle = String((window.STATE && (window.STATE.activeCycle || window.STATE.academicCycle)) || '2026').trim();
+    const activeCycle = getDisciplineActiveCycle();
 
     const newReport = {
         id: 'rep-disc-' + Date.now(),
         studentId: stuId,
         studentName: stuName,
         grade: `${grade} (${section})`,
+        gradeCode: student ? (student.gradeCode || '') : '',
+        cycle: activeCycle,
         academicCycle: activeCycle,
         teacher: teacherName,
         teacherId: STATE.currentUser ? STATE.currentUser.id : '',
@@ -41696,6 +41775,7 @@ async function saveDisciplineForm(e) {
         resolution: '',
         resolvedBy: '',
         resolvedDate: '',
+        resolutionDate: '',
         isLocked: false,
         lockedForTeacher: true
     };
@@ -42031,7 +42111,9 @@ async function saveDisciplineResolutionForm(e) {
     rep.resolution = resolutionText;
     rep.resolutionText = resolutionText;
     rep.resolvedBy = `${userName} (${roleLabel})`;
-    rep.resolvedDate = new Date().toISOString().split('T')[0];
+    const localResDate = getDisciplineLocalDateISO(new Date());
+    rep.resolvedDate = localResDate;
+    rep.resolutionDate = localResDate;
     if (status === 'Resuelto') {
         rep.isLocked = true;
     } else {
@@ -42168,13 +42250,91 @@ function deleteCurrentDisciplineReportFromModal() {
 window.deleteCurrentDisciplineReportFromModal = deleteCurrentDisciplineReportFromModal;
 window.deleteDisciplineReport = deleteDisciplineReport;
 
+function getFilteredDisciplineReports() {
+    const activeCycle = getDisciplineActiveCycle();
+    const rawList = (Array.isArray(STATE.disciplineReports) && STATE.disciplineReports.length > 0)
+        ? STATE.disciplineReports
+        : (STATE.discipline || []);
+
+    let list = rawList.filter(d => d && extractDisciplineRecordCycle(d, activeCycle) === activeCycle);
+
+    const searchQ = (document.getElementById('discViewSearchInput')?.value || '').trim().toLowerCase();
+    const gradeFilter = (document.getElementById('discViewGradeFilter')?.value || 'ALL').trim();
+    const severityFilter = (document.getElementById('discViewSeverityFilter')?.value || 'ALL').trim();
+    const statusFilter = (document.getElementById('discViewStatusFilter')?.value || 'ALL').trim();
+
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        const targetG = (STATE.gradesList || []).find(g => g && String(g.code) === String(gradeFilter));
+        const targetName = targetG ? String(targetG.name || '').trim().toLowerCase() : gradeFilter.toLowerCase();
+        const targetSec = targetG
+            ? ((typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(targetG.section) : String(targetG.section || '').replace(/^secci[oó]n\s*/i, '').trim()).toUpperCase())
+            : '';
+        list = list.filter(d => {
+            if (d.gradeCode && String(d.gradeCode) === String(gradeFilter)) return true;
+            const dg = String(d.grade || '').toLowerCase();
+            if (!dg || !targetName || !dg.includes(targetName)) return false;
+            if (!targetSec) return true;
+            const m = dg.match(/secci[oó]n\s*([a-h])\b/i) || dg.match(/\(([a-h])\)/i) || dg.match(/\b([a-h])\s*$/i);
+            return m ? m[1].toUpperCase() === targetSec : false;
+        });
+    }
+
+    if (severityFilter && severityFilter !== 'ALL') {
+        list = list.filter(d => String(d.severity || 'Leve') === severityFilter);
+    }
+
+    if (statusFilter && statusFilter !== 'ALL') {
+        list = list.filter(d => String(d.status || 'Pendiente') === statusFilter);
+    }
+
+    if (searchQ) {
+        list = list.filter(d =>
+            (d.studentName || '').toLowerCase().includes(searchQ) ||
+            (d.grade || '').toLowerCase().includes(searchQ) ||
+            (d.teacher || '').toLowerCase().includes(searchQ) ||
+            (d.reason || '').toLowerCase().includes(searchQ) ||
+            (d.resolution || '').toLowerCase().includes(searchQ) ||
+            (d.actionType || '').toLowerCase().includes(searchQ)
+        );
+    }
+
+    return { activeCycle, list, searchQ, gradeFilter, severityFilter, statusFilter };
+}
+
 function renderDisciplineTable() {
     const tbody = document.getElementById('disciplineTableBody');
     if (!tbody) return;
 
-    let list = (Array.isArray(STATE.disciplineReports) && STATE.disciplineReports.length > 0)
-        ? STATE.disciplineReports
-        : (STATE.discipline || []);
+    // Sincronizar selector de grados de la vista (ordenado y sin "Sección Sección A")
+    const viewGradeSel = document.getElementById('discViewGradeFilter');
+    if (viewGradeSel) {
+        const prevVal = viewGradeSel.value || 'ALL';
+        const sortedGrades = (typeof sortGrades === 'function')
+            ? sortGrades([...(STATE.gradesList || [])])
+            : [...(STATE.gradesList || [])];
+        const seen = new Set();
+        let opts = '<option value="ALL">-- Todos los Grados --</option>';
+        sortedGrades.forEach(g => {
+            if (!g || !g.code || seen.has(g.code)) return;
+            seen.add(g.code);
+            const sec = (typeof getCleanSectionLetter === 'function')
+                ? getCleanSectionLetter(g.section)
+                : String(g.section || '').replace(/^secci[oó]n\s*/i, '').trim();
+            const label = sec ? `${g.name} - Sección ${sec}` : (g.name || g.code);
+            opts += `<option value="${escapeHtml(g.code)}">${escapeHtml(label)}</option>`;
+        });
+        viewGradeSel.innerHTML = opts;
+        if (prevVal !== 'ALL' && Array.from(viewGradeSel.options).some(o => o.value === prevVal)) {
+            viewGradeSel.value = prevVal;
+        }
+    }
+
+    const { activeCycle, list } = getFilteredDisciplineReports();
+
+    const subEl = document.getElementById('disciplineCycleSubtitle');
+    if (subEl) {
+        subEl.textContent = `Control oficial de incidencias, dictámenes y seguimiento disciplinario — Ciclo Escolar ${activeCycle} (${list.length} registro${list.length === 1 ? '' : 's'}).`;
+    }
 
     const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     const isDirector = checkDisciplineDirectorPermission();
@@ -42197,9 +42357,9 @@ function renderDisciplineTable() {
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
-                    <i class="fa-solid fa-shield-halved" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
-                    <strong>No hay reportes disciplinarios registrados.</strong><br>
-                    <span style="font-size:0.85rem;">Los catedráticos y personal del plantel pueden registrar incidencias con el botón <strong>"Nueva Llamada de Atención"</strong>.</span>
+                    <i class="fa-solid fa-shield-halved" style="font-size:2.2rem; margin-bottom:10px; display:block; color:#0369a1;"></i>
+                    <strong style="color:#0f2b5c;">No hay reportes disciplinarios en el Ciclo Escolar ${escapeHtml(activeCycle)}.</strong><br>
+                    <span style="font-size:0.85rem;">Ajuste los filtros o registre una nueva incidencia con el botón <strong>"Nueva Llamada de Atención"</strong>.</span>
                 </td>
             </tr>
         `;
@@ -42212,7 +42372,7 @@ function renderDisciplineTable() {
         if (d.status === 'Resuelto') {
             statusBadge = '<span class="badge" style="background:#15803d; color:#fff; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Resuelto</span>';
         } else if (d.status === 'En Proceso') {
-            statusBadge = '<span class="badge" style="background:#0284c7; color:#fff; font-weight:700;"><i class="fa-solid fa-spinner"></i> En Proceso</span>';
+            statusBadge = '<span class="badge" style="background:#0369a1; color:#fff; font-weight:700;"><i class="fa-solid fa-spinner"></i> En Proceso</span>';
         } else {
             statusBadge = '<span class="badge" style="background:#d97706; color:#fff; font-weight:700;"><i class="fa-solid fa-clock"></i> Pendiente Auxiliar</span>';
         }
@@ -42221,20 +42381,21 @@ function renderDisciplineTable() {
         let sevColor = '#eab308';
         if (d.severity === 'Grave') sevColor = '#ea580c';
         if (d.severity === 'Muy Grave') sevColor = '#dc2626';
-        const sevBadge = `<span class="badge" style="background:${sevColor}; color:#fff; font-weight:700;">${d.severity || 'Leve'}</span>`;
+        const sevBadge = `<span class="badge" style="background:${sevColor}; color:#fff; font-weight:700;">${escapeHtml(d.severity || 'Leve')}</span>`;
 
         // Vista previa de la resolución del maestro auxiliar o dirección
         let resSnippet = '';
         if (d.resolution) {
             const resAuthor = d.resolvedBy || 'Auxiliatura General';
-            const resDateStr = d.resolutionDate ? new Date(d.resolutionDate).toLocaleDateString('es-GT') : (d.date || '');
+            const rawResDate = d.resolvedDate || d.resolutionDate || '';
+            const resDateStr = rawResDate || (d.date || '');
             resSnippet = `
-                <div style="font-size:0.8rem; color:#166534; background:#f0fdf4; border-left:3px solid #16a34a; padding:4px 8px; border-radius:3px; margin-top:4px;">
-                    <div><i class="fa-solid fa-gavel"></i> <strong>Dictamen:</strong> ${d.actionType || 'Medida aplicada'}</div>
-                    <div style="font-size:0.75rem; color:#15803d; margin-top:1px;">
-                        <i class="fa-solid fa-user-check"></i> <strong>Resuelto por:</strong> ${resAuthor} ${resDateStr ? `(${resDateStr})` : ''}
+                <div style="font-size:0.8rem; color:#0f2b5c; background:#f0f9ff; border-left:3px solid #0369a1; padding:4px 8px; border-radius:3px; margin-top:4px;">
+                    <div><i class="fa-solid fa-gavel"></i> <strong>Dictamen:</strong> ${escapeHtml(d.actionType || 'Medida aplicada')}</div>
+                    <div style="font-size:0.75rem; color:#0369a1; margin-top:1px;">
+                        <i class="fa-solid fa-user-check"></i> <strong>Resuelto por:</strong> ${escapeHtml(resAuthor)} ${resDateStr ? `(${escapeHtml(resDateStr)})` : ''}
                     </div>
-                    ${d.resolution ? `<div style="font-size:0.75rem; color:#334155; font-style:italic; margin-top:1px;">"${d.resolution}"</div>` : ''}
+                    <div style="font-size:0.75rem; color:#334155; font-style:italic; margin-top:1px;">"${escapeHtml(d.resolution)}"</div>
                 </div>
             `;
         } else {
@@ -42244,7 +42405,6 @@ function renderDisciplineTable() {
         // Acciones según rol del usuario
         let actionButtonsHtml = '';
         if (isStudent) {
-            // Estudiante: Solo puede consultar el dictamen de forma transparente y segura
             if (d.resolution) {
                 actionButtonsHtml = `
                     <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Consultar dictamen oficial (Solo Lectura)" style="padding:4px 9px; font-weight:700;">
@@ -42257,7 +42417,6 @@ function renderDisciplineTable() {
                 `;
             }
         } else if (isDocente) {
-            // Catedrático: Solo puede consultar la resolución sin modificarla
             if (d.resolution) {
                 actionButtonsHtml = `
                     <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Consultar dictamen oficial (Solo Lectura)" style="padding:4px 9px; font-weight:700;">
@@ -42272,7 +42431,6 @@ function renderDisciplineTable() {
                 `;
             }
         } else if (isAuxiliar) {
-            // Profesor Auxiliar: Puede resolver reportes pendientes. Una vez resuelto, queda en solo lectura
             if (d.status === 'Resuelto') {
                 actionButtonsHtml = `
                     <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Ver resolución oficial (Caso cerrado)" style="padding:4px 9px; font-weight:600;">
@@ -42281,13 +42439,12 @@ function renderDisciplineTable() {
                 `;
             } else {
                 actionButtonsHtml = `
-                    <button type="button" class="btn btn-sm btn-primary" onclick="openDisciplineResolutionModal('${d.id}')" title="Emitir dictamen disciplinario oficial" style="padding:4px 9px; font-weight:700; background:#0284c7; border-color:#0284c7;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openDisciplineResolutionModal('${d.id}')" title="Emitir dictamen disciplinario oficial" style="padding:4px 9px; font-weight:700; background:#0f2b5c; border-color:#0f2b5c;">
                         <i class="fa-solid fa-gavel"></i> Dictaminar
                     </button>
                 `;
             }
         } else if (isDirector) {
-            // Dirección / Admin: Puede dictaminar, permitir modificaciones y eliminar
             actionButtonsHtml = `
                 <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="${d.resolution ? 'Gestionar o revisar dictamen' : 'Dictaminar reporte'}" style="padding:4px 9px; margin-right:4px; font-weight:700;">
                     <i class="fa-solid ${d.resolution ? 'fa-eye' : 'fa-gavel'}"></i> ${d.resolution ? 'Gestionar Dictamen' : 'Dictaminar'}
@@ -42300,17 +42457,19 @@ function renderDisciplineTable() {
 
         return `
         <tr>
-            <td>${d.date || '2026-08-30'}</td>
+            <td style="white-space:nowrap; font-family:monospace; font-weight:600;">${escapeHtml(d.date || '—')}</td>
             <td>
-                <strong>${d.studentName || 'Estudiante'}</strong><br>
-                <small style="color:var(--text-muted);">${d.grade || '4to Perito'}</small>
+                <strong style="color:#0f2b5c;">${escapeHtml(d.studentName || 'Estudiante')}</strong>
             </td>
             <td>
-                <span style="font-weight:600; color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${d.teacher || 'Docente'}</span>
+                <span style="font-size:0.84rem; color:#334155; font-weight:600;">${escapeHtml(d.grade || d.gradeCode || '—')}</span>
+            </td>
+            <td>
+                <span style="font-weight:600; color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:#0369a1; margin-right:4px;"></i> ${escapeHtml(d.teacher || 'Docente')}</span>
             </td>
             <td>${sevBadge}</td>
             <td>
-                <div style="font-size:0.88rem; line-height:1.35; max-width:280px;">${d.reason}</div>
+                <div style="font-size:0.88rem; line-height:1.35; max-width:290px;">${escapeHtml(d.reason || '')}</div>
                 ${resSnippet}
             </td>
             <td style="text-align:center;">${statusBadge}</td>
@@ -42322,6 +42481,160 @@ function renderDisciplineTable() {
     }).join('');
 }
 window.renderDisciplineTable = renderDisciplineTable;
+
+function printDisciplineLog() {
+    const { activeCycle, list, searchQ, gradeFilter, severityFilter, statusFilter } = getFilteredDisciplineReports();
+    const filterTags = [];
+    if (gradeFilter !== 'ALL') {
+        const sel = document.getElementById('discViewGradeFilter');
+        filterTags.push(`Grado: ${sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : gradeFilter}`);
+    }
+    if (severityFilter !== 'ALL') filterTags.push(`Gravedad: ${severityFilter}`);
+    if (statusFilter !== 'ALL') filterTags.push(`Estado: ${statusFilter}`);
+    if (searchQ) filterTags.push(`Búsqueda: "${searchQ}"`);
+
+    const totalCount = list.length;
+    const resolvedCount = list.filter(d => d.status === 'Resuelto').length;
+    const pendingCount = list.filter(d => d.status !== 'Resuelto').length;
+    const graveCount = list.filter(d => d.severity === 'Grave' || d.severity === 'Muy Grave').length;
+
+    const rowsHtml = list.length === 0
+        ? `<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">No se registraron reportes disciplinarios con los filtros seleccionados.</td></tr>`
+        : list.map((d, i) => `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${i + 1}</td>
+                <td style="text-align:center; white-space:nowrap;">${escapeHtml(d.date || '—')}</td>
+                <td><strong>${escapeHtml(d.studentName || 'Estudiante')}</strong><br><small style="color:#475569;">${escapeHtml(d.grade || d.gradeCode || '—')}</small></td>
+                <td>${escapeHtml(d.teacher || 'Docente')}</td>
+                <td style="text-align:center; font-weight:700;">${escapeHtml(d.severity || 'Leve')}</td>
+                <td>
+                    ${escapeHtml(d.reason || '')}
+                    ${d.resolution ? `<div style="margin-top:4px; padding-top:3px; border-top:1px dashed #cbd5e1; font-size:8pt; color:#0f2b5c;"><strong>Dictamen (${escapeHtml(d.actionType || 'Medida')}):</strong> ${escapeHtml(d.resolution)} <em>— ${escapeHtml(d.resolvedBy || 'Auxiliatura')} (${escapeHtml(d.resolvedDate || d.resolutionDate || d.date || '')})</em></div>` : ''}
+                </td>
+                <td style="text-align:center; font-weight:700;">${escapeHtml(d.status || 'Pendiente')}</td>
+            </tr>
+        `).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Oficial de Disciplina - ENCCO Jutiapa - Ciclo ${escapeHtml(activeCycle)}</title>
+    <style>
+        @page { size: letter portrait; margin: 12mm 14mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; margin: 0; line-height: 1.35; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 12px; }
+        .header-logo { width: 62px; height: auto; }
+        .header-center { text-align: center; flex: 1; margin: 0 12px; }
+        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; color: #0f2b5c; text-transform: uppercase; }
+        .header-center h2 { font-size: 10.5pt; margin: 3px 0 0 0; color: #0369a1; font-weight: 700; text-transform: uppercase; }
+        .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
+        .kpi-row { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 8.5pt; }
+        .kpi-item { text-align: center; }
+        .kpi-item strong { display: block; font-size: 12pt; color: #0f2b5c; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 8.2pt; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 7px; text-align: left; vertical-align: top; }
+        th { background: #0f2b5c; color: #ffffff; font-weight: 700; text-transform: uppercase; font-size: 7.8pt; text-align: center; }
+        .signatures { display: flex; justify-content: space-around; margin-top: 38px; page-break-inside: avoid; }
+        .sign-box { width: 36%; text-align: center; font-size: 8.5pt; }
+        .sign-line { border-top: 1.5px solid #0f2b5c; margin-bottom: 5px; }
+        .footer-note { font-size: 7.5pt; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 14px; }
+        @media print { th { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+        <div class="header-center">
+            <h1>Escuela Nacional de Ciencias Comerciales</h1>
+            <h2>Libro Oficial de Control Disciplinario y Actas</h2>
+            <p>Jutiapa, Guatemala &bull; Ciclo Escolar ${escapeHtml(activeCycle)} &bull; Emitido el ${new Date().toLocaleDateString('es-GT')}</p>
+            ${filterTags.length > 0 ? `<p style="color:#0369a1; font-weight:600;">Filtros: ${escapeHtml(filterTags.join(' • '))}</p>` : ''}
+        </div>
+        <div style="width:62px; text-align:right; font-size:8pt; color:#64748b;">Original<br>Disciplina</div>
+    </div>
+    <div class="kpi-row">
+        <div class="kpi-item"><span>Total Reportes</span><strong>${totalCount}</strong></div>
+        <div class="kpi-item"><span>Pendientes / En Proceso</span><strong style="color:#d97706;">${pendingCount}</strong></div>
+        <div class="kpi-item"><span>Resueltos</span><strong style="color:#15803d;">${resolvedCount}</strong></div>
+        <div class="kpi-item"><span>Graves / Muy Graves</span><strong style="color:#dc2626;">${graveCount}</strong></div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:26px;">No.</th>
+                <th style="width:68px;">Fecha</th>
+                <th style="width:155px;">Estudiante / Grado</th>
+                <th style="width:115px;">Catedrático</th>
+                <th style="width:62px;">Gravedad</th>
+                <th>Motivo y Dictamen Oficial</th>
+                <th style="width:72px;">Estado</th>
+            </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="signatures">
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Profesor Auxiliar / Comisión de Disciplina</strong><br>ENCCO Jutiapa
+        </div>
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Dirección del Establecimiento</strong><br>Vo.Bo. Dirección General
+        </div>
+    </div>
+    <div class="footer-note">Documento oficial emitido por la Plataforma Académica ENCCO el ${new Date().toLocaleDateString('es-GT')} a las ${new Date().toLocaleTimeString('es-GT')}.</div>
+</body>
+</html>`;
+
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank') : null;
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(e) {} }, 400);
+    } else if (typeof renderAndShowPrintDocument === 'function') {
+        renderAndShowPrintDocument(`Reporte Oficial de Disciplina - Ciclo ${activeCycle}`, html, 'portrait');
+    }
+}
+window.printDisciplineLog = printDisciplineLog;
+
+function exportDisciplineLogExcel() {
+    if (typeof XLSX === 'undefined') {
+        showToast('Librería de Excel (XLSX) no disponible.', 'error');
+        return;
+    }
+    const { activeCycle, list } = getFilteredDisciplineReports();
+    if (!list.length) {
+        showToast('No hay reportes disciplinarios con los filtros actuales para exportar.', 'warning');
+        return;
+    }
+    const rows = list.map((d, idx) => ({
+        'No.': idx + 1,
+        'Fecha': d.date || '',
+        'Estudiante': d.studentName || '',
+        'Grado y Sección': d.grade || d.gradeCode || '',
+        'Catedrático Emisor': d.teacher || '',
+        'Gravedad': d.severity || 'Leve',
+        'Motivo': d.reason || '',
+        'Estado': d.status || 'Pendiente',
+        'Medida / Acción': d.actionType || '',
+        'Dictamen / Resolución': d.resolution || '',
+        'Resuelto Por': d.resolvedBy || '',
+        'Fecha Resolución': d.resolvedDate || d.resolutionDate || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+        { wch: 5 }, { wch: 12 }, { wch: 30 }, { wch: 24 }, { wch: 24 }, { wch: 12 },
+        { wch: 34 }, { wch: 14 }, { wch: 24 }, { wch: 34 }, { wch: 24 }, { wch: 14 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Disciplina_Actas');
+    const filename = `Disciplina_Actas_Ciclo_${activeCycle}_${getDisciplineLocalDateISO(new Date())}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Reporte disciplinario exportado: ${filename} (${rows.length} registros)`, 'success');
+}
+window.exportDisciplineLogExcel = exportDisciplineLogExcel;
 
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -6283,3 +6283,13 @@ textarea:focus-visible,
   #view-auxiliatura-log input.form-control { width: 100% !important; min-width: 0 !important; }
   #view-auxiliatura-log .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* === DISCIPLINA Y ACTAS RESPONSIVO (v337) === */
+@media (max-width: 640px) {
+  #view-discipline .section-toolbar > div { width: 100%; }
+  #view-discipline .section-toolbar .btn { flex: 1 1 auto; justify-content: center; }
+  #view-discipline .discipline-filters-bar > div { flex: 1 1 100% !important; min-width: 0 !important; }
+  #view-discipline select.form-control,
+  #view-discipline input.form-control { width: 100% !important; min-width: 0 !important; }
+  #view-discipline .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

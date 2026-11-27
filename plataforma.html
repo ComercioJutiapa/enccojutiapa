@@ -3210,15 +3210,61 @@
 
                 <!-- 8. LLAMADAS DE ATENCIÓN Y REPORTES DE DISCIPLINA -->
                 <section class="app-view" id="view-discipline">
-                    <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                        <h3 style="margin:0;">Reportes y Llamadas de Atención Disciplinarias</h3>
+                    <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                        <div>
+                            <h3 style="margin:0; color:#0f2b5c; font-weight:800; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-scale-balanced" style="color:#0369a1;"></i>
+                                Reportes y Llamadas de Atención Disciplinarias
+                            </h3>
+                            <p style="margin:4px 0 0 0; color:#64748b; font-size:0.84rem;" id="disciplineCycleSubtitle">
+                                Control oficial de incidencias, dictámenes y seguimiento disciplinario del ciclo activo.
+                            </p>
+                        </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline-primary" onclick="exportDisciplineLogExcel()" style="border-color:#0369a1; color:#0369a1; font-weight:700;" title="Exportar reportes disciplinarios filtrados a Excel (.xlsx)">
+                                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="printDisciplineLog()" style="font-weight:700;" title="Imprimir reporte oficial de disciplina">
+                                <i class="fa-solid fa-print"></i> Imprimir Reporte
+                            </button>
                             <button type="button" id="btnAuthPermDisciplineView" class="btn btn-warning" onclick="openCreatePermissionModal()" style="font-weight:700; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px;">
                                 <i class="fa-solid fa-file-signature"></i> Autorizar Permiso de Ausencia
                             </button>
-                            <button type="button" id="btnNewDisciplineReport" class="btn btn-primary" onclick="openDisciplineModal()">
+                            <button type="button" id="btnNewDisciplineReport" class="btn btn-primary" onclick="openDisciplineModal()" style="background:#0f2b5c; border-color:#0f2b5c; font-weight:700;">
                                 <i class="fa-solid fa-plus"></i> Nueva Llamada de Atención
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE FILTROS EN VIVO -->
+                    <div class="discipline-filters-bar" style="background:#ffffff; border-radius:10px; padding:12px 14px; border:1px solid #e2e8f0; margin-bottom:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+                        <div style="flex:1; min-width:200px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Buscar Estudiante, Docente o Motivo:</label>
+                            <input type="text" id="discViewSearchInput" class="form-control" placeholder="Buscar por alumno, docente, motivo o dictamen..." oninput="renderDisciplineTable()" style="font-size:0.84rem;">
+                        </div>
+                        <div style="min-width:190px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Grado y Sección:</label>
+                            <select id="discViewGradeFilter" class="form-control" onchange="renderDisciplineTable()" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL">-- Todos los Grados --</option>
+                            </select>
+                        </div>
+                        <div style="min-width:140px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Gravedad:</label>
+                            <select id="discViewSeverityFilter" class="form-control" onchange="renderDisciplineTable()" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL">Todas</option>
+                                <option value="Leve">Leve</option>
+                                <option value="Grave">Grave</option>
+                                <option value="Muy Grave">Muy Grave</option>
+                            </select>
+                        </div>
+                        <div style="min-width:150px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Estado:</label>
+                            <select id="discViewStatusFilter" class="form-control" onchange="renderDisciplineTable()" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL">Todos</option>
+                                <option value="Pendiente">Pendiente Auxiliar</option>
+                                <option value="En Proceso">En Proceso</option>
+                                <option value="Resuelto">Resuelto</option>
+                            </select>
                         </div>
                     </div>
 
@@ -3229,11 +3275,11 @@
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Estudiante</th>
-                                        <th>Grado</th>
+                                        <th>Grado y Sección</th>
                                         <th>Catedrático Emisor</th>
                                         <th>Gravedad</th>
-                                        <th>Motivo de la Llamada de Atención</th>
-                                        <th>Estado</th>
+                                        <th>Motivo y Dictamen</th>
+                                        <th style="text-align:center;">Estado</th>
                                         <th style="text-align:center;">Acciones / Dictamen</th>
                                     </tr>
                                 </thead>
@@ -6138,8 +6184,8 @@
                     <!-- RECUADRO DE BÚSQUEDA Y SELECCIÓN DINÁMICA POR GRADO, SECCIÓN Y NOMBRE -->
                     <div class="discipline-student-filter-card" style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                            <label style="font-weight:800; color:#0f172a; font-size:0.86rem; margin:0; display:flex; align-items:center; gap:6px;">
-                                <i class="fa-solid fa-user-gear" style="color:var(--brand-green);"></i> Búsqueda Dinámica de Estudiante
+                            <label style="font-weight:800; color:#0f2b5c; font-size:0.86rem; margin:0; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-user-gear" style="color:#0369a1;"></i> Búsqueda Dinámica de Estudiante
                             </label>
                             <span id="discStudentCountBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.74rem;">
                                 412 alumnos
@@ -6188,8 +6234,8 @@
 
                         <!-- Fila 3: Selector del Estudiante (Filtrado en tiempo real) -->
                         <div>
-                            <label style="font-size:0.86rem; font-weight:800; color:#0f172a; margin-bottom:4px; display:block;">
-                                <i class="fa-solid fa-user-check" style="color:var(--brand-green);"></i> Seleccionar Estudiante (*):
+                            <label style="font-size:0.86rem; font-weight:800; color:#0f2b5c; margin-bottom:4px; display:block;">
+                                <i class="fa-solid fa-user-check" style="color:#0369a1;"></i> Seleccionar Estudiante (*):
                             </label>
                             <select id="discStudentSelect" class="form-control" required style="font-weight:700; font-size:0.90rem; min-height:42px; border-color:#0284c7; background:#ffffff; color:#0f172a;">
                                 <option value="">-- Seleccione Estudiante --</option>
@@ -6836,7 +6882,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v336" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v337" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>
