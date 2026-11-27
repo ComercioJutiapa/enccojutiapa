@@ -4943,6 +4943,14 @@ async function saveUserForm(e) {
                     }
                 });
 
+                // Cascada en permisos docentes
+                (STATE.teacherPermissions || []).forEach(tp => {
+                    if (tp && (tp.teacherId === userId || tp.teacherName === oldName)) {
+                        tp.teacherName = name;
+                        if (renglon) tp.renglon = renglon;
+                    }
+                });
+
                 // Cascada en docentes guías
                 (STATE.gradesList || []).forEach(g => {
                     if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
@@ -11985,10 +11993,21 @@ function synchronizeGlobalDynamicUI() {
         if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
         if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
         if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
+        if (typeof populateTeacherCourseSelect === 'function') populateTeacherCourseSelect();
         if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
         if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
         if (typeof renderDashboard === 'function' && (!STATE.activeView || STATE.activeView === 'dashboard')) {
             renderDashboard();
+        } else if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
+        } else if (STATE.activeView === 'gradebook' && typeof loadTeacherGradebook === 'function') {
+            loadTeacherGradebook();
+        } else if (STATE.activeView === 'teacher-permissions' && typeof renderTeacherPermissionsView === 'function') {
+            renderTeacherPermissionsView();
+        } else if (STATE.activeView === 'scholarships' && typeof renderScholarshipsView === 'function') {
+            renderScholarshipsView();
+        } else if (STATE.activeView === 'guide-teachers' && typeof renderGuideTeachersTable === 'function') {
+            renderGuideTeachersTable();
         }
     }, 32);
 }
@@ -50323,7 +50342,8 @@ async function quickReassignAssignmentTeacher(asgId, newTeacherId) {
     if (typeof renderDashboard === 'function') renderDashboard();
     if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
     if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-    if (typeof populateAttendanceControls === 'function') populateAttendanceControls();
+    if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects(false);
+    if (typeof populateTeacherCourseSelect === 'function') populateTeacherCourseSelect();
     if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
     if (typeof showToast === 'function') showToast(`Cátedra "${target.subject || target.name}" asignada a ${newName}.`, 'success');
     const syncTasks = [];
