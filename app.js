@@ -9520,14 +9520,19 @@ function ensureCanonicalPensumCatalogCoherence() {
             });
 
             if (existing) {
-                if (existing.name !== ofCourse.name) { existing.name = ofCourse.name; existing.subject = ofCourse.name; changed = true; }
-                if (existing.code !== ofCourse.code) { existing.code = ofCourse.code; changed = true; }
-                if (existing.order !== ofCourse.order) { existing.order = ofCourse.order; existing.sortOrder = ofCourse.order; changed = true; }
-                if (existing.periods !== ofCourse.periods) {
+                if (!existing.name) { existing.name = ofCourse.name; existing.subject = ofCourse.name; changed = true; }
+                if (!existing.code) { existing.code = ofCourse.code; changed = true; }
+                if (!existing.order && !existing.sortOrder) { existing.order = ofCourse.order; existing.sortOrder = ofCourse.order; changed = true; }
+                const curPeriods = parseInt(existing.periods || existing.hours || existing.weeklyHours, 10);
+                if (!curPeriods || isNaN(curPeriods) || curPeriods <= 0) {
                     existing.periods = ofCourse.periods;
                     existing.hours = ofCourse.periods;
                     existing.weeklyHours = ofCourse.periods;
                     changed = true;
+                } else {
+                    existing.periods = curPeriods;
+                    existing.hours = curPeriods;
+                    existing.weeklyHours = curPeriods;
                 }
                 if (!existing.career) existing.career = 'Perito Contador';
                 if (!existing.grade) existing.grade = fullGradeName;
@@ -49233,6 +49238,7 @@ async function savePensumSubjectForm(e) {
                 STATE.pensumCatalog[idx].hours = hours;
                 STATE.pensumCatalog[idx].periods = hours;
                 STATE.pensumCatalog[idx].weeklyHours = hours;
+                STATE.pensumCatalog[idx].customPeriods = true;
                 STATE.pensumCatalog[idx].lastModified = Date.now();
             } else {
                 throw new Error(`No se encontró la asignatura con ID "${targetId}" para actualizar en el catálogo.`);
@@ -49316,14 +49322,16 @@ async function savePensumSubjectForm(e) {
             });
         }
 
-        // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización visual
+        // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización visual en cascada
         saveStateToLocalStorage();
         closePensumSubjectModal();
         renderPensumCatalogTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
         if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
         if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+        if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
 
         const codeLabel = code ? ` [${code}]` : '';
         showToast(`Asignatura "${name}"${codeLabel} guardada exitosamente.`, 'success');
