@@ -20887,7 +20887,9 @@ function getStudentAttendancePercentageToDate(studentOrId, targetCycle = null) {
     }
 
     const dailyMap = {}; // 'YYYY-MM-DD' -> status ('P' | 'T' | 'J' | 'A' | 'S')
-    const priority = { 'S': 5, 'A': 4, 'T': 3, 'J': 2, 'P': 1 };
+    // Prioridad oficial institucional (coherente con planilla y Becas/Bolsas):
+    // 'S' (Suspensión, no penaliza) > 'J' (Justificado, cuenta como asistido) > 'A' (Ausente) > 'T' (Tarde) > 'P' (Presente)
+    const priority = { 'S': 5, 'J': 4, 'A': 3, 'T': 2, 'P': 1 };
     const allRecords = STATE.attendanceRecords || {};
 
     Object.keys(allRecords).forEach(recordKey => {
@@ -20939,6 +20941,53 @@ function getStudentAttendancePercentageToDate(studentOrId, targetCycle = null) {
             }
         });
     });
+
+    // Integrar permisos oficiales vigentes del ciclo (J justificado / S suspensión / A injustificada oficial)
+    if (Array.isArray(STATE.studentPermissions)) {
+        const todayIsoLimit = `${todayYear}-${String(todayMonth).padStart(2, '0')}-${String(todayDay).padStart(2, '0')}`;
+        STATE.studentPermissions.forEach(p => {
+            if (!p) return;
+            const st = String(p.status || 'autorizado').toLowerCase();
+            if (['revocado', 'rechazado', 'cancelado', 'inactivo'].includes(st)) return;
+
+            const matchesStu = candidateKeys.has(String(p.studentId || '').trim()) ||
+                (p.personalCode && candidateKeys.has(String(p.personalCode).trim())) ||
+                (p.carne && candidateKeys.has(String(p.carne).trim()));
+            if (!matchesStu) return;
+
+            const startStr = String(p.startDate || p.date || '').trim();
+            const endStr = String(p.endDate || startStr).trim();
+            if (!startStr || !/^\d{4}-\d{2}-\d{2}$/.test(startStr)) return;
+            if (!startStr.startsWith(cycleStr) && !endStr.startsWith(cycleStr)) return;
+
+            const pCode = (typeof getPermissionAttendanceCode === 'function')
+                ? getPermissionAttendanceCode(p)
+                : ((typeof isSuspensionPermission === 'function' && isSuspensionPermission(p)) ? 'S'
+                    : ((typeof isUnjustifiedPermission === 'function' && isUnjustifiedPermission(p)) ? 'A' : 'J'));
+            const excluded = Array.isArray(p.excludedDates) ? new Set(p.excludedDates) : null;
+
+            const sParts = startStr.split('-').map(Number);
+            const eParts = (/^\d{4}-\d{2}-\d{2}$/.test(endStr) ? endStr : startStr).split('-').map(Number);
+            const curD = new Date(sParts[0], sParts[1] - 1, sParts[2]);
+            const endD = new Date(eParts[0], eParts[1] - 1, eParts[2]);
+            let safety = 0;
+            while (curD <= endD && safety < 180) {
+                safety++;
+                if (curD.getFullYear() === cycleYear) {
+                    const dow = curD.getDay();
+                    if (dow !== 0 && dow !== 6) {
+                        const iso = `${curD.getFullYear()}-${String(curD.getMonth() + 1).padStart(2, '0')}-${String(curD.getDate()).padStart(2, '0')}`;
+                        if (!(cycleYear === todayYear && iso > todayIsoLimit) && (!excluded || !excluded.has(iso))) {
+                            if (!dailyMap[iso] || (priority[pCode] || 0) >= (priority[dailyMap[iso]] || 0)) {
+                                dailyMap[iso] = pCode;
+                            }
+                        }
+                    }
+                }
+                curD.setDate(curD.getDate() + 1);
+            }
+        });
+    }
 
     let present = 0, tardy = 0, justified = 0, absent = 0, suspended = 0;
     Object.values(dailyMap).forEach(st => {
@@ -35643,6 +35692,7 @@ function getStudentPermissionForDay(studentId, year, month, day) {
             const start = p.startDate;
             const end = p.endDate || p.startDate;
             if (!start) return false;
+            if (Array.isArray(p.excludedDates) && p.excludedDates.includes(targetDateStr)) return false;
             return targetDateStr >= start && targetDateStr <= end;
         });
         if (found) {
@@ -36313,9 +36363,15 @@ function loadAttendanceList() {
 
     body.innerHTML = tbodyHtml;
 
-    // ⚡ REACTIVIDAD TOTAL: Delegación de eventos sobre la cuadrícula para garantizar interacción táctil y de clic fluida
+    // ⚡ REACTIVIDAD TOTAL: Delegación de eventos sobre la cuadrícula para garantizar interacción táctil, clic rápido y menú contextual (clic derecho)
     if (!body._attendanceClickBound) {
         body._attendanceClickBound = true;
+        const _isDirOrSuperNow = () => {
+            const r = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || ((typeof window !== 'undefined' && window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
+            if (typeof isSuperUserRole === 'function' && isSuperUserRole(r)) return true;
+            if (typeof isDirectorRole === 'function' && isDirectorRole(r)) return true;
+            return ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(r);
+        };
         body.addEventListener('click', (e) => {
             const td = e.target.closest('td.att-cell');
             if (!td) return;
@@ -36323,7 +36379,7 @@ function loadAttendanceList() {
             const d = parseInt(td.getAttribute('data-day'), 10);
             if (!sId || !d) return;
 
-            const isDir = (typeof isDirectorRole === 'function') ? isDirectorRole() : false;
+            const isDir = _isDirOrSuperNow();
             if (td.getAttribute('data-detail-only') === 'true' && !isDir) {
                 const mSel = document.getElementById('attendanceMonthSelect');
                 if (typeof showJustificationDetailModal === 'function') showJustificationDetailModal(sId, d, mSel ? mSel.value : '');
@@ -36336,6 +36392,19 @@ function loadAttendanceList() {
             if (e._attToggled) return;
             e._attToggled = true;
             toggleAttendanceCell(sId, d);
+        });
+
+        // Menú rápido con clic derecho: elegir P / A / J / T / S / Borrar en 1 clic
+        body.addEventListener('contextmenu', (e) => {
+            const td = e.target.closest('td.att-cell');
+            if (!td || td.classList.contains('att-cell-retired-readonly')) return;
+            const sId = td.getAttribute('data-student-id');
+            const d = parseInt(td.getAttribute('data-day'), 10);
+            if (!sId || !d) return;
+            e.preventDefault();
+            if (typeof openAttendanceQuickPicker === 'function') {
+                openAttendanceQuickPicker(e, sId, d, _isDirOrSuperNow());
+            }
         });
     }
 
@@ -36731,10 +36800,12 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         const _mTag1 = `_M${month}_`;
         const _mTag2 = `_M0${month}_`;
         Object.keys(STATE.attendanceRecords || {}).forEach(k => {
-            const sameCycle = k.startsWith(`${_cycleStr}_`);
-            const sameMonth = k.includes(_mTag1) || k.includes(_mTag2);
+            const sameCycle = k.startsWith(`${_cycleStr}_`) || (cycleYear === 2026 && !/^20\d{2}_/.test(k));
+            const sameMonth = k.includes(_mTag1) || k.includes(_mTag2) || k.includes(`_${month}_`);
             const sameGradeGen = (k === recordKey) || (sameCycle && sameMonth && k.includes(`_${gradeCode}_`) && k.endsWith('_GENERAL'));
-            if (sameGradeGen) {
+            // Si Dirección/SuperAdmin limpia o corrige una celda en vista GENERAL, limpiar/actualizar también en registros del mismo alumno ese día para evitar que un registro residual resucite 'J'/'A'
+            const sameStudentOtherCourse = isDirector && sameCycle && sameMonth && STATE.attendanceRecords[k] && STATE.attendanceRecords[k][studentId] && (cur === 'J' || cur === 'S' || cur === 'A' || !next);
+            if (sameGradeGen || sameStudentOtherCourse) {
                 if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
                 if (!STATE.attendanceRecords[k][studentId]) STATE.attendanceRecords[k][studentId] = {};
                 if (next) {
@@ -36756,20 +36827,31 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         ts: Date.now()
     };
 
-    // 🛡️ Control Técnico de Justificaciones y Permisos (Estrictamente Individual por Cátedra)
+    // 🛡️ Control Técnico de Justificaciones y Permisos (Fluido y 100% editable para Super Admin y Dirección)
     const isDocenteCourse = (courseId && courseId !== 'GENERAL');
     const courseScopedMetaKey = isDocenteCourse ? `${studentId}_${month}_${day}_${courseId}` : `${studentId}_${month}_${day}`;
     const globalInstMetaKey = `${studentId}_${month}_${day}`;
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+    const targetIsoDate = `${cycleYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const _purgeMetaKeyCloud = (mKey) => {
+        if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[mKey]) {
+            delete STATE.attendancePermissionsMeta[mKey];
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.deleteNode === 'function') {
+            EnccoCloudSync.deleteNode(`attendancePermissionsMeta/${mKey}`).catch(() => {});
+        }
+    };
 
     if (next === 'J') {
         if (isAuditRole && courseId === 'GENERAL') {
+            // Registrar metadata informativa SIN autobloquear la casilla para el propio usuario/director al alternar P->A->J->T->''
             STATE.attendancePermissionsMeta[globalInstMetaKey] = {
-                reasonCategory: 'Permiso / Justificación Oficial',
-                reasonDetail: 'Justificación autorizada por ' + currentRole.toUpperCase(),
+                reasonCategory: 'Justificación Directa en Planilla',
+                reasonDetail: 'Justificación marcada por ' + ((STATE.currentUser && STATE.currentUser.name) || currentRole.toUpperCase()),
                 authorizedBy: (STATE.currentUser && STATE.currentUser.name) || currentRole,
                 origin_role: currentRole,
-                is_locked_by_admin: true,
+                is_locked_by_admin: false,
                 attendanceCode: 'J',
                 timestamp: Date.now()
             };
@@ -36784,34 +36866,56 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                 attendanceCode: 'J',
                 timestamp: Date.now()
             };
-            if (STATE.attendancePermissionsMeta[globalInstMetaKey] && 
+            if (STATE.attendancePermissionsMeta[globalInstMetaKey] &&
                 (STATE.attendancePermissionsMeta[globalInstMetaKey].origin_role === 'docente' || !STATE.attendancePermissionsMeta[globalInstMetaKey].is_locked_by_admin)) {
-                delete STATE.attendancePermissionsMeta[globalInstMetaKey];
+                _purgeMetaKeyCloud(globalInstMetaKey);
             }
         }
-    } else if (cur === 'J') {
+    } else if (cur === 'J' || cur === 'S' || cur === 'A' || !next) {
         if (isDocenteCourse && STATE.attendancePermissionsMeta[courseScopedMetaKey]) {
-            delete STATE.attendancePermissionsMeta[courseScopedMetaKey];
+            _purgeMetaKeyCloud(courseScopedMetaKey);
         }
         if (STATE.attendancePermissionsMeta[globalInstMetaKey]) {
             const metaOrigin = (STATE.attendancePermissionsMeta[globalInstMetaKey].origin_role || '').toLowerCase();
             const metaLocked = STATE.attendancePermissionsMeta[globalInstMetaKey].is_locked_by_admin;
-            if (isAuditRole || metaOrigin === 'docente' || metaLocked === false) {
-                delete STATE.attendancePermissionsMeta[globalInstMetaKey];
+            if (isDirector || isAuditRole || metaOrigin === 'docente' || metaLocked === false) {
+                _purgeMetaKeyCloud(globalInstMetaKey);
             }
         }
-        const genKey = (typeof getAttendanceRecordKey === 'function') 
-            ? getAttendanceRecordKey(gradeCode, month, 'GENERAL') 
-            : `${STATE.activeCycle || String(new Date().getFullYear())}_M${month}_${gradeCode}`;
-        if (!next && isAuditRole && courseId === 'GENERAL' && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
+        // Si Super Admin / Dirección borra o cambia una 'J'/'S'/'A' que provenía de un Permiso Oficial, excluir ese día del permiso para que NUNCA resucite al recargar
+        if (isDirector && permMeta && Array.isArray(STATE.studentPermissions)) {
+            let permChanged = false;
+            STATE.studentPermissions.forEach(p => {
+                if (!p) return;
+                const st = String(p.status || 'autorizado').toLowerCase();
+                if (['revocado', 'rechazado', 'cancelado', 'inactivo'].includes(st)) return;
+                const matchesStu = (String(p.studentId) === String(studentId)) ||
+                    (targetStudent && targetStudent.personalCode && p.personalCode === targetStudent.personalCode) ||
+                    (targetStudent && targetStudent.carne && p.carne === targetStudent.carne);
+                if (!matchesStu) return;
+                const pStart = p.startDate || '';
+                const pEnd = p.endDate || pStart;
+                if (pStart && targetIsoDate >= pStart && targetIsoDate <= pEnd) {
+                    if (pStart === pEnd && pStart === targetIsoDate) {
+                        p.status = 'revocado';
+                    } else {
+                        if (!Array.isArray(p.excludedDates)) p.excludedDates = [];
+                        if (!p.excludedDates.includes(targetIsoDate)) p.excludedDates.push(targetIsoDate);
+                    }
+                    permChanged = true;
+                }
+            });
+            if (permChanged) {
+                if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.syncNode === 'function') {
+                    EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+                }
+            }
+        }
+        const genKey = (typeof getAttendanceRecordKey === 'function')
+            ? getAttendanceRecordKey(gradeCode, month, 'GENERAL')
+            : `${cycleYear}_M${month}_${gradeCode}`;
+        if (!next && (isDirector || (isAuditRole && courseId === 'GENERAL')) && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
             delete STATE.attendanceRecords[genKey][studentId][day];
-        }
-    } else if (cur === 'S' || cur === 'A') {
-        if (isDirector && STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[globalInstMetaKey]) {
-            delete STATE.attendancePermissionsMeta[globalInstMetaKey];
-        }
-        if (isDirector && isDocenteCourse && STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[courseScopedMetaKey]) {
-            delete STATE.attendancePermissionsMeta[courseScopedMetaKey];
         }
     }
 
@@ -36819,18 +36923,19 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (td) {
         const keepToday = (td.classList && (td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today'))) || (td.className && (td.className.includes('col-cell-today') || td.className.includes('cell-day-today')));
         let cellClass = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
-        if (next === 'J' && isAuditRole) {
+        if (next === 'J' && isAuditRole && courseId === 'GENERAL') {
             cellClass += ' att-val-permiso';
             td.setAttribute('data-origin-role', currentRole);
-            td.setAttribute('data-locked-by-admin', 'true');
+            td.setAttribute('data-locked-by-admin', 'false');
         } else {
             td.setAttribute('data-origin-role', next === 'J' ? 'docente' : '');
             td.setAttribute('data-locked-by-admin', 'false');
-            td.removeAttribute('disabled');
-            td.removeAttribute('aria-disabled');
-            td.removeAttribute('data-readonly');
-            td.removeAttribute('aria-readonly');
         }
+        td.setAttribute('data-detail-only', 'false');
+        td.removeAttribute('disabled');
+        td.removeAttribute('aria-disabled');
+        td.removeAttribute('data-readonly');
+        td.removeAttribute('aria-readonly');
         if (keepToday) {
             cellClass += ' col-cell-today cell-day-today';
         }
@@ -36838,8 +36943,8 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         td.setAttribute('data-val', next || '');
         td.textContent = next || '';
         td.title = next
-            ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : (next === 'S' ? 'SUSPENSIÓN DISCIPLINARIA' : 'TARDANZA')))} (Haga clic para alternar)`
-            : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
+            ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? 'JUSTIFICADO' : (next === 'S' ? 'SUSPENSIÓN DISCIPLINARIA' : 'TARDANZA')))} (Clic: alternar | Clic derecho: menú rápido)`
+            : `Día ${day}: Sin registrar (Clic: marcar P | Clic derecho: menú rápido)`;
         td.removeAttribute('onclick');
         td.style.cursor = 'pointer';
     }
@@ -36879,6 +36984,71 @@ if (typeof window !== 'undefined') {
     window.toggleAttendanceCell = toggleAttendanceCell;
 }
 
+function closeAttendanceQuickPicker() {
+    const old = document.getElementById('attQuickPickerMenu');
+    if (old) old.remove();
+}
+
+function openAttendanceQuickPicker(e, studentId, day, isDirOrSuper) {
+    closeAttendanceQuickPicker();
+    const menu = document.createElement('div');
+    menu.id = 'attQuickPickerMenu';
+    menu.style.cssText = 'position:fixed; z-index:999999; background:#ffffff; border:1.5px solid #0369a1; border-radius:10px; box-shadow:0 12px 28px rgba(15,43,92,0.22); padding:6px; display:flex; flex-direction:column; gap:4px; min-width:175px; font-family:inherit;';
+
+    const items = [
+        { val: 'P', label: 'P — Presente', bg: '#dcfce7', fg: '#15803d' },
+        { val: 'A', label: 'A — Ausente', bg: '#fee2e2', fg: '#b91c1c' },
+        { val: 'J', label: 'J — Justificado', bg: '#ffedd5', fg: '#c2410c' },
+        { val: 'T', label: 'T — Tardanza', bg: '#e0f2fe', fg: '#0369a1' }
+    ];
+    if (isDirOrSuper) {
+        items.push({ val: 'S', label: 'S — Suspensión', bg: '#f3e8ff', fg: '#7e22ce' });
+    }
+    items.push({ val: '', label: '✕ Borrar casilla', bg: '#f1f5f9', fg: '#334155' });
+
+    menu.innerHTML = `<div style="font-size:0.7rem; font-weight:800; color:#0f2b5c; padding:2px 6px 4px; border-bottom:1px solid #e2e8f0; text-transform:uppercase;">Día ${day} — Selección Rápida</div>` +
+        items.map(it => `
+            <button type="button" data-pick="${it.val}" style="width:100%; text-align:left; border:none; border-radius:6px; padding:6px 9px; font-size:0.8rem; font-weight:800; cursor:pointer; background:${it.bg}; color:${it.fg}; display:flex; align-items:center; justify-content:space-between;">
+                <span>${it.label}</span>
+            </button>
+        `).join('');
+
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+    const x = Math.min(e.clientX, window.innerWidth - rect.width - 12);
+    const y = Math.min(e.clientY, window.innerHeight - rect.height - 12);
+    menu.style.left = `${Math.max(8, x)}px`;
+    menu.style.top = `${Math.max(8, y)}px`;
+
+    menu.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button[data-pick]');
+        if (!btn) return;
+        const val = btn.getAttribute('data-pick');
+        closeAttendanceQuickPicker();
+        toggleAttendanceCell(studentId, day, val);
+    });
+
+    setTimeout(() => {
+        const dismiss = (ev) => {
+            if (!menu.contains(ev.target)) {
+                closeAttendanceQuickPicker();
+                document.removeEventListener('mousedown', dismiss);
+                document.removeEventListener('keydown', onEsc);
+            }
+        };
+        const onEsc = (ev) => {
+            if (ev.key === 'Escape') {
+                closeAttendanceQuickPicker();
+                document.removeEventListener('mousedown', dismiss);
+                document.removeEventListener('keydown', onEsc);
+            }
+        };
+        document.addEventListener('mousedown', dismiss);
+        document.addEventListener('keydown', onEsc);
+    }, 10);
+}
+window.openAttendanceQuickPicker = openAttendanceQuickPicker;
+
 let _attendanceStatsRaf = null;
 
 function updateAttendanceLiveStats(targetStudentId = null) {
@@ -36889,7 +37059,7 @@ function updateAttendanceLiveStats(targetStudentId = null) {
     if (!gradeSelect || !monthSelect) return;
 
     const month = parseInt(monthSelect.value) || 8;
-    const year = parseInt(STATE.activeCycle, 10) || new Date().getFullYear() || 2026;
+    const year = parseInt(STATE.historicalViewingCycle || STATE.viewingHistoricalCycle || STATE.activeCycle, 10) || new Date().getFullYear();
     const daysInMonth = new Date(year, month, 0).getDate();
 
     if (targetStudentId) {
