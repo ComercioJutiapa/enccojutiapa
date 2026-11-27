@@ -8,8 +8,8 @@
             if (typeof window !== 'undefined' && window.location) {
                 var host = (window.location.hostname || '').toLowerCase();
                 var isFile = (window.location.protocol === 'file:');
-                var isAllowed = isFile || host === 'comerciojutiapa.github.io' || host.endsWith('.github.io') || host === 'localhost' || host === '127.0.0.1';
-                if (!isAllowed || host.includes('web.app') || host.includes('firebaseapp.com')) {
+                var isAllowed = isFile || host === 'encco-jutiapa-live-2026.web.app' || host === 'encco-jutiapa-live-2026.firebaseapp.com' || host === 'comerciojutiapa.github.io' || host.endsWith('.github.io') || host === 'localhost' || host === '127.0.0.1';
+                if (!isAllowed) {
                     window.location.replace('https://encco-jutiapa-live-2026.web.app/plataforma.html' + window.location.search + window.location.hash);
                     return;
                 }
@@ -236,7 +236,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261126_v329">
+    <link rel="stylesheet" href="styles.css?v=20261126_v330">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -6826,7 +6826,7 @@
     </script>
     <script src="xlsx.full.min.js?v=20261118_v3_excel_openxml" defer charset="UTF-8"></script>
     <script src="firebase_auth_bridge.js?v=20261125_v309" charset="UTF-8"></script>
-    <script src="app.js?v=20261126_v329" charset="UTF-8"></script>
+    <script src="app.js?v=20261126_v330" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20261119_v280" charset="UTF-8"></script>
     <script src="audit_2026_data.js?v=20261107_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20261119_v280" charset="UTF-8"></script>

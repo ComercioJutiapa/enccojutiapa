@@ -4,16 +4,16 @@
    ========================================================================== */
 
 :root {
-    /* Paleta Armónica Creativa ENCCO: Azul, Verde, Naranja y Blanco */
-    --brand-blue: #1d4ed8;
+    /* Paleta Oficial Unificada ENCCO: Azul Institucional (#0f2b5c / #0369a1 / #38bdf8) */
+    --brand-blue: #0369a1;
     --brand-blue-dark: #0f2b5c;
     --brand-blue-light: #38bdf8;
-    --brand-blue-bg: #eff6ff;
+    --brand-blue-bg: #f0f9ff;
     
-    --brand-green: #059669;
-    --brand-green-dark: #064e3b;
-    --brand-green-light: #10b981;
-    --brand-green-bg: #ecfdf5;
+    --brand-green: #0369a1;
+    --brand-green-dark: #0f2b5c;
+    --brand-green-light: #0284c7;
+    --brand-green-bg: #f0f9ff;
     
     --brand-orange: #ea580c;
     --brand-orange-light: #f97316;
@@ -64,21 +64,21 @@
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark Theme Overrides */
+/* Dark Theme Overrides — OLED Azul Institucional (coherente con index.html) */
 body.theme-dark {
-    --bg-main: #06110a;
-    --bg-card: rgba(14, 30, 20, 0.88);
-    --bg-card-hover: #143623;
-    --bg-sidebar: #030a05;
-    --bg-header: #0a1f12;
-    --bg-role-bar: #020703;
+    --bg-main: #050811;
+    --bg-card: rgba(10, 18, 36, 0.92);
+    --bg-card-hover: #0f2347;
+    --bg-sidebar: #040914;
+    --bg-header: #0a1224;
+    --bg-role-bar: #030712;
     
-    --text-primary: #f9fafb;
-    --text-secondary: #a7f3d0;
-    --text-muted: #6ee7b7;
+    --text-primary: #f8fafc;
+    --text-secondary: #bae6fd;
+    --text-muted: #94a3b8;
     
-    --primary: #22c55e;
-    --border-color: #164e2a;
+    --primary: #38bdf8;
+    --border-color: rgba(186, 230, 253, 0.16);
     
     --success-bg: rgba(34, 197, 94, 0.15);
     --warning-bg: rgba(249, 115, 22, 0.15);
@@ -113,7 +113,7 @@ body {
     width: 100%;
     height: 100%;
     min-height: 100vh;
-    background: linear-gradient(135deg, #051a0d 0%, #0d5227 60%, #0284c7 100%);
+    background: radial-gradient(circle at 20% 20%, rgba(3, 105, 161, 0.34), transparent 55%), radial-gradient(circle at 80% 80%, rgba(245, 158, 11, 0.14), transparent 50%), #050811;
     display: none;
     align-items: center;
     justify-content: center;
@@ -342,7 +342,7 @@ body {
 
 .sidebar {
     width: 236px;
-    background: linear-gradient(180deg, #091a35 0%, #0d274c 55%, #06231c 100%);
+    background: linear-gradient(180deg, #071326 0%, #0f2b5c 58%, #091a35 100%);
     color: var(--text-light);
     display: flex;
     flex-direction: column;
@@ -536,7 +536,7 @@ body {
 }
 .nav-item.active {
     color: #ffffff;
-    background: linear-gradient(135deg, #1d4ed8 0%, #059669 100%);
+    background: linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%);
     font-weight: 700;
     border-left: 3px solid var(--brand-orange);
     box-shadow: 0 2px 8px rgba(29, 78, 216, 0.3);
@@ -749,8 +749,8 @@ body {
 
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; font-family: inherit; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer; transition: var(--transition); }
 .btn-block { width: 100%; justify-content: center; }
-.btn-primary { background: linear-gradient(135deg, #1d4ed8, #2563eb); color: #ffffff; box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25); }
-.btn-primary:hover { background: linear-gradient(135deg, #1e40af, #1d4ed8); box-shadow: 0 4px 10px rgba(29, 78, 216, 0.35); }
+.btn-primary { background: linear-gradient(135deg, #0369a1, #0f2b5c); color: #ffffff; box-shadow: 0 2px 6px rgba(15, 43, 92, 0.25); }
+.btn-primary:hover { background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 4px 10px rgba(3, 105, 161, 0.35); }
 .btn-success { background: linear-gradient(135deg, #059669, #10b981); color: #ffffff; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25); }
 .btn-success:hover { background: linear-gradient(135deg, #047857, #059669); box-shadow: 0 4px 10px rgba(5, 150, 105, 0.35); }
 .btn-orange, .btn-accent { background: linear-gradient(135deg, var(--brand-orange), var(--brand-orange-light)); color: #ffffff; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25); }
@@ -2904,7 +2904,7 @@ body.theme-dark .att-global-pct-bar {
     width: 236px !important;
     min-width: 236px !important;
     max-width: 236px !important;
-    background: linear-gradient(180deg, #091a35 0%, #0d274c 55%, #06231c 100%) !important;
+    background: linear-gradient(180deg, #071326 0%, #0f2b5c 58%, #091a35 100%) !important;
     color: var(--text-light) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -4508,7 +4508,7 @@ body.theme-dark .table tbody tr:hover {
 }
 
 .nav-item.active {
-    background: linear-gradient(135deg, #1d4ed8 0%, #059669 100%) !important;
+    background: linear-gradient(135deg, #0f2b5c 0%, #0369a1 100%) !important;
     border-left: 3px solid #f97316 !important;
     box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
 }
@@ -5003,9 +5003,9 @@ body.theme-dark .nav-item:hover {
     color: #6ee7b7 !important;
 }
 body.theme-dark .nav-item.active {
-    background: linear-gradient(90deg, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
-    color: #6ee7b7 !important;
-    border-left-color: #10b981 !important;
+    background: linear-gradient(90deg, rgba(3, 105, 161, 0.38) 0%, rgba(56, 189, 248, 0.12) 100%) !important;
+    color: #38bdf8 !important;
+    border-left-color: #38bdf8 !important;
 }
 
 /* 8. Tarjeta de Estado Vacío (Empty State) */
